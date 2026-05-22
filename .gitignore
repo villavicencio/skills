@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# macOS
+.DS_Store
+
+# Editors
+.idea/
+.vscode/
+
+# Session-local docs (not part of the published library)
+HANDOFF.md

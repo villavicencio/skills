@@ -15,17 +15,17 @@ See [`SUITES.md`](SUITES.md) for the full suite manifest.
 
 ## Install — Claude Code
 
-Clone the repo anywhere — examples use `~/code/villavicencio/skills`, substitute your own path:
+Clone the repo to a stable location — these examples use `~/Projects/skills`, substitute your own path if you prefer somewhere else:
 
 ```bash
-git clone https://github.com/villavicencio/skills.git ~/code/villavicencio/skills
+git clone https://github.com/villavicencio/skills.git ~/Projects/skills
 ```
 
 Then symlink each skill into `~/.claude/skills/`:
 
 ```bash
-ln -s ~/code/villavicencio/skills/skills/pickup  ~/.claude/skills/pickup
-ln -s ~/code/villavicencio/skills/skills/handoff ~/.claude/skills/handoff
+ln -s ~/Projects/skills/skills/pickup  ~/.claude/skills/pickup
+ln -s ~/Projects/skills/skills/handoff ~/.claude/skills/handoff
 ```
 
 Restart your Claude Code session if needed so it picks up the new directories. Invoke as `/pickup` and `/handoff`.

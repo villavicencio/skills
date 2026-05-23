@@ -1,6 +1,6 @@
 ---
 name: handoff
-description: Generate a session HANDOFF.md at the repo root capturing what was built, decisions made, what's next, and gotchas — so the next session can `/pickup` and be working within 60 seconds. Use at the end of any working session. Optionally scope it (`/handoff hero section`, `/handoff PR 28 work`).
+description: "Write a HANDOFF.md serializing this session — what shipped, decisions, what's next, gotchas. Use at session end; pairs with `/pickup`."
 license: Apache-2.0
 metadata:
   author: villavicencio

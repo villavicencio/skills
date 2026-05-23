@@ -1,6 +1,6 @@
 ---
 name: pickup
-description: Pick up where you left off at the start of a new session. Reads HANDOFF.md, surfaces in-flight context (open PRs, git state, recent compound-engineering artifacts, optional VPS health snapshot for openclaw-prod projects), and proposes a concrete next action. Use at session start to get oriented within 60 seconds.
+description: "Read HANDOFF.md and orient: surface git/PR state and recent CE artifacts, then propose a next action. Use at session start."
 license: Apache-2.0
 metadata:
   author: villavicencio

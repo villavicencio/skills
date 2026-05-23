@@ -20,27 +20,28 @@ Optionally scope it: `/handoff hero section` or `/handoff PR 28 work`.
 
 ### Step 1 — Gather context
 ```bash
-export PATH="$HOME/.config/nvm/versions/node/v24.13.0/bin:$PATH"
-
-REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || echo "")
-
 echo "=== Commits this session (branch vs main) ==="
 git log main..HEAD --oneline 2>/dev/null || git log --oneline -10
 
-if [ -n "$REPO" ]; then
-  echo "=== Recently merged PRs (last 5) ==="
-  gh pr list --repo "$REPO" --state merged --limit 5 --json number,title,mergedAt
+if command -v gh >/dev/null 2>&1; then
+  REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || echo "")
+  if [ -n "$REPO" ]; then
+    echo "=== Recently merged PRs (last 5) ==="
+    gh pr list --repo "$REPO" --state merged --limit 5 --json number,title,mergedAt
 
-  echo "=== Open PRs ==="
-  gh pr list --repo "$REPO" --state open --json number,title,headRefName,url
+    echo "=== Open PRs ==="
+    gh pr list --repo "$REPO" --state open --json number,title,headRefName,url
 
-  echo "=== Open PR review comments (first open PR) ==="
-  OPEN_PR=$(gh pr list --repo "$REPO" --state open --json number --jq '.[0].number' 2>/dev/null)
-  if [ -n "$OPEN_PR" ]; then
-    gh pr view $OPEN_PR --repo "$REPO" --comments 2>/dev/null | tail -40
+    echo "=== Open PR review comments (first open PR) ==="
+    OPEN_PR=$(gh pr list --repo "$REPO" --state open --json number --jq '.[0].number' 2>/dev/null)
+    if [ -n "$OPEN_PR" ]; then
+      gh pr view $OPEN_PR --repo "$REPO" --comments 2>/dev/null | tail -40
+    fi
+  else
+    echo "(No GitHub remote detected — skipping PR info)"
   fi
 else
-  echo "(No GitHub remote detected — skipping PR info)"
+  echo "(gh not in PATH — skipping GitHub queries)"
 fi
 
 echo "=== Uncommitted changes ==="

@@ -28,15 +28,16 @@ git status --short
 
 ### Step 2 — Load supporting context
 ```bash
-export PATH="$HOME/.config/nvm/versions/node/v24.13.0/bin:$PATH"
-
-REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || echo "")
-
-if [ -n "$REPO" ]; then
-  echo "=== Open PRs ==="
-  gh pr list --repo "$REPO" --state open --json number,title,headRefName,url
+if command -v gh >/dev/null 2>&1; then
+  REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || echo "")
+  if [ -n "$REPO" ]; then
+    echo "=== Open PRs ==="
+    gh pr list --repo "$REPO" --state open --json number,title,headRefName,url
+  else
+    echo "(No GitHub remote detected — skipping PR info)"
+  fi
 else
-  echo "(No GitHub remote detected — skipping PR info)"
+  echo "(gh not in PATH — skipping GitHub queries)"
 fi
 
 echo "=== Current branch ==="

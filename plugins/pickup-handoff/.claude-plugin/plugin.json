@@ -1,0 +1,19 @@
+{
+  "name": "pickup-handoff",
+  "version": "0.1.0",
+  "description": "Session-bracket companions for Claude Code. /pickup hydrates context at the start of a session; /handoff serializes session state at the end.",
+  "author": {
+    "name": "David Villavicencio",
+    "url": "https://github.com/villavicencio"
+  },
+  "homepage": "https://github.com/villavicencio/skills",
+  "repository": "https://github.com/villavicencio/skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "session-management",
+    "handoff",
+    "claude-code",
+    "context-hydration",
+    "agent-skills"
+  ]
+}

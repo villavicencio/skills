@@ -17,18 +17,19 @@ jobs:
 
       # PyPI package `skills-ref` installs the binary `agentskills` (NOT `skills-ref`).
       # The same-named npm package is by a different author and is explicitly demo-only;
-      # do not substitute. See plan: External References + Risks & Dependencies.
+      # do not substitute. See repo README + risks section in the original plan.
       - name: Install agentskills (skills-ref 0.1.1)
         run: pip install 'skills-ref==0.1.1'
 
-      # Per-skill spec validation. Empty skills/ is a no-op pass.
+      # Per-skill spec validation across every plugin's skills/ tree.
+      # Empty plugins/ is a no-op pass.
       - name: Validate every skill
         run: |
           set -e
           shopt -s nullglob
-          skill_dirs=(skills/*/)
+          skill_dirs=(plugins/*/skills/*/)
           if [ ${#skill_dirs[@]} -eq 0 ]; then
-            echo "No skill directories under skills/ — nothing to validate."
+            echo "No skill directories under plugins/*/skills/ — nothing to validate."
             exit 0
           fi
           rc=0
@@ -39,11 +40,10 @@ jobs:
           done
           exit $rc
 
-      # Suite-version-parity: every skill carrying the same `metadata.suite`
-      # must share the same `metadata.version`. Without this, the suite-release-
-      # together contract would be prompt-level trust that decays the first
-      # time a member version-bumps in isolation.
-      - name: Enforce suite-version-parity
+      # Per-plugin version-parity: every skill inside a single plugin's skills/
+      # tree must share the same metadata.version. Plugins release at the plugin
+      # grain, so any per-skill version drift inside a plugin breaks the contract.
+      - name: Enforce per-plugin skill version-parity
         run: |
           python3 - <<'PY'
           import json, subprocess, sys
@@ -51,31 +51,76 @@ jobs:
           from pathlib import Path
 
           groups = defaultdict(set)
-          for skill_dir in sorted(Path("skills").iterdir()):
-              if not skill_dir.is_dir():
+          for plugin_dir in sorted(Path("plugins").iterdir()):
+              if not plugin_dir.is_dir():
                   continue
-              if not (skill_dir / "SKILL.md").exists():
+              skills_root = plugin_dir / "skills"
+              if not skills_root.is_dir():
                   continue
-              props = json.loads(subprocess.check_output(
-                  ["agentskills", "read-properties", str(skill_dir)]
-              ))
-              meta = props.get("metadata") or {}
-              suite = meta.get("suite")
-              version = meta.get("version")
-              if suite:
-                  groups[suite].add((skill_dir.name, version))
+              for skill_dir in sorted(skills_root.iterdir()):
+                  if not skill_dir.is_dir():
+                      continue
+                  if not (skill_dir / "SKILL.md").exists():
+                      continue
+                  props = json.loads(subprocess.check_output(
+                      ["agentskills", "read-properties", str(skill_dir)]
+                  ))
+                  meta = props.get("metadata") or {}
+                  version = meta.get("version")
+                  groups[plugin_dir.name].add((skill_dir.name, version))
 
           failed = False
-          for suite, members in groups.items():
+          for plugin_name, members in groups.items():
               versions = {v for _, v in members}
               if len(versions) > 1:
                   failed = True
                   detail = ", ".join(f"{name}={ver}" for name, ver in sorted(members))
-                  print(f"::error::Suite '{suite}' has mismatched versions: {detail}")
+                  print(f"::error::Plugin '{plugin_name}' has skill-version drift: {detail}")
               else:
                   v = next(iter(versions))
                   names = ", ".join(sorted(name for name, _ in members))
-                  print(f"OK — suite '{suite}' @ {v} ({names})")
+                  print(f"OK — plugin '{plugin_name}' skills @ {v} ({names})")
+
+          sys.exit(1 if failed else 0)
+          PY
+
+      # Each plugin.json's `version` field must match the skill versions inside
+      # that plugin. Without this, plugin tag + skill metadata can drift apart.
+      - name: Enforce plugin.json ↔ skill version-parity
+        run: |
+          python3 - <<'PY'
+          import json, subprocess, sys
+          from pathlib import Path
+
+          failed = False
+          for plugin_dir in sorted(Path("plugins").iterdir()):
+              if not plugin_dir.is_dir():
+                  continue
+              manifest = plugin_dir / ".claude-plugin" / "plugin.json"
+              if not manifest.exists():
+                  print(f"::error::Plugin '{plugin_dir.name}' missing .claude-plugin/plugin.json")
+                  failed = True
+                  continue
+              plugin_version = json.load(open(manifest)).get("version")
+              skills_root = plugin_dir / "skills"
+              if not skills_root.is_dir():
+                  continue
+              for skill_dir in sorted(skills_root.iterdir()):
+                  if not (skill_dir / "SKILL.md").exists():
+                      continue
+                  props = json.loads(subprocess.check_output(
+                      ["agentskills", "read-properties", str(skill_dir)]
+                  ))
+                  skill_version = (props.get("metadata") or {}).get("version")
+                  if skill_version != plugin_version:
+                      failed = True
+                      print(
+                          f"::error::Plugin '{plugin_dir.name}' plugin.json version "
+                          f"{plugin_version!r} != skill '{skill_dir.name}' "
+                          f"metadata.version {skill_version!r}"
+                      )
+                  else:
+                      print(f"OK — {plugin_dir.name}/{skill_dir.name} @ {skill_version}")
 
           sys.exit(1 if failed else 0)
           PY

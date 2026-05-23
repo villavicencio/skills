@@ -1,72 +1,72 @@
 # villavicencio/skills
 
-Personal [Agent Skills](https://agentskills.io/specification) library — spec-conformant, versioned per-skill, with suite-grain releases when skills ship together.
+Personal [Agent Skills](https://agentskills.io/specification) library, distributed as a [Claude Code plugin marketplace](https://github.com/anthropics/claude-plugins-official). Each plugin bundles a related set of skills that release together with a single version.
 
 [![validate](https://github.com/villavicencio/skills/actions/workflows/validate.yml/badge.svg)](https://github.com/villavicencio/skills/actions/workflows/validate.yml)
 
-## What's inside
+## Plugins
 
-| Skill | Description | Version | Suite |
+| Plugin | Version | Skills | Description |
 | --- | --- | --- | --- |
-| [`pickup`](skills/pickup/) | Pick up where you left off at the start of a new session — reads `HANDOFF.md`, surfaces in-flight context, proposes a next action. | `0.1.0` | `pickup-handoff` |
-| [`handoff`](skills/handoff/) | Generate a session `HANDOFF.md` at the repo root capturing what was built, decisions, what's next, and gotchas. | `0.1.0` | `pickup-handoff` |
+| [`pickup-handoff`](plugins/pickup-handoff/) | `0.1.0` | `pickup`, `handoff` | Session-bracket companions for Claude Code. `/pickup` hydrates context at session start; `/handoff` serializes session state at the end. |
 
-See [`SUITES.md`](SUITES.md) for the full suite manifest.
+## Install
 
-## Install — Claude Code
-
-Clone the repo to a stable location — these examples use `~/Projects/skills`, substitute your own path if you prefer somewhere else:
+The same flow works for any Claude Code instance — your Mac, a remote VPS session, anywhere `claude` is installed.
 
 ```bash
-git clone https://github.com/villavicencio/skills.git ~/Projects/skills
+# One-time: register this repo as a plugin marketplace
+claude plugins marketplace add villavicencio/skills
+
+# Install a plugin from this marketplace
+claude plugins install pickup-handoff@villavicencio-skills
 ```
 
-Then symlink each skill into `~/.claude/skills/`:
+To update later:
 
 ```bash
-ln -s ~/Projects/skills/skills/pickup  ~/.claude/skills/pickup
-ln -s ~/Projects/skills/skills/handoff ~/.claude/skills/handoff
+claude plugins update pickup-handoff
 ```
 
-Restart your Claude Code session if needed so it picks up the new directories. Invoke as `/pickup` and `/handoff`.
-
-To update later, `git pull` in the clone — the symlinks resolve to the new content with no further action.
-
-## Install — Hermes
-
-Hermes has a first-class `skills` subcommand. Register this repo as a tap, then install individual skills:
+To uninstall:
 
 ```bash
-hermes skills tap add villavicencio/skills
-hermes skills install villavicencio/skills/pickup
-hermes skills install villavicencio/skills/handoff
-hermes skills list   # confirm both appear at version 0.1.0
+claude plugins uninstall pickup-handoff
 ```
-
-The tap mechanism reads from this repo's `skills/` subdirectory, so the install identifier is `<owner>/<repo>/<skill>` rather than `<owner>/<repo>/skills/<skill>`. If you skip the tap and resolve directly, the path includes `skills/` (see plan U1 spike).
-
-## Inventory programmatically
-
-The reference CLI ships with `agentskills to-prompt`, which generates an `<available_skills>` XML block from a directory of skills — useful when wiring this library into other agent harnesses:
-
-```bash
-pip install 'skills-ref==0.1.1'
-agentskills to-prompt skills/*
-```
-
-The PyPI package `skills-ref` installs a binary named `agentskills`. Do **not** substitute the same-named npm package — it is by a different author and explicitly demo-only.
 
 ## Versioning
 
-- Each skill carries its own `metadata.version` in `SKILL.md` frontmatter, following [semantic versioning](https://semver.org/).
-- Skills that always release together form a **suite**. Members of a suite must share the same `metadata.version`; CI enforces this (`.github/workflows/validate.yml`).
-- Release tags use the form `<suite-or-skill>-v<semver>` — suite-grain (`pickup-handoff-v0.1.0`) when a suite exists, skill-grain otherwise.
+- Each plugin carries its own `version` in `.claude-plugin/plugin.json`, following [semantic versioning](https://semver.org/).
+- Every skill inside a plugin shares the plugin's version via `metadata.version` in its `SKILL.md` frontmatter. CI enforces this — a skill version that drifts from its plugin's version fails the build.
+- Release tags use the form `<plugin-name>--v<semver>` (double-dash) per the Claude Code plugin convention. v0.1.0 of `pickup-handoff` ships as `pickup-handoff--v0.1.0`.
 
 ## Spec conformance
 
-Every PR and every push to `main` runs `agentskills validate` against every skill, plus a suite-version-parity check that fails when members of the same suite drift apart. See [`.github/workflows/validate.yml`](.github/workflows/validate.yml).
+Every PR and every push to `main` runs:
 
-For the underlying spec, see [agentskills.io/specification](https://agentskills.io/specification).
+- `agentskills validate` against each skill directory under `plugins/*/skills/*` ([Agent Skills spec](https://agentskills.io/specification)).
+- A per-plugin skill-version-parity check (skills in the same plugin must share `metadata.version`).
+- A plugin-manifest-↔-skill-version-parity check (each plugin's `plugin.json` version must match the skill versions inside).
+
+The marketplace manifest (`.claude-plugin/marketplace.json`) and each plugin manifest (`.claude-plugin/plugin.json`) can also be validated locally with `claude plugin validate <path>`.
+
+## Layout
+
+```
+.
+├── .claude-plugin/
+│   └── marketplace.json              # marketplace declaration
+├── plugins/
+│   └── <plugin-name>/
+│       ├── .claude-plugin/
+│       │   └── plugin.json           # plugin manifest
+│       └── skills/
+│           └── <skill-name>/
+│               ├── SKILL.md          # spec-conformant skill
+│               └── references/       # optional progressive-disclosure assets
+├── .github/workflows/validate.yml    # CI gates
+└── README.md
+```
 
 ## License
 

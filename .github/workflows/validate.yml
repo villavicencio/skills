@@ -1,0 +1,81 @@
+name: validate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # PyPI package `skills-ref` installs the binary `agentskills` (NOT `skills-ref`).
+      # The same-named npm package is by a different author and is explicitly demo-only;
+      # do not substitute. See plan: External References + Risks & Dependencies.
+      - name: Install agentskills (skills-ref 0.1.1)
+        run: pip install 'skills-ref==0.1.1'
+
+      # Per-skill spec validation. Empty skills/ is a no-op pass.
+      - name: Validate every skill
+        run: |
+          set -e
+          shopt -s nullglob
+          skill_dirs=(skills/*/)
+          if [ ${#skill_dirs[@]} -eq 0 ]; then
+            echo "No skill directories under skills/ — nothing to validate."
+            exit 0
+          fi
+          rc=0
+          for dir in "${skill_dirs[@]}"; do
+            echo "::group::Validating ${dir}"
+            agentskills validate "${dir%/}" || rc=$?
+            echo "::endgroup::"
+          done
+          exit $rc
+
+      # Suite-version-parity: every skill carrying the same `metadata.suite`
+      # must share the same `metadata.version`. Without this, the suite-release-
+      # together contract would be prompt-level trust that decays the first
+      # time a member version-bumps in isolation.
+      - name: Enforce suite-version-parity
+        run: |
+          python3 - <<'PY'
+          import json, subprocess, sys
+          from collections import defaultdict
+          from pathlib import Path
+
+          groups = defaultdict(set)
+          for skill_dir in sorted(Path("skills").iterdir()):
+              if not skill_dir.is_dir():
+                  continue
+              if not (skill_dir / "SKILL.md").exists():
+                  continue
+              props = json.loads(subprocess.check_output(
+                  ["agentskills", "read-properties", str(skill_dir)]
+              ))
+              meta = props.get("metadata") or {}
+              suite = meta.get("suite")
+              version = meta.get("version")
+              if suite:
+                  groups[suite].add((skill_dir.name, version))
+
+          failed = False
+          for suite, members in groups.items():
+              versions = {v for _, v in members}
+              if len(versions) > 1:
+                  failed = True
+                  detail = ", ".join(f"{name}={ver}" for name, ver in sorted(members))
+                  print(f"::error::Suite '{suite}' has mismatched versions: {detail}")
+              else:
+                  v = next(iter(versions))
+                  names = ", ".join(sorted(name for name, _ in members))
+                  print(f"OK — suite '{suite}' @ {v} ({names})")
+
+          sys.exit(1 if failed else 0)
+          PY

@@ -11,7 +11,7 @@
   "plugins": [
     {
       "name": "pickup-handoff",
-      "description": "Session-bracket companions for Claude Code. /pickup hydrates context at the start of a session (reads HANDOFF.md, surfaces open PRs and recent CE artifacts, optionally probes VPS health for openclaw-prod projects). /handoff serializes session state at the end (writes a structured HANDOFF.md with what was built, decisions made, what's next, and gotchas).",
+      "description": "Session-bracket companions for Claude Code. /pickup hydrates context at the start of a session (reads HANDOFF.md, surfaces open PRs, git state, and recent compound-engineering artifacts if present). /handoff serializes session state at the end (writes a structured HANDOFF.md with what was built, decisions made, what's next, and gotchas).",
       "author": {
         "name": "David Villavicencio",
         "url": "https://github.com/villavicencio"

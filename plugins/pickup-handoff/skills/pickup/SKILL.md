@@ -49,21 +49,26 @@ git status --short
 
 ### Step 2b — Surface compound-engineering artifacts
 
-Check for recent CE artifacts (brainstorms, plans, solutions) modified in the last 7 days.
-These represent in-flight feature work and accumulated learnings that may be relevant.
+This step assumes [compound-engineering](https://github.com/EveryInc/compound-engineering-plugin) conventions (`docs/brainstorms/`, `docs/plans/`, `docs/solutions/`). Skip entirely if the project doesn't use CE — the bash block below already gates on those directories existing, so it's a no-op for non-CE projects.
+
+Check for recent CE artifacts modified in the last 7 days. These represent in-flight feature work and accumulated learnings that may be relevant.
 
 ```bash
-echo "=== Recent brainstorms (last 7 days) ==="
-find docs/brainstorms -name "*.md" -mtime -7 -exec basename {} \; 2>/dev/null | sort -r || echo "(none)"
+if [ -d docs/brainstorms ] || [ -d docs/plans ] || [ -d docs/solutions ]; then
+  echo "=== Recent brainstorms (last 7 days) ==="
+  find docs/brainstorms -name "*.md" -mtime -7 -exec basename {} \; 2>/dev/null | sort -r || echo "(none)"
 
-echo "=== Recent plans (last 7 days) ==="
-find docs/plans -name "*.md" -mtime -7 -exec basename {} \; 2>/dev/null | sort -r || echo "(none)"
+  echo "=== Recent plans (last 7 days) ==="
+  find docs/plans -name "*.md" -mtime -7 -exec basename {} \; 2>/dev/null | sort -r || echo "(none)"
 
-echo "=== Recent solutions (last 7 days) ==="
-find docs/solutions -name "*.md" -mtime -7 -exec basename {} \; 2>/dev/null | sort -r || echo "(none)"
+  echo "=== Recent solutions (last 7 days) ==="
+  find docs/solutions -name "*.md" -mtime -7 -exec basename {} \; 2>/dev/null | sort -r || echo "(none)"
+else
+  echo "(no CE convention directories — skipping)"
+fi
 ```
 
-If any artifacts are found:
+If any artifacts are found (and the CE plugin is installed so its commands are available):
 - **Brainstorms** — mention them as open explorations that may need `/ce:plan` next
 - **Plans** — mention them as ready for `/ce:work` (or already in progress)
 - **Solutions** — briefly note what was learned (read the `problem_type` and `module` from YAML frontmatter if present)

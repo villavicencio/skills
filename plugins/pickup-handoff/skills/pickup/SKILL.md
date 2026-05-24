@@ -73,30 +73,15 @@ If any artifacts are found (and the CE plugin is installed so its commands are a
 - **Plans** — mention them as ready for `/ce:work` (or already in progress)
 - **Solutions** — briefly note what was learned (read the `problem_type` and `module` from YAML frontmatter if present)
 
-### Step 2c — VPS health snapshot (openclaw-prod projects)
-
-Skip this step unless this project targets `openclaw-prod`. Detect via git remote:
-
-```bash
-git remote -v 2>/dev/null | grep -q "openclaw" || { echo "(not an openclaw-prod project — skipping VPS health snapshot)"; }
-```
-
-If the remote doesn't contain "openclaw", skip entirely. Other projects run on different infrastructure.
-
-If it does match, **load `references/vps-health-snapshot.md`** for the full SSH probe and interpretation rules. The probe is kept out of this file to apply only when Step 2c actually fires.
-
-If SSH fails inside the probe: note "VPS health snapshot unavailable" and continue; do not block pickup. Rationale: a down VPS is important information, but a Mac-side `/pickup` shouldn't stall on network problems.
-
 ### Step 3 — Orient and propose next action
 
 Synthesize everything into a brief, confident session kickoff:
 
 1. **2-3 sentence summary** of where things stand — what was completed, what's in flight
-2. **VPS health headline** (if Step 2c ran) — one line: *"VPS clean"* if all checks passed, or the most urgent finding if not (critical audit finding, OOM regression, restart loop, perm drift)
-3. **"Next up:"** — the single most important thing to tackle first, based on "What's Next" in the handoff; bump it below a VPS escalation if 2c surfaced one
-4. **CE artifacts** — if any brainstorms, plans, or solutions were found, note them briefly (e.g., "There's an open brainstorm on X ready for planning" or "2 new solutions were compounded last session")
-5. **Any gotchas to keep in mind** — surface the watch-outs from the handoff so they're top of mind before touching code
-6. **A ready-to-go prompt** — end with something like: *"Ready when you are — just say go and I'll start on [specific task]."*
+2. **"Next up:"** — the single most important thing to tackle first, based on "What's Next" in the handoff
+3. **CE artifacts** — if any brainstorms, plans, or solutions were found, note them briefly (e.g., "There's an open brainstorm on X ready for planning" or "2 new solutions were compounded last session")
+4. **Any gotchas to keep in mind** — surface the watch-outs from the handoff so they're top of mind before touching code
+5. **A ready-to-go prompt** — end with something like: *"Ready when you are — just say go and I'll start on [specific task]."*
 
 Keep the tone direct and energized. This is a fresh start, not a status report.
 

@@ -5,7 +5,6 @@ license: Apache-2.0
 metadata:
   author: villavicencio
   version: "0.1.0"
-  suite: pickup-handoff
 ---
 
 # /pickup — Pick Up Where We Left Off
@@ -20,31 +19,39 @@ Reads HANDOFF.md, loads relevant context, and tells you exactly where to start.
 cat HANDOFF.md 2>/dev/null || echo "No HANDOFF.md found."
 ```
 
-If no HANDOFF.md exists, say so and fall back to git log:
+If no HANDOFF.md exists, say so and fall back to git log (gated on being in a git repo):
 ```bash
-git log --oneline -10
-git status --short
+if git rev-parse --git-dir >/dev/null 2>&1; then
+  git log --oneline -10
+  git status --short
+else
+  echo "(not a git repo — no fallback context to gather)"
+fi
 ```
 
 ### Step 2 — Load supporting context
 ```bash
-if command -v gh >/dev/null 2>&1; then
-  REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || echo "")
-  if [ -n "$REPO" ]; then
-    echo "=== Open PRs ==="
-    gh pr list --repo "$REPO" --state open --json number,title,headRefName,url
-  else
-    echo "(No GitHub remote detected — skipping PR info)"
-  fi
+if ! git rev-parse --git-dir >/dev/null 2>&1; then
+  echo "(not a git repo — skipping repo context)"
 else
-  echo "(gh not in PATH — skipping GitHub queries)"
+  if command -v gh >/dev/null 2>&1; then
+    REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || echo "")
+    if [ -n "$REPO" ]; then
+      echo "=== Open PRs ==="
+      gh pr list --repo "$REPO" --state open --json number,title,headRefName,url
+    else
+      echo "(No GitHub remote detected — skipping PR info)"
+    fi
+  else
+    echo "(gh not in PATH — skipping GitHub queries)"
+  fi
+
+  echo "=== Current branch ==="
+  git branch --show-current
+
+  echo "=== Uncommitted changes ==="
+  git status --short
 fi
-
-echo "=== Current branch ==="
-git branch --show-current
-
-echo "=== Uncommitted changes ==="
-git status --short
 ```
 
 ### Step 2b — Surface compound-engineering artifacts

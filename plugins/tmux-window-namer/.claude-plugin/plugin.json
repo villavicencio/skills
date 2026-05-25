@@ -1,0 +1,21 @@
+{
+  "name": "tmux-window-namer",
+  "version": "0.1.0",
+  "description": "Style tmux windows with a glyph, a title, and a palette glyph-color, persisted across tmux server restarts via a JSON sidecar. Depends on the dotfiles-installed tmux persistence scripts and client-attached hook; preflight-checks for them and bails cleanly when absent.",
+  "author": {
+    "name": "David Villavicencio",
+    "url": "https://github.com/villavicencio"
+  },
+  "homepage": "https://github.com/villavicencio/skills",
+  "repository": "https://github.com/villavicencio/skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "tmux",
+    "window-styling",
+    "glyphs",
+    "palettes",
+    "nerd-fonts",
+    "claude-code",
+    "agent-skills"
+  ]
+}

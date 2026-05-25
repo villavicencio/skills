@@ -2,7 +2,6 @@
 name: tmux-window-namer
 description: Rename and colorize tmux windows with a glyph and curated palette. Use when the user wants to style a tmux tab, pick an emoji or Nerd Font icon for a window, offer variations on a window name, or change a tab's colors. Triggers on phrases like "name this window", "rename window N", "color this tab", "give this tab an icon", "suggest tab names".
 license: Apache-2.0
-allowed-tools: Bash(tmux *), Bash(jq *), Bash(cat *), Bash(ls *), Bash(basename *), Bash(git *), Read
 metadata:
   author: villavicencio
   version: "0.1.0"

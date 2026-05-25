@@ -34,6 +34,37 @@ To uninstall:
 claude plugins uninstall pickup-handoff
 ```
 
+### Migrating from a single-file setup
+
+If you previously had `pickup.md` or `handoff.md` at `~/.claude/commands/` (either as direct files or as symlinks into a dotfiles repo), **remove them after installing the plugin** — otherwise the picker will keep showing both the old and new entries.
+
+The reason is subtle: Claude Code discovers user commands by globbing `~/.claude/commands/*.md`, and the glob matches on filename, not on whether the file actually resolves. A symlink whose target was renamed or deleted still satisfies the glob, so the picker keeps offering an entry that errors when invoked.
+
+```bash
+# Remove the old single-file commands (or symlinks) if they exist
+rm -f ~/.claude/commands/pickup.md ~/.claude/commands/handoff.md
+```
+
+If your old files lived in a dotfiles repo and you want a rollback window, rename them to `.md.deprecated` in dotfiles *and* delete the symlinks at `~/.claude/commands/` — the symlinks themselves aren't load-bearing for rollback, only the source files are.
+
+### Linux Claude Code instances with older git
+
+`claude plugins marketplace add <owner/repo>` may fail with `ERR_STREAM_PREMATURE_CLOSE` on Linux Claude Code running git ≤ 2.43. This is an upstream `claude` CLI bug; track [issue #8](https://github.com/villavicencio/skills/issues/8) for the fix. Workaround until then:
+
+```bash
+git clone --depth 1 https://github.com/villavicencio/skills.git ~/.local/share/villavicencio-skills
+claude plugins marketplace add ~/.local/share/villavicencio-skills
+claude plugins install pickup-handoff@villavicencio-skills
+```
+
+Updates on those instances need an extra step:
+
+```bash
+git -C ~/.local/share/villavicencio-skills pull
+claude plugins marketplace update villavicencio-skills
+claude plugins update pickup-handoff
+```
+
 ## Versioning
 
 - Each plugin carries its own `version` in `.claude-plugin/plugin.json`, following [semantic versioning](https://semver.org/).

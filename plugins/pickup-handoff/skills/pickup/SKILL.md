@@ -1,0 +1,99 @@
+---
+name: pickup
+description: "Read HANDOFF.md and orient: surface git/PR state and recent CE artifacts, then propose a next action. Use at session start."
+license: Apache-2.0
+metadata:
+  author: villavicencio
+  version: "0.1.0"
+---
+
+# /pickup — Pick Up Where We Left Off
+
+Use this command at the start of a new session to get oriented fast.
+Reads HANDOFF.md, loads relevant context, and tells you exactly where to start.
+
+## Steps
+
+### Step 1 — Read the handoff
+```bash
+cat HANDOFF.md 2>/dev/null || echo "No HANDOFF.md found."
+```
+
+If no HANDOFF.md exists, say so and fall back to git log (gated on being in a git repo):
+```bash
+if git rev-parse --git-dir >/dev/null 2>&1; then
+  git log --oneline -10
+  git status --short
+else
+  echo "(not a git repo — no fallback context to gather)"
+fi
+```
+
+### Step 2 — Load supporting context
+```bash
+if ! git rev-parse --git-dir >/dev/null 2>&1; then
+  echo "(not a git repo — skipping repo context)"
+else
+  if command -v gh >/dev/null 2>&1; then
+    REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || echo "")
+    if [ -n "$REPO" ]; then
+      echo "=== Open PRs ==="
+      gh pr list --repo "$REPO" --state open --json number,title,headRefName,url
+    else
+      echo "(No GitHub remote detected — skipping PR info)"
+    fi
+  else
+    echo "(gh not in PATH — skipping GitHub queries)"
+  fi
+
+  echo "=== Current branch ==="
+  git branch --show-current
+
+  echo "=== Uncommitted changes ==="
+  git status --short
+fi
+```
+
+### Step 2b — Surface compound-engineering artifacts
+
+This step assumes [compound-engineering](https://github.com/EveryInc/compound-engineering-plugin) conventions (`docs/brainstorms/`, `docs/plans/`, `docs/solutions/`). Skip entirely if the project doesn't use CE — the bash block below already gates on those directories existing, so it's a no-op for non-CE projects.
+
+Check for recent CE artifacts modified in the last 7 days. These represent in-flight feature work and accumulated learnings that may be relevant.
+
+```bash
+if [ -d docs/brainstorms ] || [ -d docs/plans ] || [ -d docs/solutions ]; then
+  echo "=== Recent brainstorms (last 7 days) ==="
+  find docs/brainstorms -name "*.md" -mtime -7 -exec basename {} \; 2>/dev/null | sort -r || echo "(none)"
+
+  echo "=== Recent plans (last 7 days) ==="
+  find docs/plans -name "*.md" -mtime -7 -exec basename {} \; 2>/dev/null | sort -r || echo "(none)"
+
+  echo "=== Recent solutions (last 7 days) ==="
+  find docs/solutions -name "*.md" -mtime -7 -exec basename {} \; 2>/dev/null | sort -r || echo "(none)"
+else
+  echo "(no CE convention directories — skipping)"
+fi
+```
+
+If any artifacts are found (and the CE plugin is installed so its commands are available):
+- **Brainstorms** — mention them as open explorations that may need `/ce:plan` next
+- **Plans** — mention them as ready for `/ce:work` (or already in progress)
+- **Solutions** — briefly note what was learned (read the `problem_type` and `module` from YAML frontmatter if present)
+
+### Step 3 — Orient and propose next action
+
+Synthesize everything into a brief, confident session kickoff:
+
+1. **2-3 sentence summary** of where things stand — what was completed, what's in flight
+2. **"Next up:"** — the single most important thing to tackle first, based on "What's Next" in the handoff
+3. **CE artifacts** — if any brainstorms, plans, or solutions were found, note them briefly (e.g., "There's an open brainstorm on X ready for planning" or "2 new solutions were compounded last session")
+4. **Any gotchas to keep in mind** — surface the watch-outs from the handoff so they're top of mind before touching code
+5. **A ready-to-go prompt** — end with something like: *"Ready when you are — just say go and I'll start on [specific task]."*
+
+Keep the tone direct and energized. This is a fresh start, not a status report.
+
+## Notes
+- If HANDOFF.md is stale (date is old), flag it: "This handoff is from X days ago — things may have moved."
+- If there are open PRs with pending review comments, surface them — they're likely blocking
+- Don't re-read CLAUDE.md or project docs unless the handoff references something that requires it
+- The goal is: oriented and working within 60 seconds

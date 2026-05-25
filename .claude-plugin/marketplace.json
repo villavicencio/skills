@@ -1,0 +1,32 @@
+{
+  "name": "villavicencio-skills",
+  "owner": {
+    "name": "David Villavicencio",
+    "url": "https://github.com/villavicencio"
+  },
+  "metadata": {
+    "description": "Personal Agent Skills library — spec-conformant, versioned per-plugin, distributed as a Claude Code plugin marketplace.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "pickup-handoff",
+      "description": "Session-bracket companions for Claude Code. /pickup hydrates context at the start of a session (reads HANDOFF.md, surfaces open PRs, git state, and recent compound-engineering artifacts if present). /handoff serializes session state at the end (writes a structured HANDOFF.md with what was built, decisions made, what's next, and gotchas).",
+      "author": {
+        "name": "David Villavicencio",
+        "url": "https://github.com/villavicencio"
+      },
+      "homepage": "https://github.com/villavicencio/skills",
+      "repository": "https://github.com/villavicencio/skills",
+      "license": "Apache-2.0",
+      "tags": [
+        "session-management",
+        "handoff",
+        "claude-code",
+        "context-hydration",
+        "agent-skills"
+      ],
+      "source": "./plugins/pickup-handoff"
+    }
+  ]
+}

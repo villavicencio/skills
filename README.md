@@ -9,6 +9,7 @@ Personal [Agent Skills](https://agentskills.io/specification) library, distribut
 | Plugin | Version | Skills | Description |
 | --- | --- | --- | --- |
 | [`pickup-handoff`](plugins/pickup-handoff/) | `0.1.0` | `pickup`, `handoff` | Session-bracket companions for Claude Code. `/pickup` hydrates context at session start; `/handoff` serializes session state at the end. |
+| [`tmux-window-namer`](plugins/tmux-window-namer/) | `0.1.0` | `tmux-window-namer` | Style tmux windows with a glyph, title, and palette color, persisted across server restarts. Depends on dotfiles-installed tmux scripts + a `client-attached` hook; preflight-checks and bails cleanly when absent. |
 
 ## Install
 
@@ -33,6 +34,23 @@ To uninstall:
 ```bash
 claude plugins uninstall pickup-handoff
 ```
+
+### Installing `tmux-window-namer` (project-scoped)
+
+`tmux-window-namer` depends on tmux persistence infrastructure that lives in a dotfiles repo (two scripts plus a `client-attached` hook — a plugin can't ship those). It's therefore meant to be installed **project-scoped** to that repo, so it only appears in the picker when you're working there:
+
+```bash
+# One-time per machine: register the marketplace
+# (defaults to --scope user; add --scope project to scope it to dotfiles too)
+claude plugin marketplace add villavicencio/skills
+
+# From inside the dotfiles repo, install project-scoped
+claude plugin install tmux-window-namer@villavicencio-skills --scope project
+```
+
+The project-scoped enablement is written to `.claude/settings.json` and can be committed to the dotfiles repo so it travels across machines.
+
+> **Fresh-machine note.** A committed `.claude/settings.json` *declares* the enablement but does **not** auto-fetch the plugin. On a machine where the marketplace was never registered, the one-time `marketplace add` + `install --scope project` above is still required before the committed enablement takes effect. If the persistence scripts and hook aren't present, the skill preflight-checks, reports what's missing, and stops without touching any window.
 
 ### Migrating from a single-file setup
 

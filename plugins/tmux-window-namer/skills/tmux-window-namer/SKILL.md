@@ -26,6 +26,86 @@ Figure out which of these three modes applies:
 | **Direct** | "rename window 2 to   Backend in ocean" (has glyph + title + palette) | Skip suggestions, apply immediately |
 | **Tweak** | "make window 3 use the forest palette instead" (existing styling, partial change) | Read current options → modify only what's asked → apply |
 
+## Step 0 — Preflight: verify the dotfiles persistence infrastructure
+
+**Run this before anything else, and before modifying any window state.** This
+skill is a thin orchestration layer over infrastructure that lives in the
+**dotfiles** repo, not in this plugin: two persistence scripts and a tmux
+`client-attached` hook that restores per-window glyph/color metadata from a
+JSON sidecar across server restarts. A plugin cannot ship a tmux hook, so the
+skill depends on that infrastructure being installed. If it isn't, applying
+styling would write state nothing can restore — so the skill checks first and
+fails honestly.
+
+The check is **graded**:
+
+| State | Outcome |
+|---|---|
+| Persistence scripts **absent** | **Stop.** Report what's missing; do **not** touch any window. |
+| Scripts present, `client-attached` hook **not detected** | **Warn**, then proceed (styling applies now but won't survive a server restart). |
+| Scripts present **and** hook detected | Proceed normally. |
+
+### Gate 0 — inside tmux at all (cheapest check first)
+
+If there's no tmux server to talk to, there's nothing to rename. Bail before
+the dependency probes (this is the same fail-fast as the "outside tmux" rule in
+Constraints, just run first):
+
+```bash
+[ -n "$TMUX" ] || { echo "tmux-window-namer: not inside a tmux session — nothing to rename."; }
+```
+
+If `$TMUX` is unset, stop here.
+
+### Hard gate — persistence scripts (deterministic; stop on failure)
+
+The skill calls `save-window-meta.sh` directly, and the restore half is what
+delivers cross-restart persistence. Both must exist and be executable:
+
+```bash
+scripts_dir="${XDG_CONFIG_HOME:-$HOME/.config}/tmux/scripts"
+missing=""
+for s in save-window-meta.sh restore-window-meta.sh; do
+  [ -x "$scripts_dir/$s" ] || missing="$missing $s"
+done
+if [ -n "$missing" ]; then
+  echo "tmux-window-namer: missing dotfiles persistence infrastructure —$missing"
+  echo "Expected under: $scripts_dir"
+  echo "These ship with the dotfiles repo (tmux/scripts/). Install or symlink them, then retry."
+fi
+```
+
+If `$missing` is non-empty, **stop here** — surface the message to the user and
+do not proceed to Step 1 or modify any window. This is the fail-safe behavior:
+no styling, no orphaned sidecar entries, just a clear explanation.
+
+### Warn gate — `client-attached` hook (best-effort; warn, never block)
+
+The "persists across restarts" promise depends on a `client-attached` hook that
+runs `restore-window-meta.sh`. Probe for it, but treat a negative result as a
+**warning only** — hook-detection is tmux-version-sensitive, and a false
+negative must never refuse a skill whose infrastructure is actually fine:
+
+```bash
+if ! { tmux show-hooks -g 2>/dev/null; tmux show-options -g 2>/dev/null; } \
+     | grep -q 'restore-window-meta'; then
+  echo "tmux-window-namer: warning — the client-attached restore hook isn't detected."
+  echo "Styling will apply to this session but won't survive a tmux server restart"
+  echo "until the hook is active (check that tmux/tmux.general.conf is sourced). Proceeding."
+fi
+```
+
+Notes for whoever maintains this probe:
+
+- The exact detection command is **best-effort and tmux-version-dependent**
+  (`show-hooks` vs `show-options -g`); the form above queries both and matches
+  on the restore-script name, which is resilient across tmux 3.x / `next-3.7`.
+- The dotfiles hook resolves the restore script via bare `$XDG_CONFIG_HOME`
+  (no `:-$HOME/.config` fallback), while this skill's hard gate uses
+  `${XDG_CONFIG_HOME:-$HOME/.config}`. When `XDG_CONFIG_HOME` is set (the normal
+  case) they resolve identically; if it were ever unset they would diverge. Keep
+  the probe tolerant of this rather than asserting an exact path.
+
 ## Step 1 — Resolve the target window
 
 User may specify:

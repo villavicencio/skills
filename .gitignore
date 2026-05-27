@@ -12,3 +12,6 @@ __pycache__/
 
 # Session-local docs (not part of the published library)
 HANDOFF.md
+
+# Compound Engineering machine-local config
+.compound-engineering/*.local.yaml

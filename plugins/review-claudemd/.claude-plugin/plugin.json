@@ -1,0 +1,20 @@
+{
+  "name": "review-claudemd",
+  "version": "0.1.0",
+  "description": "Mine recent conversation history to improve CLAUDE.md — launches parallel subagents to compare what actually happened against the global and local CLAUDE.md, then surfaces violated rules, missing patterns (scoped local vs global), and stale entries. Presents findings for approval and applies only what you accept; never auto-commits. A compounding loop that keeps CLAUDE.md honest as habits evolve.",
+  "author": {
+    "name": "David Villavicencio",
+    "url": "https://github.com/villavicencio"
+  },
+  "homepage": "https://github.com/villavicencio/skills",
+  "repository": "https://github.com/villavicencio/skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "claude-md",
+    "instructions",
+    "self-improvement",
+    "conversation-history",
+    "claude-code",
+    "agent-skills"
+  ]
+}

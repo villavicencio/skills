@@ -12,62 +12,104 @@ metadata:
 Use this command to mine recent conversations and find patterns that should be captured
 in CLAUDE.md files. Surfaces violated instructions, missing rules, and stale entries.
 
-## Steps
-
-### Step 1 — Find conversation history
+## Step 1 — Locate this project's transcripts (and bail if there are none)
 
 ```bash
+# Claude Code stores per-project transcripts under ~/.claude/projects/<encoded-cwd>,
+# encoding the path by replacing separators with '-'. Compute that, then fall back to
+# a basename search if the encoding doesn't match (e.g. paths containing '.' or '_').
 PROJECT_PATH=$(pwd | sed 's|/|-|g' | sed 's|^-||')
-CONVO_DIR=~/.claude/projects/-${PROJECT_PATH}
+CONVO_DIR="$HOME/.claude/projects/-${PROJECT_PATH}"
+if [ ! -d "$CONVO_DIR" ]; then
+  alt=$(find "$HOME/.claude/projects" -maxdepth 1 -type d -iname "*$(basename "$PWD")" 2>/dev/null | head -1)
+  [ -n "$alt" ] && CONVO_DIR="$alt"
+fi
+if [ ! -d "$CONVO_DIR" ] || [ -z "$(ls -A "$CONVO_DIR"/*.jsonl 2>/dev/null)" ]; then
+  echo "review-claudemd: no Claude Code transcripts found for this project ($CONVO_DIR)."
+  echo "Nothing to mine — stopping."
+  exit 0
+fi
 echo "=== Recent conversations ==="
-ls -lt "$CONVO_DIR"/*.jsonl 2>/dev/null | head -20
+ls -lt "$CONVO_DIR"/*.jsonl | head -20
 ```
 
-### Step 2 — Extract recent conversations
+If it reports no transcripts, **stop** — there's nothing to analyze.
+
+## Step 2 — Extract recent conversations
 
 ```bash
-SCRATCH=/tmp/claudemd-review-$(date +%s)
-mkdir -p "$SCRATCH"
+# Private scratch dir: mktemp gives mode 0700 + an unpredictable name, so the
+# extracted transcript text (which can contain secrets/private content) isn't
+# left world-readable at a guessable /tmp path.
+SCRATCH=$(mktemp -d "${TMPDIR:-/tmp}/claudemd-review.XXXXXX")
 
-for f in $(ls -t "$CONVO_DIR"/*.jsonl | head -20); do
-  basename=$(basename "$f" .jsonl)
-  cat "$f" | jq -r '
-    if .type == "user" then
-      "USER: " + (.message.content // "")
-    elif .type == "assistant" then
-      "ASSISTANT: " + ((.message.content // []) | map(select(.type == "text") | .text) | join("\n"))
-    else
-      empty
-    end
-  ' 2>/dev/null | grep -v "^ASSISTANT: $" > "$SCRATCH/${basename}.txt"
+# The current (live) session is the most recently modified transcript and is still
+# being written — exclude it to avoid circular self-reference and half-written turns.
+current=$(ls -t "$CONVO_DIR"/*.jsonl | head -1)
+
+count=0
+for f in $(ls -t "$CONVO_DIR"/*.jsonl | head -21); do   # +1 so dropping the current still leaves ~20
+  [ "$f" = "$current" ] && continue
+  base=$(basename "$f" .jsonl)
+  # Content is either a plain string OR an array of typed blocks. `texts` handles both;
+  # it keeps user+assistant TEXT and drops tool_result/tool_use/thinking noise. The
+  # naive `"USER: " + .message.content` crashes on array content and silently loses the
+  # user's actual instructions — the very signal this skill exists to mine.
+  jq -r '
+    def texts: if type=="string" then . else (map(select(.type=="text")|.text)|join("\n")) end;
+    if .type=="user" then
+      ((.message.content // []) | texts) as $t | (if ($t|length)>0 then "USER: "+$t else empty end)
+    elif .type=="assistant" then
+      ((.message.content // []) | texts) as $t | (if ($t|length)>0 then "ASSISTANT: "+$t else empty end)
+    else empty end
+  ' "$f" > "$SCRATCH/${base}.txt" 2>/dev/null
+  count=$((count+1))
 done
 
-echo "=== Extracted ==="
+if [ -z "$(ls -A "$SCRATCH" 2>/dev/null)" ]; then
+  echo "review-claudemd: only the current session exists — no prior transcripts to mine. Stopping."
+  rmdir "$SCRATCH" 2>/dev/null
+  exit 0
+fi
+echo "=== Extracted $count transcript(s) (current session excluded) into: $SCRATCH ==="
 ls -lhS "$SCRATCH"
 ```
 
-### Step 3 — Analyze with parallel subagents
+Note the printed `$SCRATCH` path — you'll reference it in Steps 3 and 6.
 
-Launch parallel Sonnet subagents to analyze conversations. Each agent reads:
+## Step 3 — Analyze with parallel subagents
+
+Launch parallel Sonnet subagents to analyze the extracted conversations. Each agent reads:
 - Global CLAUDE.md: `~/.claude/CLAUDE.md`
-- Local CLAUDE.md: `./CLAUDE.md` (if exists)
-- A batch of conversation files
+- Local CLAUDE.md: `./CLAUDE.md` (if it exists)
+- The auto-memory index, if present: `$CONVO_DIR/memory/MEMORY.md`
+- A batch of conversation files from `$SCRATCH`
 
 Give each agent this prompt:
 
 ```
 Read:
 1. Global CLAUDE.md: ~/.claude/CLAUDE.md
-2. Local CLAUDE.md: [project]/CLAUDE.md
-3. Conversations: [list of files]
+2. Local CLAUDE.md: [project]/CLAUDE.md (if it exists)
+3. Existing memory index (if it exists): [memory MEMORY.md path]
+4. Conversations: [list of files]
 
-Analyze the conversations against BOTH CLAUDE.md files. Find:
-1. Instructions that exist but were violated (need reinforcement or rewording)
-2. Patterns that should be added to LOCAL CLAUDE.md (project-specific)
-3. Patterns that should be added to GLOBAL CLAUDE.md (applies everywhere)
-4. Anything in either file that seems outdated or unnecessary
+Compare what ACTUALLY happened in the conversations against BOTH CLAUDE.md files. Find:
+1. Instructions that EXIST but were VIOLATED. For each: quote the rule, cite the
+   session file + a ≤1-line quote showing the violation, and diagnose the cause —
+   ambiguous wording (→ reword) or a clear rule that was ignored (→ reinforce / move
+   somewhere more prominent)?
+2. Patterns that should be ADDED to LOCAL CLAUDE.md (project-specific).
+3. Patterns that should be ADDED to GLOBAL CLAUDE.md (applies everywhere).
+4. Entries in either file that now appear outdated or unnecessary.
 
-Be specific. Output bullet points only.
+Rules for proposing — keep signal high:
+- Propose a NEW rule only if the pattern RECURS (≥2 distinct instances); cite each. A
+  one-off slip is not a rule.
+- EVERY finding must carry evidence: session file + a ≤1-line quote. No evidence → drop it.
+- Skip anything already covered by the existing CLAUDE.md or MEMORY.md.
+
+Output: bullet points grouped by the four categories, each bullet ending with its citation.
 ```
 
 Batch conversations by size:
@@ -75,24 +117,33 @@ Batch conversations by size:
 - Medium (10-100KB): 3-5 per agent
 - Small (<10KB): 5-10 per agent
 
-### Step 4 — Aggregate and present findings
+## Step 4 — Aggregate and present findings
 
 Combine results from all agents into a summary with these sections:
 
-1. **Instructions violated** — existing rules that weren't followed (need stronger wording)
+1. **Instructions violated** — existing rules that weren't followed, with cause (reword vs reinforce)
 2. **Suggested additions — LOCAL** — project-specific patterns worth capturing
 3. **Suggested additions — GLOBAL** — patterns that apply across all projects
 4. **Potentially outdated** — items that may no longer be relevant
 
-Present as tables or bullet points. Ask the user which changes they want applied before editing any files.
+De-duplicate findings that multiple agents surfaced, and **rank by recurrence** (most-cited
+first). Keep each finding's evidence citation. Present as tables or bullet points, then ask
+the user which changes they want applied before editing any files.
 
-### Step 5 — Apply approved changes
+## Step 5 — Apply approved changes
 
 Only after user approval, edit the relevant CLAUDE.md file(s). Do not auto-commit — let
 the user review the diff first.
 
+## Step 6 — Clean up
+
+Remove the scratch dir (use the actual `$SCRATCH` path printed in Step 2):
+
+```bash
+rm -rf "$SCRATCH"
+```
+
 ## Notes
-- Requires `jq` to be installed (it's in the Brewfile)
-- Subagents should use Sonnet for cost efficiency — the analysis doesn't need Opus
-- Skip the current conversation to avoid circular self-reference
-- Clean up the scratch dir when done: `rm -rf "$SCRATCH"`
+- Requires `jq` (it's in the Brewfile).
+- Subagents should use Sonnet for cost efficiency — the analysis doesn't need Opus.
+- The current session is excluded automatically (Step 2) to avoid circular self-reference.

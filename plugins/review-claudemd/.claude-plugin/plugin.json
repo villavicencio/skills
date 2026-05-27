@@ -1,7 +1,7 @@
 {
   "name": "review-claudemd",
   "version": "0.1.0",
-  "description": "Mine recent conversation history to improve CLAUDE.md — surfaces violated rules, missing patterns (scoped local vs global), and stale entries, then applies approved changes. A compounding loop that keeps CLAUDE.md honest as habits evolve.",
+  "description": "Mine recent conversation history to improve CLAUDE.md — launches parallel subagents to compare what actually happened against the global and local CLAUDE.md, then surfaces violated rules, missing patterns (scoped local vs global), and stale entries. Presents findings for approval and applies only what you accept; never auto-commits. A compounding loop that keeps CLAUDE.md honest as habits evolve.",
   "author": {
     "name": "David Villavicencio",
     "url": "https://github.com/villavicencio"

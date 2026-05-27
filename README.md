@@ -17,22 +17,22 @@ The same flow works for any Claude Code instance — your Mac, a remote VPS sess
 
 ```bash
 # One-time: register this repo as a plugin marketplace
-claude plugins marketplace add villavicencio/skills
+claude plugin marketplace add villavicencio/skills
 
 # Install a plugin from this marketplace
-claude plugins install pickup-handoff@villavicencio-skills
+claude plugin install pickup-handoff@villavicencio-skills
 ```
 
 To update later:
 
 ```bash
-claude plugins update pickup-handoff
+claude plugin update pickup-handoff
 ```
 
 To uninstall:
 
 ```bash
-claude plugins uninstall pickup-handoff
+claude plugin uninstall pickup-handoff
 ```
 
 ### Installing `tmux-window-namer` (project-scoped)
@@ -67,20 +67,20 @@ If your old files lived in a dotfiles repo and you want a rollback window, renam
 
 ### Linux Claude Code instances with older git
 
-`claude plugins marketplace add <owner/repo>` may fail with `ERR_STREAM_PREMATURE_CLOSE` on Linux Claude Code running git ≤ 2.43. This is an upstream `claude` CLI bug; track [issue #8](https://github.com/villavicencio/skills/issues/8) for the fix. Workaround until then:
+`claude plugin marketplace add <owner/repo>` may fail with `ERR_STREAM_PREMATURE_CLOSE` on Linux Claude Code running git ≤ 2.43. This is an upstream `claude` CLI bug; track [issue #8](https://github.com/villavicencio/skills/issues/8) for the fix. Workaround until then:
 
 ```bash
 git clone --depth 1 https://github.com/villavicencio/skills.git ~/.local/share/villavicencio-skills
-claude plugins marketplace add ~/.local/share/villavicencio-skills
-claude plugins install pickup-handoff@villavicencio-skills
+claude plugin marketplace add ~/.local/share/villavicencio-skills
+claude plugin install pickup-handoff@villavicencio-skills
 ```
 
 Updates on those instances need an extra step:
 
 ```bash
 git -C ~/.local/share/villavicencio-skills pull
-claude plugins marketplace update villavicencio-skills
-claude plugins update pickup-handoff
+claude plugin marketplace update villavicencio-skills
+claude plugin update pickup-handoff
 ```
 
 ## Versioning

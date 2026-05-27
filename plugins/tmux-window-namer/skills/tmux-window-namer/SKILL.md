@@ -4,7 +4,7 @@ description: Rename and colorize tmux windows with a glyph and curated palette. 
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.1.0"
+  version: "0.1.1"
 ---
 
 # tmux-window-namer
@@ -337,6 +337,38 @@ tmux show-options -wv -t :2 @win_glyph | xxd
 
 If the xxd output is just `0a` (newline only), the glyph got stripped —
 go back and use the escape sequence form.
+
+### Supplementary-plane PUA (`\U` 8-digit form, 4 bytes)
+
+Not every Nerd Font glyph is 16-bit. The Material Design set (`nf-md-*`) lives in
+the **supplementary** private-use plane (U+F0000–U+FFFFD), beyond U+FFFF. Those
+codepoints **cannot** be written with the 4-digit `\uXXXX` form — use the 8-digit
+**`\U`** escape (capital U) in the Python source, and they encode to **4 UTF-8
+bytes**, not 3:
+
+```bash
+python3 << 'PYEOF'
+import subprocess
+glyph = '\U000F0702'   # capital-U + 8 hex digits — a supplementary-plane PUA glyph (U+F0702)
+target = ':2'
+subprocess.run(['tmux','set-option','-w','-t',target,'@win_glyph',glyph], check=True)
+print('glyph bytes:', glyph.encode('utf-8').hex())   # f3b09c82 — 4 bytes
+PYEOF
+```
+
+**Surrogate pairs:** if you're handed something like `\udb81\udf02`, that is a
+UTF-16 **surrogate pair encoding one codepoint**, not two characters. Do **not**
+paste it into Python source as-is — `'\udb81\udf02'` is two lone surrogates that
+raise `UnicodeEncodeError` on `.encode('utf-8')`. Decode it to the scalar value
+first, then write the `\U` form. For high surrogate `H` (0xD800–0xDBFF) and low
+surrogate `L` (0xDC00–0xDFFF):
+
+```
+codepoint = 0x10000 + (H - 0xD800) * 0x400 + (L - 0xDC00)
+```
+
+So `\udb81\udf02` → U+F0702 → write `'\U000F0702'`. The `xxd` verify then expects
+**4** bytes plus the newline (e.g. `f3 b0 9c 82 0a`), not 3.
 
 Emojis (standard Unicode, outside PUA) can be passed directly in bash. The
 escape-sequence rule applies specifically to PUA codepoints.

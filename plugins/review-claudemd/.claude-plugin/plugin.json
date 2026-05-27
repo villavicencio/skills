@@ -1,0 +1,20 @@
+{
+  "name": "review-claudemd",
+  "version": "0.1.0",
+  "description": "Mine recent conversation history to improve CLAUDE.md — surfaces violated rules, missing patterns (scoped local vs global), and stale entries, then applies approved changes. A compounding loop that keeps CLAUDE.md honest as habits evolve.",
+  "author": {
+    "name": "David Villavicencio",
+    "url": "https://github.com/villavicencio"
+  },
+  "homepage": "https://github.com/villavicencio/skills",
+  "repository": "https://github.com/villavicencio/skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "claude-md",
+    "instructions",
+    "self-improvement",
+    "conversation-history",
+    "claude-code",
+    "agent-skills"
+  ]
+}

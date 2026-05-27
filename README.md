@@ -10,6 +10,7 @@ Personal [Agent Skills](https://agentskills.io/specification) library, distribut
 | --- | --- | --- | --- |
 | [`pickup-handoff`](plugins/pickup-handoff/) | `0.1.0` | `pickup`, `handoff` | Session-bracket companions for Claude Code. `/pickup` hydrates context at session start; `/handoff` serializes session state at the end. |
 | [`tmux-window-namer`](plugins/tmux-window-namer/) | `0.1.1` | `tmux-window-namer` | Style tmux windows with a glyph, title, and palette color, persisted across server restarts. Depends on dotfiles-installed tmux scripts + a `client-attached` hook; preflight-checks and bails cleanly when absent. |
+| [`review-claudemd`](plugins/review-claudemd/) | `0.1.0` | `review-claudemd` | Mine recent conversation history to improve `CLAUDE.md` — surface violated rules, missing patterns (scoped local vs global), and stale entries, then apply approved changes. Requires `jq`. |
 
 ## Install
 

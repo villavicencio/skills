@@ -9,7 +9,7 @@ Personal [Agent Skills](https://agentskills.io/specification) library, distribut
 | Plugin | Version | Skills | Description |
 | --- | --- | --- | --- |
 | [`pickup-handoff`](plugins/pickup-handoff/) | `0.1.0` | `pickup`, `handoff` | Session-bracket companions for Claude Code. `/pickup` hydrates context at session start; `/handoff` serializes session state at the end. |
-| [`tmux-window-namer`](plugins/tmux-window-namer/) | `0.1.0` | `tmux-window-namer` | Style tmux windows with a glyph, title, and palette color, persisted across server restarts. Depends on dotfiles-installed tmux scripts + a `client-attached` hook; preflight-checks and bails cleanly when absent. |
+| [`tmux-window-namer`](plugins/tmux-window-namer/) | `0.1.1` | `tmux-window-namer` | Style tmux windows with a glyph, title, and palette color, persisted across server restarts. Depends on dotfiles-installed tmux scripts + a `client-attached` hook; preflight-checks and bails cleanly when absent. |
 
 ## Install
 

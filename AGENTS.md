@@ -36,8 +36,8 @@ is deferred to v0.2+ if/when the need surfaces.
 ## Install (canonical procedure)
 ```bash
 # Register this repo as a marketplace (one-time per Claude Code instance)
-claude plugins marketplace add villavicencio/skills
+claude plugin marketplace add villavicencio/skills
 
 # Install a plugin from the marketplace
-claude plugins install pickup-handoff@villavicencio-skills
+claude plugin install pickup-handoff@villavicencio-skills
 ```

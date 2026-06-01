@@ -1,6 +1,6 @@
 ---
 name: handoff
-description: "Write a HANDOFF.md serializing this session — what shipped, decisions, what's next, gotchas. Use at session end; pairs with `/pickup`."
+description: "Write a HANDOFF.md serializing this session — what shipped, decisions, what's next, gotchas. Use at session end; pairs with `dv:pickup`."
 license: Apache-2.0
 metadata:
   author: villavicencio

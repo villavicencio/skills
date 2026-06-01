@@ -1,16 +1,27 @@
 # villavicencio/skills
 
-Personal [Agent Skills](https://agentskills.io/specification) library, distributed as a [Claude Code plugin marketplace](https://github.com/anthropics/claude-plugins-official). Each plugin bundles a related set of skills that release together with a single version.
+Personal [Agent Skills](https://agentskills.io/specification) library, distributed as a [Claude Code plugin marketplace](https://github.com/anthropics/claude-plugins-official). The whole suite ships as one plugin — `dv` — whose skills release together under a single version.
 
 [![validate](https://github.com/villavicencio/skills/actions/workflows/validate.yml/badge.svg)](https://github.com/villavicencio/skills/actions/workflows/validate.yml)
 
-## Plugins
+## The `dv` plugin
+
+One plugin, invoked `dv:<skill>` — modeled on how `compound-engineering` holds its whole `ce-*` family under a single namespace and version.
 
 | Plugin | Version | Skills | Description |
 | --- | --- | --- | --- |
-| [`pickup-handoff`](plugins/pickup-handoff/) | `0.1.0` | `pickup`, `handoff` | Session-bracket companions for Claude Code. `/pickup` hydrates context at session start; `/handoff` serializes session state at the end. |
-| [`tmux-window-namer`](plugins/tmux-window-namer/) | `0.1.1` | `tmux-window-namer` | Style tmux windows with a glyph, title, and palette color, persisted across server restarts. Depends on dotfiles-installed tmux scripts + a `client-attached` hook; preflight-checks and bails cleanly when absent. |
-| [`review-claudemd`](plugins/review-claudemd/) | `0.1.0` | `review-claudemd` | Mine recent conversation history to improve `CLAUDE.md` — surface violated rules, missing patterns (scoped local vs global), and stale entries, then apply approved changes. Requires `jq`. |
+| [`dv`](plugins/dv/) | `0.1.0` | `pickup`, `handoff`, `review-claudemd`, `tmux-window-namer`, `reddit`, `twitter`, `critique`, `cite` | Personal skill suite. Session brackets (`dv:pickup` / `dv:handoff`), `CLAUDE.md` hygiene (`dv:review-claudemd`), tmux styling (`dv:tmux-window-namer`), Reddit / X fetchers (`dv:reddit` / `dv:twitter`), parallel plan critique (`dv:critique`), and a re-fetch-or-decline freshness contract for realtime facts (`dv:cite`). |
+
+### Skills at a glance
+
+- **`dv:pickup`** — read `HANDOFF.md` and orient: surface git/PR state and recent compound-engineering artifacts, then propose a next action. Use at session start.
+- **`dv:handoff`** — write a `HANDOFF.md` serializing the session (what shipped, decisions, what's next, gotchas). Pairs with `dv:pickup`.
+- **`dv:review-claudemd`** — mine recent conversation history to improve `CLAUDE.md`: surface violated rules, missing patterns, and stale entries, then apply approved changes. Requires `jq`.
+- **`dv:tmux-window-namer`** — style tmux windows with a glyph, title, and palette color. Depends on dotfiles-installed tmux persistence infra; preflight-checks and bails cleanly when absent (so it simply no-ops outside that repo).
+- **`dv:reddit`** — fetch and summarize a Reddit post with comments via the public `.json` API (curl + jq, no auth). WebFetch can't reach reddit.com.
+- **`dv:twitter`** — fetch and summarize an X/Twitter post (and long-form Articles) via the public `api.fxtwitter.com` endpoint (no auth). WebFetch can't reach x.com.
+- **`dv:critique`** — stress-test a plan with three parallel critique subagents (Skeptic / Simplifier / Historian), then synthesize a revised plan.
+- **`dv:cite`** — for realtime-fact queries, re-fetch the source and either ground the quote with a URL + timestamp or decline with a typed reason. Freshness is the trigger; ground-or-decline is the point.
 
 ## Install
 
@@ -20,48 +31,35 @@ The same flow works for any Claude Code instance — your Mac, a remote VPS sess
 # One-time: register this repo as a plugin marketplace
 claude plugin marketplace add villavicencio/skills
 
-# Install a plugin from this marketplace
-claude plugin install pickup-handoff@villavicencio-skills
+# Install the suite
+claude plugin install dv@villavicencio-skills
 ```
 
 To update later:
 
 ```bash
-claude plugin update pickup-handoff
+claude plugin update dv
 ```
 
 To uninstall:
 
 ```bash
-claude plugin uninstall pickup-handoff
+claude plugin uninstall dv
 ```
 
-### Installing `tmux-window-namer` (project-scoped)
-
-`tmux-window-namer` depends on tmux persistence infrastructure that lives in a dotfiles repo (two scripts plus a `client-attached` hook — a plugin can't ship those). It's therefore meant to be installed **project-scoped** to that repo, so it only appears in the picker when you're working there:
-
-```bash
-# One-time per machine: register the marketplace
-# (defaults to --scope user; add --scope project to scope it to dotfiles too)
-claude plugin marketplace add villavicencio/skills
-
-# From inside the dotfiles repo, install project-scoped
-claude plugin install tmux-window-namer@villavicencio-skills --scope project
-```
-
-The project-scoped enablement is written to `.claude/settings.json` and can be committed to the dotfiles repo so it travels across machines.
-
-> **Fresh-machine note.** A committed `.claude/settings.json` *declares* the enablement but does **not** auto-fetch the plugin. On a machine where the marketplace was never registered, the one-time `marketplace add` + `install --scope project` above is still required before the committed enablement takes effect. If the persistence scripts and hook aren't present, the skill preflight-checks, reports what's missing, and stops without touching any window.
+> **`dv:tmux-window-namer` note.** This skill depends on tmux persistence infrastructure that lives in a dotfiles repo (two scripts plus a `client-attached` hook — a plugin can't ship those). It ships inside the user-scoped `dv` suite, so it's present everywhere, but it preflight-checks for that infra and **bails cleanly when it's absent** — outside the dotfiles repo it simply does nothing. No separate project-scoped install is needed.
 
 ### Migrating from a single-file setup
 
-If you previously had `pickup.md` or `handoff.md` at `~/.claude/commands/` (either as direct files or as symlinks into a dotfiles repo), **remove them after installing the plugin** — otherwise the picker will keep showing both the old and new entries.
+If you previously ran any of these as single-file commands at `~/.claude/commands/*.md` (e.g. `pickup`, `handoff`, `reddit`, `twitter`, `critique`) or as a standalone skill under `~/.claude/skills/` (e.g. the former `verify-cite`, now `dv:cite`), **remove the old copies after installing the plugin** — otherwise the picker keeps showing both the old and new entries.
 
 The reason is subtle: Claude Code discovers user commands by globbing `~/.claude/commands/*.md`, and the glob matches on filename, not on whether the file actually resolves. A symlink whose target was renamed or deleted still satisfies the glob, so the picker keeps offering an entry that errors when invoked.
 
 ```bash
 # Remove the old single-file commands (or symlinks) if they exist
-rm -f ~/.claude/commands/pickup.md ~/.claude/commands/handoff.md
+rm -f ~/.claude/commands/{pickup,handoff,reddit,twitter,critique}.md
+# Set aside any standalone skill that moved into the suite
+# (e.g. the former verify-cite → dv:cite)
 ```
 
 If your old files lived in a dotfiles repo and you want a rollback window, rename them to `.md.deprecated` in dotfiles *and* delete the symlinks at `~/.claude/commands/` — the symlinks themselves aren't load-bearing for rollback, only the source files are.
@@ -73,7 +71,7 @@ If your old files lived in a dotfiles repo and you want a rollback window, renam
 ```bash
 git clone --depth 1 https://github.com/villavicencio/skills.git ~/.local/share/villavicencio-skills
 claude plugin marketplace add ~/.local/share/villavicencio-skills
-claude plugin install pickup-handoff@villavicencio-skills
+claude plugin install dv@villavicencio-skills
 ```
 
 Updates on those instances need an extra step:
@@ -81,14 +79,14 @@ Updates on those instances need an extra step:
 ```bash
 git -C ~/.local/share/villavicencio-skills pull
 claude plugin marketplace update villavicencio-skills
-claude plugin update pickup-handoff
+claude plugin update dv
 ```
 
 ## Versioning
 
-- Each plugin carries its own `version` in `.claude-plugin/plugin.json`, following [semantic versioning](https://semver.org/).
-- Every skill inside a plugin shares the plugin's version via `metadata.version` in its `SKILL.md` frontmatter. CI enforces this — a skill version that drifts from its plugin's version fails the build.
-- Release tags use the form `<plugin-name>--v<semver>` (double-dash) per the Claude Code plugin convention. v0.1.0 of `pickup-handoff` ships as `pickup-handoff--v0.1.0`.
+- The plugin carries its `version` in `.claude-plugin/plugin.json`, following [semantic versioning](https://semver.org/).
+- Every skill in the plugin shares that version via `metadata.version` in its `SKILL.md` frontmatter. CI enforces this — a skill version that drifts from the plugin's version fails the build. (One suite, one version: a fix to any skill bumps the whole plugin.)
+- Release tags use the form `<plugin-name>--v<semver>` (double-dash) per the Claude Code plugin convention. v0.1.0 of `dv` ships as `dv--v0.1.0`.
 
 ## Spec conformance
 

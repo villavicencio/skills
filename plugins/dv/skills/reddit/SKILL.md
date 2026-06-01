@@ -1,7 +1,6 @@
 ---
 name: reddit
 description: Fetch and summarize a Reddit post with all its comments from a URL, using the public Reddit .json API via curl and jq (no auth, API keys, or MCP). Use when the user shares a Reddit URL or asks to read, fetch, or summarize a Reddit thread — WebFetch cannot access reddit.com, so this is the reliable path.
-argument-hint: "[reddit post URL]"
 license: Apache-2.0
 metadata:
   author: villavicencio

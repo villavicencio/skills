@@ -1,7 +1,6 @@
 ---
 name: cite
 description: For realtime-fact queries — prices, stock state, "as of today" claims, current-event facts, current external-system configuration, or any user-marked claim whose answer can change between training and now — re-fetch the source and either ground the quote with a source URL + timestamp, or decline with a typed reason. Freshness is the trigger; ground-or-decline is the point. Prefer this over WebSearch for any specific-fact query, since SERP snippets carry no freshness contract. Use when the user asks for a current price, current stock/configuration/news, anything phrased "today" / "right now" / "current" / "as of this writing", or explicitly tags a claim as needing verification.
-argument-hint: "[claim or URL to verify, optional]"
 license: Apache-2.0
 metadata:
   author: villavicencio

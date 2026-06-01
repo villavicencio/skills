@@ -1,7 +1,6 @@
 ---
 name: critique
 description: Stress-test a plan before implementing it by running three parallel critique subagents (a Skeptic hunting for risks and edge cases, a Simplifier cutting unnecessary complexity, and a Historian checking prior art and conventions), then synthesizing their findings into a revised plan. Use before a non-trivial change when the user wants the approach pressure-tested, says "critique this plan", or describes what they're about to build and wants multiple perspectives first.
-argument-hint: "[description of the change or plan to critique]"
 license: Apache-2.0
 metadata:
   author: villavicencio

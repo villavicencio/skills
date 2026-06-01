@@ -1,7 +1,6 @@
 ---
 name: twitter
 description: Fetch and summarize an X/Twitter post (and any long-form Article content) from a URL, using the public api.fxtwitter.com endpoint via curl and jq (no auth, API keys, or MCP). Use when the user shares an x.com or twitter.com status URL or asks to read, fetch, or summarize a tweet — WebFetch cannot access x.com, so this is the reliable path.
-argument-hint: "[x.com or twitter.com status URL]"
 license: Apache-2.0
 metadata:
   author: villavicencio

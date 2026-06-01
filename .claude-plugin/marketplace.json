@@ -5,13 +5,13 @@
     "url": "https://github.com/villavicencio"
   },
   "metadata": {
-    "description": "Personal Agent Skills library — spec-conformant, versioned per-plugin, distributed as a Claude Code plugin marketplace.",
+    "description": "Personal Agent Skills library — spec-conformant, distributed as a Claude Code plugin marketplace.",
     "version": "0.1.0"
   },
   "plugins": [
     {
-      "name": "pickup-handoff",
-      "description": "Session-bracket companions for Claude Code. /pickup hydrates context at the start of a session (reads HANDOFF.md, surfaces open PRs, git state, and recent compound-engineering artifacts if present). /handoff serializes session state at the end (writes a structured HANDOFF.md with what was built, decisions made, what's next, and gotchas).",
+      "name": "dv",
+      "description": "David Villavicencio's personal Claude Code skill suite, versioned and released as one plugin. dv:pickup and dv:handoff bracket a session (hydrate context at the start, serialize state at the end); dv:review-claudemd keeps CLAUDE.md honest by mining conversation history; dv:tmux-window-namer styles tmux windows with a glyph, title, and palette (preflight-bails outside its dotfiles infra); dv:reddit and dv:twitter fetch and summarize Reddit threads / X posts via public APIs (no auth); dv:critique stress-tests a plan with three parallel critique subagents; dv:cite enforces a re-fetch-or-decline freshness contract on realtime-fact queries.",
       "author": {
         "name": "David Villavicencio",
         "url": "https://github.com/villavicencio"
@@ -22,52 +22,18 @@
       "tags": [
         "session-management",
         "handoff",
-        "claude-code",
         "context-hydration",
-        "agent-skills"
-      ],
-      "source": "./plugins/pickup-handoff"
-    },
-    {
-      "name": "tmux-window-namer",
-      "description": "Style tmux windows with a glyph, a title, and a palette glyph-color, persisted across tmux server restarts via a JSON sidecar. Depends on the dotfiles-installed tmux persistence scripts and client-attached hook; preflight-checks for them and bails cleanly when absent.",
-      "author": {
-        "name": "David Villavicencio",
-        "url": "https://github.com/villavicencio"
-      },
-      "homepage": "https://github.com/villavicencio/skills",
-      "repository": "https://github.com/villavicencio/skills",
-      "license": "Apache-2.0",
-      "tags": [
-        "tmux",
-        "window-styling",
-        "glyphs",
-        "palettes",
-        "nerd-fonts",
-        "claude-code",
-        "agent-skills"
-      ],
-      "source": "./plugins/tmux-window-namer"
-    },
-    {
-      "name": "review-claudemd",
-      "description": "Mine recent conversation history to improve CLAUDE.md — launches parallel subagents to compare what actually happened against the global and local CLAUDE.md, then surfaces violated rules, missing patterns (scoped local vs global), and stale entries. Presents findings for approval and applies only what you accept; never auto-commits. A compounding loop that keeps CLAUDE.md honest as habits evolve.",
-      "author": {
-        "name": "David Villavicencio",
-        "url": "https://github.com/villavicencio"
-      },
-      "homepage": "https://github.com/villavicencio/skills",
-      "repository": "https://github.com/villavicencio/skills",
-      "license": "Apache-2.0",
-      "tags": [
         "claude-md",
-        "instructions",
-        "self-improvement",
-        "conversation-history",
+        "tmux",
+        "reddit",
+        "twitter",
+        "plan-critique",
+        "fact-checking",
+        "freshness",
         "claude-code",
         "agent-skills"
       ],
-      "source": "./plugins/review-claudemd"
+      "source": "./plugins/dv"
     }
   ]
 }

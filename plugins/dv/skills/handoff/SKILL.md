@@ -52,7 +52,13 @@ fi
 
 ### Step 2 — Write HANDOFF.md
 
-Using everything from this session plus the gathered context, write `HANDOFF.md`:
+**First `Read` the existing `HANDOFF.md` (if one exists), then overwrite it.** The file-write tool
+refuses to overwrite a file you have not `Read` in the current session — and `/pickup`'s `cat
+HANDOFF.md` does NOT satisfy that guard (it is a shell command, not a tool `Read`). Skipping this
+makes the first write fail with "Error writing file," then succeed only on the retry after a `Read`.
+Reading it first makes the overwrite succeed cleanly on the first try.
+
+Then, using everything from this session plus the gathered context, write `HANDOFF.md`:
 
 ```markdown
 # HANDOFF — [YYYY-MM-DD, time of day]

@@ -41,3 +41,9 @@ claude plugin marketplace add villavicencio/skills
 # Install a plugin from the marketplace
 claude plugin install pickup-handoff@villavicencio-skills
 ```
+
+## Vault lane
+
+Durable cross-session notes for this project live in the shared Obsidian vault:
+`~/Obsidian/hermes/projects/skills/`. Write durable notes there; read anywhere in
+the vault when helpful, but write only to this lane unless asked.

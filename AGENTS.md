@@ -42,8 +42,9 @@ claude plugin marketplace add villavicencio/skills
 claude plugin install pickup-handoff@villavicencio-skills
 ```
 
-## Vault lane
+## Vault
 
-Durable cross-session notes for this project live in the shared Obsidian vault:
-`~/Obsidian/hermes/projects/skills/`. Write durable notes there; read anywhere in
-the vault when helpful, but write only to this lane unless asked.
+This project owns the Obsidian vault `~/Obsidian/skills/` (per-agent-vault standard,
+2026-07-15). It holds durable cross-session notes plus the live agent memory
+(`memory/` — the harness memory dir symlinks there). Manage it as this project sees
+fit; read other vaults when helpful, write to them only when asked.

@@ -1,0 +1,29 @@
+{
+  "skill": "gauntlet",
+  "description": "Trigger evals for dv:gauntlet (staged adversarial code-review loop over a diff, fixes+commits by default). Hard near-misses in no_trigger: 'review this PR' is a one-shot builtin review, not the convergent loop; plan-critique phrasing belongs to dv:critique (a plan pre-code, not a diff); CLAUDE.md review is dv:review-claudemd; a security-only audit is /security-review. See tooling/evals/README.md.",
+  "runs_per_query": 3,
+  "pass_threshold": 0.5,
+  "queries": [
+    { "split": "train", "expect": "trigger",    "q": "Run the gauntlet on my feature branch." },
+    { "split": "train", "expect": "trigger",    "q": "Do an adversarial review of this diff and fix what survives." },
+    { "split": "train", "expect": "trigger",    "q": "Red-team the change I just made before I merge it." },
+    { "split": "train", "expect": "trigger",    "q": "Try to break my change, then patch the real issues." },
+    { "split": "train", "expect": "trigger",    "q": "Run the codex review loop on this branch until it approves." },
+    { "split": "train", "expect": "trigger",    "q": "Review my branch, fix the findings, and commit them across rounds." },
+    { "split": "val",   "expect": "trigger",    "q": "Keep reviewing this change until it survives." },
+    { "split": "val",   "expect": "trigger",    "q": "Drive an adversarial find-refute-fix loop on my diff to convergence." },
+    { "split": "val",   "expect": "trigger",    "q": "Autonomously review my code change and commit the fixes." },
+    { "split": "val",   "expect": "trigger",    "q": "Run the staged review loop on my branch and only bug me at the end." },
+
+    { "split": "train", "expect": "no_trigger", "q": "Critique my plan to migrate the database before I start coding." },
+    { "split": "train", "expect": "no_trigger", "q": "Review this pull request." },
+    { "split": "train", "expect": "no_trigger", "q": "Improve my CLAUDE.md for stale rules." },
+    { "split": "train", "expect": "no_trigger", "q": "Do a security audit of the auth module." },
+    { "split": "train", "expect": "no_trigger", "q": "Stress-test this approach before I implement it." },
+    { "split": "train", "expect": "no_trigger", "q": "Summarize this Reddit thread: https://www.reddit.com/r/programming/comments/abc/." },
+    { "split": "val",   "expect": "no_trigger", "q": "Write a handoff for this session." },
+    { "split": "val",   "expect": "no_trigger", "q": "Name this tmux window." },
+    { "split": "val",   "expect": "no_trigger", "q": "What's the current price of a Raspberry Pi 5 right now?" },
+    { "split": "val",   "expect": "no_trigger", "q": "Fetch this tweet: https://x.com/user/status/123." }
+  ]
+}

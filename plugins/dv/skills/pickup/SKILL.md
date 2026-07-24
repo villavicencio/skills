@@ -4,7 +4,7 @@ description: "Read HANDOFF.md and orient: surface git/PR state and recent CE art
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.1.0"
+  version: "0.2.0"
 ---
 
 # /pickup — Pick Up Where We Left Off

@@ -10,7 +10,7 @@ One plugin, invoked `dv:<skill>` — modeled on how `compound-engineering` holds
 
 | Plugin | Version | Skills | Description |
 | --- | --- | --- | --- |
-| [`dv`](plugins/dv/) | `0.1.0` | `pickup`, `handoff`, `review-claudemd`, `tmux-window-namer`, `reddit`, `twitter`, `critique`, `cite` | Personal skill suite. Session brackets (`dv:pickup` / `dv:handoff`), `CLAUDE.md` hygiene (`dv:review-claudemd`), tmux styling (`dv:tmux-window-namer`), Reddit / X fetchers (`dv:reddit` / `dv:twitter`), parallel plan critique (`dv:critique`), and a re-fetch-or-decline freshness contract for realtime facts (`dv:cite`). |
+| [`dv`](plugins/dv/) | `0.2.0` | `pickup`, `handoff`, `review-claudemd`, `tmux-window-namer`, `reddit`, `twitter`, `critique`, `cite`, `gauntlet` | Personal skill suite. Session brackets (`dv:pickup` / `dv:handoff`), `CLAUDE.md` hygiene (`dv:review-claudemd`), tmux styling (`dv:tmux-window-namer`), Reddit / X fetchers (`dv:reddit` / `dv:twitter`), parallel plan critique (`dv:critique`), a re-fetch-or-decline freshness contract for realtime facts (`dv:cite`), and a staged adversarial code-review loop (`dv:gauntlet`). |
 
 ### Skills at a glance
 
@@ -22,6 +22,7 @@ One plugin, invoked `dv:<skill>` — modeled on how `compound-engineering` holds
 - **`dv:twitter`** — fetch and summarize an X/Twitter post (and long-form Articles) via the public `api.fxtwitter.com` endpoint (no auth). WebFetch can't reach x.com.
 - **`dv:critique`** — stress-test a plan with three parallel critique subagents (Skeptic / Simplifier / Historian), then synthesize a revised plan.
 - **`dv:cite`** — for realtime-fact queries, re-fetch the source and either ground the quote with a URL + timestamp or decline with a typed reason. Freshness is the trigger; ground-or-decline is the point.
+- **`dv:gauntlet`** — run a code change through a staged, cost-tiered adversarial review loop (find → refute → fix → verify) driven to convergence. Bare invocation fixes and commits on your current feature branch across a bounded round budget, presenting only at the terminal; `report` gives a single report-only round that never touches your tree. Uses the Codex CLI for cross-provider review when present, self-contained Claude subagents otherwise.
 
 ## Install
 

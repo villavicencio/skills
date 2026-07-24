@@ -1,0 +1,29 @@
+{
+  "skill": "cite",
+  "description": "Trigger evals for dv:cite. Measures whether the skill is selected from the full dv catalog for a given query. Methodology: Anthropic 'Agent Skills' trigger-eval pattern — N runs per query, trigger_rate = selections / N, pass if rate > threshold (should-trigger) or rate < threshold (should-not-trigger). Train failures guide description edits; pick the best iteration by val pass rate. Do not overfit the description to keywords from failed queries.",
+  "runs_per_query": 3,
+  "pass_threshold": 0.5,
+  "queries": [
+    { "split": "train", "expect": "trigger",    "q": "What's the current price of a Raspberry Pi 5 16GB on Adafruit right now?" },
+    { "split": "train", "expect": "trigger",    "q": "Is the S&P 500 up or down today?" },
+    { "split": "train", "expect": "trigger",    "q": "Did Next.js 16 actually ship yet?" },
+    { "split": "train", "expect": "trigger",    "q": "Check whether our Vercel production build is still failing." },
+    { "split": "train", "expect": "trigger",    "q": "Before you answer, verify the GPU price is current — don't quote a stale number." },
+    { "split": "train", "expect": "trigger",    "q": "What's Bitcoin trading at as of this writing?" },
+    { "split": "val",   "expect": "trigger",    "q": "Is the new M5 MacBook Pro in stock at the Apple Store?" },
+    { "split": "val",   "expect": "trigger",    "q": "Has the Fed announced a rate decision yet this afternoon?" },
+    { "split": "val",   "expect": "trigger",    "q": "What's the latest stable version of Python available right now?" },
+    { "split": "val",   "expect": "trigger",    "q": "What version of react is in their latest npm release as of today?" },
+
+    { "split": "train", "expect": "no_trigger", "q": "Explain how HTTP caching works." },
+    { "split": "train", "expect": "no_trigger", "q": "Refactor this function to use a map instead of nested loops." },
+    { "split": "train", "expect": "no_trigger", "q": "Summarize this Reddit thread: https://www.reddit.com/r/rust/comments/abc123/." },
+    { "split": "train", "expect": "no_trigger", "q": "Fetch this tweet for me: https://x.com/dhh/status/1790000000000000000." },
+    { "split": "train", "expect": "no_trigger", "q": "Write a HANDOFF.md summarizing what we did this session." },
+    { "split": "train", "expect": "no_trigger", "q": "What does the cite skill actually do?" },
+    { "split": "val",   "expect": "no_trigger", "q": "How does TCP's three-way handshake work?" },
+    { "split": "val",   "expect": "no_trigger", "q": "Help me name and colorize this tmux window with a glyph." },
+    { "split": "val",   "expect": "no_trigger", "q": "What would happen if we doubled the cache TTL?" },
+    { "split": "val",   "expect": "no_trigger", "q": "Critique my plan to migrate the database before I start." }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "skill": "handoff",
+  "description": "Trigger evals for dv:handoff (session-end serialization). Collision pair: pickup (session-start). 'Write documentation' is a deliberate near-miss — handoff is session state, not general docs. See tooling/evals/README.md.",
+  "runs_per_query": 3,
+  "pass_threshold": 0.5,
+  "queries": [
+    { "split": "train", "expect": "trigger",    "q": "Write a HANDOFF.md for this session." },
+    { "split": "train", "expect": "trigger",    "q": "Let's wrap up — serialize what we did." },
+    { "split": "train", "expect": "trigger",    "q": "Document where we are before I stop for now." },
+    { "split": "train", "expect": "trigger",    "q": "Create a handoff so the next session can pick up." },
+    { "split": "train", "expect": "trigger",    "q": "Capture what shipped, the decisions, and what's next." },
+    { "split": "train", "expect": "trigger",    "q": "End of session — record the state and gotchas." },
+    { "split": "val",   "expect": "trigger",    "q": "I'm done for now, write the handoff." },
+    { "split": "val",   "expect": "trigger",    "q": "Save our progress notes for next time." },
+    { "split": "val",   "expect": "trigger",    "q": "Hand this off — what's left to do?" },
+    { "split": "val",   "expect": "trigger",    "q": "Before we stop, write down where things stand." },
+
+    { "split": "train", "expect": "no_trigger", "q": "Where did we leave off last time?" },
+    { "split": "train", "expect": "no_trigger", "q": "Pick up where we left off." },
+    { "split": "train", "expect": "no_trigger", "q": "Summarize this Reddit thread: https://www.reddit.com/r/golang/comments/abc/." },
+    { "split": "train", "expect": "no_trigger", "q": "What's the latest stable React version right now?" },
+    { "split": "train", "expect": "no_trigger", "q": "Critique this approach before I build it." },
+    { "split": "train", "expect": "no_trigger", "q": "Write API documentation for this module." },
+    { "split": "val",   "expect": "no_trigger", "q": "Review my CLAUDE.md for stale entries." },
+    { "split": "val",   "expect": "no_trigger", "q": "Color this tmux tab to match the project." },
+    { "split": "val",   "expect": "no_trigger", "q": "Fetch this X post: https://x.com/user/status/123." },
+    { "split": "val",   "expect": "no_trigger", "q": "How does TCP's three-way handshake work?" }
+  ]
+}

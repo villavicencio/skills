@@ -1,0 +1,29 @@
+{
+  "skill": "twitter",
+  "description": "Trigger evals for dv:twitter (x.com / twitter.com URL fetcher). Collision pair: reddit. Near-misses: Bluesky/LinkedIn/generic-article URLs must NOT grab it. See tooling/evals/README.md.",
+  "runs_per_query": 3,
+  "pass_threshold": 0.5,
+  "queries": [
+    { "split": "train", "expect": "trigger",    "q": "Fetch this tweet: https://x.com/dhh/status/1790000000000000000." },
+    { "split": "train", "expect": "trigger",    "q": "Summarize this X post: https://twitter.com/user/status/1234567890." },
+    { "split": "train", "expect": "trigger",    "q": "What does this tweet say? https://x.com/karpathy/status/1111111111." },
+    { "split": "train", "expect": "trigger",    "q": "Read the replies on this X thread: https://x.com/sama/status/2222222222." },
+    { "split": "train", "expect": "trigger",    "q": "What's in this long-form X article? https://x.com/paulg/status/3333333333." },
+    { "split": "train", "expect": "trigger",    "q": "TL;DR this tweet: https://twitter.com/levelsio/status/4444444444." },
+    { "split": "val",   "expect": "trigger",    "q": "Pull the thread from https://x.com/swyx/status/5555555555." },
+    { "split": "val",   "expect": "trigger",    "q": "What's the context on this X post: https://x.com/balajis/status/6666666666?" },
+    { "split": "val",   "expect": "trigger",    "q": "Grab this tweet and its quote-tweets: https://twitter.com/naval/status/7777777777." },
+    { "split": "val",   "expect": "trigger",    "q": "Summarize https://x.com/elonmusk/status/8888888888." },
+
+    { "split": "train", "expect": "no_trigger", "q": "Summarize this Reddit thread: https://www.reddit.com/r/programming/comments/abc/." },
+    { "split": "train", "expect": "no_trigger", "q": "Fetch this article: https://example.com/blog/some-post." },
+    { "split": "train", "expect": "no_trigger", "q": "Read this Bluesky post: https://bsky.app/profile/user/post/abc123." },
+    { "split": "train", "expect": "no_trigger", "q": "Summarize this LinkedIn post: https://www.linkedin.com/posts/user_activity-123." },
+    { "split": "train", "expect": "no_trigger", "q": "What's the current price of Ethereum right now?" },
+    { "split": "train", "expect": "no_trigger", "q": "Critique my plan before I build it." },
+    { "split": "val",   "expect": "no_trigger", "q": "Write a handoff for this session." },
+    { "split": "val",   "expect": "no_trigger", "q": "Improve my CLAUDE.md." },
+    { "split": "val",   "expect": "no_trigger", "q": "Name and colorize this tmux window." },
+    { "split": "val",   "expect": "no_trigger", "q": "Pick up where we left off." }
+  ]
+}

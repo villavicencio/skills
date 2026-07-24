@@ -1,0 +1,29 @@
+{
+  "skill": "tmux-window-namer",
+  "description": "Trigger evals for dv:tmux-window-namer. Near-misses: generic rename/name/color requests (git branch, function name, VS Code theme) must NOT grab it — only tmux windows/tabs do. See tooling/evals/README.md.",
+  "runs_per_query": 3,
+  "pass_threshold": 0.5,
+  "queries": [
+    { "split": "train", "expect": "trigger",    "q": "Name this tmux window." },
+    { "split": "train", "expect": "trigger",    "q": "Rename window 2 and give it an icon." },
+    { "split": "train", "expect": "trigger",    "q": "Color this tmux tab blue." },
+    { "split": "train", "expect": "trigger",    "q": "Pick an emoji for this tmux window." },
+    { "split": "train", "expect": "trigger",    "q": "Give this tab a glyph and a nice color." },
+    { "split": "train", "expect": "trigger",    "q": "Suggest some names for this tmux window." },
+    { "split": "val",   "expect": "trigger",    "q": "Style my current tmux tab." },
+    { "split": "val",   "expect": "trigger",    "q": "Add a Nerd Font icon to window 3." },
+    { "split": "val",   "expect": "trigger",    "q": "What glyph should I use for this tmux window?" },
+    { "split": "val",   "expect": "trigger",    "q": "Change this tab's color to match the project." },
+
+    { "split": "train", "expect": "no_trigger", "q": "Rename this git branch." },
+    { "split": "train", "expect": "no_trigger", "q": "What's a good name for this function?" },
+    { "split": "train", "expect": "no_trigger", "q": "Change the color scheme of my VS Code theme." },
+    { "split": "train", "expect": "no_trigger", "q": "Improve my CLAUDE.md." },
+    { "split": "train", "expect": "no_trigger", "q": "What's the current price of a GPU right now?" },
+    { "split": "train", "expect": "no_trigger", "q": "Critique my plan before I start." },
+    { "split": "val",   "expect": "no_trigger", "q": "Write a handoff for this session." },
+    { "split": "val",   "expect": "no_trigger", "q": "Pick up where we left off." },
+    { "split": "val",   "expect": "no_trigger", "q": "Fetch this tweet: https://x.com/user/status/123." },
+    { "split": "val",   "expect": "no_trigger", "q": "Summarize this Reddit thread: https://www.reddit.com/r/unixporn/comments/abc/." }
+  ]
+}

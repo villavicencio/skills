@@ -124,3 +124,52 @@ jobs:
 
           sys.exit(1 if failed else 0)
           PY
+
+  # Behavioral layer: does each skill actually trigger when it should, and does
+  # loading it change behavior in the intended direction? These need live model
+  # calls, so the job only runs when an ANTHROPIC_API_KEY repo secret is present.
+  # Without the secret every gated step skips and the job stays green (forks,
+  # key-less runs). The `validate` job above remains the always-on hard gate.
+  # See tooling/evals/README.md for the methodology.
+  behavioral-evals:
+    runs-on: ubuntu-latest
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Note when behavioral evals are skipped
+        if: ${{ env.ANTHROPIC_API_KEY == '' }}
+        run: echo "::notice::ANTHROPIC_API_KEY not configured — skipping behavioral evals (structure validation still gates)."
+
+      - name: Install uv
+        if: ${{ env.ANTHROPIC_API_KEY != '' }}
+        uses: astral-sh/setup-uv@v5
+
+      # uv resolves each runner's inline PEP 723 dependencies on the fly.
+      - name: Run trigger + output evals for every skill with fixtures
+        if: ${{ env.ANTHROPIC_API_KEY != '' }}
+        run: |
+          set -e
+          shopt -s nullglob
+          rc=0
+
+          for trig in plugins/*/skills/*/evals/triggers.json; do
+            skill_dir=$(dirname "$(dirname "$trig")")          # plugins/<p>/skills/<s>
+            skill=$(basename "$skill_dir")
+            plugin_root=$(dirname "$(dirname "$skill_dir")")   # plugins/<p>
+            echo "::group::trigger evals — ${plugin_root}/${skill}"
+            uv run tooling/evals/run_trigger_evals.py "$skill" --plugin-root "$plugin_root" || rc=$?
+            echo "::endgroup::"
+          done
+
+          for ev in plugins/*/skills/*/evals/evals.json; do
+            skill_dir=$(dirname "$(dirname "$ev")")
+            skill=$(basename "$skill_dir")
+            plugin_root=$(dirname "$(dirname "$skill_dir")")
+            echo "::group::output evals — ${plugin_root}/${skill}"
+            uv run tooling/evals/run_output_evals.py "$skill" --plugin-root "$plugin_root" || rc=$?
+            echo "::endgroup::"
+          done
+
+          exit $rc

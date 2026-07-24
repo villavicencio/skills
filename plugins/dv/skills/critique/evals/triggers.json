@@ -1,0 +1,29 @@
+{
+  "skill": "critique",
+  "description": "Trigger evals for dv:critique (pre-implementation plan stress-test). Near-misses: 'review this PR' / 'fix this bug' are code work, not plan critique; collision with review-claudemd (both 'review'). See tooling/evals/README.md.",
+  "runs_per_query": 3,
+  "pass_threshold": 0.5,
+  "queries": [
+    { "split": "train", "expect": "trigger",    "q": "Critique my plan to migrate the database before I start." },
+    { "split": "train", "expect": "trigger",    "q": "Stress-test this approach before I implement it." },
+    { "split": "train", "expect": "trigger",    "q": "I'm about to build a job queue — pressure-test the design first." },
+    { "split": "train", "expect": "trigger",    "q": "Poke holes in this plan." },
+    { "split": "train", "expect": "trigger",    "q": "Get me multiple perspectives on this approach before I commit." },
+    { "split": "train", "expect": "trigger",    "q": "What could go wrong with this plan?" },
+    { "split": "val",   "expect": "trigger",    "q": "Red-team my implementation strategy." },
+    { "split": "val",   "expect": "trigger",    "q": "Before I code this, challenge the assumptions." },
+    { "split": "val",   "expect": "trigger",    "q": "Is this the simplest approach? Critique it." },
+    { "split": "val",   "expect": "trigger",    "q": "Review this plan from a skeptic's angle before I build." },
+
+    { "split": "train", "expect": "no_trigger", "q": "Review this pull request." },
+    { "split": "train", "expect": "no_trigger", "q": "Improve my CLAUDE.md for stale rules." },
+    { "split": "train", "expect": "no_trigger", "q": "Fix this bug in the auth middleware." },
+    { "split": "train", "expect": "no_trigger", "q": "Refactor this function to reduce nesting." },
+    { "split": "train", "expect": "no_trigger", "q": "What's the current price of a Raspberry Pi 5 right now?" },
+    { "split": "train", "expect": "no_trigger", "q": "Summarize this Reddit thread: https://www.reddit.com/r/programming/comments/abc/." },
+    { "split": "val",   "expect": "no_trigger", "q": "Write a handoff for this session." },
+    { "split": "val",   "expect": "no_trigger", "q": "Explain how this code works." },
+    { "split": "val",   "expect": "no_trigger", "q": "Name this tmux window." },
+    { "split": "val",   "expect": "no_trigger", "q": "Fetch this tweet: https://x.com/user/status/123." }
+  ]
+}

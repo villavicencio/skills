@@ -1,0 +1,29 @@
+{
+  "skill": "review-claudemd",
+  "description": "Trigger evals for dv:review-claudemd (CLAUDE.md hygiene). Near-misses: generic 'review this PR' and 'improve this README' must NOT grab it; collision with critique (both 'review'-flavored). See tooling/evals/README.md.",
+  "runs_per_query": 3,
+  "pass_threshold": 0.5,
+  "queries": [
+    { "split": "train", "expect": "trigger",    "q": "Improve my CLAUDE.md." },
+    { "split": "train", "expect": "trigger",    "q": "Review CLAUDE.md and surface stale rules." },
+    { "split": "train", "expect": "trigger",    "q": "Are there rules I keep violating? Update CLAUDE.md." },
+    { "split": "train", "expect": "trigger",    "q": "Mine this session for CLAUDE.md improvements." },
+    { "split": "train", "expect": "trigger",    "q": "Clean up my CLAUDE.md — remove dead entries." },
+    { "split": "train", "expect": "trigger",    "q": "What patterns should I add to my CLAUDE.md?" },
+    { "split": "val",   "expect": "trigger",    "q": "Audit my agent instructions for drift." },
+    { "split": "val",   "expect": "trigger",    "q": "Keep my CLAUDE.md honest — what's missing?" },
+    { "split": "val",   "expect": "trigger",    "q": "Check CLAUDE.md against how we've actually been working." },
+    { "split": "val",   "expect": "trigger",    "q": "Suggest edits to my global Claude instructions." },
+
+    { "split": "train", "expect": "no_trigger", "q": "Review this pull request." },
+    { "split": "train", "expect": "no_trigger", "q": "Improve this README." },
+    { "split": "train", "expect": "no_trigger", "q": "Critique my implementation plan before I start." },
+    { "split": "train", "expect": "no_trigger", "q": "What's the current price of the M5 MacBook Pro?" },
+    { "split": "train", "expect": "no_trigger", "q": "Write a handoff for this session." },
+    { "split": "train", "expect": "no_trigger", "q": "Summarize this Reddit thread: https://www.reddit.com/r/programming/comments/abc/." },
+    { "split": "val",   "expect": "no_trigger", "q": "Refactor this module to reduce duplication." },
+    { "split": "val",   "expect": "no_trigger", "q": "Name and colorize this tmux window." },
+    { "split": "val",   "expect": "no_trigger", "q": "Where did we leave off last session?" },
+    { "split": "val",   "expect": "no_trigger", "q": "Fetch this tweet: https://x.com/user/status/123." }
+  ]
+}

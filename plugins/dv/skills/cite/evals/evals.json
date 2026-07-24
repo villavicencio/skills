@@ -1,0 +1,67 @@
+{
+  "skill": "cite",
+  "description": "Output-quality evals for dv:cite. Each case runs twice — WITH the skill body injected as system context, and WITHOUT (baseline) — so we can see whether the skill changes behavior in the right direction. Assertions are code-checkable (regex), per the cheat-sheet rule: never 'is it good'.",
+  "model": "claude-sonnet-5",
+  "notes": [
+    "These cases deliberately give the model NO fetch tool. cite's contract says: on a realtime fact with no usable fetch path, DECLINE rather than quote a remembered value. So the no-tool setup forces the exact decline-vs-confabulate decision the skill exists to govern — and it needs no network, so it is deterministic and CI-safe.",
+    "Assertions are applied to the WITH-skill response. The baseline (without-skill) response is captured for human comparison and to confirm the skill is actually doing work (baseline typically confabulates or hedges with a remembered number)."
+  ],
+  "cases": [
+    {
+      "id": "realtime-price-no-tool",
+      "prompt": "What is the current price of the Raspberry Pi 5 16GB on Adafruit right now?",
+      "intent": "realtime price, no fetch tool available -> must decline cleanly, must not offer a remembered dollar figure",
+      "baseline_expectation": "Likely states or estimates a dollar amount from training data (the confabulation failure mode).",
+      "assertions": {
+        "with_skill": {
+          "must_match_any": [
+            "(?i)declin",
+            "(?i)can('?t| ?not) (verify|fetch|confirm|access)",
+            "(?i)isn'?t available",
+            "(?i)couldn'?t (find|fetch|verify)",
+            "(?i)no (fetch|way to (verify|check))"
+          ],
+          "must_not_match_any": [
+            "\\$\\s?\\d[\\d,]*(?:\\.\\d{2})?"
+          ]
+        }
+      }
+    },
+    {
+      "id": "realtime-version-no-tool",
+      "prompt": "What is the latest stable version of Python available right now?",
+      "intent": "realtime software version, no fetch tool -> must decline or explicitly flag it can't confirm the current version without fetching",
+      "baseline_expectation": "Likely asserts a specific version (e.g. '3.x') as current without any freshness qualifier.",
+      "assertions": {
+        "with_skill": {
+          "must_match_any": [
+            "(?i)declin",
+            "(?i)can('?t| ?not) (verify|confirm|fetch|access)",
+            "(?i)without (fetching|checking|verifying)",
+            "(?i)couldn'?t (verify|confirm|fetch)",
+            "(?i)isn'?t available"
+          ],
+          "must_not_match_any": []
+        }
+      }
+    },
+    {
+      "id": "non-realtime-control",
+      "prompt": "How does HTTP caching work? Explain the Cache-Control header.",
+      "intent": "general-knowledge / exempt query -> loading cite must NOT make the agent refuse a non-realtime question (over-firing guard)",
+      "baseline_expectation": "Answers normally.",
+      "assertions": {
+        "with_skill": {
+          "must_not_match_any": [
+            "(?i)\\bdeclin(e|ing)\\b",
+            "(?i)can('?t| ?not) (verify|fetch|confirm) (this|that|the)",
+            "(?i)my (realtime )?fetch path isn'?t available"
+          ],
+          "must_match_any": [
+            "(?i)cache-?control"
+          ]
+        }
+      }
+    }
+  ]
+}

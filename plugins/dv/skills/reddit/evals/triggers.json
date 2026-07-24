@@ -1,0 +1,29 @@
+{
+  "skill": "reddit",
+  "description": "Trigger evals for dv:reddit (reddit.com URL fetcher). Collision pair: twitter (x.com). Near-misses: HN/YouTube/generic-article URLs must NOT grab it. See tooling/evals/README.md.",
+  "runs_per_query": 3,
+  "pass_threshold": 0.5,
+  "queries": [
+    { "split": "train", "expect": "trigger",    "q": "Summarize this Reddit thread: https://www.reddit.com/r/programming/comments/xyz/title/." },
+    { "split": "train", "expect": "trigger",    "q": "What are people saying in this reddit post? https://reddit.com/r/rust/comments/abc/." },
+    { "split": "train", "expect": "trigger",    "q": "Read this Reddit discussion for me: https://old.reddit.com/r/golang/comments/def/." },
+    { "split": "train", "expect": "trigger",    "q": "Fetch the comments on https://reddit.com/r/MachineLearning/comments/ghi/." },
+    { "split": "train", "expect": "trigger",    "q": "TL;DR this reddit link: https://www.reddit.com/r/selfhosted/comments/jkl/." },
+    { "split": "train", "expect": "trigger",    "q": "What's the top comment on https://reddit.com/r/aww/comments/mno/?" },
+    { "split": "val",   "expect": "trigger",    "q": "Give me the gist of this thread: https://reddit.com/r/devops/comments/pqr/." },
+    { "split": "val",   "expect": "trigger",    "q": "Pull the discussion from https://www.reddit.com/r/Python/comments/stu/." },
+    { "split": "val",   "expect": "trigger",    "q": "What's the consensus in https://reddit.com/r/ExperiencedDevs/comments/vwx/?" },
+    { "split": "val",   "expect": "trigger",    "q": "Summarize the replies on https://old.reddit.com/r/kubernetes/comments/yz1/." },
+
+    { "split": "train", "expect": "no_trigger", "q": "Fetch this tweet: https://x.com/dhh/status/1790000000000000000." },
+    { "split": "train", "expect": "no_trigger", "q": "Summarize this article: https://example.com/blog/some-post." },
+    { "split": "train", "expect": "no_trigger", "q": "Read this Hacker News thread: https://news.ycombinator.com/item?id=12345678." },
+    { "split": "train", "expect": "no_trigger", "q": "What's the current price of Bitcoin right now?" },
+    { "split": "train", "expect": "no_trigger", "q": "Critique my plan before I start." },
+    { "split": "train", "expect": "no_trigger", "q": "Write a handoff for this session." },
+    { "split": "val",   "expect": "no_trigger", "q": "Summarize this YouTube video: https://www.youtube.com/watch?v=abc123." },
+    { "split": "val",   "expect": "no_trigger", "q": "Improve my CLAUDE.md." },
+    { "split": "val",   "expect": "no_trigger", "q": "Name this tmux window." },
+    { "split": "val",   "expect": "no_trigger", "q": "Where did we leave off last session?" }
+  ]
+}

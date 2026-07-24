@@ -1,0 +1,29 @@
+{
+  "skill": "pickup",
+  "description": "Trigger evals for dv:pickup (session-start orientation). Collision pair: handoff (session-end). No-trigger set seeds other-skill queries to probe catalog collisions. See tooling/evals/README.md.",
+  "runs_per_query": 3,
+  "pass_threshold": 0.5,
+  "queries": [
+    { "split": "train", "expect": "trigger",    "q": "Where did we leave off last time?" },
+    { "split": "train", "expect": "trigger",    "q": "Pick up where we left off." },
+    { "split": "train", "expect": "trigger",    "q": "I'm back — what was I working on in this repo?" },
+    { "split": "train", "expect": "trigger",    "q": "Catch me up on this project before I start." },
+    { "split": "train", "expect": "trigger",    "q": "Read the handoff and tell me what's in flight." },
+    { "split": "train", "expect": "trigger",    "q": "Orient me — what should I tackle first?" },
+    { "split": "val",   "expect": "trigger",    "q": "Let's resume. What's the current state of things?" },
+    { "split": "val",   "expect": "trigger",    "q": "Start of session — bring me up to speed." },
+    { "split": "val",   "expect": "trigger",    "q": "Remind me where this project stands." },
+    { "split": "val",   "expect": "trigger",    "q": "What was left unfinished from before?" },
+
+    { "split": "train", "expect": "no_trigger", "q": "Write a HANDOFF.md for this session." },
+    { "split": "train", "expect": "no_trigger", "q": "Summarize this Reddit thread: https://www.reddit.com/r/rust/comments/abc123/." },
+    { "split": "train", "expect": "no_trigger", "q": "What's the current price of Bitcoin?" },
+    { "split": "train", "expect": "no_trigger", "q": "Critique my migration plan before I start." },
+    { "split": "train", "expect": "no_trigger", "q": "How does git rebase work?" },
+    { "split": "train", "expect": "no_trigger", "q": "Refactor this function to remove the nested loops." },
+    { "split": "val",   "expect": "no_trigger", "q": "Improve my CLAUDE.md and remove stale rules." },
+    { "split": "val",   "expect": "no_trigger", "q": "Name and colorize this tmux window." },
+    { "split": "val",   "expect": "no_trigger", "q": "Fetch this tweet: https://x.com/dhh/status/1790000000000000000." },
+    { "split": "val",   "expect": "no_trigger", "q": "Explain what this codebase does at a high level." }
+  ]
+}

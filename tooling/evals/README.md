@@ -102,7 +102,20 @@ deterministic and CI-safe):
 ## CI
 
 The `behavioral-evals` job in `.github/workflows/validate.yml` runs these on
-push/PR **only when an `ANTHROPIC_API_KEY` repo secret is present**. Without the
-secret the job's steps skip cleanly, so forks and key-less runs stay green. The
-always-on `validate` job (structure + version parity) remains the hard gate; the
-behavioral layer is an additional gate wherever a key is configured.
+**release tags and manual dispatch only** — not on every push and PR. Two
+independent gates apply:
+
+1. **Cadence** (the job's `if:`) — `refs/tags/*` or a `workflow_dispatch`. The
+   job makes ~540 live Sonnet calls per run (9 skills × 20 queries × 3 samples),
+   roughly $1.50–2.00. A broken description ships at tag time, so that is where
+   the signal is worth paying for. To run it mid-cycle after editing a
+   description, use **Actions → validate → Run workflow**.
+2. **Key presence** (per-step `if:`s) — without an `ANTHROPIC_API_KEY` repo
+   secret every real step skips and the job stays green, so forks and key-less
+   runs are unaffected.
+
+The always-on `validate` job (structure + version parity) remains the hard gate
+on every push and PR; the behavioral layer is a release-time gate on top of it.
+
+Locally, the runners need only `ANTHROPIC_API_KEY` in the environment — run them
+by hand before tagging if you'd rather not configure the secret at all.

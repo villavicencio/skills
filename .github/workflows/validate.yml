@@ -4,6 +4,10 @@ on:
   pull_request:
   push:
     branches: [main]
+    # Release tags (`<plugin>--vX.Y.Z`) also run the structure gate, and are the
+    # cadence at which the paid behavioral-evals job runs — see that job's `if:`.
+    tags: ["*--v*"]
+  workflow_dispatch:
 
 jobs:
   validate:
@@ -126,12 +130,23 @@ jobs:
           PY
 
   # Behavioral layer: does each skill actually trigger when it should, and does
-  # loading it change behavior in the intended direction? These need live model
-  # calls, so the job only runs when an ANTHROPIC_API_KEY repo secret is present.
-  # Without the secret every gated step skips and the job stays green (forks,
-  # key-less runs). The `validate` job above remains the always-on hard gate.
-  # See tooling/evals/README.md for the methodology.
+  # loading it change behavior in the intended direction? See tooling/evals/README.md
+  # for the methodology.
+  #
+  # TWO independent gates, because this job costs real money — it makes ~540 live
+  # Sonnet calls (9 skills x 20 queries x 3 samples), roughly $1.50-2.00 a run:
+  #
+  #   1. CADENCE (the `if:` below) — release tags and manual dispatch only, NOT
+  #      every push and PR. A broken skill description ships at tag time, so that
+  #      is where the signal is worth paying for. Run it mid-cycle from the
+  #      Actions tab ("Run workflow") whenever you have edited a description.
+  #   2. KEY PRESENCE (the per-step `if:`s) — without an ANTHROPIC_API_KEY repo
+  #      secret every real step skips and the job stays green, so forks and
+  #      key-less runs are unaffected.
+  #
+  # The `validate` job above remains the always-on hard gate on every push and PR.
   behavioral-evals:
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     env:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

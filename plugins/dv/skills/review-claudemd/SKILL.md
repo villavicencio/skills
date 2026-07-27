@@ -4,7 +4,7 @@ description: "Mine recent conversation history to improve CLAUDE.md — surface 
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.2.0"
+  version: "0.2.1"
 ---
 
 # /review-claudemd — Improve CLAUDE.md from Conversation History
@@ -34,7 +34,11 @@ if [ ! -d "$CONVO_DIR" ]; then
     exit 0
   fi
 fi
-if [ ! -d "$CONVO_DIR" ] || [ -z "$(ls -A "$CONVO_DIR"/*.jsonl 2>/dev/null)" ]; then
+# Every `ls` here is `command ls`: this shell sources the user's profile, so a
+# common `alias ls=eza` (or exa/lsd) is live even non-interactively — and those
+# reject BSD/GNU flags (`eza` errors on `-t`: "invalid value for '--time <FIELD>'").
+# `command` bypasses aliases and functions without hardcoding a path.
+if [ ! -d "$CONVO_DIR" ] || [ -z "$(command ls -A "$CONVO_DIR"/*.jsonl 2>/dev/null)" ]; then
   echo "review-claudemd: no Claude Code transcripts found for this project ($CONVO_DIR)."
   echo "Nothing to mine — stopping."
   exit 0
@@ -42,7 +46,7 @@ fi
 echo "=== Transcript dir: $CONVO_DIR ==="
 echo "(Substitute this path for \$CONVO_DIR in the Step 3 memory-index reference.)"
 echo "=== Recent conversations ==="
-ls -lt "$CONVO_DIR"/*.jsonl | head -20
+command ls -lt "$CONVO_DIR"/*.jsonl | head -20
 ```
 
 If it reports no transcripts, **stop** — there's nothing to analyze.
@@ -59,7 +63,9 @@ SCRATCH=$(mktemp -d "${TMPDIR:-/tmp}/claudemd-review.XXXXXX")
 # file and iterating, and the while-read loop is space-safe (no word-splitting on $(ls)).
 # The current (live) session is the most recently modified transcript and is still being
 # written — exclude it to avoid circular self-reference and half-written turns.
-listing=$(ls -t "$CONVO_DIR"/*.jsonl 2>/dev/null)
+# `command ls -t` (mtime order) is load-bearing here: it is what identifies the live
+# session. See the Step 1 note on why `command` is required.
+listing=$(command ls -t "$CONVO_DIR"/*.jsonl 2>/dev/null)
 current=$(printf '%s\n' "$listing" | head -1)
 
 count=0
@@ -92,7 +98,7 @@ if [ "$count" -eq 0 ]; then
   exit 0
 fi
 echo "=== Extracted $count transcript(s) with content (current session excluded) into: $SCRATCH ==="
-ls -lhS "$SCRATCH"
+command ls -lhS "$SCRATCH"
 ```
 
 Note the printed `$SCRATCH` path — you'll reference it in Steps 3 and 6.

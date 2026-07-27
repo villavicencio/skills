@@ -32,15 +32,26 @@ is deferred to v0.2+ if/when the need surfaces.
 - Apache-2.0 root LICENSE; no per-skill LICENSE/CHANGELOG in v0.1.0
 - Release tag format: `<plugin-name>--v<semver>` (double-dash, per `claude plugin tag` convention)
 - AGENTS.md is the canonical project-instructions file; CLAUDE.md is a thin pointer kept for older Claude Code tooling that hasn't migrated
+- **`HANDOFF.md` is gitignored in this repo** — it is local-only session state, never committed. `dv:handoff`'s auto-commit step is therefore a no-op here (expected, not a failure), and the file can silently drift from reality between sessions, so treat `git`/`gh` state as the source of truth over a stale handoff
 
 ## Install (canonical procedure)
 ```bash
 # Register this repo as a marketplace (one-time per Claude Code instance)
 claude plugin marketplace add villavicencio/skills
 
-# Install a plugin from the marketplace
-claude plugin install pickup-handoff@villavicencio-skills
+# Install the plugin from the marketplace
+claude plugin install dv@villavicencio-skills
+
+# Update after a release (both steps; the marketplace clone is not auto-fetched)
+claude plugin marketplace update villavicencio-skills
+claude plugin update dv@villavicencio-skills
 ```
+
+`dv` is the only plugin — all skills were consolidated into it (PR #16). The
+per-skill plugins (`pickup-handoff`, `tmux-window-namer`, `review-claudemd`) no
+longer exist as install targets. Note the update command needs the **fully
+qualified** `dv@villavicencio-skills`; bare `claude plugin update dv` reports
+"not found". A plugin update applies on the next session restart.
 
 ## Vault
 

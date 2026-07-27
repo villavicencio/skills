@@ -4,7 +4,7 @@ description: Adversarially review a code change — the diff on your current bra
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.2.0"
+  version: "0.2.1"
 ---
 
 # /gauntlet — Staged Adversarial Code-Review Loop

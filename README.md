@@ -39,8 +39,12 @@ claude plugin install dv@villavicencio-skills
 To update later:
 
 ```bash
-claude plugin update dv
+# The marketplace clone is not auto-fetched — refresh it first
+claude plugin marketplace update villavicencio-skills
+claude plugin update dv@villavicencio-skills
 ```
+
+The update target must be **fully qualified**: bare `claude plugin update dv` reports "not found". An update applies on the next session restart.
 
 To uninstall:
 
@@ -59,11 +63,15 @@ The reason is subtle: Claude Code discovers user commands by globbing `~/.claude
 ```bash
 # Remove the old single-file commands (or symlinks) if they exist
 rm -f ~/.claude/commands/{pickup,handoff,reddit,twitter,critique}.md
-# Set aside any standalone skill that moved into the suite
-# (e.g. the former verify-cite → dv:cite)
+# Set aside any standalone skill that moved into the suite, keeping it
+# under version control (e.g. the former verify-cite → dv:cite)
+mkdir -p ~/dotfiles/claude/skills/.deprecated
+mv ~/.claude/skills/verify-cite ~/dotfiles/claude/skills/.deprecated/
 ```
 
 If your old files lived in a dotfiles repo and you want a rollback window, rename them to `.md.deprecated` in dotfiles *and* delete the symlinks at `~/.claude/commands/` — the symlinks themselves aren't load-bearing for rollback, only the source files are.
+
+The same applies to skills, and the destination matters: **move the old skill directory into your dotfiles repo** (`claude/skills/.deprecated/` above — adjust to your own layout) rather than parking it somewhere under `~/.claude/`. A directory set aside inside `~/.claude` is outside version control, so the rollback window it was meant to provide never actually existed — and it will sit there unnoticed indefinitely. If you don't keep a dotfiles repo, delete the directory outright; a copy you can't restore from isn't a backup.
 
 ### Linux Claude Code instances with older git
 
@@ -80,7 +88,7 @@ Updates on those instances need an extra step:
 ```bash
 git -C ~/.local/share/villavicencio-skills pull
 claude plugin marketplace update villavicencio-skills
-claude plugin update dv
+claude plugin update dv@villavicencio-skills
 ```
 
 ## Versioning

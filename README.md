@@ -10,7 +10,7 @@ One plugin, invoked `dv:<skill>` — modeled on how `compound-engineering` holds
 
 | Plugin | Version | Skills | Description |
 | --- | --- | --- | --- |
-| [`dv`](plugins/dv/) | `0.2.1` | `pickup`, `handoff`, `review-claudemd`, `tmux-window-namer`, `reddit`, `twitter`, `critique`, `cite`, `gauntlet` | Personal skill suite. Session brackets (`dv:pickup` / `dv:handoff`), `CLAUDE.md` hygiene (`dv:review-claudemd`), tmux styling (`dv:tmux-window-namer`), Reddit / X fetchers (`dv:reddit` / `dv:twitter`), parallel plan critique (`dv:critique`), a re-fetch-or-decline freshness contract for realtime facts (`dv:cite`), and a staged adversarial code-review loop (`dv:gauntlet`). |
+| [`dv`](plugins/dv/) | `0.2.2` | `pickup`, `handoff`, `review-claudemd`, `tmux-window-namer`, `reddit`, `twitter`, `critique`, `cite`, `gauntlet` | Personal skill suite. Session brackets (`dv:pickup` / `dv:handoff`), `CLAUDE.md` hygiene (`dv:review-claudemd`), tmux styling (`dv:tmux-window-namer`), Reddit / X fetchers (`dv:reddit` / `dv:twitter`), parallel plan critique (`dv:critique`), a re-fetch-or-decline freshness contract for realtime facts (`dv:cite`), and a staged adversarial code-review loop (`dv:gauntlet`). |
 
 ### Skills at a glance
 
@@ -39,8 +39,12 @@ claude plugin install dv@villavicencio-skills
 To update later:
 
 ```bash
-claude plugin update dv
+# The marketplace clone is not auto-fetched — refresh it first
+claude plugin marketplace update villavicencio-skills
+claude plugin update dv@villavicencio-skills
 ```
+
+The update target must be **fully qualified**: bare `claude plugin update dv` reports "not found". An update applies on the next session restart.
 
 To uninstall:
 
@@ -59,11 +63,35 @@ The reason is subtle: Claude Code discovers user commands by globbing `~/.claude
 ```bash
 # Remove the old single-file commands (or symlinks) if they exist
 rm -f ~/.claude/commands/{pickup,handoff,reddit,twitter,critique}.md
-# Set aside any standalone skill that moved into the suite
-# (e.g. the former verify-cite → dv:cite)
+
+# Then inspect the old skill before touching it — a real directory and a
+# symlink need different treatment (e.g. the former verify-cite → dv:cite)
+ls -ld ~/.claude/skills/verify-cite
 ```
 
 If your old files lived in a dotfiles repo and you want a rollback window, rename them to `.md.deprecated` in dotfiles *and* delete the symlinks at `~/.claude/commands/` — the symlinks themselves aren't load-bearing for rollback, only the source files are.
+
+The same applies to skills, and **the destination matters**: a directory set aside inside `~/.claude` is outside version control, so the rollback window it was meant to provide never actually existed — and it will sit there unnoticed indefinitely. Where it goes depends on what `ls -ld` just told you.
+
+**If it's a real directory**, move it into a dotfiles checkout you already have. Substitute your own path — don't let `mkdir -p` invent one, or you've just built a fresh untracked orphan and solved nothing. The `rev-parse` guard makes the whole chain a no-op unless the target really is a repo:
+
+```bash
+DOTFILES=~/path/to/your/dotfiles          # substitute; this default is not real
+
+git -C "$DOTFILES" rev-parse --git-dir >/dev/null 2>&1 &&
+  mkdir -p "$DOTFILES/claude/skills" &&
+  mv ~/.claude/skills/verify-cite "$DOTFILES/claude/skills/verify-cite.deprecated" &&
+  git -C "$DOTFILES" add claude/skills/verify-cite.deprecated
+
+# Staging is not archiving. Review, then commit — until you do, the copy
+# exists only in your index: absent from history, and from every clone.
+git -C "$DOTFILES" status
+git -C "$DOTFILES" commit -m "chore(claude): retire verify-cite (superseded by dv:cite)"
+```
+
+**If it's a symlink**, moving it accomplishes nothing: you relocate a pointer — breaking it outright if the link is relative — while the real source and whatever installs it both survive to recreate the duplicate on the next bootstrap. Retire it at the source instead, which takes all three of: delete the live symlink, remove the declaration that recreates it (the `install.conf.yaml` entry, if you use dotbot), and `git mv` the tracked source to a `.deprecated` name inside the repo. Miss the middle step and the next `./install` puts the duplicate right back.
+
+If you don't keep a dotfiles repo at all, delete the old directory outright — a copy you can't restore from isn't a backup.
 
 ### Linux Claude Code instances with older git
 
@@ -80,7 +108,7 @@ Updates on those instances need an extra step:
 ```bash
 git -C ~/.local/share/villavicencio-skills pull
 claude plugin marketplace update villavicencio-skills
-claude plugin update dv
+claude plugin update dv@villavicencio-skills
 ```
 
 ## Versioning

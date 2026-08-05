@@ -71,8 +71,13 @@ otherwise unchanged in behavior — only their `metadata.version` moved.
 ## Install / update
 
 ```bash
-claude plugin update dv
+claude plugin marketplace update villavicencio-skills
+claude plugin update dv@villavicencio-skills
 ```
+
+The update target must be fully qualified — bare `claude plugin update dv` reports "not found" —
+and the marketplace clone is not auto-fetched, so it needs the refresh first. (Corrected after
+publication; the note originally carried the bare form, which does not work.)
 
 Fresh install:
 

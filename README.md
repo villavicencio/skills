@@ -63,15 +63,30 @@ The reason is subtle: Claude Code discovers user commands by globbing `~/.claude
 ```bash
 # Remove the old single-file commands (or symlinks) if they exist
 rm -f ~/.claude/commands/{pickup,handoff,reddit,twitter,critique}.md
-# Set aside any standalone skill that moved into the suite, keeping it
-# under version control (e.g. the former verify-cite → dv:cite)
-mkdir -p ~/dotfiles/claude/skills/.deprecated
-mv ~/.claude/skills/verify-cite ~/dotfiles/claude/skills/.deprecated/
+
+# Then inspect the old skill before touching it — a real directory and a
+# symlink need different treatment (e.g. the former verify-cite → dv:cite)
+ls -ld ~/.claude/skills/verify-cite
 ```
 
 If your old files lived in a dotfiles repo and you want a rollback window, rename them to `.md.deprecated` in dotfiles *and* delete the symlinks at `~/.claude/commands/` — the symlinks themselves aren't load-bearing for rollback, only the source files are.
 
-The same applies to skills, and the destination matters: **move the old skill directory into your dotfiles repo** (`claude/skills/.deprecated/` above — adjust to your own layout) rather than parking it somewhere under `~/.claude/`. A directory set aside inside `~/.claude` is outside version control, so the rollback window it was meant to provide never actually existed — and it will sit there unnoticed indefinitely. If you don't keep a dotfiles repo, delete the directory outright; a copy you can't restore from isn't a backup.
+The same applies to skills, and **the destination matters**: a directory set aside inside `~/.claude` is outside version control, so the rollback window it was meant to provide never actually existed — and it will sit there unnoticed indefinitely. Where it goes depends on what `ls -ld` just told you.
+
+**If it's a real directory**, move it into a dotfiles checkout you already have. Substitute your own path — don't let `mkdir -p` invent one, or you've just built a fresh untracked orphan and solved nothing. The `rev-parse` guard makes the whole chain a no-op unless the target really is a repo:
+
+```bash
+DOTFILES=~/path/to/your/dotfiles          # substitute; this default is not real
+
+git -C "$DOTFILES" rev-parse --git-dir >/dev/null 2>&1 &&
+  mkdir -p "$DOTFILES/claude/skills/.deprecated" &&
+  mv ~/.claude/skills/verify-cite "$DOTFILES/claude/skills/.deprecated/" &&
+  git -C "$DOTFILES" add -A claude/skills/.deprecated
+```
+
+**If it's a symlink**, moving it accomplishes nothing: you relocate a pointer — breaking it outright if the link is relative — while the real source and whatever installs it both survive to recreate the duplicate on the next bootstrap. Retire it at the source instead, which takes all three of: delete the live symlink, remove the declaration that recreates it (the `install.conf.yaml` entry, if you use dotbot), and `git mv` the tracked source to a `.deprecated` name inside the repo. Miss the middle step and the next `./install` puts the duplicate right back.
+
+If you don't keep a dotfiles repo at all, delete the old directory outright — a copy you can't restore from isn't a backup.
 
 ### Linux Claude Code instances with older git
 

@@ -10,7 +10,7 @@ One plugin, invoked `dv:<skill>` — modeled on how `compound-engineering` holds
 
 | Plugin | Version | Skills | Description |
 | --- | --- | --- | --- |
-| [`dv`](plugins/dv/) | `0.2.1` | `pickup`, `handoff`, `review-claudemd`, `tmux-window-namer`, `reddit`, `twitter`, `critique`, `cite`, `gauntlet` | Personal skill suite. Session brackets (`dv:pickup` / `dv:handoff`), `CLAUDE.md` hygiene (`dv:review-claudemd`), tmux styling (`dv:tmux-window-namer`), Reddit / X fetchers (`dv:reddit` / `dv:twitter`), parallel plan critique (`dv:critique`), a re-fetch-or-decline freshness contract for realtime facts (`dv:cite`), and a staged adversarial code-review loop (`dv:gauntlet`). |
+| [`dv`](plugins/dv/) | `0.2.2` | `pickup`, `handoff`, `review-claudemd`, `tmux-window-namer`, `reddit`, `twitter`, `critique`, `cite`, `gauntlet` | Personal skill suite. Session brackets (`dv:pickup` / `dv:handoff`), `CLAUDE.md` hygiene (`dv:review-claudemd`), tmux styling (`dv:tmux-window-namer`), Reddit / X fetchers (`dv:reddit` / `dv:twitter`), parallel plan critique (`dv:critique`), a re-fetch-or-decline freshness contract for realtime facts (`dv:cite`), and a staged adversarial code-review loop (`dv:gauntlet`). |
 
 ### Skills at a glance
 
@@ -79,9 +79,9 @@ The same applies to skills, and **the destination matters**: a directory set asi
 DOTFILES=~/path/to/your/dotfiles          # substitute; this default is not real
 
 git -C "$DOTFILES" rev-parse --git-dir >/dev/null 2>&1 &&
-  mkdir -p "$DOTFILES/claude/skills/.deprecated" &&
-  mv ~/.claude/skills/verify-cite "$DOTFILES/claude/skills/.deprecated/" &&
-  git -C "$DOTFILES" add claude/skills/.deprecated/verify-cite
+  mkdir -p "$DOTFILES/claude/skills" &&
+  mv ~/.claude/skills/verify-cite "$DOTFILES/claude/skills/verify-cite.deprecated" &&
+  git -C "$DOTFILES" add claude/skills/verify-cite.deprecated
 
 # Staging is not archiving. Review, then commit — until you do, the copy
 # exists only in your index: absent from history, and from every clone.

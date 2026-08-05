@@ -4,7 +4,7 @@ description: Adversarially review a code change — the diff on your current bra
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.2.1"
+  version: "0.2.2"
 ---
 
 # /gauntlet — Staged Adversarial Code-Review Loop
@@ -99,7 +99,7 @@ contract.
 7. **Dirty tree.** Base-scope reviews see committed work only. Note uncommitted changes; in loop
    mode, commit or stash them before S1 so the diff under review is well-defined.
 
-> **Verifier default — staleness note (verified 2026-07-24, codex-cli 0.144.1, ChatGPT-account
+> **Verifier default — staleness note (re-verified 2026-08-05, codex-cli 0.144.1, ChatGPT-account
 > auth).** On this machine the resolvable cheap tier is **`gpt-5.6-luna`** (≈⅕ the flagship's
 > per-message cost); the ≈½-cost mid tier is `gpt-5.6-terra`. `*-mini` ids are rejected under
 > ChatGPT-account auth. **Do not treat any id here as load-bearing** — smoke-test with
@@ -142,6 +142,12 @@ codex exec review --base <base> -c sandbox_mode="read-only"   # -m <reviewer> on
   `severity ∈ {critical, high, medium, low}`, `title`, `body`, `file`, `line_start`, `line_end`,
   `confidence 0..1`, `recommendation`) maps directly — see **Vocabulary normalization**. On the
   first live run in a repo, pin the exact stdout formatting once, then parse consistently.
+- **Deduplicate before counting (codex-cli 0.144.1).** Verified live 2026-08-05: the summary line
+  and the entire `Full review comments:` block are emitted **twice, verbatim**, at the end of
+  stdout — in both `codex exec review` and steered `codex exec` runs. Parse the findings block
+  **once**; a naive read doubles every finding, which inflates severity counts, corrupts the
+  fingerprint ledger, and can fake a budget-consuming "new" finding out of an echo. Dedupe by
+  fingerprint at the normalization boundary rather than trusting the block to appear once.
 
 **Tier 2 (no Codex):** a fresh subagent with `references/find-prompt.md` — the original-wording
 adversarial persona (five techniques, depth tier, scenario-oriented titles, one-strong-over-

@@ -81,7 +81,12 @@ DOTFILES=~/path/to/your/dotfiles          # substitute; this default is not real
 git -C "$DOTFILES" rev-parse --git-dir >/dev/null 2>&1 &&
   mkdir -p "$DOTFILES/claude/skills/.deprecated" &&
   mv ~/.claude/skills/verify-cite "$DOTFILES/claude/skills/.deprecated/" &&
-  git -C "$DOTFILES" add -A claude/skills/.deprecated
+  git -C "$DOTFILES" add claude/skills/.deprecated/verify-cite
+
+# Staging is not archiving. Review, then commit — until you do, the copy
+# exists only in your index: absent from history, and from every clone.
+git -C "$DOTFILES" status
+git -C "$DOTFILES" commit -m "chore(claude): retire verify-cite (superseded by dv:cite)"
 ```
 
 **If it's a symlink**, moving it accomplishes nothing: you relocate a pointer — breaking it outright if the link is relative — while the real source and whatever installs it both survive to recreate the duplicate on the next bootstrap. Retire it at the source instead, which takes all three of: delete the live symlink, remove the declaration that recreates it (the `install.conf.yaml` entry, if you use dotbot), and `git mv` the tracked source to a `.deprecated` name inside the repo. Miss the middle step and the next `./install` puts the duplicate right back.

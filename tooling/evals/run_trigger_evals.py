@@ -13,7 +13,10 @@ queries — the Anthropic "Agent Skills" trigger-eval pattern:
 
   * render every skill's (name, description) into an <available_skills> catalog
   * for each query, ask the model which single skill applies (or `none`)
-  * run each query N times, trigger_rate = selections / N
+  * run each query N times, trigger_rate = selections / parseable-samples
+    (responses the harness cannot map to a name or `none` are excluded from the
+    denominator, not scored as non-selections; an all-unparseable query is
+    reported indeterminate and fails)
   * a should-trigger query passes if rate > threshold; should-not if rate < threshold
   * report train and val splits separately (tune the description on train
     failures; pick the best iteration by val pass rate — do not overfit the
@@ -40,10 +43,8 @@ import argparse
 import concurrent.futures
 import json
 import os
-import random
 import re
 import sys
-import time
 from pathlib import Path
 
 DEFAULT_MODEL = "claude-sonnet-5"
@@ -53,10 +54,11 @@ DEFAULT_PLUGIN_ROOT = "plugins/dv"
 # `none`, and collapsing the two is a silent scoring error — see parse_choice.
 UNPARSEABLE = "__unparseable__"
 
-# Transient-failure retry. A paid run makes hundreds of calls; without this a
-# single 429 aborts everything and forfeits the tokens already spent.
-MAX_ATTEMPTS = 4
-BASE_BACKOFF = 1.5
+# Transient-failure retry, delegated to the SDK (default is 2). A paid run makes
+# hundreds of calls; without a raised budget a single 429 propagates out of
+# Future.result(), aborts everything, and forfeits the tokens already spent.
+# 5 retries = 6 attempts, with the SDK's Retry-After-aware backoff.
+MAX_RETRIES = 5
 
 
 def log(msg: str) -> None:
@@ -136,51 +138,54 @@ def parse_choice(response_text: str, names: list[str]) -> str:
     return UNPARSEABLE
 
 
-def _retryable(exc: Exception) -> bool:
-    """Transient API failures worth another attempt; auth/validation errors are not.
-
-    Classified by exception *name* rather than isinstance against anthropic's
-    types on purpose: that keeps this function importable — and therefore
-    unit-testable — without the anthropic package installed. CI runs the tests
-    with stdlib only.
-    """
-    if type(exc).__name__ in (
-        "APIConnectionError", "APITimeoutError", "RateLimitError",
-        "InternalServerError", "OverloadedError",
-    ):
-        return True
-    return getattr(exc, "status_code", None) in (408, 409, 429, 500, 502, 503, 529)
-
-
 def run_one_call(client, model: str, system: str, query: str, names: list[str]):
-    """One selector call, with bounded retry. Returns (choice, in_tokens, out_tokens).
+    """One selector call. Returns (choice, in_tokens, out_tokens).
 
-    Retry exists because this runs inside a ThreadPoolExecutor whose results are
-    collected with Future.result(): one unhandled 429 propagates out, aborts the
-    entire run, and forfeits every token already paid for in earlier queries.
-    A permanent failure (401, malformed request) still raises — retrying that
-    would just burn attempts on something that cannot succeed.
+    Retry is delegated to the SDK, configured with MAX_RETRIES where the client
+    is constructed. A hand-rolled loop around this call was tried and removed:
+    it stacked on the SDK's own retries, and — decisively — its blind
+    exponential backoff ignored the `Retry-After` and `x-should-retry` headers
+    that the SDK honors, so it would re-fire inside a server-specified cooldown
+    on exactly the 429-during-a-concurrent-burst case retry exists for.
     """
-    for attempt in range(1, MAX_ATTEMPTS + 1):
-        try:
-            msg = client.messages.create(
-                model=model,
-                max_tokens=20,
-                system=system,
-                messages=[{"role": "user", "content": query}],
-            )
-            text = "".join(block.text for block in msg.content if block.type == "text")
-            return parse_choice(text, names), msg.usage.input_tokens, msg.usage.output_tokens
-        except Exception as exc:
-            if attempt == MAX_ATTEMPTS or not _retryable(exc):
-                raise
-            delay = BASE_BACKOFF**attempt + random.uniform(0, 0.5)
-            log(f"  transient {type(exc).__name__}, attempt {attempt}/{MAX_ATTEMPTS} — retrying in {delay:.1f}s")
-            time.sleep(delay)
+    msg = client.messages.create(
+        model=model,
+        max_tokens=20,
+        system=system,
+        messages=[{"role": "user", "content": query}],
+    )
+    text = "".join(block.text for block in msg.content if block.type == "text")
+    return parse_choice(text, names), msg.usage.input_tokens, msg.usage.output_tokens
 
 
 def evaluate(rate: float, expect: str, threshold: float) -> bool:
     return rate > threshold if expect == "trigger" else rate < threshold
+
+
+def score_query(choices: list[str], target: str, expect: str, threshold: float):
+    """Score one query's samples. Returns (rate, passed, unparseable, parseable).
+
+    The rate divides by PARSEABLE samples, not by every run. A sample the
+    harness could not read is not evidence the skill declined to fire, and
+    counting it in the denominator drags the rate toward 0 — which pushes a
+    no_trigger query toward passing. Concretely, at threshold 0.5 with runs=3,
+    [target, none, UNPARSEABLE] scores 1/3 and passes, while the two parseable
+    samples alone score 1/2 and do not (evaluate uses a strict `<`).
+    `selections` is unaffected either way, since UNPARSEABLE can never equal a
+    catalog name.
+
+    When every sample is unparseable there is no evidence in either direction:
+    rate is None and the query FAILS as indeterminate, rather than scoring 0.0
+    and reporting a clean no_trigger pass on no data.
+    """
+    runs = len(choices)
+    selections = sum(c == target for c in choices)
+    unparseable = sum(c == UNPARSEABLE for c in choices)
+    parseable = runs - unparseable
+    if parseable == 0:
+        return None, False, unparseable, parseable
+    rate = selections / parseable
+    return rate, evaluate(rate, expect, threshold), unparseable, parseable
 
 
 def main() -> int:
@@ -248,7 +253,7 @@ def main() -> int:
         raise SystemExit("ANTHROPIC_API_KEY not set (use --dry-run to test without it)")
 
     import anthropic
-    client = anthropic.Anthropic(api_key=api_key)
+    client = anthropic.Anthropic(api_key=api_key, max_retries=MAX_RETRIES)
 
     log(f"Running {len(queries)} queries x {runs} = {len(queries) * runs} calls "
         f"against model {args.model} ...")
@@ -266,15 +271,15 @@ def main() -> int:
                 tok_in += ti
                 tok_out += to
             selections = sum(c == target for c in choices)
-            unparseable = sum(c == UNPARSEABLE for c in choices)
-            rate = selections / runs
-            passed = evaluate(rate, q["expect"], threshold)
+            rate, passed, unparseable, parseable = score_query(
+                choices, target, q["expect"], threshold)
             results.append({**q, "rate": rate, "selections": selections,
-                            "runs": runs, "choices": choices, "passed": passed,
-                            "unparseable": unparseable})
+                            "runs": runs, "parseable": parseable, "choices": choices,
+                            "passed": passed, "unparseable": unparseable})
             mark = "PASS" if passed else "FAIL"
             warn = f"  [!] {unparseable}/{runs} unparseable" if unparseable else ""
-            log(f"  [{mark}] rate={rate:.2f} ({q['expect']:<10} {q['split']:<5}) "
+            shown = "indeterminate" if rate is None else f"rate={rate:.2f}"
+            log(f"  [{mark}] {shown} ({q['expect']:<10} {q['split']:<5}) "
                 f"picks={choices}  {q['q'][:60]}{warn}")
 
     def summarize(subset):
@@ -312,16 +317,17 @@ def main() -> int:
               + "   <- select the best description iteration by this number")
         print(f"tokens  : {tok_in} in / {tok_out} out")
         if summary["unparseable"]:
-            # Loud, because these are the samples most likely to be scored
-            # wrongly: an unparseable response counts against a should-trigger
-            # query correctly, but makes a should-NOT-trigger query look like
-            # it passed for the right reason when it did not.
-            print(f"WARNING : {summary['unparseable']} unparseable response(s) — "
-                  f"no_trigger passes may be spurious; inspect `picks` above")
+            # Still surfaced even though the rate now excludes these: a high
+            # unparseable count means the selector contract is degrading, and a
+            # query scored on 1 of 3 surviving samples is far noisier than the
+            # configured runs_per_query implies.
+            print(f"WARNING : {summary['unparseable']} unparseable response(s) excluded from "
+                  f"rates — effective sample size is reduced; inspect `picks` above")
         if summary["failures"]:
             print("\nfailures:")
             for fl in summary["failures"]:
-                print(f"  - [{fl['split']} {fl['expect']}] rate={fl['rate']:.2f}  {fl['q']}")
+                shown = "indeterminate" if fl["rate"] is None else f"rate={fl['rate']:.2f}"
+                print(f"  - [{fl['split']} {fl['expect']}] {shown}  {fl['q']}")
 
     return 1 if summary["failures"] else 0
 

@@ -21,6 +21,7 @@ Exits non-zero on any failure.
 
 from __future__ import annotations
 
+import ast
 import importlib.util
 import sys
 from pathlib import Path
@@ -76,37 +77,73 @@ check("parse: UNPARSEABLE sentinel is distinct from 'none'", UNPARSEABLE == "non
 check("parse: UNPARSEABLE sentinel is not a catalog name", UNPARSEABLE in NAMES, False)
 
 
-# --- Retry classification -----------------------------------------------------
-# Transient failures get another attempt; permanent ones must raise immediately
-# rather than burning the retry budget on something that cannot succeed.
+# --- Retry is delegated to the SDK -------------------------------------------
+# The hand-rolled retry loop was removed: it stacked on the SDK's own retries
+# and its blind backoff ignored Retry-After, which the SDK honors. What remains
+# testable without the anthropic package is *structural* — that the client is
+# still constructed with an explicit, raised retry budget. Asserted via AST
+# rather than a string search so reformatting cannot silently defeat it.
 
-class _Fake(Exception):
-    """Stand-in for an anthropic error, matched by class name or status_code."""
+check("retry: budget is raised above the SDK default of 2", harness.MAX_RETRIES > 2, True)
+check("retry: budget is not absurd", harness.MAX_RETRIES <= 10, True)
 
-    def __init__(self, name: str = "Fake", status: int | None = None):
-        super().__init__(name)
-        self.__class__.__name__ = name
-        self.status_code = status
+_src = ast.parse(HARNESS.read_text(encoding="utf-8"))
+_anthropic_calls = [
+    node for node in ast.walk(_src)
+    if isinstance(node, ast.Call)
+    and isinstance(node.func, ast.Attribute)
+    and node.func.attr == "Anthropic"
+]
+check("retry: exactly one Anthropic client is constructed", len(_anthropic_calls), 1)
+if _anthropic_calls:
+    _kwargs = {kw.arg for kw in _anthropic_calls[0].keywords}
+    check("retry: client passes max_retries explicitly", "max_retries" in _kwargs, True)
+    _val = next(kw.value for kw in _anthropic_calls[0].keywords if kw.arg == "max_retries")
+    check("retry: max_retries is wired to the MAX_RETRIES constant",
+          isinstance(_val, ast.Name) and _val.id == "MAX_RETRIES", True)
+
+# The removed loop must stay removed — a reintroduced wrapper would re-stack.
+check("retry: no hand-rolled retry helper remains", hasattr(harness, "_retryable"), False)
 
 
-for name in ["APIConnectionError", "APITimeoutError", "RateLimitError",
-             "InternalServerError", "OverloadedError"]:
-    check(f"retry: {name} is retryable", harness._retryable(_Fake(name)), True)
+# --- Scoring excludes unparseable samples from the denominator ---------------
+# The defect this closes (issue #26): dividing by every run let a malformed
+# response drag a no_trigger query's rate toward 0 and thereby pass it.
 
-for status in [408, 409, 429, 500, 502, 503, 529]:
-    check(f"retry: HTTP {status} is retryable", harness._retryable(_Fake("APIStatusError", status)), True)
+score = harness.score_query
+T = "cite"
+U = UNPARSEABLE
 
-for status in [400, 401, 403, 404, 422]:
-    check(f"retry: HTTP {status} is NOT retryable", harness._retryable(_Fake("APIStatusError", status)), False)
+# The exact regression from the issue. Strict `<` in evaluate() is what makes
+# 1/2 fail where 1/3 passed, so this pair is the whole point.
+_rate, _passed, _unp, _parse = score([T, "none", U], T, "no_trigger", 0.5)
+check("score: unparseable excluded -> rate is 1/2, not 1/3", _rate, 0.5)
+check("score: that no_trigger query now FAILS (it used to pass)", _passed, False)
+check("score: unparseable counted", _unp, 1)
+check("score: parseable counted", _parse, 2)
 
-check("retry: unknown exception with no status is NOT retryable",
-      harness._retryable(ValueError("boom")), False)
+# Same samples with no garbage must be untouched — the fix must not move
+# verdicts for clean runs.
+check("score: clean no_trigger below threshold still passes",
+      score([T, "none", "none"], T, "no_trigger", 0.5)[1], True)
+check("score: clean trigger above threshold still passes",
+      score([T, T, "none"], T, "trigger", 0.5)[1], True)
+check("score: clean rate is unchanged when nothing is unparseable",
+      score([T, T, "none"], T, "trigger", 0.5)[0], 2 / 3)
 
+# All-unparseable is indeterminate, NOT a clean 0.0 no_trigger pass.
+_rate, _passed, _unp, _parse = score([U, U, U], T, "no_trigger", 0.5)
+check("score: all-unparseable rate is None (indeterminate)", _rate, None)
+check("score: all-unparseable FAILS rather than passing on no data", _passed, False)
+check("score: all-unparseable reports zero parseable", _parse, 0)
+check("score: all-unparseable also fails a trigger query",
+      score([U, U], T, "trigger", 0.5)[1], False)
 
-# --- Retry budget is bounded --------------------------------------------------
-
-check("retry: MAX_ATTEMPTS is bounded", 1 < harness.MAX_ATTEMPTS <= 6, True)
-check("retry: backoff base grows", harness.BASE_BACKOFF > 1, True)
+# A single surviving sample still scores, on the reduced denominator.
+check("score: one parseable selection out of three -> 1.0",
+      score([T, U, U], T, "trigger", 0.5)[0], 1.0)
+check("score: one parseable non-selection -> 0.0",
+      score(["none", U, U], T, "trigger", 0.5)[0], 0.0)
 
 
 if failures:

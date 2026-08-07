@@ -35,32 +35,39 @@ ssh root@openclaw-prod '
   echo "===HERMES_CRON_STATUS==="
   sudo -u node bash -lc "hermes cron status 2>&1" | head -10
 
-  echo "===HERMES_CRON_FAILURES_24H==="
+  echo "===HERMES_CRON_FAILURES==="
   sudo -u node python3 -c "
 import json, datetime
 data = json.load(open(\"/home/node/.hermes/cron/jobs.json\"))
 now = datetime.datetime.now(datetime.timezone.utc)
-cutoff = now - datetime.timedelta(hours=24)
 issues = []
 for j in data.get(\"jobs\", []):
     last_status = j.get(\"last_status\")
     last_run = j.get(\"last_run_at\")
     last_err = j.get(\"last_error\")
     deliv_err = j.get(\"last_delivery_error\")
-    if last_run:
-        try:
-            t = datetime.datetime.fromisoformat(last_run.replace(\"Z\",\"+00:00\"))
-            if t >= cutoff and (last_status != \"ok\" or deliv_err):
-                jid = j.get(\"id\", \"\")[:12]
-                jname = j.get(\"name\", \"\")[:40]
-                issues.append(f\"  {jid:12s} {jname:40s} status={last_status} err={last_err or deliv_err}\")
-        except Exception: pass
-print(\"\n\".join(issues) if issues else \"(no cron failures in past 24h)\")
+    jname = j.get(\"name\", \"\")[:40]
+    if not last_run:
+        issues.append(f\"  {jname:40s} NEVER RUN\")
+        continue
+    try:
+        t = datetime.datetime.fromisoformat(last_run.replace(\"Z\",\"+00:00\"))
+        age_h = (now - t).total_seconds() / 3600
+    except Exception:
+        issues.append(f\"  {jname:40s} unparseable last_run_at={last_run}\")
+        continue
+    if last_status != \"ok\" or deliv_err:
+        issues.append(f\"  {jname:40s} age={age_h:6.1f}h status={last_status} err={last_err or deliv_err}\")
+print(\"\n\".join(issues) if issues else \"(no cron failures)\")
 " 2>&1
 
   echo "===AXIOM_TMUX==="
   systemctl is-active axiom-tmux.service 2>&1
-  sudo -u axiom tmux ls 2>&1 | head -3
+  # axiom-tmux.service runs as User=node on the NAMED socket `-L axiom`, despite
+  # the service name. Checking `sudo -u axiom tmux ls` inspects uid 1001 on the
+  # DEFAULT socket, which can only ever error — and creates a stray
+  # /tmp/tmux-1001 as a side effect. Verified 2026-08-07 against the live unit.
+  sudo -u node tmux -L axiom ls 2>&1 | head -3
 
   echo "===HOST_MEMORY==="
   free -h | head -3
@@ -100,9 +107,10 @@ silently.** A section that produced no output is a finding, not an absence of on
 |---|---|---|
 | `HERMES_GATEWAY` | not `active` | **Critical.** Hermes-Atlas is down — lead with this before anything else. `sudo systemctl restart hermes-gateway.service` |
 | `HERMES_CRON_STATUS` | scheduler not running | **Critical**, same severity as gateway down — no crons will fire |
-| `HERMES_CRON_FAILURES_24H` | ANY job listed | Surface every one. Covers both agent errors (`last_error`) and **delivery** errors (`last_delivery_error` — Telegram down, etc.). Delivery errors are the classic silent-failure mode that actually matters. |
-| `AXIOM_TMUX` | not `active` | Axiom is down. `sudo systemctl restart axiom-tmux.service` |
-| `HERMES_FEED_FRESHNESS` | a daily feed > 30h | That cron silently failed to deliver. Cross-reference `HERMES_CRON_FAILURES_24H`. |
+| `HERMES_CRON_FAILURES` | ANY job listed | Surface every one, and **read the `age=` column** — a large age means the job is not merely failing, it has stopped running. Covers agent errors (`last_error`) and **delivery** errors (`last_delivery_error` — Telegram down, etc.); delivery errors are the classic silent-failure mode that actually matters. |
+| `HERMES_CRON_FAILURES` | `NEVER RUN` | A registered job that has never fired. Sometimes intentional for a newly-added quarterly, but never assume — confirm it against the schedule. |
+| `AXIOM_TMUX` | service not `active`, **or** no `AXIOM` session listed | Axiom is down. `sudo systemctl restart axiom-tmux.service`. A service reporting `active` while the session list is empty is still a failure — the unit is `Type=forking`, so it can stay green after the session dies. |
+| `HERMES_FEED_FRESHNESS` | a daily feed > 30h | That cron silently failed to deliver. Cross-reference `HERMES_CRON_FAILURES`. |
 | `OC_VOLUME_INTACT` | `MISSING` | **Surface immediately.** The cold backup is the rebuild reference; losing it changes the rebuild story dramatically. |
 | `SSH_BRUTEFORCE_PRESSURE` | any count | Informational **unless** fail2ban shows 0 banned *and* pressure is sustained across multiple checks |
 

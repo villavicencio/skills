@@ -93,9 +93,9 @@ git -C "$DOTFILES" commit -m "chore(claude): retire verify-cite (superseded by d
 
 If you don't keep a dotfiles repo at all, delete the old directory outright — a copy you can't restore from isn't a backup.
 
-### Linux Claude Code instances with older git
+### Linux Claude Code instances
 
-`claude plugin marketplace add <owner/repo>` may fail with `ERR_STREAM_PREMATURE_CLOSE` on Linux Claude Code running git ≤ 2.43. This is an upstream `claude` CLI bug; track [issue #8](https://github.com/villavicencio/skills/issues/8) for the fix. Workaround until then:
+`claude plugin marketplace add <owner/repo>` may fail with `ERR_STREAM_PREMATURE_CLOSE` on Linux Claude Code. Observed on Axiom (Debian, git 2.43, `claude` 2.1.150). This is an upstream `claude` CLI bug; track [issue #8](https://github.com/villavicencio/skills/issues/8) for the fix. Workaround until then:
 
 ```bash
 git clone --depth 1 https://github.com/villavicencio/skills.git ~/.local/share/villavicencio-skills
@@ -110,6 +110,8 @@ git -C ~/.local/share/villavicencio-skills pull
 claude plugin marketplace update villavicencio-skills
 claude plugin update dv@villavicencio-skills
 ```
+
+**Note on the cause.** This was originally attributed to old git tolerating the CLI's malformed clone command on macOS but not on Linux. That explanation is wrong: git 2.55.0 on macOS rejects the reported invocation with the same `unknown option: -o`, so it is not a git-version difference. The real variable is unconfirmed, and re-verification on a Linux instance with a current `claude` CLI is still open in [issue #8](https://github.com/villavicencio/skills/issues/8).
 
 ## Versioning
 

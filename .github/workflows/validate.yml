@@ -129,13 +129,28 @@ jobs:
           sys.exit(1 if failed else 0)
           PY
 
-      # Unit-tests the eval harness's own assertion logic. Stdlib only — no
-      # install, no API key, no network — so unlike the paid behavioral job
-      # below it runs on EVERY push and PR. It exists because check_assertions
-      # shipped an any-of/all-of semantics bug that survived undetected for
-      # precisely one reason: no CI path ever executed that function.
-      - name: Unit-test eval assertion logic
-        run: python3 tooling/evals/test_assertions.py
+      # Unit-tests the eval harness's own logic. Stdlib only — no install, no
+      # API key, no network — so unlike the paid behavioral job below these run
+      # on EVERY push and PR. They exist because check_assertions shipped an
+      # any-of/all-of semantics bug that survived undetected for precisely one
+      # reason: no CI path ever executed that function.
+      #
+      # Globbed so adding tooling/evals/test_*.py needs no workflow edit, the
+      # same way fixtures are picked up automatically.
+      - name: Unit-test eval harness logic
+        run: |
+          set -e
+          shopt -s nullglob
+          tests=(tooling/evals/test_*.py)
+          if [ ${#tests[@]} -eq 0 ]; then
+            echo "::error::No tooling/evals/test_*.py found — the harness unit tests have gone missing."
+            exit 1
+          fi
+          for t in "${tests[@]}"; do
+            echo "::group::${t}"
+            python3 "${t}"
+            echo "::endgroup::"
+          done
 
   # Behavioral layer: does each skill actually trigger when it should, and does
   # loading it change behavior in the intended direction? See tooling/evals/README.md

@@ -1,7 +1,7 @@
 {
   "name": "dv",
-  "version": "0.2.2",
-  "description": "David Villavicencio's personal Claude Code skill suite. dv:pickup and dv:handoff bracket a session (hydrate context at the start, serialize state at the end); dv:review-claudemd keeps CLAUDE.md honest by mining conversation history; dv:tmux-window-namer styles tmux windows with a glyph, title, and palette; dv:reddit and dv:twitter fetch and summarize Reddit threads / X posts via public APIs (no auth); dv:critique stress-tests a plan with three parallel critique subagents; dv:cite enforces a re-fetch-or-decline freshness contract on realtime-fact queries; dv:gauntlet runs a staged, cost-tiered adversarial code-review loop over a diff (find → refute → fix → verify) that fixes and commits on the current branch by default.",
+  "version": "0.3.0",
+  "description": "David Villavicencio's personal Claude Code skill suite. dv:pickup and dv:handoff bracket a session (hydrate context at the start, serialize state at the end); dv:review-claudemd keeps CLAUDE.md honest by mining conversation history; dv:tmux-window-namer styles tmux windows with a glyph, title, and palette; dv:reddit and dv:twitter fetch and summarize Reddit threads / X posts via public APIs (no auth); dv:critique stress-tests a plan with three parallel critique subagents; dv:cite enforces a re-fetch-or-decline freshness contract on realtime-fact queries; dv:gauntlet runs a staged, cost-tiered adversarial code-review loop over a diff (find \u2192 refute \u2192 fix \u2192 verify) that fixes and commits on the current branch by default.",
   "author": {
     "name": "David Villavicencio",
     "url": "https://github.com/villavicencio"

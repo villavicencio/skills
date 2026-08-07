@@ -40,14 +40,25 @@ import argparse
 import concurrent.futures
 import json
 import os
+import random
 import re
 import sys
+import time
 from pathlib import Path
 
 import yaml
 
 DEFAULT_MODEL = "claude-sonnet-5"
 DEFAULT_PLUGIN_ROOT = "plugins/dv"
+
+# A response that is neither a catalog name nor `none`. It is NOT the same as
+# `none`, and collapsing the two is a silent scoring error — see parse_choice.
+UNPARSEABLE = "__unparseable__"
+
+# Transient-failure retry. A paid run makes hundreds of calls; without this a
+# single 429 aborts everything and forfeits the tokens already spent.
+MAX_ATTEMPTS = 4
+BASE_BACKOFF = 1.5
 
 
 def log(msg: str) -> None:
@@ -100,7 +111,14 @@ def render_system_prompt(catalog: list[dict]) -> str:
 
 
 def parse_choice(response_text: str, names: list[str]) -> str:
-    """Map a model response onto a catalog name or 'none'."""
+    """Map a model response onto a catalog name, 'none', or UNPARSEABLE.
+
+    UNPARSEABLE is deliberately distinct from 'none'. Collapsing them scores a
+    refusal, a truncated completion, or a response-format change as a
+    legitimate "correctly did not trigger" — which silently inflates the
+    no_trigger pass rate and hides the fact that the harness's contract with
+    the model has broken.
+    """
     text = response_text.strip().lower()
     # Prefer a whole-word match against a known skill name.
     for name in names:
@@ -108,19 +126,50 @@ def parse_choice(response_text: str, names: list[str]) -> str:
             return name
     if re.search(r"\bnone\b", text):
         return "none"
-    return "none"
+    return UNPARSEABLE
+
+
+def _retryable(exc: Exception) -> bool:
+    """Transient API failures worth another attempt; auth/validation errors are not.
+
+    Classified by exception *name* rather than isinstance against anthropic's
+    types on purpose: that keeps this function importable — and therefore
+    unit-testable — without the anthropic package installed. CI runs the tests
+    with stdlib only.
+    """
+    if type(exc).__name__ in (
+        "APIConnectionError", "APITimeoutError", "RateLimitError",
+        "InternalServerError", "OverloadedError",
+    ):
+        return True
+    return getattr(exc, "status_code", None) in (408, 409, 429, 500, 502, 503, 529)
 
 
 def run_one_call(client, model: str, system: str, query: str, names: list[str]):
-    """One selector call. Returns (choice, input_tokens, output_tokens)."""
-    msg = client.messages.create(
-        model=model,
-        max_tokens=20,
-        system=system,
-        messages=[{"role": "user", "content": query}],
-    )
-    text = "".join(block.text for block in msg.content if block.type == "text")
-    return parse_choice(text, names), msg.usage.input_tokens, msg.usage.output_tokens
+    """One selector call, with bounded retry. Returns (choice, in_tokens, out_tokens).
+
+    Retry exists because this runs inside a ThreadPoolExecutor whose results are
+    collected with Future.result(): one unhandled 429 propagates out, aborts the
+    entire run, and forfeits every token already paid for in earlier queries.
+    A permanent failure (401, malformed request) still raises — retrying that
+    would just burn attempts on something that cannot succeed.
+    """
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        try:
+            msg = client.messages.create(
+                model=model,
+                max_tokens=20,
+                system=system,
+                messages=[{"role": "user", "content": query}],
+            )
+            text = "".join(block.text for block in msg.content if block.type == "text")
+            return parse_choice(text, names), msg.usage.input_tokens, msg.usage.output_tokens
+        except Exception as exc:
+            if attempt == MAX_ATTEMPTS or not _retryable(exc):
+                raise
+            delay = BASE_BACKOFF**attempt + random.uniform(0, 0.5)
+            log(f"  transient {type(exc).__name__}, attempt {attempt}/{MAX_ATTEMPTS} — retrying in {delay:.1f}s")
+            time.sleep(delay)
 
 
 def evaluate(rate: float, expect: str, threshold: float) -> bool:
@@ -154,6 +203,11 @@ def main() -> int:
     runs = args.runs or fixtures.get("runs_per_query", 3)
     threshold = args.threshold if args.threshold is not None else fixtures.get("pass_threshold", 0.5)
     queries = fixtures["queries"]
+    # Fail fast rather than dividing by zero later: with no queries, `overall`
+    # summarizes to pass_rate None and the report's unguarded `:.0%` format
+    # raises TypeError after the run has already been paid for.
+    if not queries:
+        raise SystemExit(f"{fixtures_path}: 'queries' is empty — nothing to evaluate")
 
     catalog = load_catalog(plugin_root)
     names = [s["name"] for s in catalog]
@@ -205,13 +259,16 @@ def main() -> int:
                 tok_in += ti
                 tok_out += to
             selections = sum(c == target for c in choices)
+            unparseable = sum(c == UNPARSEABLE for c in choices)
             rate = selections / runs
             passed = evaluate(rate, q["expect"], threshold)
             results.append({**q, "rate": rate, "selections": selections,
-                            "runs": runs, "choices": choices, "passed": passed})
+                            "runs": runs, "choices": choices, "passed": passed,
+                            "unparseable": unparseable})
             mark = "PASS" if passed else "FAIL"
+            warn = f"  [!] {unparseable}/{runs} unparseable" if unparseable else ""
             log(f"  [{mark}] rate={rate:.2f} ({q['expect']:<10} {q['split']:<5}) "
-                f"picks={choices}  {q['q'][:60]}")
+                f"picks={choices}  {q['q'][:60]}{warn}")
 
     def summarize(subset):
         if not subset:
@@ -228,6 +285,7 @@ def main() -> int:
         "train": summarize([r for r in results if r["split"] == "train"]),
         "val": summarize([r for r in results if r["split"] == "val"]),
         "tokens": {"input": tok_in, "output": tok_out},
+        "unparseable": sum(r["unparseable"] for r in results),
         "failures": [
             {"q": r["q"], "expect": r["expect"], "split": r["split"], "rate": r["rate"]}
             for r in results if not r["passed"]
@@ -246,6 +304,13 @@ def main() -> int:
               + (f" ({v['pass_rate']:.0%})" if v["n"] else "")
               + "   <- select the best description iteration by this number")
         print(f"tokens  : {tok_in} in / {tok_out} out")
+        if summary["unparseable"]:
+            # Loud, because these are the samples most likely to be scored
+            # wrongly: an unparseable response counts against a should-trigger
+            # query correctly, but makes a should-NOT-trigger query look like
+            # it passed for the right reason when it did not.
+            print(f"WARNING : {summary['unparseable']} unparseable response(s) — "
+                  f"no_trigger passes may be spurious; inspect `picks` above")
         if summary["failures"]:
             print("\nfailures:")
             for fl in summary["failures"]:

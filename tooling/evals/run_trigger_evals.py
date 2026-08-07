@@ -46,8 +46,6 @@ import sys
 import time
 from pathlib import Path
 
-import yaml
-
 DEFAULT_MODEL = "claude-sonnet-5"
 DEFAULT_PLUGIN_ROOT = "plugins/dv"
 
@@ -67,7 +65,16 @@ def log(msg: str) -> None:
 
 
 def parse_frontmatter(skill_md: Path) -> dict:
-    """Return the YAML frontmatter of a SKILL.md as a dict."""
+    """Return the YAML frontmatter of a SKILL.md as a dict.
+
+    yaml is imported here rather than at module scope — same pattern as
+    `import anthropic` inside main(). It keeps this module's import surface
+    stdlib-only, which is what lets the unit tests import it in CI with
+    nothing installed. A top-level import made the always-on test step
+    depend on pyyaml being present.
+    """
+    import yaml
+
     text = skill_md.read_text(encoding="utf-8")
     if not text.startswith("---"):
         raise ValueError(f"{skill_md}: no frontmatter (must start with '---')")

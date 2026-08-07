@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
 """Unit tests for the trigger-eval harness's parsing and retry classification.
 
-Stdlib only, no network, no anthropic package — same contract as
+Stdlib only, no network, no third-party packages — same contract as
 test_assertions.py, and for the same reason: logic that CI never executes is
-logic whose bugs nobody finds. `run_trigger_evals.py` imports anthropic inside
-main(), and `_retryable` classifies by exception *name* rather than isinstance,
-so both stay importable here with nothing installed.
+logic whose bugs nobody finds.
+
+That contract constrains the harness under test, not just this file. Three
+things keep `run_trigger_evals.py` importable with nothing installed:
+`import anthropic` lives inside main(), `import yaml` inside
+parse_frontmatter(), and `_retryable` classifies by exception *name* rather
+than isinstance against anthropic's types. A module-scope third-party import
+in that file breaks this suite — which is not hypothetical: a top-level
+`import yaml` did exactly that, and CI caught it because the always-on test
+step installs nothing.
 
     python3 tooling/evals/test_trigger_parsing.py
 

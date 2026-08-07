@@ -79,6 +79,13 @@ are applied to the with-skill response and are strictly **code-checkable**
 (regex match / non-match) — never "is it good". The baseline response is
 captured so you can confirm the skill is actually doing work.
 
+The two assertion fields quantify differently, despite the parallel names:
+`must_match_any` passes if **at least one** pattern matches — the patterns are
+alternative phrasings of a single required behavior, not N separate
+requirements — while `must_not_match_any` passes only if **no** pattern
+matches, each one being an independent prohibition. An absent key or an empty
+list is no constraint.
+
 For `cite`, cases run with **no fetch tool**, which forces the exact
 decline-vs-confabulate decision the skill governs and needs no network (so it's
 deterministic and CI-safe):

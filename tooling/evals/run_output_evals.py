@@ -59,12 +59,25 @@ def load_skill_body(skill_md: Path) -> str:
 
 
 def check_assertions(text: str, spec: dict) -> list[str]:
-    """Return a list of failure messages ([] == all assertions passed)."""
+    """Return a list of failure messages ([] == all assertions passed).
+
+    The two fields quantify differently, despite the parallel names:
+      * must_match_any     — at least ONE pattern must match. The patterns are
+                             alternative phrasings of a single required
+                             behavior, not N independent requirements.
+      * must_not_match_any — NO pattern may match. Each is an independent
+                             prohibition, so every violation is reported.
+    Both are optional; an absent key or an empty list is no constraint.
+    """
     failures = []
-    for pat in spec.get("must_match_any", []):
-        if not re.search(pat, text):
-            failures.append(f"must_match_any unsatisfied: no pattern matched, missing /{pat}/")
-            break  # any-of: one report is enough
+    pats = spec.get("must_match_any", [])
+    # The `pats and` guard is load-bearing, not stylistic: any([]) is False, so
+    # dropping it would fail every case that omits the key or lists no
+    # alternatives — and the call site passes {} for a case with no with_skill
+    # assertions at all.
+    if pats and not any(re.search(p, text) for p in pats):
+        alts = ", ".join(f"/{p}/" for p in pats)
+        failures.append(f"must_match_any unsatisfied: none of {len(pats)} patterns matched: {alts}")
     for pat in spec.get("must_not_match_any", []):
         if re.search(pat, text):
             failures.append(f"must_not_match_any violated: matched /{pat}/")

@@ -4,7 +4,7 @@ description: Stress-test a plan before implementing it by running three parallel
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.2.2"
+  version: "0.3.0"
 ---
 
 # /critique — Multi-Agent Plan Critique

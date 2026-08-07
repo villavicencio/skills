@@ -129,6 +129,14 @@ jobs:
           sys.exit(1 if failed else 0)
           PY
 
+      # Unit-tests the eval harness's own assertion logic. Stdlib only — no
+      # install, no API key, no network — so unlike the paid behavioral job
+      # below it runs on EVERY push and PR. It exists because check_assertions
+      # shipped an any-of/all-of semantics bug that survived undetected for
+      # precisely one reason: no CI path ever executed that function.
+      - name: Unit-test eval assertion logic
+        run: python3 tooling/evals/test_assertions.py
+
   # Behavioral layer: does each skill actually trigger when it should, and does
   # loading it change behavior in the intended direction? See tooling/evals/README.md
   # for the methodology.

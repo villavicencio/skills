@@ -3,7 +3,7 @@ title: "feat: dv:gauntlet — staged adversarial code-review loop (Claude↔Code
 type: feat
 status: proposed — decisions locked with David 2026-07-24; ready for Opus implementation session
 date: 2026-07-24
-origin: three-repo research survey this session (browse-gateway/Obscura, skills-private/erato, global config + plugin caches) + Atlas cost-hardening architecture (2026-07-24), Fable 5 research session · For: Opus implementation session
+origin: three-repo research survey this session (browse-gateway/Obscura, global config + plugin caches) + Atlas cost-hardening architecture (2026-07-24), Fable 5 research session · For: Opus implementation session
 ---
 
 # feat: `dv:gauntlet` — staged adversarial code-review loop
@@ -563,5 +563,4 @@ the skill pointer; the skill itself owns the procedure.
 - Stop rules: browse-gateway `docs/solutions/architecture-patterns/{vendor-label-as-projection…,timing-single-derivation…,self-inflicted-refusal…,reap-detached-process…}.md`
 - FIND/REFUTE/anchor shapes: ce-code-review 3.20.0 `references/{personas/adversarial-reviewer,validator-template,validator-batch-template,subagent-template,cross-model-review,finish-review,action-class-rubric}.md`, `findings-schema.json`, `scripts/cross-model-adversarial-review.sh`
 - Codex surfaces: codex plugin 1.0.6 `commands/{adversarial-review,review}.md`, `prompts/{adversarial-review,stop-review-gate}.md`, `schemas/review-output.schema.json`; `codex-cli 0.144.1` (`~/.codex/config.toml`)
-- erato practice + results: skills-private `HANDOFF.md` (PR #13: 39→13+9+15 triage), `docs/release-notes/gooner--v{0.1.1,0.1.2,0.4.1,0.7.1}.md`
 - House template + siblings: this repo `docs/plans/2026-05-25-001-…tmux…plan.md`, `plugins/dv/skills/critique/SKILL.md`, `AGENTS.md`, `tooling/evals/README.md`

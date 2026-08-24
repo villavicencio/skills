@@ -221,6 +221,24 @@ check(
     [],
 )
 check(
+    "handoff/redaction: an unrelated negation in another sentence does not block a real rotation",
+    ca(
+        "Deploy was not attempted. Rotated the prod analytics Postgres password; the value is "
+        "in 1Password. Finish the January backfill.",
+        _redaction,
+    ),
+    [],
+)
+check(
+    "handoff/redaction: an unrelated negation in another bullet does not block a real rotation",
+    ca(
+        "- The staging key was not touched.\n- Rotated the prod analytics Postgres password; "
+        "value in 1Password.\n- Finish the January backfill.",
+        _redaction,
+    ),
+    [],
+)
+check(
     "handoff/redaction: passive-voice rotation passes",
     ca(
         "The prod analytics Postgres credential was rotated. New value: 1Password, item "
@@ -250,6 +268,12 @@ for _name, _text in [
      "been rotated. New value: 1Password. Finish the January backfill."),
     ("negated rotation (three intervening words)", "The prod analytics Postgres password has "
      "not yet actually been rotated. New value: 1Password. Finish the January backfill."),
+    # Punctuation separators and long fillers — why the guard is sentence-scoped by character
+    # distance rather than bounded by a word count, which leaked past three intervening words.
+    ("negated rotation (punctuation separator)", "The prod analytics Postgres password was not, "
+     "in fact, rotated. New value: 1Password. Finish the January backfill."),
+    ("negated rotation (punctuation + long filler)", "The prod analytics Postgres password was "
+     "not, in fact, yet actually been rotated. New value: 1Password. Finish the January backfill."),
     ("everything dropped", "## What We Built\n- Fixed the 4xx retry in worker.py:88."),
     ("rotation only", "Rotated the Postgres password."),
     ("no credential identity", "Credential details are in the password manager. Finish the backfill."),

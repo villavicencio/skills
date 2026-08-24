@@ -95,9 +95,13 @@ resume_focus: "[the focus: argument — include this line ONLY when focus: was p
 [One paragraph (2-3 sentences) framing the session — what arc you were on, what the goal was, what came before. Sets context for everything below.]
 
 ## What We Built
-[Concrete bullet list — PRs opened/merged, components changed, bugs fixed, docs added.
-Name the files, PR numbers, and components. "Fixed hero clip-path" is weak. "PR #28 — tuned
-ellipse(80% 56%) dome, reduced top padding pt-20→pt-6, moved brand label below subtitle" is good.]
+[Pointer-first bullet list. Each bullet names the artifact — PR number, `file:line`, doc path —
+plus one clause on what matters there. "Fixed hero clip-path" is weak: it names no artifact.
+"PR #28 — tuned the dome ellipse, reduced top padding, moved the brand label below the subtitle,
+and here is the full CSS diff…" is also weak, in the opposite direction: it re-narrates what the
+PR already holds. "PR #28 — hero dome geometry; the ellipse values were eyeballed against the
+Figma frame, so re-check them if the frame moves" is good — pointer, then the one thing the
+artifact does not tell you.]
 
 ## Decisions Made
 [Architectural, design, or implementation calls and the reasoning behind them.
@@ -117,6 +121,17 @@ Be specific: name the file, PR, or component. Vague summaries don't help the nex
 touching related code. When in doubt, over-document here.]
 ```
 
+**Pointer-first:** every bullet names its artifact and adds one clause on *what matters there* —
+never a prose copy of what the artifact already carries. A reader with the repo open should be
+following pointers, not rereading a summary of commits they can `git show`. This is not brevity
+for its own sake: a restatement drifts from the artifact the moment either changes, and the
+handoff is the copy that goes stale. The reasoning, the constraint, the thing that will bite the
+next session — that is what belongs here, because it exists nowhere else.
+
+The exception is anything with no artifact to point at: a decision made in conversation, a dead
+end that produced no commit, a gotcha discovered while debugging. Those get written out in full,
+because there is nothing to link to.
+
 **Frontmatter rules:**
 
 - Copy `head`, `branch`, and `created_at` **verbatim** from the anchor block — never from memory,
@@ -134,7 +149,9 @@ touching related code. When in doubt, over-document here.]
   there is no offset at all.
 
 **Quality bar:** Every bullet should be specific enough that someone who wasn't in this session
-knows exactly what happened and what to do next. No vague summaries.
+knows exactly what happened and what to do next. No vague summaries. Pointer-first is how that
+bar is met, not a relaxation of it — an artifact reference with no clause on why it matters
+fails the bar just as a vague summary does.
 
 ### Step 3 — Check for blockers
 Before confirming, scan for anything that would block the next session and call it out explicitly if found:

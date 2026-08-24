@@ -42,6 +42,10 @@ is deferred to v0.2+ if/when the need surfaces.
   is allowed only when every other gate is green **and** the PR body records that CodeRabbit was
   throttled rather than silent. For anything beyond docs and config, prefer waiting for capacity.
   `@coderabbitai rate limit` reports remaining capacity without consuming a review.
+- **Never push while a review is in flight.** A push that lands mid-review aborts it —
+  "Review failed — the head commit changed during the review" — and the spent review is gone
+  with nothing to show. Land every edit first, *then* request the round. (Observed on #36,
+  2026-08-24, in the very commit that documented the throttle.)
   (2026-08-24: #33 was merged on `validate` pass 52 s before CodeRabbit posted CHANGES_REQUESTED
   with four valid findings, which had to be fixed forward in #34 — where re-reviews caught five
   more, nine valid findings in total. #35 then sat throttled for over an hour — while six

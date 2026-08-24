@@ -1,6 +1,6 @@
 ---
 name: handoff
-description: "Write a HANDOFF.md serializing this session — what shipped, decisions, what's next, gotchas. Use at session end; pairs with `dv:pickup`."
+description: "Write a HANDOFF.md serializing this session — what shipped, decisions, what's next, gotchas — under commit-anchored frontmatter (created_at, branch, head); `focus: <text>` records what the next session should pick up first. Use at session end; pairs with `dv:pickup`."
 license: Apache-2.0
 metadata:
   author: villavicencio
@@ -12,6 +12,20 @@ metadata:
 Use this command at the end of any working session to write `HANDOFF.md` at the repo root.
 Captures what was built, decisions made, what's next, and gotchas — so the next session
 (yours or a teammate's) can `/pickup` and resume cold.
+
+<handoff_args>
+#$ARGUMENTS
+</handoff_args>
+
+## Arguments
+
+Parse the block above. Bare invocation takes no arguments.
+
+| Arg | Effect |
+|---|---|
+| `focus: <text>` | Sets `resume_focus` in the frontmatter — the one thing the next session should pick up first. `/pickup` treats it as the default "Next up" unless the handoff body contradicts it. Omitted → the field is omitted. |
+
+Anything else in the block is free-text context for the handoff body.
 
 ## Steps
 
@@ -47,7 +61,12 @@ else
 
   echo "=== Uncommitted changes ==="
   git status --short
+
+  echo "=== Anchor (copy verbatim into the frontmatter) ==="
+  echo "head: $(git rev-parse --short HEAD 2>/dev/null || echo unborn)"
+  BRANCH=$(git branch --show-current); echo "branch: ${BRANCH:-(detached)}"
 fi
+echo "created_at: $(date +%Y-%m-%dT%H:%M:%S%z | sed 's/\([0-9][0-9]\)$/:\1/')"
 ```
 
 ### Step 2 — Write HANDOFF.md
@@ -61,6 +80,12 @@ Reading it first makes the overwrite succeed cleanly on the first try.
 Then, using everything from this session plus the gathered context, write `HANDOFF.md`:
 
 ```markdown
+---
+created_at: "[ISO-8601 with TZ offset — the created_at line from Step 1's anchor block]"
+branch: "[branch from the anchor block]"
+head: "[short sha from the anchor block]"
+resume_focus: "[the focus: argument — include this line ONLY when focus: was passed]"
+---
 # HANDOFF — [YYYY-MM-DD, time of day]
 
 [One paragraph (2-3 sentences) framing the session — what arc you were on, what the goal was, what came before. Sets context for everything below.]
@@ -88,6 +113,12 @@ Be specific: name the file, PR, or component. Vague summaries don't help the nex
 touching related code. When in doubt, over-document here.]
 ```
 
+**Frontmatter rules:** copy `head`, `branch`, and `created_at` verbatim from the anchor block —
+never from memory, never re-derived. Quote every value. Outside a git repo write only
+`created_at` (drop `branch`/`head`). `/pickup` parses this block to compute commits-since-handoff,
+so `head` must be the HEAD *at write time*; the auto-commit in Notes lands one commit after it,
+which `/pickup` recognizes as the handoff's own commit rather than drift.
+
 **Quality bar:** Every bullet should be specific enough that someone who wasn't in this session
 knows exactly what happened and what to do next. No vague summaries.
 
@@ -104,7 +135,8 @@ After writing, reply with:
 - If there are immediate blockers: "⚠️ Before next session: [specific thing]"
 
 ## Notes
-- Overwrites existing HANDOFF.md — it's always current-session state, not a history log
+- Overwrites existing HANDOFF.md — it's always current-session state, not a history log. A
+  pre-0.4.0 file without frontmatter is overwritten the same way; nothing is parsed from it
 - Commits the file automatically if there are no other uncommitted changes:
   ```bash
   if git add HANDOFF.md && git commit -m "docs: update handoff"; then

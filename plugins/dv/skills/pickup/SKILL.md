@@ -1,6 +1,6 @@
 ---
 name: pickup
-description: "Read HANDOFF.md and orient: surface git/PR state and recent CE artifacts, then propose a next action. Use at session start."
+description: "Read HANDOFF.md and orient: anchor on the handoff's commit (N commits since, not file age), surface git/PR state and recent CE artifacts, then propose a next action. Use at session start."
 license: Apache-2.0
 metadata:
   author: villavicencio
@@ -17,6 +17,29 @@ Reads HANDOFF.md, loads relevant context, and tells you exactly where to start.
 ### Step 1 — Read the handoff
 ```bash
 cat HANDOFF.md 2>/dev/null || echo "No HANDOFF.md found."
+```
+
+Then anchor freshness on the handoff's own commit, not the file's age. The frontmatter is
+optional — a pre-0.4.0 handoff has none and falls back to mtime:
+```bash
+if [ -f HANDOFF.md ] && [ "$(head -1 HANDOFF.md)" = "---" ]; then
+  FM=$(sed -n '2,/^---$/{/^---$/!p;}' HANDOFF.md)
+  echo "=== Handoff anchor ==="; printf '%s\n' "$FM"
+  H=$(printf '%s\n' "$FM" | sed -n 's/^head: *"\{0,1\}\([0-9a-fA-F]*\)"\{0,1\} *$/\1/p')
+  if [ -n "$H" ] && git rev-parse --git-dir >/dev/null 2>&1; then
+    B=$(git branch --show-current)
+    echo "=== Now: ${B:-(detached)} @ $(git rev-parse --short HEAD) ==="
+    if git cat-file -e "$H^{commit}" 2>/dev/null; then
+      echo "=== Commits since handoff: $(git rev-list --count "$H..HEAD") ==="
+      git log --oneline "$H..HEAD"
+    else
+      echo "(handoff head $H is unreachable here — rebased, squashed, or a different clone; fall back to created_at)"
+    fi
+  fi
+elif [ -f HANDOFF.md ]; then
+  echo "(no frontmatter — pre-0.4.0 handoff; freshness falls back to file mtime)"
+  stat -f '%Sm' HANDOFF.md 2>/dev/null || stat -c '%y' HANDOFF.md 2>/dev/null
+fi
 ```
 
 If no HANDOFF.md exists, say so and fall back to git log (gated on being in a git repo):
@@ -84,16 +107,25 @@ If any artifacts are found (and the CE plugin is installed so its commands are a
 
 Synthesize everything into a brief, confident session kickoff:
 
-1. **2-3 sentence summary** of where things stand — what was completed, what's in flight
-2. **"Next up:"** — the single most important thing to tackle first, based on "What's Next" in the handoff
-3. **CE artifacts** — if any brainstorms, plans, or solutions were found, note them briefly (e.g., "There's an open brainstorm on X ready for planning" or "2 new solutions were compounded last session")
-4. **Any gotchas to keep in mind** — surface the watch-outs from the handoff so they're top of mind before touching code
-5. **A ready-to-go prompt** — end with something like: *"Ready when you are — just say go and I'll start on [specific task]."*
+1. **Anchor line first** — precision before prose. With frontmatter: "Handoff written at
+   `<head>` on `<branch>` (`<created_at>`); now at `<sha>` on `<current branch>`, N commits since",
+   then the movers (the `git log` lines) when N > 0. A lone `docs: update handoff` commit
+   directly after `<head>` is the handoff's own auto-commit — say so and don't count it as
+   movement. If `<head>` was unreachable, say that and anchor on `created_at` alone. Without
+   frontmatter: "This handoff is from X days ago (by mtime) — things may have moved."
+2. **2-3 sentence summary** of where things stand — what was completed, what's in flight
+3. **"Next up:"** — the single most important thing to tackle first. If `resume_focus` is set
+   it is the default, unless the handoff body contradicts it — then say which won and why.
+   Otherwise take it from "What's Next" in the handoff
+4. **CE artifacts** — if any brainstorms, plans, or solutions were found, note them briefly (e.g., "There's an open brainstorm on X ready for planning" or "2 new solutions were compounded last session")
+5. **Any gotchas to keep in mind** — surface the watch-outs from the handoff so they're top of mind before touching code
+6. **A ready-to-go prompt** — end with something like: *"Ready when you are — just say go and I'll start on [specific task]."*
 
 Keep the tone direct and energized. This is a fresh start, not a status report.
 
 ## Notes
-- If HANDOFF.md is stale (date is old), flag it: "This handoff is from X days ago — things may have moved."
+- Staleness is measured in commits since `head`, not wall-clock. Date-based framing ("overnight",
+  "last week") only when the frontmatter is absent, and then say it's by mtime
 - If there are open PRs with pending review comments, surface them — they're likely blocking
 - Don't re-read CLAUDE.md or project docs unless the handoff references something that requires it
 - The goal is: oriented and working within 60 seconds

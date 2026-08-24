@@ -26,14 +26,20 @@ if [ -f HANDOFF.md ] && [ "$(head -1 HANDOFF.md)" = "---" ]; then
   FM=$(sed -n '2,/^---$/{/^---$/!p;}' HANDOFF.md)
   echo "=== Handoff anchor ==="; printf '%s\n' "$FM"
   H=$(printf '%s\n' "$FM" | sed -n 's/^head: *"\{0,1\}\([0-9a-fA-F]*\)"\{0,1\} *$/\1/p')
-  if [ -n "$H" ] && git rev-parse --git-dir >/dev/null 2>&1; then
+  if [ -z "$H" ]; then
+    echo "(no head anchor in the frontmatter — written in an unborn repo or outside git; orient from created_at, no commit count)"
+  elif ! git rev-parse --git-dir >/dev/null 2>&1; then
+    echo "(not a git repo here — cannot resolve anchor $H; orient from created_at)"
+  else
     B=$(git branch --show-current)
     echo "=== Now: ${B:-(detached)} @ $(git rev-parse --short HEAD) ==="
-    if git cat-file -e "$H^{commit}" 2>/dev/null; then
+    if ! git cat-file -e "$H^{commit}" 2>/dev/null; then
+      echo "(handoff head $H is not in this clone — squashed away or a different checkout; fall back to created_at)"
+    elif ! git merge-base --is-ancestor "$H" HEAD 2>/dev/null; then
+      echo "(handoff head $H exists but is NOT an ancestor of HEAD — history was rebased, reset, or amended, so a commit count would be misleading; fall back to created_at)"
+    else
       echo "=== Commits since handoff: $(git rev-list --count "$H..HEAD") ==="
       git log --oneline "$H..HEAD"
-    else
-      echo "(handoff head $H is unreachable here — rebased, squashed, or a different clone; fall back to created_at)"
     fi
   fi
 elif [ -f HANDOFF.md ]; then
@@ -111,7 +117,10 @@ Synthesize everything into a brief, confident session kickoff:
    `<head>` on `<branch>` (`<created_at>`); now at `<sha>` on `<current branch>`, N commits since",
    then the movers (the `git log` lines) when N > 0. A lone `docs: update handoff` commit
    directly after `<head>` is the handoff's own auto-commit — say so and don't count it as
-   movement. If `<head>` was unreachable, say that and anchor on `created_at` alone. Without
+   movement. If the block reported the head **missing**, **not an ancestor**, or **absent from
+   the frontmatter**, lead with that instead ("history diverged since the handoff — rebased/reset",
+   or "no commit anchor — orienting by timestamp") and anchor on `created_at` alone; never report
+   a commit count in that case. Without
    frontmatter: "This handoff is from X days ago (by mtime) — things may have moved."
 2. **2-3 sentence summary** of where things stand — what was completed, what's in flight
 3. **"Next up:"** — the single most important thing to tackle first. If `resume_focus` is set

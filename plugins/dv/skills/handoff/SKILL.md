@@ -159,7 +159,7 @@ After writing, reply with:
     echo "(other uncommitted changes present — skipping the handoff commit; say so in the confirmation)"
   elif git add HANDOFF.md && git commit -m "docs: update handoff"; then
     if git remote | grep -q .; then
-      git push
+      git push || echo "!! committed HANDOFF.md locally but the PUSH FAILED — report this before Step 4; the handoff is not on the remote"
     else
       echo "(no remote — skipping push)"
     fi
@@ -171,6 +171,8 @@ After writing, reply with:
   local-only deliberately, and force-adding would commit session state the repo has opted out of.
   A skipped commit is a normal outcome there, not a failure. The porcelain guard enforces the
   other-uncommitted-changes rule in the block itself rather than leaving it to prose — staged
-  changes would otherwise ride along in the handoff commit. If the commit or push fails, surface
-  the failure rather than continuing silently.
+  changes would otherwise ride along in the handoff commit. A failed push is reported, not
+  swallowed: the commit exists locally but the handoff is not on the remote, so say so in Step 4
+  rather than confirming a clean write. If the commit or push fails, surface the failure rather
+  than continuing silently.
 - Pairs with `/pickup` — the next session starts there

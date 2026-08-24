@@ -155,6 +155,8 @@ After writing, reply with:
   ```bash
   if git check-ignore -q HANDOFF.md; then
     echo "(HANDOFF.md is gitignored in this repo — local-only by design; skipping commit)"
+  elif [ -n "$(git status --porcelain | grep -v '^.. HANDOFF\.md$')" ]; then
+    echo "(other uncommitted changes present — skipping the handoff commit; say so in the confirmation)"
   elif git add HANDOFF.md && git commit -m "docs: update handoff"; then
     if git remote | grep -q .; then
       git push
@@ -167,7 +169,8 @@ After writing, reply with:
   ```
   **Never `git add -f` a gitignored `HANDOFF.md`** — repos that ignore it (this one does) keep it
   local-only deliberately, and force-adding would commit session state the repo has opted out of.
-  A skipped commit is a normal outcome there, not a failure. If there ARE other uncommitted
-  changes, skip the commit and note it in the confirmation. If the commit or push fails, surface
+  A skipped commit is a normal outcome there, not a failure. The porcelain guard enforces the
+  other-uncommitted-changes rule in the block itself rather than leaving it to prose — staged
+  changes would otherwise ride along in the handoff commit. If the commit or push fails, surface
   the failure rather than continuing silently.
 - Pairs with `/pickup` — the next session starts there

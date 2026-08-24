@@ -25,12 +25,16 @@ is deferred to v0.2+ if/when the need surfaces.
   `pending / Review in progress` check until it posts — ~1 min on a trivial diff, ~6 min on a
   real one. **`validate` going green is not the merge signal.** Wait for the review, then fix
   each finding on the branch or record the skip *and its reason* in the PR body before merging.
+  **Pushing fixes is not the end of the loop** — CodeRabbit re-reviews on push, so
+  `fix → push → re-review` repeats until it approves or you have a defensible standoff (a
+  finding you are declining, with the reason recorded on the thread and in the PR body).
   (2026-08-24: #33 was merged on `validate` pass 52 s before CodeRabbit posted CHANGES_REQUESTED
-  with four valid findings, which had to be fixed forward in #34.)
-- Validating a skill locally before pushing: `python3` on the Mac is Xcode's 3.9 and `skills-ref`
-  needs ≥3.10, so `pip install skills-ref` fails with "no matching distribution". Use
-  `uv venv <dir> && uv pip install --python <dir>/bin/python 'skills-ref==0.1.1'`, then
-  `<dir>/bin/agentskills validate plugins/dv/skills/<name>`
+  with four valid findings, which had to be fixed forward in #34 — where its re-review then
+  caught four more.)
+- Validating a skill locally before pushing: `python3` on the Mac is Xcode's 3.9 but
+  `skills-ref==0.1.1` requires **≥3.11**, so `pip install skills-ref` fails with "no matching
+  distribution". Use `uv venv --python 3.11 <dir> && uv pip install --python <dir>/bin/python
+  'skills-ref==0.1.1'`, then `<dir>/bin/agentskills validate plugins/dv/skills/<name>`
 - CI gates (`.github/workflows/validate.yml`):
   - `agentskills validate plugins/*/skills/*` — spec conformance per skill
   - Per-plugin skill-version-parity — skills in the same plugin must share a version

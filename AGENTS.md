@@ -21,7 +21,8 @@ is deferred to v0.2+ if/when the need surfaces.
 ## Workflow
 - Branch-first for substantive work; small doc/typo updates may commit directly to main
 - Each plugin release ideally lands as one PR
-- **PR review: CodeRabbit.** The CodeRabbit GitHub app reviews every PR here, showing a
+- **PR review: CodeRabbit.** The CodeRabbit GitHub app reviews every *eligible* PR here —
+  `.coderabbit.yaml` excludes titles containing `WIP` or `DO NOT MERGE` — showing a
   `pending / Review in progress` check until it posts — ~1 min on a trivial diff, ~6 min on a
   real one. **`validate` going green is not the merge signal.** Wait for the review, then fix
   each finding on the branch or record the skip *and its reason* in the PR body before merging.

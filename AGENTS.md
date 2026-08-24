@@ -21,10 +21,13 @@ is deferred to v0.2+ if/when the need surfaces.
 ## Workflow
 - Branch-first for substantive work; small doc/typo updates may commit directly to main
 - Each plugin release ideally lands as one PR
-- **PR review: CodeRabbit** — the procedure lives in the **Code Review** section of the global
-  `~/.claude/CLAUDE.md` (tracked at `dotfiles/claude/CLAUDE.md`), the single source of truth as of
-  2026-08-24: the fix → push → request → re-review loop, per-developer rate limits, the
-  clean-looking check states, triage-and-standoff rules, and the polling recipe. **Don't restate
+- **PR review: CodeRabbit** — the procedure lives in the **Code Review** section of the user's
+  global Claude Code instructions, the single source of truth as of 2026-08-24. That file is not
+  in this repository: it is tracked in the sibling **dotfiles** repo as `claude/CLAUDE.md` and
+  installed (by symlink) at `~/.claude/CLAUDE.md`, where it loads into every session automatically
+  — so it is already in context and needs no lookup. It covers the fix → push → request →
+  re-review loop, per-developer rate limits, the clean-looking check states, triage-and-standoff
+  rules, and the polling recipe. **Don't restate
   it here** — that duplication is what drifts. Repo-specific facts only: **`validate` going green
   is not the merge signal** (it is the spec/parity gate, not a review), and `.coderabbit.yaml`
   lives at the repo root with `auto_incremental_review: false`, so a re-review is requested with

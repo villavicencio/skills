@@ -234,6 +234,14 @@ check(
 for _name, _text in [
     ("unrelated rotation event", "Rotated the staging Redis password. The prod analytics "
      "Postgres password remains in 1Password. Finish the January backfill."),
+    # A bare rotat\w* token also matches "was not rotated" — the negated forms assert the
+    # rotation FACT, not merely the word.
+    ("negated rotation (was not)", "The prod analytics Postgres password was not rotated. "
+     "New value: 1Password. Finish the January backfill."),
+    ("negated rotation (contraction)", "The prod analytics Postgres password wasn't rotated. "
+     "New value: 1Password. Finish the January backfill."),
+    ("negated rotation (never)", "The prod analytics Postgres password was never rotated. "
+     "New value: 1Password. Finish the January backfill."),
     ("everything dropped", "## What We Built\n- Fixed the 4xx retry in worker.py:88."),
     ("rotation only", "Rotated the Postgres password."),
     ("no credential identity", "Credential details are in the password manager. Finish the backfill."),

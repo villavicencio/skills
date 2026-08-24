@@ -239,6 +239,15 @@ check(
     [],
 )
 check(
+    "handoff/redaction: an unrelated NOUN-form negation elsewhere does not block a real rotation",
+    ca(
+        "No rotation occurred in staging. Rotated the prod analytics Postgres password. "
+        "New value: 1Password. Finish the January backfill.",
+        _redaction,
+    ),
+    [],
+)
+check(
     "handoff/redaction: an imperative 'do not' after the rotation does not block it",
     ca(
         "- Rotated the prod analytics Postgres password; value in 1Password. Do not paste it "
@@ -289,8 +298,8 @@ for _name, _text in [
      "was not rotated; analytics Postgres credential remains unchanged. New value: 1Password. "
      "Finish the January backfill."),
     # Noun forms — rotat\w* matches "rotation", so the negator can follow rather than precede.
-    ("negated rotation (no rotation occurred)", "No rotation occurred. New value: 1Password. "
-     "Finish the January backfill. The analytics Postgres password rotation is pending."),
+    ("negated rotation (noun form, non-adjacent)", "No password rotation occurred for the prod "
+     "analytics Postgres password. New value: 1Password. Finish the January backfill."),
     ("negated rotation (rotation did not occur)", "Rotation did not occur for the prod analytics "
      "Postgres password. New value: 1Password. Finish the January backfill."),
     ("negated rotation (rotation was not completed)", "The prod analytics Postgres password "

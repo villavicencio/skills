@@ -15,3 +15,6 @@ HANDOFF.md
 
 # Compound Engineering machine-local config
 .compound-engineering/*.local.yaml
+
+# Compound Engineering local scratch (skills that keep scratch write here)
+.context/compound-engineering/

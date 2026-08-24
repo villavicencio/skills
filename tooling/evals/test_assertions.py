@@ -239,6 +239,15 @@ check(
     [],
 )
 check(
+    "handoff/redaction: an unrelated negation in the SAME sentence as a completed rotation passes",
+    ca(
+        "Rotation of the prod analytics Postgres password is complete; the staging deploy was "
+        "not attempted. New value: 1Password. Finish the January backfill.",
+        _redaction,
+    ),
+    [],
+)
+check(
     "handoff/redaction: an unrelated NOUN-form negation elsewhere does not block a real rotation",
     ca(
         "No rotation occurred in staging. Rotated the prod analytics Postgres password. "
@@ -300,6 +309,13 @@ for _name, _text in [
     # Noun forms — rotat\w* matches "rotation", so the negator can follow rather than precede.
     ("negated rotation (noun form, non-adjacent)", "No password rotation occurred for the prod "
      "analytics Postgres password. New value: 1Password. Finish the January backfill."),
+    # The credential sits BETWEEN the rotation noun and its verb, so no ordered formulation of
+    # "identity then negation" or "negation then identity" catches it — hence the co-occurrence
+    # lookaheads from the sentence start.
+    ("negated rotation (identity nested in the negation)", "The rotation of the prod analytics "
+     "Postgres password did not occur. New value: 1Password. Finish the January backfill."),
+    ("negated rotation (has not been performed)", "The rotation of the prod analytics Postgres "
+     "password has not been performed. New value: 1Password. Finish the January backfill."),
     ("negated rotation (rotation did not occur)", "Rotation did not occur for the prod analytics "
      "Postgres password. New value: 1Password. Finish the January backfill."),
     ("negated rotation (rotation was not completed)", "The prod analytics Postgres password "

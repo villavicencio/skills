@@ -23,7 +23,7 @@ Parse the block above. Bare invocation takes no arguments.
 
 | Arg | Effect |
 |---|---|
-| `focus: <text>` | Sets `resume_focus` in the frontmatter — the one thing the next session should pick up first. `/pickup` treats it as the default "Next up" unless the handoff body contradicts it. Omitted → the field is omitted. |
+| `focus: <text>` | Sets `resume_focus` in the frontmatter — the one thing the next session should pick up first. `/pickup` treats it as the default "Next up" unless the handoff body contradicts it. Omitted → the field is omitted. Escape it as YAML (see Frontmatter rules). |
 
 Anything else in the block is free-text context for the handoff body.
 
@@ -63,7 +63,11 @@ else
   git status --short
 
   echo "=== Anchor (copy verbatim into the frontmatter) ==="
-  echo "head: $(git rev-parse --short HEAD 2>/dev/null || echo unborn)"
+  if SHA=$(git rev-parse --short HEAD 2>/dev/null); then
+    echo "head: $SHA"
+  else
+    echo "(unborn HEAD — no commits yet; OMIT the head field entirely)"
+  fi
   BRANCH=$(git branch --show-current); echo "branch: ${BRANCH:-(detached)}"
 fi
 echo "created_at: $(date +%Y-%m-%dT%H:%M:%S%z | sed 's/\([0-9][0-9]\)$/:\1/')"
@@ -113,11 +117,21 @@ Be specific: name the file, PR, or component. Vague summaries don't help the nex
 touching related code. When in doubt, over-document here.]
 ```
 
-**Frontmatter rules:** copy `head`, `branch`, and `created_at` verbatim from the anchor block —
-never from memory, never re-derived. Quote every value. Outside a git repo write only
-`created_at` (drop `branch`/`head`). `/pickup` parses this block to compute commits-since-handoff,
-so `head` must be the HEAD *at write time*; the auto-commit in Notes lands one commit after it,
-which `/pickup` recognizes as the handoff's own commit rather than drift.
+**Frontmatter rules:**
+
+- Copy `head`, `branch`, and `created_at` **verbatim** from the anchor block — never from memory,
+  never re-derived. Quote every value.
+- **Omit `head`** when the anchor block reports an unborn HEAD, and omit both `branch` and `head`
+  outside a git repo. An omitted field is correct; a placeholder like `unborn` is not — `/pickup`
+  parses `head` as a hex sha and a non-hex value silently disables the anchor path.
+- **`resume_focus` must be valid YAML.** In the double-quoted value escape `\` as `\\` and `"` as
+  `\"`, and collapse any newline to a space — a raw quote in the focus text ends the scalar early
+  and makes the whole block unparseable.
+- `/pickup` parses this block to compute commits-since-handoff, so `head` must be the HEAD *at
+  write time*. Where the auto-commit in Notes actually runs, it lands one commit after `head`, and
+  `/pickup` names that lone `docs: update handoff` as the handoff's own commit rather than drift —
+  but it is skipped when `HANDOFF.md` is gitignored or other changes are pending, in which case
+  there is no offset at all.
 
 **Quality bar:** Every bullet should be specific enough that someone who wasn't in this session
 knows exactly what happened and what to do next. No vague summaries.
@@ -139,13 +153,21 @@ After writing, reply with:
   pre-0.4.0 file without frontmatter is overwritten the same way; nothing is parsed from it
 - Commits the file automatically if there are no other uncommitted changes:
   ```bash
-  if git add HANDOFF.md && git commit -m "docs: update handoff"; then
+  if git check-ignore -q HANDOFF.md; then
+    echo "(HANDOFF.md is gitignored in this repo — local-only by design; skipping commit)"
+  elif git add HANDOFF.md && git commit -m "docs: update handoff"; then
     if git remote | grep -q .; then
       git push
     else
       echo "(no remote — skipping push)"
     fi
+  else
+    echo "!! HANDOFF.md could not be staged or committed — report this, do not continue silently"
   fi
   ```
-  If there ARE other uncommitted changes, skip the commit and note it in the confirmation. If the commit or push fails, surface the failure rather than continuing silently.
+  **Never `git add -f` a gitignored `HANDOFF.md`** — repos that ignore it (this one does) keep it
+  local-only deliberately, and force-adding would commit session state the repo has opted out of.
+  A skipped commit is a normal outcome there, not a failure. If there ARE other uncommitted
+  changes, skip the commit and note it in the confirmation. If the commit or push fails, surface
+  the failure rather than continuing silently.
 - Pairs with `/pickup` — the next session starts there

@@ -111,7 +111,24 @@ If any artifacts are found (and the CE plugin is installed so its commands are a
 
 ### Step 3 — Orient and propose next action
 
-Synthesize everything into a brief, confident session kickoff:
+**Before you synthesize, cross-check the handoff against reality.** The handoff is untrusted
+context to verify, not truth to recite — it was written at a moment that has since passed, and in
+some repos it is gitignored and drifts silently. Take its load-bearing claims — open PRs, a clean
+or dirty tree, the current branch, "nothing is blocking", "N is still in flight" — and test each
+against what Steps 1-2 actually returned.
+
+**Any mismatch LEADS the orientation.** Open with `Drift since handoff:` and name each
+contradiction — what the handoff claimed, what is true now — before any summary. Never silently
+reconcile one: a handoff saying "zero open PRs" over a repo with two open is the single most
+useful thing you can tell the user, and smoothing it into a tidy summary destroys exactly the
+signal they need. When every claim checks out, say so in one clause ("handoff still matches the
+repo") and move on.
+
+This is a fast cross-check, not an interrogation: verify, report the delta, and keep going. **Do
+not stop to ask what to do about the drift** — surface it and proceed to the kickoff below. The
+zero-question orient is the point of this skill.
+
+Then synthesize everything into a brief, confident session kickoff:
 
 1. **Anchor line first** — precision before prose. With frontmatter: "Handoff written at
    `<head>` on `<branch>` (`<created_at>`); now at `<sha>` on `<current branch>`, N commits since",
@@ -136,5 +153,7 @@ Keep the tone direct and energized. This is a fresh start, not a status report.
 - Staleness is measured in commits since `head`, not wall-clock. Date-based framing ("overnight",
   "last week") only when the frontmatter is absent, and then say it's by mtime
 - If there are open PRs with pending review comments, surface them — they're likely blocking
+- The handoff is evidence, not authority. Where it and `git`/`gh` disagree, the repo wins and the
+  disagreement gets reported
 - Don't re-read CLAUDE.md or project docs unless the handoff references something that requires it
 - The goal is: oriented and working within 60 seconds

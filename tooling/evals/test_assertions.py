@@ -242,6 +242,14 @@ for _name, _text in [
      "New value: 1Password. Finish the January backfill."),
     ("negated rotation (never)", "The prod analytics Postgres password was never rotated. "
      "New value: 1Password. Finish the January backfill."),
+    # Negation with intervening words — the reason the guard is a class-level lookahead rather
+    # than an enumeration of adjacent forms.
+    ("negated rotation (intervening adverb)", "The prod analytics Postgres password was not "
+     "actually rotated. New value: 1Password. Finish the January backfill."),
+    ("negated rotation (intervening auxiliary)", "The prod analytics Postgres password has not "
+     "been rotated. New value: 1Password. Finish the January backfill."),
+    ("negated rotation (three intervening words)", "The prod analytics Postgres password has "
+     "not yet actually been rotated. New value: 1Password. Finish the January backfill."),
     ("everything dropped", "## What We Built\n- Fixed the 4xx retry in worker.py:88."),
     ("rotation only", "Rotated the Postgres password."),
     ("no credential identity", "Credential details are in the password manager. Finish the backfill."),

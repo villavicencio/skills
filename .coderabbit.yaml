@@ -10,6 +10,15 @@
 # matches the fix -> push -> re-review loop in AGENTS.md without spending a review on
 # every intermediate commit. `@coderabbitai rate limit` reports remaining capacity and
 # does not consume a review.
+#
+# Two facts learned after this file shipped (verified on dotfiles #171, the PR that added it
+# there, 2026-08-24):
+#   * The config is read from the PR HEAD branch, not the base — so a PR introducing or changing
+#     this file governs itself immediately, before it merges.
+#   * A suppressed round shows up as a PASSING check reading
+#     "Review skipped: incremental reviews are disabled". That is a third clean-looking state
+#     alongside "Review in progress" and "Review rate limited" — all three pass while no review
+#     has run. Never read a green CodeRabbit check as an approval; check the review verdict.
 reviews:
   auto_review:
     auto_incremental_review: false

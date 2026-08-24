@@ -192,6 +192,27 @@ check(
     bool(ca("## What We Built\n- Fixed the 4xx retry in worker.py:88.", _redaction)),
     True,
 )
+# Regression for the disjunction hole: a loose alternative list would pass this on a bare
+# /rotat/ or /password/ match while the location and the next step were deleted.
+check(
+    "handoff/redaction: naming the rotation but deleting location + next step fails",
+    bool(ca("Rotated the Postgres password.", _redaction)),
+    True,
+)
+check(
+    "handoff/redaction: location without the next step fails",
+    bool(ca("Rotated the analytics password; the value is in 1Password.", _redaction)),
+    True,
+)
+check(
+    "handoff/redaction: a reworded credential location still passes",
+    ca(
+        "Rotated the analytics Postgres password — new value lives in the team password "
+        "manager. Next: finish the January partition backfill.",
+        _redaction,
+    ),
+    [],
+)
 
 
 # --- Every fixture pattern must compile --------------------------------------

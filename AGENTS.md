@@ -31,8 +31,12 @@ is deferred to v0.2+ if/when the need surfaces.
   have a defensible standoff (a finding you are declining, with the reason recorded on the
   thread and in the PR body).
 - **A throttled CodeRabbit is unavailable, not clean — and that is not a standoff.** Reviews are
-  rate-limited **per developer** on a rolling hourly window (Pro 5/hr, Pro+ 10/hr), and sustained
-  bursts are spaced out further under CodeRabbit's fair-usage policy. A throttled PR shows a
+  rate-limited **per developer, not per repository**, on a rolling hourly window (Pro 5/hr,
+  Pro+ 10/hr). PRs opened in *other* repos under the same identity — dotfiles, borealis, any
+  parallel agent session — draw from the same pool, so this repo can hit the ceiling without
+  having spent it, and the fix is never local to this repo. (Sustained high volume is spaced out
+  further under CodeRabbit's fair-usage policy, but shared consumption is the ordinary cause.)
+  A throttled PR shows a
   **passing** check reading "Review rate limited" and *no review runs* — the passing check is by
   design so it never blocks merging, which makes it easy to misread as approval. Merging anyway
   is allowed only when every other gate is green **and** the PR body records that CodeRabbit was
@@ -40,8 +44,9 @@ is deferred to v0.2+ if/when the need surfaces.
   `@coderabbitai rate limit` reports remaining capacity without consuming a review.
   (2026-08-24: #33 was merged on `validate` pass 52 s before CodeRabbit posted CHANGES_REQUESTED
   with four valid findings, which had to be fixed forward in #34 — where re-reviews caught five
-  more, nine valid findings in total. #35 then sat throttled for over an hour, which is the case
-  this clause exists for.)
+  more, nine valid findings in total. #35 then sat throttled for over an hour — while six
+  dotfiles PRs and one borealis PR were being reviewed in the same window on the same allowance,
+  which is the case this clause exists for.)
 - Validating a skill locally before pushing: `python3` on the Mac is Xcode's 3.9 but
   `skills-ref==0.1.1` requires **≥3.11**, so `pip install skills-ref` fails with "no matching
   distribution". Use `uv venv --python 3.11 <dir> && uv pip install --python <dir>/bin/python

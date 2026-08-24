@@ -117,12 +117,31 @@ some repos it is gitignored and drifts silently. Take its load-bearing claims �
 or dirty tree, the current branch, "nothing is blocking", "N is still in flight" — and test each
 against what Steps 1-2 actually returned.
 
-**Any mismatch LEADS the orientation.** Open with `Drift since handoff:` and name each
+Each claim lands in one of **three** buckets, and they are not interchangeable:
+
+- **Verified match** — Steps 1-2 gathered the evidence and it agrees with the handoff.
+- **Verified drift** — the evidence contradicts the handoff.
+- **Unable to verify** — the evidence was never gathered. Step 2 skips GitHub entirely when `gh`
+  is absent or there is no remote, and even when it runs, `gh pr list` returns PR *identity* only:
+  it says nothing about pending review comments, a requested-changes verdict, or whether a PR is
+  blocked. A handoff claim about those is unverified unless you went and looked.
+
+**Absence of evidence is never a match.** Report "the handoff still matches" only for claims you
+actually checked, and say plainly which ones you could not and why — "`gh` unavailable, so the
+open-PR and blocker claims are unverified". A clean-sounding match built on missing data is worse
+than saying nothing, because it launders a stale handoff into a confirmed one. When a claim
+matters and the evidence is one cheap command away, go get it rather than filing it under
+unable-to-verify:
+
+```bash
+gh pr view <n> --json reviewDecision,mergeStateStatus,statusCheckRollup 2>/dev/null
+```
+
+**Any verified drift LEADS the orientation.** Open with `Drift since handoff:` and name each
 contradiction — what the handoff claimed, what is true now — before any summary. Never silently
 reconcile one: a handoff saying "zero open PRs" over a repo with two open is the single most
 useful thing you can tell the user, and smoothing it into a tidy summary destroys exactly the
-signal they need. When every claim checks out, say so in one clause ("handoff still matches the
-repo") and move on.
+signal they need.
 
 This is a fast cross-check, not an interrogation: verify, report the delta, and keep going. **Do
 not stop to ask what to do about the drift** — surface it and proceed to the kickoff below. The

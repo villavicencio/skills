@@ -33,6 +33,7 @@ is deferred to v0.2+ if/when the need surfaces.
 - Release tag format: `<plugin-name>--v<semver>` (double-dash, per `claude plugin tag` convention)
 - AGENTS.md is the canonical project-instructions file; CLAUDE.md is a thin pointer kept for older Claude Code tooling that hasn't migrated
 - **`HANDOFF.md` is gitignored in this repo** — it is local-only session state, never committed. `dv:handoff`'s auto-commit step is therefore a no-op here (expected, not a failure), and the file can silently drift from reality between sessions, so treat `git`/`gh` state as the source of truth over a stale handoff
+- **Issue tracking lives in the Linear project `Skills`** (workspace `Villavicencio`, team `VIL`; https://linear.app/villavicencio/project/skills-47ce141de4bc) as of 2026-08-24. Don't open new GitHub issues here; GH #8 stays open until resolved. Mark the Linear issue Done at merge time
 - `docs/solutions/` — documented solutions to past problems (bugs, best practices, workflow patterns), organized by category with YAML frontmatter (`module`, `tags`, `problem_type`). Relevant when implementing or debugging in a documented area
 - `CONCEPTS.md` — shared domain vocabulary (entities, named processes, status concepts) with project-specific meaning. Relevant when orienting to the repo or discussing domain concepts
 

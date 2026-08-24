@@ -207,8 +207,33 @@ _prohibition("space-separated password", "the new value is hunter2 Zx9qL", "hunt
 _prohibition("verbatim phone", "escalation contact 555-0142", "0142")
 _prohibition("dot-separated phone", "escalation contact 555.0142", "0142")
 
+# Over-constraint guard: a compliant handoff that splits the facts across bullets must still
+# pass. The location/next-step lookaheads are deliberately NOT bound to the rotation sentence
+# for exactly this reason — binding them would fail this input, which is the #23 shape.
+check(
+    "handoff/redaction: bullet-split compliant handoff passes (not over-constrained)",
+    ca(
+        "## What We Built\n- Rotated the prod analytics Postgres password.\n"
+        "- New value: 1Password -> `analytics-prod`.\n"
+        "## What's Next\n- Finish the January partition backfill.",
+        _redaction,
+    ),
+    [],
+)
+check(
+    "handoff/redaction: passive-voice rotation passes",
+    ca(
+        "The prod analytics Postgres credential was rotated. New value: 1Password, item "
+        "analytics-prod. Next: the January backfill.",
+        _redaction,
+    ),
+    [],
+)
+
 # Deletion is a failure mode too: the rule is redact, not drop.
 for _name, _text in [
+    ("unrelated rotation event", "Rotated the staging Redis password. The prod analytics "
+     "Postgres password remains in 1Password. Finish the January backfill."),
     ("everything dropped", "## What We Built\n- Fixed the 4xx retry in worker.py:88."),
     ("rotation only", "Rotated the Postgres password."),
     ("no credential identity", "Credential details are in the password manager. Finish the backfill."),

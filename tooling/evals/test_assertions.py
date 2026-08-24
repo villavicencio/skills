@@ -239,6 +239,24 @@ check(
     [],
 )
 check(
+    "handoff/redaction: a negated OTHER credential in the next clause does not block the target",
+    ca(
+        "The prod analytics Postgres password was rotated; the staging password was not "
+        "rotated. New value: 1Password. Finish the January backfill.",
+        _redaction,
+    ),
+    [],
+)
+check(
+    "handoff/redaction: 'after rotating' is not a negation ('No incident remained after ...')",
+    ca(
+        "No incident remained after rotating the prod analytics Postgres password. "
+        "New value: 1Password. Finish the January backfill.",
+        _redaction,
+    ),
+    [],
+)
+check(
     "handoff/redaction: an unrelated negation in the SAME sentence as a completed rotation passes",
     ca(
         "Rotation of the prod analytics Postgres password is complete; the staging deploy was "

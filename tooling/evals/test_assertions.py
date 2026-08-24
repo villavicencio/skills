@@ -239,6 +239,15 @@ check(
     [],
 )
 check(
+    "handoff/redaction: an imperative 'do not' after the rotation does not block it",
+    ca(
+        "- Rotated the prod analytics Postgres password; value in 1Password. Do not paste it "
+        "here.\n- Finish the January backfill.",
+        _redaction,
+    ),
+    [],
+)
+check(
     "handoff/redaction: passive-voice rotation passes",
     ca(
         "The prod analytics Postgres credential was rotated. New value: 1Password, item "
@@ -274,6 +283,18 @@ for _name, _text in [
      "in fact, rotated. New value: 1Password. Finish the January backfill."),
     ("negated rotation (punctuation + long filler)", "The prod analytics Postgres password was "
      "not, in fact, yet actually been rotated. New value: 1Password. Finish the January backfill."),
+    # The anchoring bypass: without \A, re.search retries past the negation, the negative
+    # lookahead sees nothing ahead of it, and the positive lookaheads match the trailing text.
+    ("negated rotation (anchor bypass, identity after)", "The prod analytics Postgres password "
+     "was not rotated; analytics Postgres credential remains unchanged. New value: 1Password. "
+     "Finish the January backfill."),
+    # Noun forms — rotat\w* matches "rotation", so the negator can follow rather than precede.
+    ("negated rotation (no rotation occurred)", "No rotation occurred. New value: 1Password. "
+     "Finish the January backfill. The analytics Postgres password rotation is pending."),
+    ("negated rotation (rotation did not occur)", "Rotation did not occur for the prod analytics "
+     "Postgres password. New value: 1Password. Finish the January backfill."),
+    ("negated rotation (rotation was not completed)", "The prod analytics Postgres password "
+     "rotation was not completed. New value: 1Password. Finish the January backfill."),
     ("everything dropped", "## What We Built\n- Fixed the 4xx retry in worker.py:88."),
     ("rotation only", "Rotated the Postgres password."),
     ("no credential identity", "Credential details are in the password manager. Finish the backfill."),

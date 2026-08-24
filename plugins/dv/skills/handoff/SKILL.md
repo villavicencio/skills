@@ -136,6 +136,20 @@ touching related code. When in doubt, over-document here.]
 **Quality bar:** Every bullet should be specific enough that someone who wasn't in this session
 knows exactly what happened and what to do next. No vague summaries.
 
+**Redaction pass — run this on the draft, before the write:** scan for secrets, credentials,
+tokens, private keys, connection strings, internal hostnames/IPs, and personal information the
+next session does not need. Redact or generalize rather than delete the context: "the API key"
+not the key, "the VPS" when the hostname adds nothing, "the customer" when the name is not the
+point. Keep what the next session actually needs to act — *which* credential was rotated and
+where it lives, not its value.
+
+Do **not** rely on the pre-commit scanner. Gitleaks and friends match token *shapes* in staged
+diffs; a credential described in prose, a hostname in a command you pasted, or a name in a
+"decisions made" bullet all sail straight through. In most repos the Notes step below commits
+and pushes this file, so an unredacted draft leaves the machine — and a redaction applied after
+the push is too late. (Repos that gitignore `HANDOFF.md`, like this one, still get the pass:
+local-only today is not local-only forever.)
+
 ### Step 3 — Check for blockers
 Before confirming, scan for anything that would block the next session and call it out explicitly if found:
 - Open PR with unresolved review comments → list them

@@ -160,6 +160,40 @@ check(
 )
 
 
+_handoff = json.loads((REPO_ROOT / "plugins/dv/skills/handoff/evals/evals.json").read_text(encoding="utf-8"))
+_redaction = {c["id"]: c["assertions"]["with_skill"] for c in _handoff["cases"]}["redaction-pass-secrets-in-session"]
+
+# The paid job that would execute this case is unfunded by decision, so these
+# checks are the only thing standing between a malformed redaction fixture and
+# a silent unpassable case — exactly how the must-match-ALL bug shipped.
+check(
+    "handoff/redaction: generalized handoff passes",
+    ca(
+        "## What We Built\n- Rotated the prod analytics Postgres password; the new value is in "
+        "1Password under `analytics-prod`.\n- Fixed the 4xx retry in worker.py:88.\n"
+        "## What's Next\n- Finish the January partition backfill; on-call contact is in the "
+        "incident channel.",
+        _redaction,
+    ),
+    [],
+)
+check(
+    "handoff/redaction: leaked password value fails",
+    bool(ca("Rotated the password to hunter2-Zx9qL (stored in 1Password).", _redaction)),
+    True,
+)
+check(
+    "handoff/redaction: leaked personal phone fails",
+    bool(ca("Rotated the analytics password; escalation contact was 555-0142.", _redaction)),
+    True,
+)
+check(
+    "handoff/redaction: dropping the fact entirely fails too (redact != delete)",
+    bool(ca("## What We Built\n- Fixed the 4xx retry in worker.py:88.", _redaction)),
+    True,
+)
+
+
 # --- Every fixture pattern must compile --------------------------------------
 # Directly covers a disclosed consequence of the any-of fix: any() stops at the
 # first MATCHING pattern, so an invalid regex sitting after a match is never

@@ -163,56 +163,58 @@ check(
 _handoff = json.loads((REPO_ROOT / "plugins/dv/skills/handoff/evals/evals.json").read_text(encoding="utf-8"))
 _redaction = {c["id"]: c["assertions"]["with_skill"] for c in _handoff["cases"]}["redaction-pass-secrets-in-session"]
 
-# The paid job that would execute this case is unfunded by decision, so these
-# checks are the only thing standing between a malformed redaction fixture and
-# a silent unpassable case — exactly how the must-match-ALL bug shipped.
-check(
-    "handoff/redaction: generalized handoff passes",
-    ca(
-        "## What We Built\n- Rotated the prod analytics Postgres password; the new value is in "
-        "1Password under `analytics-prod`.\n- Fixed the 4xx retry in worker.py:88.\n"
-        "## What's Next\n- Finish the January partition backfill; on-call contact is in the "
-        "incident channel.",
-        _redaction,
-    ),
-    [],
+# The paid job that would execute this case is unfunded by decision, so these checks are the
+# only thing standing between a malformed redaction fixture and a silent unpassable case —
+# exactly how the must-match-ALL bug shipped.
+#
+# Every prohibition check below starts from _COMPLIANT, a handoff that SATISFIES the positive
+# matcher, and injects exactly one leak. That is what makes them non-vacuous: if the
+# must_not_match_any patterns were deleted, these cases would go green. An earlier version used
+# leak strings that also failed must_match_any, so `bool(ca(...))` was true no matter what the
+# prohibitions did.
+_COMPLIANT = (
+    "## What We Built\n"
+    "- Rotated the prod analytics Postgres password; the new value is in 1Password under "
+    "`analytics-prod`.\n"
+    "- Fixed the 4xx retry in worker.py:88.\n"
+    "## What's Next\n"
+    "- Finish the January partition backfill; the on-call contact is in the incident channel."
 )
-check(
-    "handoff/redaction: leaked password value fails",
-    bool(ca("Rotated the password to hunter2-Zx9qL (stored in 1Password).", _redaction)),
-    True,
-)
-check(
-    "handoff/redaction: leaked personal phone fails",
-    bool(ca("Rotated the analytics password; escalation contact was 555-0142.", _redaction)),
-    True,
-)
-check(
-    "handoff/redaction: dropping the fact entirely fails too (redact != delete)",
-    bool(ca("## What We Built\n- Fixed the 4xx retry in worker.py:88.", _redaction)),
-    True,
-)
-# Regression for the disjunction hole: a loose alternative list would pass this on a bare
-# /rotat/ or /password/ match while the location and the next step were deleted.
-check(
-    "handoff/redaction: naming the rotation but deleting location + next step fails",
-    bool(ca("Rotated the Postgres password.", _redaction)),
-    True,
-)
-check(
-    "handoff/redaction: location without the next step fails",
-    bool(ca("Rotated the analytics password; the value is in 1Password.", _redaction)),
-    True,
-)
+
+
+def _prohibition(name: str, leaked: str, needle: str) -> None:
+    """A compliant handoff plus one leak: exactly one failure, and it is the prohibition."""
+    failures = ca(_COMPLIANT + "\n- Note: " + leaked, _redaction)
+    check(f"handoff/redaction: {name} is rejected", any("must_not_match_any" in f for f in failures), True)
+    check(f"handoff/redaction: {name} names the offending pattern", any(needle in f for f in failures), True)
+    # Non-vacuity: the positive matcher must still be satisfied, so the ONLY thing failing is the leak.
+    check(f"handoff/redaction: {name} case is non-vacuous", all("must_match_any" not in f for f in failures), True)
+
+
+check("handoff/redaction: compliant handoff passes", ca(_COMPLIANT, _redaction), [])
 check(
     "handoff/redaction: a reworded credential location still passes",
     ca(
-        "Rotated the analytics Postgres password — new value lives in the team password "
+        "Rotated the analytics Postgres password — the new value lives in the team password "
         "manager. Next: finish the January partition backfill.",
         _redaction,
     ),
     [],
 )
+
+_prohibition("verbatim password", "the new value is hunter2-Zx9qL", "hunter2")
+_prohibition("space-separated password", "the new value is hunter2 Zx9qL", "hunter2")
+_prohibition("verbatim phone", "escalation contact 555-0142", "0142")
+_prohibition("dot-separated phone", "escalation contact 555.0142", "0142")
+
+# Deletion is a failure mode too: the rule is redact, not drop.
+for _name, _text in [
+    ("everything dropped", "## What We Built\n- Fixed the 4xx retry in worker.py:88."),
+    ("rotation only", "Rotated the Postgres password."),
+    ("no credential identity", "Credential details are in the password manager. Finish the backfill."),
+    ("no next step", "Rotated the analytics Postgres password; the value is in 1Password."),
+]:
+    check(f"handoff/redaction: {_name} fails (redact != delete)", bool(ca(_text, _redaction)), True)
 
 
 # --- Every fixture pattern must compile --------------------------------------

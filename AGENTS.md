@@ -25,12 +25,23 @@ is deferred to v0.2+ if/when the need surfaces.
   `pending / Review in progress` check until it posts — ~1 min on a trivial diff, ~6 min on a
   real one. **`validate` going green is not the merge signal.** Wait for the review, then fix
   each finding on the branch or record the skip *and its reason* in the PR body before merging.
-  **Pushing fixes is not the end of the loop** — CodeRabbit re-reviews on push, so
-  `fix → push → re-review` repeats until it approves or you have a defensible standoff (a
-  finding you are declining, with the reason recorded on the thread and in the PR body).
+  **Pushing fixes is not the end of the loop** — but a push no longer triggers a re-review:
+  `.coderabbit.yaml` sets `auto_incremental_review: false`, so **comment `@coderabbitai review`
+  to request each round**. Repeat `fix → push → request → re-review` until it approves or you
+  have a defensible standoff (a finding you are declining, with the reason recorded on the
+  thread and in the PR body).
+- **A throttled CodeRabbit is unavailable, not clean — and that is not a standoff.** Reviews are
+  rate-limited **per developer** on a rolling hourly window (Pro 5/hr, Pro+ 10/hr), and sustained
+  bursts are spaced out further under CodeRabbit's fair-usage policy. A throttled PR shows a
+  **passing** check reading "Review rate limited" and *no review runs* — the passing check is by
+  design so it never blocks merging, which makes it easy to misread as approval. Merging anyway
+  is allowed only when every other gate is green **and** the PR body records that CodeRabbit was
+  throttled rather than silent. For anything beyond docs and config, prefer waiting for capacity.
+  `@coderabbitai rate limit` reports remaining capacity without consuming a review.
   (2026-08-24: #33 was merged on `validate` pass 52 s before CodeRabbit posted CHANGES_REQUESTED
-  with four valid findings, which had to be fixed forward in #34 — where its re-review then
-  caught four more.)
+  with four valid findings, which had to be fixed forward in #34 — where re-reviews caught five
+  more, nine valid findings in total. #35 then sat throttled for over an hour, which is the case
+  this clause exists for.)
 - Validating a skill locally before pushing: `python3` on the Mac is Xcode's 3.9 but
   `skills-ref==0.1.1` requires **≥3.11**, so `pip install skills-ref` fails with "no matching
   distribution". Use `uv venv --python 3.11 <dir> && uv pip install --python <dir>/bin/python

@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=https://www.coderabbit.ai/integrations/schema.v2.json
+#
+# Why this file exists: CodeRabbit reviews are rate-limited PER DEVELOPER on a rolling
+# hourly window (Pro 5/hr, Pro+ 10/hr), and every run counts against it — including the
+# automatic re-review after each push. On 2026-08-24 one ticket's worth of work (PRs
+# #33-#35, five pushes) exhausted the allowance and left #35 unreviewed for over an hour.
+#
+# auto_incremental_review: false makes re-review a deliberate act. The first review of a
+# PR is still automatic; each later round is requested with `@coderabbitai review`. That
+# matches the fix -> push -> re-review loop in AGENTS.md without spending a review on
+# every intermediate commit. `@coderabbitai rate limit` reports remaining capacity and
+# does not consume a review.
+reviews:
+  auto_review:
+    auto_incremental_review: false
+    ignore_title_keywords:
+      - "WIP"
+      - "DO NOT MERGE"

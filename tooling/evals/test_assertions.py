@@ -297,6 +297,10 @@ check(
 for _name, _text in [
     ("unrelated rotation event", "Rotated the staging Redis password. The prod analytics "
      "Postgres password remains in 1Password. Finish the January backfill."),
+    # Same shape but separated by a semicolon rather than a period — the positive binding must be
+    # clause-scoped too, or it reaches across the boundary the negation guard respects.
+    ("unrelated rotation event (semicolon)", "Rotated the staging Redis password; the prod "
+     "analytics Postgres password remains in 1Password. Finish the January backfill."),
     # A bare rotat\w* token also matches "was not rotated" — the negated forms assert the
     # rotation FACT, not merely the word.
     ("negated rotation (was not)", "The prod analytics Postgres password was not rotated. "

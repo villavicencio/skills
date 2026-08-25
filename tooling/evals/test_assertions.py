@@ -239,6 +239,15 @@ check(
     [],
 )
 check(
+    "handoff/redaction: negation of something OTHER than the rotation does not block it",
+    ca(
+        "The prod analytics Postgres password was not leaked before we rotated it. "
+        "New value: 1Password. Finish the January backfill.",
+        _redaction,
+    ),
+    [],
+)
+check(
     "handoff/redaction: a negated OTHER credential in the next clause does not block the target",
     ca(
         "The prod analytics Postgres password was rotated; the staging password was not "

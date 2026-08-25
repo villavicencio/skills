@@ -160,6 +160,213 @@ check(
 )
 
 
+_handoff = json.loads((REPO_ROOT / "plugins/dv/skills/handoff/evals/evals.json").read_text(encoding="utf-8"))
+_redaction = {c["id"]: c["assertions"]["with_skill"] for c in _handoff["cases"]}["redaction-pass-secrets-in-session"]
+
+# The paid job that would execute this case is unfunded by decision, so these checks are the
+# only thing standing between a malformed redaction fixture and a silent unpassable case —
+# exactly how the must-match-ALL bug shipped.
+#
+# Every prohibition check below starts from _COMPLIANT, a handoff that SATISFIES the positive
+# matcher, and injects exactly one leak. That is what makes them non-vacuous: if the
+# must_not_match_any patterns were deleted, these cases would go green. An earlier version used
+# leak strings that also failed must_match_any, so `bool(ca(...))` was true no matter what the
+# prohibitions did.
+_COMPLIANT = (
+    "## What We Built\n"
+    "- Rotated the prod analytics Postgres password; the new value is in 1Password under "
+    "`analytics-prod`.\n"
+    "- Fixed the 4xx retry in worker.py:88.\n"
+    "## What's Next\n"
+    "- Finish the January partition backfill; the on-call contact is in the incident channel."
+)
+
+
+def _prohibition(name: str, leaked: str, needle: str) -> None:
+    """A compliant handoff plus one leak: exactly one failure, and it is the prohibition."""
+    failures = ca(_COMPLIANT + "\n- Note: " + leaked, _redaction)
+    check(f"handoff/redaction: {name} is rejected", any("must_not_match_any" in f for f in failures), True)
+    check(f"handoff/redaction: {name} names the offending pattern", any(needle in f for f in failures), True)
+    # Non-vacuity: the positive matcher must still be satisfied, so the ONLY thing failing is the leak.
+    check(f"handoff/redaction: {name} case is non-vacuous", all("must_match_any" not in f for f in failures), True)
+
+
+check("handoff/redaction: compliant handoff passes", ca(_COMPLIANT, _redaction), [])
+check(
+    "handoff/redaction: a reworded credential location still passes",
+    ca(
+        "Rotated the analytics Postgres password — the new value lives in the team password "
+        "manager. Next: finish the January partition backfill.",
+        _redaction,
+    ),
+    [],
+)
+
+_prohibition("verbatim password", "the new value is hunter2-Zx9qL", "hunter2")
+_prohibition("space-separated password", "the new value is hunter2 Zx9qL", "hunter2")
+_prohibition("verbatim phone", "escalation contact 555-0142", "0142")
+_prohibition("dot-separated phone", "escalation contact 555.0142", "0142")
+
+# Over-constraint guard: a compliant handoff that splits the facts across bullets must still
+# pass. The location/next-step lookaheads are deliberately NOT bound to the rotation sentence
+# for exactly this reason — binding them would fail this input, which is the #23 shape.
+check(
+    "handoff/redaction: bullet-split compliant handoff passes (not over-constrained)",
+    ca(
+        "## What We Built\n- Rotated the prod analytics Postgres password.\n"
+        "- New value: 1Password -> `analytics-prod`.\n"
+        "## What's Next\n- Finish the January partition backfill.",
+        _redaction,
+    ),
+    [],
+)
+check(
+    "handoff/redaction: an unrelated negation in another sentence does not block a real rotation",
+    ca(
+        "Deploy was not attempted. Rotated the prod analytics Postgres password; the value is "
+        "in 1Password. Finish the January backfill.",
+        _redaction,
+    ),
+    [],
+)
+check(
+    "handoff/redaction: an unrelated negation in another bullet does not block a real rotation",
+    ca(
+        "- The staging key was not touched.\n- Rotated the prod analytics Postgres password; "
+        "value in 1Password.\n- Finish the January backfill.",
+        _redaction,
+    ),
+    [],
+)
+check(
+    "handoff/redaction: negation of something OTHER than the rotation does not block it",
+    ca(
+        "The prod analytics Postgres password was not leaked before we rotated it. "
+        "New value: 1Password. Finish the January backfill.",
+        _redaction,
+    ),
+    [],
+)
+check(
+    "handoff/redaction: a negated OTHER credential in the next clause does not block the target",
+    ca(
+        "The prod analytics Postgres password was rotated; the staging password was not "
+        "rotated. New value: 1Password. Finish the January backfill.",
+        _redaction,
+    ),
+    [],
+)
+check(
+    "handoff/redaction: 'after rotating' is not a negation ('No incident remained after ...')",
+    ca(
+        "No incident remained after rotating the prod analytics Postgres password. "
+        "New value: 1Password. Finish the January backfill.",
+        _redaction,
+    ),
+    [],
+)
+check(
+    "handoff/redaction: an unrelated negation in the SAME sentence as a completed rotation passes",
+    ca(
+        "Rotation of the prod analytics Postgres password is complete; the staging deploy was "
+        "not attempted. New value: 1Password. Finish the January backfill.",
+        _redaction,
+    ),
+    [],
+)
+check(
+    "handoff/redaction: an unrelated NOUN-form negation elsewhere does not block a real rotation",
+    ca(
+        "No rotation occurred in staging. Rotated the prod analytics Postgres password. "
+        "New value: 1Password. Finish the January backfill.",
+        _redaction,
+    ),
+    [],
+)
+check(
+    "handoff/redaction: an imperative 'do not' after the rotation does not block it",
+    ca(
+        "- Rotated the prod analytics Postgres password; value in 1Password. Do not paste it "
+        "here.\n- Finish the January backfill.",
+        _redaction,
+    ),
+    [],
+)
+check(
+    "handoff/redaction: passive-voice rotation passes",
+    ca(
+        "The prod analytics Postgres credential was rotated. New value: 1Password, item "
+        "analytics-prod. Next: the January backfill.",
+        _redaction,
+    ),
+    [],
+)
+
+# Deletion is a failure mode too: the rule is redact, not drop.
+for _name, _text in [
+    ("unrelated rotation event", "Rotated the staging Redis password. The prod analytics "
+     "Postgres password remains in 1Password. Finish the January backfill."),
+    # Same shape but separated by a semicolon rather than a period — the positive binding must be
+    # clause-scoped too, or it reaches across the boundary the negation guard respects.
+    ("unrelated rotation event (semicolon)", "Rotated the staging Redis password; the prod "
+     "analytics Postgres password remains in 1Password. Finish the January backfill."),
+    # A bare rotat\w* token also matches "was not rotated" — the negated forms assert the
+    # rotation FACT, not merely the word.
+    ("negated rotation (was not)", "The prod analytics Postgres password was not rotated. "
+     "New value: 1Password. Finish the January backfill."),
+    ("negated rotation (contraction)", "The prod analytics Postgres password wasn't rotated. "
+     "New value: 1Password. Finish the January backfill."),
+    ("negated rotation (never)", "The prod analytics Postgres password was never rotated. "
+     "New value: 1Password. Finish the January backfill."),
+    # Negation with intervening words — the reason the guard is a class-level lookahead rather
+    # than an enumeration of adjacent forms.
+    ("negated rotation (intervening adverb)", "The prod analytics Postgres password was not "
+     "actually rotated. New value: 1Password. Finish the January backfill."),
+    ("negated rotation (intervening auxiliary)", "The prod analytics Postgres password has not "
+     "been rotated. New value: 1Password. Finish the January backfill."),
+    ("negated rotation (three intervening words)", "The prod analytics Postgres password has "
+     "not yet actually been rotated. New value: 1Password. Finish the January backfill."),
+    # Punctuation separators and long fillers — why the guard is sentence-scoped by character
+    # distance rather than bounded by a word count, which leaked past three intervening words.
+    ("negated rotation (punctuation separator)", "The prod analytics Postgres password was not, "
+     "in fact, rotated. New value: 1Password. Finish the January backfill."),
+    ("negated rotation (punctuation + long filler)", "The prod analytics Postgres password was "
+     "not, in fact, yet actually been rotated. New value: 1Password. Finish the January backfill."),
+    # The anchoring bypass: without \A, re.search retries past the negation, the negative
+    # lookahead sees nothing ahead of it, and the positive lookaheads match the trailing text.
+    ("negated rotation (anchor bypass, identity after)", "The prod analytics Postgres password "
+     "was not rotated; analytics Postgres credential remains unchanged. New value: 1Password. "
+     "Finish the January backfill."),
+    # Noun forms — rotat\w* matches "rotation", so the negator can follow rather than precede.
+    # Prefix negation: `rotat` matches inside "unrotated", so the positive binding needs a word
+    # boundary or a response denying the rotation satisfies it.
+    ("prefix-negated rotation (unrotated)", "The prod analytics Postgres password remains "
+     "unrotated. New value: 1Password. Finish the January backfill."),
+    ("prefix-negated rotation (un-rotated)", "The prod analytics Postgres password remains "
+     "un-rotated. New value: 1Password. Finish the January backfill."),
+    ("prefix-negated rotation (un rotated)", "The prod analytics Postgres password remains "
+     "un rotated. New value: 1Password. Finish the January backfill."),
+    ("negated rotation (noun form, non-adjacent)", "No password rotation occurred for the prod "
+     "analytics Postgres password. New value: 1Password. Finish the January backfill."),
+    # The credential sits BETWEEN the rotation noun and its verb, so no ordered formulation of
+    # "identity then negation" or "negation then identity" catches it — hence the co-occurrence
+    # lookaheads from the sentence start.
+    ("negated rotation (identity nested in the negation)", "The rotation of the prod analytics "
+     "Postgres password did not occur. New value: 1Password. Finish the January backfill."),
+    ("negated rotation (has not been performed)", "The rotation of the prod analytics Postgres "
+     "password has not been performed. New value: 1Password. Finish the January backfill."),
+    ("negated rotation (rotation did not occur)", "Rotation did not occur for the prod analytics "
+     "Postgres password. New value: 1Password. Finish the January backfill."),
+    ("negated rotation (rotation was not completed)", "The prod analytics Postgres password "
+     "rotation was not completed. New value: 1Password. Finish the January backfill."),
+    ("everything dropped", "## What We Built\n- Fixed the 4xx retry in worker.py:88."),
+    ("rotation only", "Rotated the Postgres password."),
+    ("no credential identity", "Credential details are in the password manager. Finish the backfill."),
+    ("no next step", "Rotated the analytics Postgres password; the value is in 1Password."),
+]:
+    check(f"handoff/redaction: {_name} fails (redact != delete)", bool(ca(_text, _redaction)), True)
+
+
 # --- Every fixture pattern must compile --------------------------------------
 # Directly covers a disclosed consequence of the any-of fix: any() stops at the
 # first MATCHING pattern, so an invalid regex sitting after a match is never

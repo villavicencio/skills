@@ -342,6 +342,10 @@ for _name, _text in [
     # boundary or a response denying the rotation satisfies it.
     ("prefix-negated rotation (unrotated)", "The prod analytics Postgres password remains "
      "unrotated. New value: 1Password. Finish the January backfill."),
+    ("prefix-negated rotation (un-rotated)", "The prod analytics Postgres password remains "
+     "un-rotated. New value: 1Password. Finish the January backfill."),
+    ("prefix-negated rotation (un rotated)", "The prod analytics Postgres password remains "
+     "un rotated. New value: 1Password. Finish the January backfill."),
     ("negated rotation (noun form, non-adjacent)", "No password rotation occurred for the prod "
      "analytics Postgres password. New value: 1Password. Finish the January backfill."),
     # The credential sits BETWEEN the rotation noun and its verb, so no ordered formulation of

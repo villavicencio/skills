@@ -338,6 +338,10 @@ for _name, _text in [
      "was not rotated; analytics Postgres credential remains unchanged. New value: 1Password. "
      "Finish the January backfill."),
     # Noun forms — rotat\w* matches "rotation", so the negator can follow rather than precede.
+    # Prefix negation: `rotat` matches inside "unrotated", so the positive binding needs a word
+    # boundary or a response denying the rotation satisfies it.
+    ("prefix-negated rotation (unrotated)", "The prod analytics Postgres password remains "
+     "unrotated. New value: 1Password. Finish the January backfill."),
     ("negated rotation (noun form, non-adjacent)", "No password rotation occurred for the prod "
      "analytics Postgres password. New value: 1Password. Finish the January backfill."),
     # The credential sits BETWEEN the rotation noun and its verb, so no ordered formulation of

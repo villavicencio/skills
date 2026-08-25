@@ -4,7 +4,7 @@ description: "Snapshot openclaw-prod's live runtime health in one SSH call — H
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.3.0"
+  version: "0.4.0"
 ---
 
 # /vps-health — openclaw-prod runtime snapshot

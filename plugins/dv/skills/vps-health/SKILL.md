@@ -107,18 +107,27 @@ silently.** A section that produced no output is a finding, not an absence of on
 |---|---|---|
 | `HERMES_GATEWAY` | not `active` | **Critical.** Hermes-Atlas is down — lead with this before anything else. `sudo systemctl restart hermes-gateway.service` |
 | `HERMES_CRON_STATUS` | scheduler not running | **Critical**, same severity as gateway down — no crons will fire |
-| `HERMES_CRON_FAILURES` | ANY job listed | Surface every one, and **read the `age=` column** — a large age means the job is not merely failing, it has stopped running. Covers agent errors (`last_error`) and **delivery** errors (`last_delivery_error` — Telegram down, etc.); delivery errors are the classic silent-failure mode that actually matters. |
+| `HERMES_CRON_FAILURES` | ANY job listed | Surface every one, and **read the `age=` column** — a large age means the job is not merely failing, it has stopped running. Covers agent errors (`last_error`) and **delivery** errors (`last_delivery_error` — Slack down, an unresolved home channel, etc.); delivery errors are the classic silent-failure mode that actually matters. Since the 2026-08-27 Telegram→Slack migration the four notification crons deliver to Slack; `no delivery target resolved for deliver=slack` means `SLACK_HOME_CHANNEL` is unset — loud here, invisible in chat. |
 | `HERMES_CRON_FAILURES` | `NEVER RUN` | A registered job that has never fired. Sometimes intentional for a newly-added quarterly, but never assume — confirm it against the schedule. |
 | `AXIOM_TMUX` | service not `active`, **or** no `AXIOM` session listed | Axiom is down. `sudo systemctl restart axiom-tmux.service`. A service reporting `active` while the session list is empty is still a failure — the unit is `Type=forking`, so it can stay green after the session dies. |
 | `HERMES_FEED_FRESHNESS` | a daily feed > 30h | That cron silently failed to deliver. Cross-reference `HERMES_CRON_FAILURES`. |
 | `OC_VOLUME_INTACT` | `MISSING` | **Surface immediately.** The cold backup is the rebuild reference; losing it changes the rebuild story dramatically. |
 | `SSH_BRUTEFORCE_PRESSURE` | any count | Informational **unless** fail2ban shows 0 banned *and* pressure is sustained across multiple checks |
 
-Feed cadences, for judging staleness:
+Feed cadences, for judging staleness — **re-derived from `cron/jobs.json` 2026-08-27; the old list
+produced permanent false positives**:
 
-- **Daily** — `doc-health` (7am PT), `ben-digest` (10pm PT), `wire-signals` (3pm PT)
-- **Weekly** — `volo-gaming` (Sun 11am), `borges-library` (Sun 10am)
-- `bill-audit` runs but delivers via Telegram only — no local feed dir, so its absence here is expected, not a finding
+- **Daily** — `doc-health` only (cron `docbrief7am`, fires 2pm PT despite the name; see the cron
+  timezone note). This is the **one** feed whose staleness is a real finding.
+- **Event-driven, not a cron** — `axiom-briefs` is mirrored from Axiom by a systemd *path* unit, so
+  it moves when Axiom publishes. Do not apply a clock cadence to it.
+- **⚠ RETIRED — do NOT freshness-check these.** `ben-digest`, `wire-signals`, `volo-gaming`,
+  `borges-library`. The directories still exist and are frozen archives; their writer crons are
+  **gone** from `jobs.json`. Last writes: ben/wire/volo `2026-08-16`, borges `2026-08-02`. Under the
+  old "daily feed > 30h" rule these flagged on *every* run, which is worse than not checking at all —
+  a section that always cries wolf gets skipped, including the one time `doc-health` really is stale.
+- ~~`bill-audit`~~ — **the cron no longer exists**; there is no `billaudit` job in `jobs.json`. Not a
+  finding, not an exception to explain, just gone.
 
 ## Step 3 — Report
 

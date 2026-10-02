@@ -14,8 +14,9 @@ import json, os, subprocess, sys, yaml
 from pathlib import Path
 
 HOME = Path(sys.argv[sys.argv.index("--home") + 1]) if "--home" in sys.argv else Path.home() / ".hermes/profiles/mnemosyne-pilot"
-if "pilot" not in str(HOME) and "--disposable" not in sys.argv:
-    sys.exit(f"refusing: {HOME} is not a pilot home (pass --disposable to override for a throwaway home)")
+PILOT_NAME = "mnemosyne-pilot"
+if HOME.resolve().name != PILOT_NAME and "--disposable" not in sys.argv:
+    sys.exit(f"refusing: {HOME} is not the '{PILOT_NAME}' profile (pass --disposable to override for a throwaway home)")
 CFG = HOME / "config.yaml"
 PY = "/home/node/.hermes/hermes-agent/venv/bin/python"
 SIX = ["mnemosyne_remember", "mnemosyne_recall", "mnemosyne_invalidate",
@@ -75,7 +76,8 @@ try:
 
   # B
   set_tools(SIX + ["mnemosyne_recal"]); b = probe(); results["B_typo"] = b
-  loud = (not b.get("loaded")) and ("Unknown Mnemosyne tool" in (str(b.get("exception", "")) + str(b.get("stderr_tail", ""))) or bool(b.get("provider_is_none")))
+  # Only the documented failure counts: a ValueError naming the unknown tool. A None provider proves nothing.
+  loud = (not b.get("loaded")) and b.get("exception_type") == "ValueError" and "Unknown Mnemosyne tool" in str(b.get("exception", ""))
   check(loud and b.get("count") != 40, "config_tools_typo_fails_loudly_not_silently_all", json.dumps({k: b.get(k) for k in ("loaded", "provider_is_none", "exception_type", "exception")}))
 
   # C

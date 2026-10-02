@@ -51,19 +51,37 @@ def load_config(p: Path):
     return cfg, None
 
 
-def site_for(home: Path) -> Path:
-    """The side venv this home actually loads: the wrapper's _SITE, else the shared default."""
+def site_for(home: Path):
+    """Return (site, error) for the side venv this home's wrapper loads. No silent fallback:
+    a home without its own wrapper is drift, not evidence of an install elsewhere."""
     wrap = home / "plugins/mnemosyne/__init__.py"
-    if wrap.exists():
-        m = re.search(r"^_SITE\s*=\s*['\"]([^'\"]+)['\"]", wrap.read_text(), re.M)
-        if m:
-            return Path(m.group(1))
-    return DEFAULT_SITE
+    if not wrap.exists():
+        return None, f"wrapper missing: {wrap}"
+    m = re.search(r"^_SITE\s*=\s*['\"]([^'\"]+)['\"]", wrap.read_text(), re.M)
+    if not m:
+        return None, f"wrapper has no _SITE: {wrap}"
+    site = Path(m.group(1))
+    if not site.is_dir():
+        return None, f"wrapper _SITE does not exist: {site}"
+    return site, None
 
 
-def known_tool_names(site: Path) -> set:
-    t = site / "mnemosyne_hermes/tools.py"
-    return set(re.findall(r"[\"'](mnemosyne_[a-z_]+)[\"']", t.read_text())) if t.exists() else set()
+def known_tool_names(site):
+    """Tool names from the installed catalog, or None when it cannot be read (never an empty pass)."""
+    t = site / "mnemosyne_hermes/tools.py" if site else None
+    if not t or not t.exists():
+        return None
+    names = set(re.findall(r"[\"'](mnemosyne_[a-z_]+)[\"']", t.read_text()))
+    return names or None
+
+
+def as_mapping(v, where: str, problems: list) -> dict:
+    if v is None:
+        return {}
+    if not isinstance(v, dict):
+        problems.append(f"{where} is {type(v).__name__}, not a mapping")
+        return {}
+    return v
 
 
 def main() -> int:
@@ -73,38 +91,46 @@ def main() -> int:
     a = ap.parse_args()
     home = Path(a.home).expanduser()
     res = {}
-    site = site_for(home)
+    site, site_err = site_for(home)
 
     cfg, cfg_err = load_config(home / "config.yaml")
-    res["config"] = (cfg_err is None, "ok" if cfg_err is None else cfg_err)
-    mem = cfg.get("memory") or {}
-    mn = mem.get("mnemosyne") or {}
-    res["provider"] = (mem.get("provider") == "mnemosyne", mem.get("provider") or "''")
+    shape = []
+    mem = as_mapping(cfg.get("memory"), "memory", shape)
+    mn = as_mapping(mem.get("mnemosyne"), "memory.mnemosyne", shape)
+    err = cfg_err or ("; ".join(shape) if shape else None)
+    res["config"] = (err is None, "ok" if err is None else err)
+    prov_ok = mem.get("provider") == "mnemosyne" and site_err is None
+    res["provider"] = (prov_ok, (mem.get("provider") or "''") + (f"; {site_err}" if site_err else ""))
     tools = mn.get("tools")
     known = known_tool_names(site)
     if not isinstance(tools, list):
-        res["tools"] = (False, "unset (all 40)")
+        res["tools"] = (False, "unset (all 40)" if tools is None else f"not a list ({type(tools).__name__})")
+    elif known is None:
+        res["tools"] = (False, f"{len(tools)} tools; tool catalog unreadable — cannot validate names")
     else:
-        bad = [t for t in tools if not isinstance(t, str) or (known and t not in known)]
+        bad = [t for t in tools if not isinstance(t, str) or t not in known]
         dup = len(tools) != len(set(map(str, tools)))
         good = bool(tools) and len(tools) < 40 and not bad and not dup
-        res["tools"] = (good, f"{len(tools)} tools" + (f"; unknown {bad}" if bad else "") + ("; duplicates" if dup else "")
-                        + ("" if known else "; (tool catalog not found — names unvalidated)"))
-    pats = mn.get("ignore_patterns") or []
-    joined = " ".join(pats)
-    missing = [k for k in REQUIRED_FILTERS if k.lower() not in joined.lower()]
-    res["filters"] = (not missing, f"{len(pats)} patterns" + (f"; missing {missing}" if missing else ""))
+        res["tools"] = (good, f"{len(tools)} tools" + (f"; unknown {bad}" if bad else "") + ("; duplicates" if dup else ""))
+    pats = mn.get("ignore_patterns")
+    if pats is None:
+        pats = []
+    if not isinstance(pats, list) or not all(isinstance(p, str) for p in pats):
+        res["filters"] = (False, f"ignore_patterns must be a list of strings (got {type(pats).__name__})")
+    else:
+        joined = " ".join(pats)
+        missing = [k for k in REQUIRED_FILTERS if k.lower() not in joined.lower()]
+        res["filters"] = (not missing, f"{len(pats)} patterns" + (f"; missing {missing}" if missing else ""))
 
-    init = site / "mnemosyne_hermes/__init__.py"
-    src = init.read_text() if init.exists() else ""
+    init = site / "mnemosyne_hermes/__init__.py" if site else None
+    src = init.read_text() if init and init.exists() else ""
     missing_p = [k for k, m in PATCH_MARKERS.items() if m not in src]
     res["patch"] = (not missing_p, "C+D present" if not missing_p else f"MISSING {missing_p} — re-apply (SKILL.md Step 4)")
 
     # Foreign banks under this home = another profile's memory landed here (defect D).
     banks = home / "mnemosyne/data/banks"
-    foreign = sorted(d.name for d in banks.iterdir() if d.is_dir() and "." not in d.name) if banks.exists() else []
-    if home.name != ".hermes":
-        foreign = [b for b in foreign if b != home.name]
+    own = None if home.resolve() == (Path.home() / ".hermes").resolve() else home.name
+    foreign = sorted(d.name for d in banks.iterdir() if d.is_dir() and d.name != own) if banks.exists() else []
     res["isolation"] = (not foreign, "no foreign banks" if not foreign else f"foreign banks in this home: {foreign}")
 
     ov = home / "skills/memory/mnemosyne-memory-override"
@@ -112,7 +138,7 @@ def main() -> int:
 
     vers = {}
     for name, pin in PINS.items():
-        hits = sorted(site.glob(f"{name}-*.dist-info"))
+        hits = sorted(site.glob(f"{name}-*.dist-info")) if site else []
         vers[name] = hits[-1].name[len(name) + 1:-len(".dist-info")] if hits else None
     res["versions"] = (all(vers[k] == v for k, v in PINS.items()), ", ".join(f"{k}={vers[k]}" for k in PINS))
 

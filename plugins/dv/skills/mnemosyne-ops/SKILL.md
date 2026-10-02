@@ -78,7 +78,9 @@ started with.
 ## Step 3 — Verify the tools knob (after any upgrade)
 
 ```bash
-~/.hermes/hermes-agent/venv/bin/python scripts/verify_tools_config.py --home <pilot-home>   # add --disposable for a throwaway home
+# Replace PILOT_HOME with the real path; the script refuses any profile not named mnemosyne-pilot unless you add --disposable.
+PILOT_HOME="$HOME/.hermes/profiles/mnemosyne-pilot"
+~/.hermes/hermes-agent/venv/bin/python scripts/verify_tools_config.py --home "$PILOT_HOME"
 ```
 
 Run this against a disposable or pilot home. The verifier rewrites that home's config three
@@ -88,7 +90,7 @@ produces all 40.
 
 ## Step 4 — The carried patches
 
-**D — multiplex bank root.** This is a backport of upstream #958, which ships in mnemosyne-hermes ≥ 0.7.1 but needs beta core 4.0.0b3. In `initialize`, the profile-isolation branch passes `db_path=<hermes_home>/mnemosyne/data[/banks/<bank>]/mnemosyne.db` to `Mnemosyne(...)`. Without it, a multiplexed `hermes serve` puts every non-default profile's bank under the default home. Drop the patch once you're on a stable release that includes #958. Restart `hermes serve` after applying it.
+**D — multiplex bank root.** This is a backport of upstream #958. Supported version pairs: `mnemosyne-hermes` 0.7.0–0.7.2 run on stable core `mnemosyne-memory>=3.11.1` (incl. 3.15.1); only 0.7.3+ require beta core `>=4.0.0b3`. #958 ships in **0.7.1**, so **upgrading to `mnemosyne-hermes==0.7.1` on core 3.15.1 retires patch D** (patch C is still needed there — 0.7.1 still scopes MEMORY.md mirrors to `session`). Verify on a pilot home before upgrading. In `initialize`, the profile-isolation branch passes `db_path=<hermes_home>/mnemosyne/data[/banks/<bank>]/mnemosyne.db` to `Mnemosyne(...)`. Without it, a multiplexed `hermes serve` puts every non-default profile's bank under the default home. Drop patch D once you're on 0.7.1 or later; keep patch C until upstream #1101 lands. Restart `hermes serve` after applying it.
 
 **C — MEMORY.md mirror scope.**
 

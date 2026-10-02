@@ -41,9 +41,12 @@ CFG = HOME / "config.yaml"
 FILES = [CFG, HOME / "memories" / "MEMORY.md", HOME / "memories" / "USER.md"]
 TS = datetime.datetime.now().astimezone().strftime("%Y%m%dT%H%M%S%z")
 TAG = f"{a.identity}-{TS}"
-assert CFG.exists(), CFG
-if a.identity != "default" and not a.owner_confirmed:
-    sys.exit(f"refusing: '{a.identity}' is another profile's home; its owner enables it. Re-run with --owner-confirmed.")
+if not CFG.exists():
+    sys.exit(f"refusing: no config at {CFG}")
+DEFAULT_HOME = (Path.home() / ".hermes").resolve()
+if (a.identity != "default" or HOME != DEFAULT_HOME) and not a.owner_confirmed:
+    sys.exit(f"refusing: identity '{a.identity}' at {HOME} is not the default profile at {DEFAULT_HOME}; "
+             "its owner enables it. Re-run with --owner-confirmed.")
 
 def sha(p: Path) -> str:
     return hashlib.sha256(p.read_bytes()).hexdigest() if p.exists() else "MISSING"
@@ -73,11 +76,15 @@ elif WRAP.exists():
 else:
     print("  $", " ".join(cmd))
     if not a.dry_run:
-        r = subprocess.run(cmd, capture_output=True, text=True)
+        try:
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        except subprocess.TimeoutExpired:
+            sys.exit("wrapper install timed out after 300s — nothing written to config; inspect and re-run")
         print("  " + (r.stdout + r.stderr).strip().replace("\n", "\n  "))
         if r.returncode != 0:
             sys.exit(f"wrapper install failed rc={r.returncode}")
-        assert WRAP.exists()
+        if not WRAP.exists():
+            sys.exit(f"wrapper install reported success but {WRAP} is missing")
 
 # 1b. the installer drops a skill that tells the agent MEMORY.md is deprecated — contrary to §7/§8.
 SKILL = HOME / "skills" / "memory" / "mnemosyne-memory-override"
@@ -103,7 +110,8 @@ old_text = CFG.read_text()
 old_lines = old_text.splitlines()
 # locate the top-level memory block: 'memory:' at col 0 through the last indented/blank line before the next top-level key
 starts = [i for i, l in enumerate(old_lines) if l.startswith("memory:")]
-assert len(starts) == 1, f"expected exactly one top-level memory: key, found {len(starts)}"
+if len(starts) != 1:
+    sys.exit(f"refusing: expected exactly one top-level memory: key, found {len(starts)}")
 s = starts[0]; e = s + 1
 while e < len(old_lines) and (old_lines[e].startswith(" ") or old_lines[e].strip() == "" or old_lines[e].lstrip().startswith("#")):
     e += 1
@@ -213,14 +221,23 @@ if p is not None:
 print("__R__" + json.dumps(out))
 '''
     env = {**os.environ, "HERMES_HOME": str(HOME), "IDENT": a.identity}
-    r = subprocess.run(["/home/node/.hermes/hermes-agent/venv/bin/python", "-c", probe], env=env, capture_output=True, text=True, timeout=180)
+    try:
+        r = subprocess.run(["/home/node/.hermes/hermes-agent/venv/bin/python", "-c", probe], env=env, capture_output=True, text=True, timeout=180)
+    except subprocess.TimeoutExpired:
+        sys.exit("smoke FAILED: provider probe timed out after 180s (config already written — roll back with the backup or `hermes memory off`)")
     line = [l for l in r.stdout.splitlines() if l.startswith("__R__")]
     res = json.loads(line[-1][5:]) if line else {"error": r.stderr[-800:]}
     want = SIX if a.tools == "6" else THREE
     print("  ", json.dumps(res))
-    assert not res.get("provider_none"), "provider did not load"
-    assert res.get("tools") == want, f"tool subset mismatch: {res.get('tools')}"
-    assert res.get("db_path", "").startswith(str(HOME)), f"db not under home: {res.get('db_path')}"
+    if "error" in res:
+        sys.exit(f"smoke FAILED: probe produced no result; stderr tail: {res['error'][-400:]}")
+    if res.get("provider_none"):
+        sys.exit("smoke FAILED: provider did not load")
+    if res.get("tools") != want:
+        sys.exit(f"smoke FAILED: tool subset mismatch: {res.get('tools')}")
+    dbp = Path(res.get("db_path") or "/nonexistent").resolve()
+    if not dbp.is_relative_to(HOME):
+        sys.exit(f"smoke FAILED: db not under home: {dbp}")
     print(f"  OK: {len(want)} tools, db under {HOME}")
 
 print(f"\nDONE {TAG}. Rollback: hermes{'' if a.identity == 'default' else ' -p ' + a.identity} memory off")

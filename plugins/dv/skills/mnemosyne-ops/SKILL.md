@@ -22,6 +22,12 @@ VPS).
 
 ## Step 1 — Health check first, always
 
+Run every command below from this skill's directory (`plugins/dv/skills/mnemosyne-ops/` in a repo checkout, or the installed plugin's copy), so `scripts/` resolves:
+
+```bash
+cd "$(dirname "$(find ~/Projects/skills ~/.claude/plugins -path '*mnemosyne-ops/SKILL.md' 2>/dev/null | head -1)")"
+```
+
 ```bash
 ~/.hermes/hermes-agent/venv/bin/python scripts/mnemosyne_health.py --home ~/.hermes
 ```
@@ -30,6 +36,7 @@ Read-only. Exit 0 means healthy and exit 1 means drift. Each `FAIL` line names i
 
 | Check | Drift it catches | Fix |
 |---|---|---|
+| `config` | `config.yaml` missing or invalid YAML | fix the file; every other check is unreliable until this passes |
 | `provider` | provider switched off | `hermes config set memory.provider mnemosyne` |
 | `tools` | full 40-tool surface (~6.5k tok/request) | set `memory.mnemosyne.tools` (6 for Atlas, 3 suggested elsewhere) |
 | `filters` | Hermes cron / background-process / system-note turns being stored as `[USER]` | re-run `enable_profile.py` (it writes `ignore_patterns`) |
@@ -71,11 +78,11 @@ started with.
 ## Step 3 — Verify the tools knob (after any upgrade)
 
 ```bash
-~/.hermes/hermes-agent/venv/bin/python scripts/verify_tools_config.py --home <pilot-home>
+~/.hermes/hermes-agent/venv/bin/python scripts/verify_tools_config.py --home <pilot-home>   # add --disposable for a throwaway home
 ```
 
 Run this against a disposable or pilot home. The verifier rewrites that home's config three
-times and then restores it. Expected results: 6 names produce exactly those 6 tools; a typo
+times, then restores the original bytes in a `finally` block (even if a probe fails), and exits non-zero if any check fails. Expected results: 6 names produce exactly those 6 tools; a typo
 produces a loud `ValueError` rather than a silent fallback to all 40; leaving the key out
 produces all 40.
 

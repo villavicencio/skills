@@ -7,13 +7,15 @@ Three cases, one provider load each (fresh process per case via subprocess so co
   B. tools = 6 + one typo      -> provider must fail LOUDLY (ValueError / unavailable), not expose 40
   C. tools key absent          -> all 40 (the historical default), to prove A is the config doing work
 
-Pilot profile only. Restores the 6-tool config at the end.
+Pilot/disposable homes only. The original config.yaml bytes are restored in `finally`, even on error.
+Exit 0 only if every check passes.
 """
 import json, os, subprocess, sys, yaml
 from pathlib import Path
 
 HOME = Path(sys.argv[sys.argv.index("--home") + 1]) if "--home" in sys.argv else Path.home() / ".hermes/profiles/mnemosyne-pilot"
-assert "pilot" in str(HOME)
+if "pilot" not in str(HOME) and "--disposable" not in sys.argv:
+    sys.exit(f"refusing: {HOME} is not a pilot home (pass --disposable to override for a throwaway home)")
 CFG = HOME / "config.yaml"
 PY = "/home/node/.hermes/hermes-agent/venv/bin/python"
 SIX = ["mnemosyne_remember", "mnemosyne_recall", "mnemosyne_invalidate",
@@ -65,26 +67,28 @@ def check(ok, name, detail=""):
     checks.append({"name": name, "pass": bool(ok), "detail": detail[:300]})
     print(("PASS" if ok else "FAIL"), name, "—", detail[:200])
 
-# A
-set_tools(SIX); a = probe(); results["A_six"] = a
-check(a.get("loaded") and a.get("tool_names") == SIX, "config_tools_six_exposes_exactly_six", json.dumps({k: a.get(k) for k in ("count", "tool_names", "est_tokens")}))
+ORIGINAL = CFG.read_bytes()
+try:
+  # A
+  set_tools(SIX); a = probe(); results["A_six"] = a
+  check(a.get("loaded") and a.get("tool_names") == SIX, "config_tools_six_exposes_exactly_six", json.dumps({k: a.get(k) for k in ("count", "tool_names", "est_tokens")}))
 
-# B
-set_tools(SIX + ["mnemosyne_recal"]); b = probe(); results["B_typo"] = b
-loud = (not b.get("loaded")) and ("Unknown Mnemosyne tool" in (str(b.get("exception", "")) + str(b.get("stderr_tail", ""))) or bool(b.get("provider_is_none")))
-check(loud and b.get("count") != 40, "config_tools_typo_fails_loudly_not_silently_all", json.dumps({k: b.get(k) for k in ("loaded", "provider_is_none", "exception_type", "exception")}))
+  # B
+  set_tools(SIX + ["mnemosyne_recal"]); b = probe(); results["B_typo"] = b
+  loud = (not b.get("loaded")) and ("Unknown Mnemosyne tool" in (str(b.get("exception", "")) + str(b.get("stderr_tail", ""))) or bool(b.get("provider_is_none")))
+  check(loud and b.get("count") != 40, "config_tools_typo_fails_loudly_not_silently_all", json.dumps({k: b.get(k) for k in ("loaded", "provider_is_none", "exception_type", "exception")}))
 
-# C
-set_tools(None); c = probe(); results["C_absent"] = c
-check(c.get("loaded") and c.get("count") == 40, "config_tools_absent_exposes_all_forty", json.dumps({k: c.get(k) for k in ("count", "est_tokens")}))
+  # C
+  set_tools(None); c = probe(); results["C_absent"] = c
+  check(c.get("loaded") and c.get("count") == 40, "config_tools_absent_exposes_all_forty", json.dumps({k: c.get(k) for k in ("count", "est_tokens")}))
 
-# restore decision state
-set_tools(SIX)
-final = yaml.safe_load(CFG.read_text())["memory"]["mnemosyne"]["tools"]
-check(final == SIX, "pilot_config_restored_to_six", json.dumps(final))
+finally:
+  CFG.write_bytes(ORIGINAL)
+check(CFG.read_bytes() == ORIGINAL, "config_restored_byte_identical", str(CFG))
 
 out = {"phase": "tools-config", "hermes_home": str(HOME), "results": results, "checks": checks,
        "summary": f"{sum(c['pass'] for c in checks)}/{len(checks)} checks pass"}
 dest = Path(sys.argv[sys.argv.index("--out") + 1]) if "--out" in sys.argv else Path("/dev/stdout")
 dest.write_text(json.dumps(out, indent=1))
 print(out["summary"])
+sys.exit(0 if all(c["pass"] for c in checks) else 1)

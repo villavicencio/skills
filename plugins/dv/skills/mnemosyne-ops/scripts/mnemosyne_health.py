@@ -4,10 +4,11 @@
     mnemosyne_health.py [--home ~/.hermes] [--json]
 
 Checks the invariants VIL-143 established (DECISION.md §12–§13):
+  config       config.yaml exists and parses
   provider     memory.provider == mnemosyne
-  tools        memory.mnemosyne.tools is an explicit subset (not the 40-tool default)
+  tools        memory.mnemosyne.tools is an explicit subset of real tool names (not the 40-tool default)
   filters      memory.mnemosyne.ignore_patterns covers Hermes-injected system turns
-  patch        carried patches C and D present in the side venv (re-apply after upgrades)
+  patch        carried patches C and D present in the side venv this home's wrapper loads
   isolation    no other profile's bank living under this home (multiplex leak, defect D)
   override     installer's 'mnemosyne-memory-override' skill is absent
   leak         no Hermes-injected system turns stored as valid [USER] rows in the last 7 days
@@ -19,7 +20,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 PINS = {"mnemosyne_memory": "3.15.1", "mnemosyne_hermes": "0.5.0"}
-VENV_SITE = Path.home() / ".hermes/venvs/mnemosyne/lib/python3.11/site-packages"
+DEFAULT_SITE = Path.home() / ".hermes/venvs/mnemosyne/lib/python3.11/site-packages"
 PATCH_MARKERS = {"C (MEMORY.md mirror scope)": "ATLAS CARRIED PATCH (VIL-143 defect C",
                  "D (multiplex bank root, upstream #958)": "ATLAS CARRIED PATCH (VIL-143 defect D"}
 LEAK_SQL = [
@@ -33,12 +34,36 @@ LEAK_SQL = [
 REQUIRED_FILTERS = ["scheduled cron job", "Background process", "System note"]
 
 
-def load_yaml(p: Path) -> dict:
+def load_config(p: Path):
+    """Return (config, error). A missing, unreadable or invalid config is drift, never {}."""
+    if not p.exists():
+        return {}, f"missing {p}"
     try:
         import yaml
-        return yaml.safe_load(p.read_text()) or {}
-    except ImportError:  # minimal fallback: we only need to know the file exists
-        return {}
+    except ImportError:
+        return {}, "PyYAML not importable — run with the Hermes venv python"
+    try:
+        cfg = yaml.safe_load(p.read_text())
+    except (OSError, yaml.YAMLError) as e:
+        return {}, f"unreadable/invalid YAML: {type(e).__name__}: {str(e)[:120]}"
+    if not isinstance(cfg, dict):
+        return {}, "config root is not a mapping"
+    return cfg, None
+
+
+def site_for(home: Path) -> Path:
+    """The side venv this home actually loads: the wrapper's _SITE, else the shared default."""
+    wrap = home / "plugins/mnemosyne/__init__.py"
+    if wrap.exists():
+        m = re.search(r"^_SITE\s*=\s*['\"]([^'\"]+)['\"]", wrap.read_text(), re.M)
+        if m:
+            return Path(m.group(1))
+    return DEFAULT_SITE
+
+
+def known_tool_names(site: Path) -> set:
+    t = site / "mnemosyne_hermes/tools.py"
+    return set(re.findall(r"[\"'](mnemosyne_[a-z_]+)[\"']", t.read_text())) if t.exists() else set()
 
 
 def main() -> int:
@@ -48,19 +73,29 @@ def main() -> int:
     a = ap.parse_args()
     home = Path(a.home).expanduser()
     res = {}
+    site = site_for(home)
 
-    cfg = load_yaml(home / "config.yaml")
+    cfg, cfg_err = load_config(home / "config.yaml")
+    res["config"] = (cfg_err is None, "ok" if cfg_err is None else cfg_err)
     mem = cfg.get("memory") or {}
     mn = mem.get("mnemosyne") or {}
     res["provider"] = (mem.get("provider") == "mnemosyne", mem.get("provider") or "''")
     tools = mn.get("tools")
-    res["tools"] = (isinstance(tools, list) and 0 < len(tools) < 40, f"{len(tools)} tools" if isinstance(tools, list) else "unset (all 40)")
+    known = known_tool_names(site)
+    if not isinstance(tools, list):
+        res["tools"] = (False, "unset (all 40)")
+    else:
+        bad = [t for t in tools if not isinstance(t, str) or (known and t not in known)]
+        dup = len(tools) != len(set(map(str, tools)))
+        good = bool(tools) and len(tools) < 40 and not bad and not dup
+        res["tools"] = (good, f"{len(tools)} tools" + (f"; unknown {bad}" if bad else "") + ("; duplicates" if dup else "")
+                        + ("" if known else "; (tool catalog not found — names unvalidated)"))
     pats = mn.get("ignore_patterns") or []
     joined = " ".join(pats)
     missing = [k for k in REQUIRED_FILTERS if k.lower() not in joined.lower()]
     res["filters"] = (not missing, f"{len(pats)} patterns" + (f"; missing {missing}" if missing else ""))
 
-    init = VENV_SITE / "mnemosyne_hermes/__init__.py"
+    init = site / "mnemosyne_hermes/__init__.py"
     src = init.read_text() if init.exists() else ""
     missing_p = [k for k, m in PATCH_MARKERS.items() if m not in src]
     res["patch"] = (not missing_p, "C+D present" if not missing_p else f"MISSING {missing_p} — re-apply (SKILL.md Step 4)")
@@ -77,7 +112,7 @@ def main() -> int:
 
     vers = {}
     for name, pin in PINS.items():
-        hits = sorted(VENV_SITE.glob(f"{name}-*.dist-info"))
+        hits = sorted(site.glob(f"{name}-*.dist-info"))
         vers[name] = hits[-1].name[len(name) + 1:-len(".dist-info")] if hits else None
     res["versions"] = (all(vers[k] == v for k, v in PINS.items()), ", ".join(f"{k}={vers[k]}" for k in PINS))
 

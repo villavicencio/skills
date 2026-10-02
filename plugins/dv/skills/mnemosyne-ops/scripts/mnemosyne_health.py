@@ -31,7 +31,7 @@ LEAK_SQL = [
     "[USER] [System note:%",
     "[USER] [ASYNC %COMPLETE%",
 ]
-REQUIRED_FILTERS = ["scheduled cron job", "Background process", "System note"]
+REQUIRED_FILTERS = ["scheduled cron job", "Background process", "System note", "Message from 🤖"]
 
 
 def load_config(p: Path):
@@ -116,7 +116,10 @@ def main() -> int:
         vers[name] = hits[-1].name[len(name) + 1:-len(".dist-info")] if hits else None
     res["versions"] = (all(vers[k] == v for k, v in PINS.items()), ", ".join(f"{k}={vers[k]}" for k in PINS))
 
-    db = home / "mnemosyne/data/mnemosyne.db"
+    # The private bank file this home actually writes (mirrors patch D's resolution):
+    # default profile -> <home>/mnemosyne/data/mnemosyne.db; named profile -> .../banks/<name>/mnemosyne.db
+    is_default = home.resolve() == (Path.home() / ".hermes").resolve()
+    db = (home / "mnemosyne/data/mnemosyne.db") if is_default else (home / "mnemosyne/data/banks" / home.name / "mnemosyne.db")
     if db.exists():
         c = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
         since = (datetime.utcnow() - timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S")

@@ -142,6 +142,8 @@ mem["mnemosyne"] = {
         r"^\s*\[(?:CONTEXT COMPACTION|CONTEXT SUMMARY|PRIOR CONTEXT)",
         r"^\s*\[System note:",
         r"^\s*A background (?:fan-out of \d+ subagent\(s\)|subagent) you dispatched earlier has finished",
+        # Bot Mode message_agent traffic: another agent's words, not the user's (VIL-278, Axiom's catch).
+        r"^\s*Message from 🤖",
     ],
 }
 buf = io.StringIO(); yaml.dump(mem_doc, buf); new_block = buf.getvalue().rstrip("\n").splitlines()

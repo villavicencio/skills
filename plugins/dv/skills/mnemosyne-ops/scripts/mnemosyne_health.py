@@ -16,7 +16,7 @@ Checks the invariants VIL-143 established (DECISION.md §12–§13):
   freshness    last working-memory write within 48h (autosave alive)
   versions     installed (core, hermes) pair is one we have TESTED; add a pair only after a pilot run
 """
-import argparse, json, os, re, sqlite3, sys
+import argparse, ast, json, os, re, sqlite3, sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -24,12 +24,35 @@ from pathlib import Path
 # upgrade CANDIDATE (ships upstream #958 = fix D) — add it here only after a pilot run passes.
 TESTED_PAIRS = {("3.15.1", "0.5.0")}
 DEFAULT_SITE = Path.home() / ".hermes/venvs/mnemosyne/lib/python3.11/site-packages"
-# Functional, version-agnostic checks on the provider source the wrapper loads.
-# C: upstream scopes MEMORY.md mirrors to "session" (#1101) -> the fix is the ABSENCE of that line.
-# D: the profile-isolation branch binds the DB to the per-call hermes_home (#958) -> PRESENCE of
-#    db_path=private_db_path, which our backport and upstream >=0.7.1 both contain.
-FIX_C_BROKEN = re.compile(r'scope\s*=\s*"global"\s+if\s+target\s*==\s*"user"\s+else\s+"session"')
-FIX_D_PRESENT = re.compile(r"db_path\s*=\s*private_db_path")
+# Functional, version-agnostic checks on the provider source the wrapper loads, done on the parsed
+# AST so quoting, spacing and line-wrapping can't hide a regression.
+# C: upstream (#1101) mirrors MEMORY.md writes with
+#        scope = "global" if target == "user" else "session"
+#    Fix C is the ABSENCE of any conditional that yields the string "session" for the scope.
+# D: upstream #958 binds the private DB to the per-call hermes_home by calling
+#        Mnemosyne(..., db_path=private_db_path, ...)
+#    Fix D is the PRESENCE of a db_path= keyword passed a name/expression involving private_db_path.
+#    Our backport and upstream >=0.7.1 both contain it.
+
+
+def _fix_c_broken(tree: ast.AST) -> bool:
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name == "on_memory_write":
+            for sub in ast.walk(node):
+                if isinstance(sub, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "scope" for t in sub.targets):
+                    if isinstance(sub.value, ast.IfExp) and any(
+                            isinstance(c, ast.Constant) and c.value == "session" for c in (sub.value.body, sub.value.orelse)):
+                        return True
+    return False
+
+
+def _fix_d_present(tree: ast.AST) -> bool:
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call):
+            for kw in node.keywords:
+                if kw.arg == "db_path" and any(isinstance(n, ast.Name) and n.id == "private_db_path" for n in ast.walk(kw.value)):
+                    return True
+    return False
 LEAK_SQL = [
     "[USER] [IMPORTANT: You are running as a scheduled cron job%",
     "[USER] [IMPORTANT: Background process%",
@@ -136,9 +159,15 @@ def main() -> int:
     if not src:
         res["patch"] = (False, "provider source not found — cannot verify fixes C/D")
     else:
-        missing_p = (["C (MEMORY.md mirrors scoped to session)"] if FIX_C_BROKEN.search(src) else []) + \
-                    ([] if FIX_D_PRESENT.search(src) else ["D (bank root not bound to hermes_home)"])
-        res["patch"] = (not missing_p, "fixes C+D in effect" if not missing_p else f"MISSING {missing_p} — re-apply (SKILL.md Step 4)")
+        try:
+            tree = ast.parse(src)
+        except SyntaxError as e:
+            tree = None
+            res["patch"] = (False, f"provider source does not parse: {e.msg} (line {e.lineno})")
+        if tree is not None:
+            missing_p = (["C (MEMORY.md mirrors scoped to session)"] if _fix_c_broken(tree) else []) + \
+                        ([] if _fix_d_present(tree) else ["D (bank root not bound to hermes_home)"])
+            res["patch"] = (not missing_p, "fixes C+D in effect" if not missing_p else f"MISSING {missing_p} — re-apply (SKILL.md Step 4)")
 
     # Foreign banks under this home = another profile's memory landed here (defect D).
     banks = home / "mnemosyne/data/banks"

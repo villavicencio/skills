@@ -8,21 +8,28 @@ Checks the invariants VIL-143 established (DECISION.md §12–§13):
   provider     memory.provider == mnemosyne
   tools        memory.mnemosyne.tools is an explicit subset of real tool names (not the 40-tool default)
   filters      memory.mnemosyne.ignore_patterns covers Hermes-injected system turns
-  patch        carried patches C and D present in the side venv this home's wrapper loads
+  patch        fixes C and D are in effect in the code this home loads (functional check: carried
+               patch or upstream equivalent both pass, so an upgrade that ships the fix stays healthy)
   isolation    no other profile's bank living under this home (multiplex leak, defect D)
   override     installer's 'mnemosyne-memory-override' skill is absent
   leak         no Hermes-injected system turns stored as valid [USER] rows in the last 7 days
   freshness    last working-memory write within 48h (autosave alive)
-  versions     installed mnemosyne-memory / mnemosyne-hermes match the pins
+  versions     installed (core, hermes) pair is one we have TESTED; add a pair only after a pilot run
 """
 import argparse, json, os, re, sqlite3, sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
-PINS = {"mnemosyne_memory": "3.15.1", "mnemosyne_hermes": "0.5.0"}
+# (mnemosyne_memory, mnemosyne_hermes) pairs verified on this deployment. 0.7.1 on core 3.15.1 is an
+# upgrade CANDIDATE (ships upstream #958 = fix D) — add it here only after a pilot run passes.
+TESTED_PAIRS = {("3.15.1", "0.5.0")}
 DEFAULT_SITE = Path.home() / ".hermes/venvs/mnemosyne/lib/python3.11/site-packages"
-PATCH_MARKERS = {"C (MEMORY.md mirror scope)": "ATLAS CARRIED PATCH (VIL-143 defect C",
-                 "D (multiplex bank root, upstream #958)": "ATLAS CARRIED PATCH (VIL-143 defect D"}
+# Functional, version-agnostic checks on the provider source the wrapper loads.
+# C: upstream scopes MEMORY.md mirrors to "session" (#1101) -> the fix is the ABSENCE of that line.
+# D: the profile-isolation branch binds the DB to the per-call hermes_home (#958) -> PRESENCE of
+#    db_path=private_db_path, which our backport and upstream >=0.7.1 both contain.
+FIX_C_BROKEN = re.compile(r'scope\s*=\s*"global"\s+if\s+target\s*==\s*"user"\s+else\s+"session"')
+FIX_D_PRESENT = re.compile(r"db_path\s*=\s*private_db_path")
 LEAK_SQL = [
     "[USER] [IMPORTANT: You are running as a scheduled cron job%",
     "[USER] [IMPORTANT: Background process%",
@@ -99,8 +106,10 @@ def main() -> int:
     mn = as_mapping(mem.get("mnemosyne"), "memory.mnemosyne", shape)
     err = cfg_err or ("; ".join(shape) if shape else None)
     res["config"] = (err is None, "ok" if err is None else err)
-    prov_ok = mem.get("provider") == "mnemosyne" and site_err is None
-    res["provider"] = (prov_ok, (mem.get("provider") or "''") + (f"; {site_err}" if site_err else ""))
+    prov = mem.get("provider")
+    prov_ok = prov == "mnemosyne" and site_err is None
+    prov_desc = "''" if prov in (None, "") else (prov if isinstance(prov, str) else f"{type(prov).__name__} {prov!r}"[:60])
+    res["provider"] = (prov_ok, prov_desc + (f"; {site_err}" if site_err else ""))
     tools = mn.get("tools")
     known = known_tool_names(site)
     if not isinstance(tools, list):
@@ -124,8 +133,12 @@ def main() -> int:
 
     init = site / "mnemosyne_hermes/__init__.py" if site else None
     src = init.read_text() if init and init.exists() else ""
-    missing_p = [k for k, m in PATCH_MARKERS.items() if m not in src]
-    res["patch"] = (not missing_p, "C+D present" if not missing_p else f"MISSING {missing_p} — re-apply (SKILL.md Step 4)")
+    if not src:
+        res["patch"] = (False, "provider source not found — cannot verify fixes C/D")
+    else:
+        missing_p = (["C (MEMORY.md mirrors scoped to session)"] if FIX_C_BROKEN.search(src) else []) + \
+                    ([] if FIX_D_PRESENT.search(src) else ["D (bank root not bound to hermes_home)"])
+        res["patch"] = (not missing_p, "fixes C+D in effect" if not missing_p else f"MISSING {missing_p} — re-apply (SKILL.md Step 4)")
 
     # Foreign banks under this home = another profile's memory landed here (defect D).
     banks = home / "mnemosyne/data/banks"
@@ -137,10 +150,12 @@ def main() -> int:
     res["override"] = (not ov.exists(), "absent" if not ov.exists() else f"PRESENT at {ov} — remove (contradicts §7/§8)")
 
     vers = {}
-    for name, pin in PINS.items():
+    for name in ("mnemosyne_memory", "mnemosyne_hermes"):
         hits = sorted(site.glob(f"{name}-*.dist-info")) if site else []
         vers[name] = hits[-1].name[len(name) + 1:-len(".dist-info")] if hits else None
-    res["versions"] = (all(vers[k] == v for k, v in PINS.items()), ", ".join(f"{k}={vers[k]}" for k in PINS))
+    pair = (vers["mnemosyne_memory"], vers["mnemosyne_hermes"])
+    res["versions"] = (pair in TESTED_PAIRS, f"core={pair[0]} hermes={pair[1]}"
+                       + ("" if pair in TESTED_PAIRS else " — untested pair; pilot it, then add to TESTED_PAIRS"))
 
     # The private bank file this home actually writes (mirrors patch D's resolution):
     # default profile -> <home>/mnemosyne/data/mnemosyne.db; named profile -> .../banks/<name>/mnemosyne.db

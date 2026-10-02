@@ -40,12 +40,12 @@ Read-only. Exit 0 means healthy and exit 1 means drift. Each `FAIL` line names i
 | `provider` | provider switched off | `hermes config set memory.provider mnemosyne` |
 | `tools` | full 40-tool surface (~6.5k tok/request) | set `memory.mnemosyne.tools` (6 for Atlas, 3 suggested elsewhere) |
 | `filters` | Hermes cron / background-process / system-note turns being stored as `[USER]` | re-run `enable_profile.py` (it writes `ignore_patterns`) |
-| `patch` | a carried patch was lost on upgrade: C (MEMORY.md mirrors become session-only) or D (non-default profiles' banks land in the default home under `hermes serve`) | re-apply (Step 4) |
+| `patch` | fix C or D is not in effect in the loaded provider code: C (MEMORY.md mirrors become session-only) or D (non-default profiles' banks land in the default home under `hermes serve`). The check is functional, so an upstream release that ships the fix passes without the carried patch | re-apply (Step 4) |
 | `isolation` | another profile's bank is living under this home: the multiplex leak | apply patch D, restart `hermes serve`, and move the bank (export, then import into its owner's home) |
 | `override` | installer re-dropped `mnemosyne-memory-override`, which tells the agent MEMORY.md is deprecated | delete `<home>/skills/memory/mnemosyne-memory-override` |
 | `leak` | injected system turns stored in the last 7 days | widen `ignore_patterns`; invalidate the rows |
 | `freshness` | autosave silent > 48h | check `hermes memory status`, the gateway log |
-| `versions` | unpinned upgrade | re-verify everything below before accepting |
+| `versions` | the installed (core, hermes) pair isn't one we've tested (`TESTED_PAIRS`; today only 3.15.1 + 0.5.0) | run the pilot verification (Step 3 + `verify_multiplex_isolation.py`), then add the pair to `TESTED_PAIRS` |
 
 ## Step 2 — Enable on a profile
 
@@ -90,7 +90,7 @@ produces all 40.
 
 ## Step 4 — The carried patches
 
-**D — multiplex bank root.** This is a backport of upstream #958. Supported version pairs: `mnemosyne-hermes` 0.7.0–0.7.2 run on stable core `mnemosyne-memory>=3.11.1` (incl. 3.15.1); only 0.7.3+ require beta core `>=4.0.0b3`. #958 ships in **0.7.1**, so **upgrading to `mnemosyne-hermes==0.7.1` on core 3.15.1 retires patch D** (patch C is still needed there — 0.7.1 still scopes MEMORY.md mirrors to `session`). Verify on a pilot home before upgrading. In `initialize`, the profile-isolation branch passes `db_path=<hermes_home>/mnemosyne/data[/banks/<bank>]/mnemosyne.db` to `Mnemosyne(...)`. Without it, a multiplexed `hermes serve` puts every non-default profile's bank under the default home. Drop patch D once you're on 0.7.1 or later; keep patch C until upstream #1101 lands. Restart `hermes serve` after applying it.
+**D — multiplex bank root.** This is a backport of upstream #958. Supported version pairs: `mnemosyne-hermes` 0.7.0–0.7.2 run on stable core `mnemosyne-memory>=3.11.1` (incl. 3.15.1); only 0.7.3+ require beta core `>=4.0.0b3`. #958 ships in **0.7.1**, so **`mnemosyne-hermes==0.7.1` on core 3.15.1 is an upgrade candidate that would retire patch D** (patch C is still needed there — 0.7.1 still scopes MEMORY.md mirrors to `session`). It is **not yet tested here**: pilot it first, then add `("3.15.1", "0.7.1")` to `TESTED_PAIRS` in the health check. The `patch` check already accepts upstream's fix D, so only `versions` gates the upgrade. In `initialize`, the profile-isolation branch passes `db_path=<hermes_home>/mnemosyne/data[/banks/<bank>]/mnemosyne.db` to `Mnemosyne(...)`. Without it, a multiplexed `hermes serve` puts every non-default profile's bank under the default home. After a tested move to 0.7.1 or later, patch D is no longer needed; keep patch C until upstream #1101 lands. Restart `hermes serve` after applying it.
 
 **C — MEMORY.md mirror scope.**
 

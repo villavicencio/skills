@@ -7,7 +7,8 @@ Checks the invariants VIL-143 established (DECISION.md §12–§13):
   provider     memory.provider == mnemosyne
   tools        memory.mnemosyne.tools is an explicit subset (not the 40-tool default)
   filters      memory.mnemosyne.ignore_patterns covers Hermes-injected system turns
-  patch        carried scope patch present in the side venv (re-apply after upgrades)
+  patch        carried patches C and D present in the side venv (re-apply after upgrades)
+  isolation    no other profile's bank living under this home (multiplex leak, defect D)
   override     installer's 'mnemosyne-memory-override' skill is absent
   leak         no Hermes-injected system turns stored as valid [USER] rows in the last 7 days
   freshness    last working-memory write within 48h (autosave alive)
@@ -19,7 +20,8 @@ from pathlib import Path
 
 PINS = {"mnemosyne_memory": "3.15.1", "mnemosyne_hermes": "0.5.0"}
 VENV_SITE = Path.home() / ".hermes/venvs/mnemosyne/lib/python3.11/site-packages"
-PATCH_MARKER = "ATLAS CARRIED PATCH (VIL-143 defect C"
+PATCH_MARKERS = {"C (MEMORY.md mirror scope)": "ATLAS CARRIED PATCH (VIL-143 defect C",
+                 "D (multiplex bank root, upstream #958)": "ATLAS CARRIED PATCH (VIL-143 defect D"}
 LEAK_SQL = [
     "[USER] [IMPORTANT: You are running as a scheduled cron job%",
     "[USER] [IMPORTANT: Background process%",
@@ -59,8 +61,16 @@ def main() -> int:
     res["filters"] = (not missing, f"{len(pats)} patterns" + (f"; missing {missing}" if missing else ""))
 
     init = VENV_SITE / "mnemosyne_hermes/__init__.py"
-    has_patch = init.exists() and PATCH_MARKER in init.read_text()
-    res["patch"] = (has_patch, "present" if has_patch else "MISSING — re-apply scope patch (DECISION.md §13)")
+    src = init.read_text() if init.exists() else ""
+    missing_p = [k for k, m in PATCH_MARKERS.items() if m not in src]
+    res["patch"] = (not missing_p, "C+D present" if not missing_p else f"MISSING {missing_p} — re-apply (SKILL.md Step 4)")
+
+    # Foreign banks under this home = another profile's memory landed here (defect D).
+    banks = home / "mnemosyne/data/banks"
+    foreign = sorted(d.name for d in banks.iterdir() if d.is_dir() and "." not in d.name) if banks.exists() else []
+    if home.name != ".hermes":
+        foreign = [b for b in foreign if b != home.name]
+    res["isolation"] = (not foreign, "no foreign banks" if not foreign else f"foreign banks in this home: {foreign}")
 
     ov = home / "skills/memory/mnemosyne-memory-override"
     res["override"] = (not ov.exists(), "absent" if not ov.exists() else f"PRESENT at {ov} — remove (contradicts §7/§8)")

@@ -33,7 +33,8 @@ Read-only. Exit 0 means healthy and exit 1 means drift. Each `FAIL` line names i
 | `provider` | provider switched off | `hermes config set memory.provider mnemosyne` |
 | `tools` | full 40-tool surface (~6.5k tok/request) | set `memory.mnemosyne.tools` (6 for Atlas, 3 suggested elsewhere) |
 | `filters` | Hermes cron / background-process / system-note turns being stored as `[USER]` | re-run `enable_profile.py` (it writes `ignore_patterns`) |
-| `patch` | carried scope patch lost: MEMORY.md mirrors become session-only and unrecallable | re-apply (Step 4) |
+| `patch` | a carried patch was lost on upgrade: C (MEMORY.md mirrors become session-only) or D (non-default profiles' banks land in the default home under `hermes serve`) | re-apply (Step 4) |
+| `isolation` | another profile's bank is living under this home: the multiplex leak | apply patch D, restart `hermes serve`, and move the bank (export, then import into its owner's home) |
 | `override` | installer re-dropped `mnemosyne-memory-override`, which tells the agent MEMORY.md is deprecated | delete `<home>/skills/memory/mnemosyne-memory-override` |
 | `leak` | injected system turns stored in the last 7 days | widen `ignore_patterns`; invalidate the rows |
 | `freshness` | autosave silent > 48h | check `hermes memory status`, the gateway log |
@@ -78,7 +79,11 @@ times and then restores it. Expected results: 6 names produce exactly those 6 to
 produces a loud `ValueError` rather than a silent fallback to all 40; leaving the key out
 produces all 40.
 
-## Step 4 — The carried patch
+## Step 4 — The carried patches
+
+**D — multiplex bank root.** This is a backport of upstream #958, which ships in mnemosyne-hermes ≥ 0.7.1 but needs beta core 4.0.0b3. In `initialize`, the profile-isolation branch passes `db_path=<hermes_home>/mnemosyne/data[/banks/<bank>]/mnemosyne.db` to `Mnemosyne(...)`. Without it, a multiplexed `hermes serve` puts every non-default profile's bank under the default home. Drop the patch once you're on a stable release that includes #958. Restart `hermes serve` after applying it.
+
+**C — MEMORY.md mirror scope.**
 
 `mnemosyne_hermes/__init__.py`, `on_memory_write`: upstream scopes `MEMORY.md` mirrors to
 `session`, so a fact evicted from `MEMORY.md` can't be recalled from any other session. The
@@ -106,6 +111,7 @@ UPDATE working_memory SET scope='global'
   about the same entity rank the older one first.
 - **`mnemosyne-hermes upgrade` re-drops the override skill** and can replace the patched
   `__init__.py`. Run Step 1 immediately afterward.
+- **Multiplex isolation.** CLI and per-profile gateways run one profile per process. `hermes serve` (Desktop) runs many. Isolation tests must cover two homes in one process (A→B→A), or they miss defect D.
 - **Host migration.** Move `<home>/mnemosyne/`, `~/.hermes/venvs/mnemosyne/` (or rebuild it
   and re-patch), `<home>/cache/fastembed/`, `<home>/plugins/mnemosyne/`, and the config block.
   Run Step 1 on the new host before trusting it.

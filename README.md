@@ -10,7 +10,7 @@ One plugin, invoked `dv:<skill>` — modeled on how `compound-engineering` holds
 
 | Plugin | Version | Skills | Description |
 | --- | --- | --- | --- |
-| [`dv`](plugins/dv/) | `0.3.0` | `pickup`, `handoff`, `review-claudemd`, `tmux-window-namer`, `reddit`, `twitter`, `critique`, `cite`, `gauntlet`, `vps-health` | Personal skill suite. Session brackets (`dv:pickup` / `dv:handoff`), `CLAUDE.md` hygiene (`dv:review-claudemd`), tmux styling (`dv:tmux-window-namer`), Reddit / X fetchers (`dv:reddit` / `dv:twitter`), parallel plan critique (`dv:critique`), a re-fetch-or-decline freshness contract for realtime facts (`dv:cite`), a staged adversarial code-review loop (`dv:gauntlet`), and an openclaw-prod runtime health snapshot (`dv:vps-health`). |
+| [`dv`](plugins/dv/) | `0.4.0` | `pickup`, `handoff`, `review-claudemd`, `tmux-window-namer`, `reddit`, `twitter`, `critique`, `cite`, `gauntlet`, `vps-health`, `mnemosyne-ops` | Personal skill suite. Session brackets (`dv:pickup` / `dv:handoff`), `CLAUDE.md` hygiene (`dv:review-claudemd`), tmux styling (`dv:tmux-window-namer`), Reddit / X fetchers (`dv:reddit` / `dv:twitter`), parallel plan critique (`dv:critique`), a re-fetch-or-decline freshness contract for realtime facts (`dv:cite`), a staged adversarial code-review loop (`dv:gauntlet`), and an openclaw-prod runtime health snapshot (`dv:vps-health`). |
 
 ### Skills at a glance
 
@@ -23,6 +23,7 @@ One plugin, invoked `dv:<skill>` — modeled on how `compound-engineering` holds
 - **`dv:critique`** — stress-test a plan with three parallel critique subagents (Skeptic / Simplifier / Historian), then synthesize a revised plan.
 - **`dv:cite`** — for realtime-fact queries, re-fetch the source and either ground the quote with a URL + timestamp or decline with a typed reason. Freshness is the trigger; ground-or-decline is the point.
 - **`dv:vps-health`** — snapshot `openclaw-prod`'s runtime health in one SSH call: Hermes gateway and cron scheduler, failing *and* stalled cron jobs (including the silent delivery errors that swallow output), Axiom tmux, host memory and load, feed freshness, SSH brute-force pressure, and cold-backup integrity — then interpret each section. Host-specific by design; read-only.
+- **`dv:mnemosyne-ops`** — enable, health-check, and maintain the Mnemosyne memory provider on a Hermes profile: a gated enable (integrity hashes before/after, memory-block-only config splice, provider smoke through Hermes' loader), a read-only drift check (carried scope patch lost on upgrade, installer override skill reappearing, injected system turns leaking into the store), and a tools-subset verifier. Host-specific; origin VIL-143.
 - **`dv:gauntlet`** — run a code change through a staged, cost-tiered adversarial review loop (find → refute → fix → verify) driven to convergence. Bare invocation fixes and commits on your current feature branch across a bounded round budget, presenting only at the terminal; `report` gives a single report-only round that never touches your tree. Uses the Codex CLI for cross-provider review when present, self-contained Claude subagents otherwise.
 
 ## Install

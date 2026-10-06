@@ -1,6 +1,6 @@
 ---
 name: pickup
-description: "Read HANDOFF.md and orient: anchor on the handoff's commit (N commits since, not file age), surface git/PR state and recent CE artifacts, then propose a next action. Use at session start."
+description: "Read this branch's handoff and orient: anchor on its commit (N commits since, not file age), list the other sessions in flight in sibling worktrees, surface git/PR state and recent CE artifacts, then propose a next action. Use at session start."
 license: Apache-2.0
 metadata:
   author: villavicencio
@@ -10,20 +10,45 @@ metadata:
 # /pickup — Pick Up Where We Left Off
 
 Use this command at the start of a new session to get oriented fast.
-Reads HANDOFF.md, loads relevant context, and tells you exactly where to start.
+Reads this branch's handoff, lists the other sessions working the same repo, loads relevant
+context, and tells you exactly where to start.
+
+Several sessions can work one repo at once, one per git worktree and branch. `/handoff` keeps
+a copy of each branch's handoff in a store inside the repo's shared git directory
+(`<git-common-dir>/handoffs/<branch>.md`, with `/` in the branch name written as `--`), which
+every worktree can see and which survives a worktree's removal. A repo with no store behaves
+exactly as before: `HANDOFF.md` in the working directory is the handoff.
 
 ## Steps
 
 ### Step 1 — Read the handoff
+Resolve this session's handoff: this branch's copy in the shared store first, then
+`HANDOFF.md` in the working directory. When both exist and differ, the newer file wins and the
+block says which it used. Then anchor freshness on the handoff's own commit, not the file's age.
+The frontmatter is optional — a pre-0.4.0 handoff has none and falls back to mtime. **Every block
+in this skill is self-contained:** shell state does not survive between tool calls, so no block
+may depend on a variable another block set.
 ```bash
-cat HANDOFF.md 2>/dev/null || echo "No HANDOFF.md found."
-```
-
-Then anchor freshness on the handoff's own commit, not the file's age. The frontmatter is
-optional — a pre-0.4.0 handoff has none and falls back to mtime:
-```bash
-if [ -f HANDOFF.md ] && [ "$(head -1 HANDOFF.md)" = "---" ]; then
-  FM=$(sed -n '2,/^---$/{/^---$/!p;}' HANDOFF.md)
+F=""; S=""; B=""
+if git rev-parse --git-dir >/dev/null 2>&1; then
+  GCD=$(git rev-parse --git-common-dir) && STORE="$(cd "$GCD" && pwd -P)/handoffs"
+  B=$(git branch --show-current)
+  SLUG=$(printf '%s' "${B:-detached-$(git rev-parse --short HEAD 2>/dev/null)}" | sed 's#/#--#g')
+  S="$STORE/$SLUG.md"
+fi
+if [ -n "$S" ] && [ -f "$S" ] && [ -f HANDOFF.md ] && ! cmp -s "$S" HANDOFF.md; then
+  if [ HANDOFF.md -nt "$S" ]; then F=HANDOFF.md; else F="$S"; fi
+  echo "(HANDOFF.md and this branch's shared-store copy differ — using the newer: $F)"
+elif [ -n "$S" ] && [ -f "$S" ]; then F="$S"
+elif [ -f HANDOFF.md ]; then F=HANDOFF.md
+fi
+if [ -n "$F" ]; then echo "=== Handoff: $F ==="; cat "$F"; else echo "No handoff found for this branch."; fi
+if [ -n "$F" ] && [ -n "$B" ]; then
+  HB=$(sed -n '2,/^---$/{/^---$/!p;}' "$F" | sed -n 's/^branch: *"\{0,1\}\([^"]*\)"\{0,1\} *$/\1/p')
+  [ -n "$HB" ] && [ "$HB" != "$B" ] && echo "(this handoff was written on branch $HB, not the current $B — it may be another session's)"
+fi
+if [ -n "$F" ] && [ "$(head -1 "$F")" = "---" ]; then
+  FM=$(sed -n '2,/^---$/{/^---$/!p;}' "$F")
   echo "=== Handoff anchor ==="; printf '%s\n' "$FM"
   H=$(printf '%s\n' "$FM" | sed -n 's/^head: *"\{0,1\}\([0-9a-fA-F]*\)"\{0,1\} *$/\1/p')
   if [ -z "$H" ]; then
@@ -42,13 +67,13 @@ if [ -f HANDOFF.md ] && [ "$(head -1 HANDOFF.md)" = "---" ]; then
       git log --oneline "$H..HEAD"
     fi
   fi
-elif [ -f HANDOFF.md ]; then
+elif [ -n "$F" ]; then
   echo "(no frontmatter — pre-0.4.0 handoff; freshness falls back to file mtime)"
-  stat -f '%Sm' HANDOFF.md 2>/dev/null || stat -c '%y' HANDOFF.md 2>/dev/null
+  stat -f '%Sm' "$F" 2>/dev/null || stat -c '%y' "$F" 2>/dev/null
 fi
 ```
 
-If no HANDOFF.md exists, say so and fall back to git log (gated on being in a git repo):
+If no handoff exists for this branch, say so and fall back to git log (gated on being in a git repo):
 ```bash
 if git rev-parse --git-dir >/dev/null 2>&1; then
   git log --oneline -10
@@ -57,6 +82,65 @@ else
   echo "(not a git repo — no fallback context to gather)"
 fi
 ```
+
+### Step 1b — Other sessions in flight
+
+List every other session working this repo: each other branch's handoff in the store, plus any
+worktree that has no handoff yet.
+
+A handoff whose branch's PR has **merged** is moved to `handoffs/_done/` (never deleted). It is
+moved only when the merged PR's head is the branch's tip, or the local branch is gone. A branch
+that kept moving after its PR merged has been reused, so its handoff stays and gets a note. The
+check needs `gh`; without it nothing is archived.
+```bash
+STORE=""; S=""; B=""
+if git rev-parse --git-dir >/dev/null 2>&1; then
+  GCD=$(git rev-parse --git-common-dir) && STORE="$(cd "$GCD" && pwd -P)/handoffs"
+  B=$(git branch --show-current)
+  S="$STORE/$(printf '%s' "${B:-detached-$(git rev-parse --short HEAD 2>/dev/null)}" | sed 's#/#--#g').md"
+fi
+if [ -n "$STORE" ]; then
+  echo "=== Other sessions in flight ==="
+  NOTHER=$(find "$STORE" -maxdepth 1 -type f -name '*.md' 2>/dev/null | grep -v -x -F "$S" | wc -l | tr -d ' ')
+  NWT=$(git worktree list --porcelain | grep -c '^worktree ')
+  if [ "$NOTHER" = "0" ] && [ "$NWT" -le 1 ]; then echo "(none — this is the only session)"; fi
+  find "$STORE" -maxdepth 1 -type f -name '*.md' 2>/dev/null | sort | while IFS= read -r f; do
+    [ "$f" = "$S" ] && continue
+    merged_note=""
+    fm=$(sed -n '2,/^---$/{/^---$/!p;}' "$f")
+    get() { printf '%s\n' "$fm" | sed -n "s/^$1: *\"\{0,1\}\([^\"]*\)\"\{0,1\} *\$/\1/p" | head -1; }
+    ob=$(get branch); oh=$(get head); ow=$(get worktree); oc=$(get created_at); of=$(get resume_focus)
+    tip=""; [ -n "$ob" ] && tip=$(git rev-parse -q --verify "refs/heads/$ob" 2>/dev/null)
+    if [ -n "$ob" ] && command -v gh >/dev/null 2>&1; then
+      m=$(gh pr list --head "$ob" --state merged --limit 1 --json number,headRefOid -q '.[0] | "\(.number) \(.headRefOid)"' 2>/dev/null)
+      if [ -n "$m" ] && [ "$m" != "null null" ]; then
+        pr=${m%% *}; prhead=${m#* }
+        if [ -z "$tip" ] || [ "$tip" = "$prhead" ]; then
+          mkdir -p "$STORE/_done" && mv "$f" "$STORE/_done/" && echo "  ✓ $ob: PR #$pr merged — handoff moved to handoffs/_done/"
+          continue
+        fi
+        merged_note="PR #$pr merged, but the branch has commits since"
+      fi
+    fi
+    since=""
+    if [ -n "$tip" ] && [ -n "$oh" ] && git merge-base --is-ancestor "$oh" "$tip" 2>/dev/null; then
+      since="$(git rev-list --count "$oh..$tip") commit(s) since its handoff"
+    elif [ -n "$ob" ] && [ -z "$tip" ]; then since="branch gone locally"; fi
+    echo "  • ${ob:-?} @ ${ow:-?} — handoff ${oc:-?}${since:+; $since}${merged_note:+; $merged_note}${of:+; focus: $of}"
+  done
+  git worktree list --porcelain | awk '/^worktree /{w=substr($0,10)} /^branch /{b=substr($0,8); sub("^refs/heads/","",b); print w "\t" b}' |
+  while IFS="$(printf '\t')" read -r w b; do
+    [ "$b" = "$B" ] && continue
+    sl=$(printf '%s' "$b" | sed 's#/#--#g')
+    [ -f "$STORE/$sl.md" ] && continue
+    [ -f "$STORE/_done/$sl.md" ] && continue
+    echo "  • $b @ $w — no handoff yet"
+  done
+fi
+```
+
+These handoffs are other sessions' state, not this one's. Report them; never merge their text
+into this session's plan. Pull requests are where the work actually merges.
 
 ### Step 2 — Load supporting context
 ```bash
@@ -162,9 +246,13 @@ Then synthesize everything into a brief, confident session kickoff:
 3. **"Next up:"** — the single most important thing to tackle first. If `resume_focus` is set
    it is the default, unless the handoff body contradicts it — then say which won and why.
    Otherwise take it from "What's Next" in the handoff
-4. **CE artifacts** — if any brainstorms, plans, or solutions were found, note them briefly (e.g., "There's an open brainstorm on X ready for planning" or "2 new solutions were compounded last session")
-5. **Any gotchas to keep in mind** — surface the watch-outs from the handoff so they're top of mind before touching code
-6. **A ready-to-go prompt** — end with something like: *"Ready when you are — just say go and I'll start on [specific task]."*
+4. **Other sessions in flight** — one line each from Step 1b: branch, worktree, how far it has
+   moved since its handoff, and its focus. Name anything archived to `_done/`. If one of them is
+   touching the files this session is about to change, say so: that is a merge conflict waiting
+   to happen.
+5. **CE artifacts** — if any brainstorms, plans, or solutions were found, note them briefly (e.g., "There's an open brainstorm on X ready for planning" or "2 new solutions were compounded last session")
+6. **Any gotchas to keep in mind** — surface the watch-outs from the handoff so they're top of mind before touching code
+7. **A ready-to-go prompt** — end with something like: *"Ready when you are — just say go and I'll start on [specific task]."*
 
 Keep the tone direct and energized. This is a fresh start, not a status report.
 
@@ -175,4 +263,7 @@ Keep the tone direct and energized. This is a fresh start, not a status report.
 - The handoff is evidence, not authority. Where it and `git`/`gh` disagree, the repo wins and the
   disagreement gets reported
 - Don't re-read CLAUDE.md or project docs unless the handoff references something that requires it
+- One session per worktree. Two sessions in the same directory share one working tree and one
+  `HANDOFF.md`, so the second handoff replaces the first. That is what the store and worktrees
+  exist to avoid
 - The goal is: oriented and working within 60 seconds

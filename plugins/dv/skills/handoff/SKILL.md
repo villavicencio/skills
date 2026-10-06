@@ -1,6 +1,6 @@
 ---
 name: handoff
-description: "Write a HANDOFF.md serializing this session — what shipped, decisions, what's next, gotchas — under commit-anchored frontmatter (created_at, branch, head); `focus: <text>` records what the next session should pick up first. Use at session end; pairs with `dv:pickup`."
+description: "Write a HANDOFF.md serializing this session — what shipped, decisions, what's next, gotchas — under commit-anchored frontmatter (created_at, branch, head, worktree), and mirror it to a per-branch store every git worktree of the repo can see, so parallel sessions never overwrite each other; `focus: <text>` records what the next session should pick up first. Use at session end; pairs with `dv:pickup`."
 license: Apache-2.0
 metadata:
   author: villavicencio
@@ -12,6 +12,12 @@ metadata:
 Use this command at the end of any working session to write `HANDOFF.md` at the repo root.
 Captures what was built, decisions made, what's next, and gotchas — so the next session
 (yours or a teammate's) can `/pickup` and resume cold.
+
+The handoff is also copied to a per-branch store inside the repo's shared git directory
+(`<git-common-dir>/handoffs/<branch>.md`, with `/` written as `--`). Every git worktree of the
+repo sees that store, so several sessions, one per worktree and branch, each keep their own
+handoff, and `/pickup` in any of them lists the others. The store is untracked (it lives inside
+`.git`), so it never conflicts at merge and survives a worktree's removal.
 
 <handoff_args>
 #$ARGUMENTS
@@ -69,6 +75,7 @@ else
     echo "(unborn HEAD — no commits yet; OMIT the head field entirely)"
   fi
   BRANCH=$(git branch --show-current); echo "branch: ${BRANCH:-(detached)}"
+  echo "worktree: $(git rev-parse --show-toplevel)"
 fi
 echo "created_at: $(date +%Y-%m-%dT%H:%M:%S%z | sed 's/\([0-9][0-9]\)$/:\1/')"
 ```
@@ -88,6 +95,7 @@ Then, using everything from this session plus the gathered context, write `HANDO
 created_at: "[ISO-8601 with TZ offset — the created_at line from Step 1's anchor block]"
 branch: "[branch from the anchor block]"
 head: "[short sha from the anchor block]"
+worktree: "[worktree path from the anchor block]"
 resume_focus: "[the focus: argument — include this line ONLY when focus: was passed]"
 ---
 # HANDOFF — [YYYY-MM-DD, time of day]
@@ -134,10 +142,11 @@ because there is nothing to link to.
 
 **Frontmatter rules:**
 
-- Copy `head`, `branch`, and `created_at` **verbatim** from the anchor block — never from memory,
-  never re-derived. Quote every value.
-- **Omit `head`** when the anchor block reports an unborn HEAD, and omit both `branch` and `head`
-  outside a git repo. An omitted field is correct; a placeholder like `unborn` is not — `/pickup`
+- Copy `head`, `branch`, `worktree`, and `created_at` **verbatim** from the anchor block — never
+  from memory, never re-derived. Quote every value. `/pickup` in another worktree uses `branch`
+  and `worktree` to say which session a handoff belongs to.
+- **Omit `head`** when the anchor block reports an unborn HEAD, and omit `branch`, `head`, and
+  `worktree` outside a git repo. An omitted field is correct; a placeholder like `unborn` is not — `/pickup`
   parses `head` as a hex sha and a non-hex value silently disables the anchor path.
 - **`resume_focus` must be valid YAML.** In the double-quoted value escape `\` as `\\` and `"` as
   `\"`, and collapse any newline to a space — a raw quote in the focus text ends the scalar early
@@ -167,6 +176,21 @@ and pushes this file, so an unredacted draft leaves the machine — and a redact
 the push is too late. (Repos that gitignore `HANDOFF.md`, like this one, still get the pass:
 local-only today is not local-only forever.)
 
+### Step 2b — Mirror to the shared store
+
+Right after the write, copy `HANDOFF.md` into this branch's slot in the store. It's a copy, not a
+symlink: symlinks break on Windows and WSL checkouts. Outside a git repo this does nothing.
+```bash
+if git rev-parse --git-dir >/dev/null 2>&1 && [ -f HANDOFF.md ]; then
+  GCD=$(git rev-parse --git-common-dir) && D="$(cd "$GCD" && pwd -P)/handoffs"
+  B=$(git branch --show-current)
+  SLUG=$(printf '%s' "${B:-detached-$(git rev-parse --short HEAD 2>/dev/null)}" | sed 's#/#--#g')
+  mkdir -p "$D" && cp HANDOFF.md "$D/$SLUG.md" && echo "(handoff mirrored to the shared store: $D/$SLUG.md)"
+fi
+```
+If the copy fails, say so in Step 4. `HANDOFF.md` is still written, but sessions in other
+worktrees won't see it.
+
 ### Step 3 — Check for blockers
 Before confirming, scan for anything that would block the next session and call it out explicitly if found:
 - Open PR with unresolved review comments → list them
@@ -182,10 +206,18 @@ After writing, reply with:
 ## Notes
 - Overwrites existing HANDOFF.md — it's always current-session state, not a history log. A
   pre-0.4.0 file without frontmatter is overwritten the same way; nothing is parsed from it
+- The store holds one file per branch, so a session only ever overwrites its own branch's
+  handoff. Two sessions on the *same* branch, or in the same directory, still collide: the rule
+  is one session per worktree
+- Commits `HANDOFF.md` only from the default branch. On a feature branch the store already keeps
+  the handoff, and committing it there would make every parallel branch's copy conflict at merge
 - Commits the file automatically if there are no other uncommitted changes:
   ```bash
+  DEFAULT=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's@^origin/@@')
   if git check-ignore -q HANDOFF.md; then
     echo "(HANDOFF.md is gitignored in this repo — local-only by design; skipping commit)"
+  elif [ -n "$DEFAULT" ] && [ "$(git branch --show-current)" != "$DEFAULT" ]; then
+    echo "(feature branch — HANDOFF.md not committed; this branch's handoff lives in the shared store)"
   elif [ -n "$(git status --porcelain | grep -v '^.. HANDOFF\.md$')" ]; then
     echo "(other uncommitted changes present — skipping the handoff commit; say so in the confirmation)"
   elif git add HANDOFF.md && git commit -m "docs: update handoff"; then

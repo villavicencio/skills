@@ -53,9 +53,11 @@ elif [ -n "$S" ] && [ -f "$S" ]; then F="$S"
 elif [ -f HANDOFF.md ]; then F=HANDOFF.md
 fi
 if [ -n "$F" ]; then echo "=== Handoff: $F ==="; cat "$F"; else echo "No handoff found for this branch."; fi
-if [ -n "$F" ] && [ -n "$B" ]; then
+if [ -n "$F" ] && [ -n "$S" ]; then
+  # Gate on being in a repo ($S is set only there), not on having a branch name: a detached HEAD
+  # has none, and it still must not read another branch's handoff silently.
   HB=$(sed -n '2,/^---$/{/^---$/!p;}' "$F" | sed -n 's/^branch: *"\{0,1\}\([^"]*\)"\{0,1\} *$/\1/p')
-  [ -n "$HB" ] && [ "$HB" != "${B:-(detached)}" ] && echo "(this handoff was written on branch $HB, not the current $B — it may be another session's)"
+  [ -n "$HB" ] && [ "$HB" != "${B:-(detached)}" ] && echo "(this handoff was written on branch $HB, not the current ${B:-(detached HEAD)} — it may be another session's)"
 fi
 if [ -n "$F" ] && [ "$(head -1 "$F")" = "---" ]; then
   FM=$(sed -n '2,/^---$/{/^---$/!p;}' "$F")

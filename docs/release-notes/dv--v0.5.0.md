@@ -2,7 +2,7 @@
 
 Minor release. `dv:handoff` and `dv:pickup` now support **several Claude Code sessions on one repo at
 once**, one git worktree and branch each. The release also ships a new skill, `dv:mnemosyne-ops`. The
-other nine skills have no behaviour changes; their version moves to `0.5.0` only because the suite is
+other eight skills have no behaviour changes; their version moves to `0.5.0` only because the suite is
 released as one plugin.
 
 ## What's new

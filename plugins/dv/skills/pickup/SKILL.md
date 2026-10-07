@@ -37,10 +37,15 @@ if git rev-parse --git-dir >/dev/null 2>&1; then
   S="$STORE/$SLUG.md"
 fi
 if [ -n "$S" ] && [ -f "$S" ] && [ -f HANDOFF.md ] && ! cmp -s "$S" HANDOFF.md; then
-  # Branch first, recency second: a newer HANDOFF.md written on another branch must not displace
-  # this branch's own copy.
-  WB=$(sed -n '2,/^---$/{/^---$/!p;}' HANDOFF.md | sed -n 's/^branch: *"\{0,1\}\([^"]*\)"\{0,1\} *$/\1/p')
-  if [ -n "$WB" ] && [ "$WB" != "$B" ]; then F="$S"
+  # Identity first, recency second. A HANDOFF.md written in THIS worktree is this session's, so
+  # the newer copy wins. One recorded for another branch must not displace this branch's own copy.
+  # The handoff records a detached HEAD as "(detached)", so compare against that, not "".
+  HFM=$(sed -n '2,/^---$/{/^---$/!p;}' HANDOFF.md)
+  WB=$(printf '%s\n' "$HFM" | sed -n 's/^branch: *"\{0,1\}\([^"]*\)"\{0,1\} *$/\1/p')
+  WW=$(printf '%s\n' "$HFM" | sed -n 's/^worktree: *"\{0,1\}\([^"]*\)"\{0,1\} *$/\1/p')
+  if [ -n "$WW" ] && [ "$WW" = "$(git rev-parse --show-toplevel)" ]; then
+    if [ HANDOFF.md -nt "$S" ]; then F=HANDOFF.md; else F="$S"; fi
+  elif [ -n "$WB" ] && [ "$WB" != "${B:-(detached)}" ]; then F="$S"
   elif [ HANDOFF.md -nt "$S" ]; then F=HANDOFF.md
   else F="$S"; fi
   echo "(HANDOFF.md and this branch's shared-store copy differ — using $F)"
@@ -50,7 +55,7 @@ fi
 if [ -n "$F" ]; then echo "=== Handoff: $F ==="; cat "$F"; else echo "No handoff found for this branch."; fi
 if [ -n "$F" ] && [ -n "$B" ]; then
   HB=$(sed -n '2,/^---$/{/^---$/!p;}' "$F" | sed -n 's/^branch: *"\{0,1\}\([^"]*\)"\{0,1\} *$/\1/p')
-  [ -n "$HB" ] && [ "$HB" != "$B" ] && echo "(this handoff was written on branch $HB, not the current $B — it may be another session's)"
+  [ -n "$HB" ] && [ "$HB" != "${B:-(detached)}" ] && echo "(this handoff was written on branch $HB, not the current $B — it may be another session's)"
 fi
 if [ -n "$F" ] && [ "$(head -1 "$F")" = "---" ]; then
   FM=$(sed -n '2,/^---$/{/^---$/!p;}' "$F")

@@ -15,7 +15,7 @@ context, and tells you exactly where to start.
 
 Several sessions can work one repo at once, one per git worktree and branch. `/handoff` keeps
 a copy of each branch's handoff in a store inside the repo's shared git directory
-(`<git-common-dir>/handoffs/<branch>.md`, with `/` in the branch name written as `--`), which
+(`<git-common-dir>/handoffs/<branch>.md`, with the branch name percent-encoded: `%` → `%25`, `/` → `%2F`), which
 every worktree can see and which survives a worktree's removal. A repo with no store behaves
 exactly as before: `HANDOFF.md` in the working directory is the handoff.
 
@@ -33,12 +33,17 @@ F=""; S=""; B=""
 if git rev-parse --git-dir >/dev/null 2>&1; then
   GCD=$(git rev-parse --git-common-dir) && STORE="$(cd "$GCD" && pwd -P)/handoffs"
   B=$(git branch --show-current)
-  SLUG=$(printf '%s' "${B:-detached-$(git rev-parse --short HEAD 2>/dev/null)}" | sed 's#/#--#g')
+  SLUG=$(printf '%s' "${B:-detached-$(git rev-parse HEAD 2>/dev/null)}" | sed -e 's/%/%25/g' -e 's#/#%2F#g')
   S="$STORE/$SLUG.md"
 fi
 if [ -n "$S" ] && [ -f "$S" ] && [ -f HANDOFF.md ] && ! cmp -s "$S" HANDOFF.md; then
-  if [ HANDOFF.md -nt "$S" ]; then F=HANDOFF.md; else F="$S"; fi
-  echo "(HANDOFF.md and this branch's shared-store copy differ — using the newer: $F)"
+  # Branch first, recency second: a newer HANDOFF.md written on another branch must not displace
+  # this branch's own copy.
+  WB=$(sed -n '2,/^---$/{/^---$/!p;}' HANDOFF.md | sed -n 's/^branch: *"\{0,1\}\([^"]*\)"\{0,1\} *$/\1/p')
+  if [ -n "$WB" ] && [ "$WB" != "$B" ]; then F="$S"
+  elif [ HANDOFF.md -nt "$S" ]; then F=HANDOFF.md
+  else F="$S"; fi
+  echo "(HANDOFF.md and this branch's shared-store copy differ — using $F)"
 elif [ -n "$S" ] && [ -f "$S" ]; then F="$S"
 elif [ -f HANDOFF.md ]; then F=HANDOFF.md
 fi
@@ -88,7 +93,7 @@ fi
 List every other session working this repo: each other branch's handoff in the store, plus any
 worktree that has no handoff yet.
 
-A handoff whose branch's PR has **merged** is moved to `handoffs/_done/` (never deleted). It is
+A handoff whose branch's PR has **merged** is moved to `handoffs/_done/<branch>.<UTC timestamp>.md` (never deleted, never over an earlier archive). It is
 moved only when the merged PR's head is the branch's tip, or the local branch is gone. A branch
 that kept moving after its PR merged has been reused, so its handoff stays and gets a note. The
 check needs `gh`; without it nothing is archived.
@@ -97,7 +102,7 @@ STORE=""; S=""; B=""
 if git rev-parse --git-dir >/dev/null 2>&1; then
   GCD=$(git rev-parse --git-common-dir) && STORE="$(cd "$GCD" && pwd -P)/handoffs"
   B=$(git branch --show-current)
-  S="$STORE/$(printf '%s' "${B:-detached-$(git rev-parse --short HEAD 2>/dev/null)}" | sed 's#/#--#g').md"
+  S="$STORE/$(printf '%s' "${B:-detached-$(git rev-parse HEAD 2>/dev/null)}" | sed -e 's/%/%25/g' -e 's#/#%2F#g').md"
 fi
 if [ -n "$STORE" ]; then
   echo "=== Other sessions in flight ==="
@@ -116,7 +121,8 @@ if [ -n "$STORE" ]; then
       if [ -n "$m" ] && [ "$m" != "null null" ]; then
         pr=${m%% *}; prhead=${m#* }
         if [ -z "$tip" ] || [ "$tip" = "$prhead" ]; then
-          mkdir -p "$STORE/_done" && mv "$f" "$STORE/_done/" && echo "  ✓ $ob: PR #$pr merged — handoff moved to handoffs/_done/"
+          dest="$STORE/_done/$(basename "$f" .md).$(date -u +%Y%m%dT%H%M%SZ).md"
+          mkdir -p "$STORE/_done" && [ ! -e "$dest" ] && mv "$f" "$dest" && echo "  ✓ $ob: PR #$pr merged — handoff moved to handoffs/_done/"
           continue
         fi
         merged_note="PR #$pr merged, but the branch has commits since"
@@ -128,12 +134,13 @@ if [ -n "$STORE" ]; then
     elif [ -n "$ob" ] && [ -z "$tip" ]; then since="branch gone locally"; fi
     echo "  • ${ob:-?} @ ${ow:-?} — handoff ${oc:-?}${since:+; $since}${merged_note:+; $merged_note}${of:+; focus: $of}"
   done
-  git worktree list --porcelain | awk '/^worktree /{w=substr($0,10)} /^branch /{b=substr($0,8); sub("^refs/heads/","",b); print w "\t" b}' |
+  HERE=$(git rev-parse --show-toplevel)
+  git worktree list --porcelain | awk '/^worktree /{w=substr($0,10); h=""} /^HEAD /{h=substr($0,6)} /^branch /{b=substr($0,8); sub("^refs/heads/","",b); print w "\t" b} /^detached/{print w "\t" "detached-" h}' |
   while IFS="$(printf '\t')" read -r w b; do
-    [ "$b" = "$B" ] && continue
-    sl=$(printf '%s' "$b" | sed 's#/#--#g')
+    [ "$w" = "$HERE" ] && continue
+    sl=$(printf '%s' "$b" | sed -e 's/%/%25/g' -e 's#/#%2F#g')
     [ -f "$STORE/$sl.md" ] && continue
-    [ -f "$STORE/_done/$sl.md" ] && continue
+    find "$STORE/_done" -maxdepth 1 -type f -name "$sl.*.md" 2>/dev/null | grep -q . && continue
     echo "  • $b @ $w — no handoff yet"
   done
 fi

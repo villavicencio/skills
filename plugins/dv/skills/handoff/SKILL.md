@@ -14,7 +14,7 @@ Captures what was built, decisions made, what's next, and gotchas — so the nex
 (yours or a teammate's) can `/pickup` and resume cold.
 
 The handoff is also copied to a per-branch store inside the repo's shared git directory
-(`<git-common-dir>/handoffs/<branch>.md`, with `/` written as `--`). Every git worktree of the
+(`<git-common-dir>/handoffs/<branch>.md`, with the branch name percent-encoded: `%` → `%25`, `/` → `%2F`, so no two branches can share a file). Every git worktree of the
 repo sees that store, so several sessions, one per worktree and branch, each keep their own
 handoff, and `/pickup` in any of them lists the others. The store is untracked (it lives inside
 `.git`), so it never conflicts at merge and survives a worktree's removal.
@@ -184,7 +184,7 @@ symlink: symlinks break on Windows and WSL checkouts. Outside a git repo this do
 if git rev-parse --git-dir >/dev/null 2>&1 && [ -f HANDOFF.md ]; then
   GCD=$(git rev-parse --git-common-dir) && D="$(cd "$GCD" && pwd -P)/handoffs"
   B=$(git branch --show-current)
-  SLUG=$(printf '%s' "${B:-detached-$(git rev-parse --short HEAD 2>/dev/null)}" | sed 's#/#--#g')
+  SLUG=$(printf '%s' "${B:-detached-$(git rev-parse HEAD 2>/dev/null)}" | sed -e 's/%/%25/g' -e 's#/#%2F#g')
   mkdir -p "$D" && cp HANDOFF.md "$D/$SLUG.md" && echo "(handoff mirrored to the shared store: $D/$SLUG.md)"
 fi
 ```
@@ -213,10 +213,16 @@ After writing, reply with:
   the handoff, and committing it there would make every parallel branch's copy conflict at merge
 - Commits the file automatically if there are no other uncommitted changes:
   ```bash
+  # The default branch: origin/HEAD, else a local main/master. Unknown → no commit (fail closed:
+  # committing on a feature branch is the case this rule exists to prevent).
   DEFAULT=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's@^origin/@@')
+  [ -z "$DEFAULT" ] && git rev-parse -q --verify refs/heads/main >/dev/null && DEFAULT=main
+  [ -z "$DEFAULT" ] && git rev-parse -q --verify refs/heads/master >/dev/null && DEFAULT=master
   if git check-ignore -q HANDOFF.md; then
     echo "(HANDOFF.md is gitignored in this repo — local-only by design; skipping commit)"
-  elif [ -n "$DEFAULT" ] && [ "$(git branch --show-current)" != "$DEFAULT" ]; then
+  elif [ -z "$DEFAULT" ]; then
+    echo "(default branch unknown — origin/HEAD unset and no local main/master; HANDOFF.md not committed)"
+  elif [ "$(git branch --show-current)" != "$DEFAULT" ]; then
     echo "(feature branch — HANDOFF.md not committed; this branch's handoff lives in the shared store)"
   elif [ -n "$(git status --porcelain | grep -v '^.. HANDOFF\.md$')" ]; then
     echo "(other uncommitted changes present — skipping the handoff commit; say so in the confirmation)"

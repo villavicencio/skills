@@ -44,7 +44,13 @@ is deferred to v0.2+ if/when the need surfaces.
 - Validating a skill locally before pushing: `python3` on the Mac is Xcode's 3.9 but
   `skills-ref==0.1.1` requires **≥3.11**, so `pip install skills-ref` fails with "no matching
   distribution". Use `uv venv --python 3.11 <dir> && uv pip install --python <dir>/bin/python
-  'skills-ref==0.1.1'`, then `<dir>/bin/agentskills validate plugins/dv/skills/<name>`
+  'skills-ref==0.1.1'`, then `<dir>/bin/agentskills validate plugins/dv/skills/<name>`.
+  **In an Orca worktree this is already done:** `orca.yaml`'s setup script builds `.venv`
+  (Python 3.12, matching CI), so run `.venv/bin/agentskills validate plugins/dv/skills/<name>`.
+  It also copies the gitignored files `.worktreeinclude` names from the main checkout
+  (`.compound-engineering/*.local.yaml`, `.claude/settings.local.json`), but not `HANDOFF.md`.
+  Keep anything that touches files outside the worktree out of it; `dv:orca-setup` covers how
+  to change it.
 - CI gates (`.github/workflows/validate.yml`):
   - `agentskills validate plugins/*/skills/*` — spec conformance per skill
   - Per-plugin skill-version-parity — skills in the same plugin must share a version

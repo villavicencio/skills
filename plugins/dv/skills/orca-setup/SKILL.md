@@ -1,6 +1,6 @@
 ---
 name: orca-setup
-description: "Write, test, and ship an Orca setup script (orca.yaml scripts.setup) for a repo, so every new Orca worktree starts ready to work: submodules checked out, gitignored local files copied in, dependencies installed, and nothing done that reaches outside the worktree. Covers where Orca reads the file from, its parser's format, the env vars it passes, an end-to-end test through a real Orca worktree before merge, and why not to write an archive script that deletes things. Use when the user asks for an Orca setup script, a worktree setup hook, or orca.yaml, when adding a repo to Orca, or when new Orca worktrees come up missing files, dependencies or submodules."
+description: "Write, test, and ship an Orca setup script (orca.yaml scripts.setup) for a repo, so every new Orca worktree starts ready to work: submodules checked out, gitignored local files copied in, dependencies installed, and no change to state other checkouts or the machine depend on (shared caches excepted). Covers where Orca reads the file from, its parser's format, the env vars it passes, an end-to-end test through a real Orca worktree before merge, and why not to write an archive script that deletes things. Use when the user asks for an Orca setup script, a worktree setup hook, or orca.yaml, when adding a repo to Orca, or when new Orca worktrees come up missing files, dependencies or submodules."
 license: Apache-2.0
 metadata:
   author: villavicencio
@@ -45,9 +45,13 @@ Compare the main checkout with a worktree made from the default branch. Check ea
 
 Skip per-session files such as `HANDOFF.md`: each worktree should start its own.
 
-## Step 2 — Rule out anything that reaches outside the worktree
+## Step 2 — Rule out anything other checkouts depend on
 
-The script runs unattended in every new worktree, so it must only change that worktree. Never:
+The script runs unattended in every new worktree, so it must not change state that other
+checkouts or the machine depend on. **Shared caches are fine** and intended: uv's
+`~/.cache/uv` and managed Pythons, pnpm's store, npm's cache. They're add-only and shared by
+design, and a per-worktree cache would only make every new worktree download everything
+again. Never:
 
 - **Run an installer that links into `$HOME`** (Dotbot, Stow, a dotfiles `./install`). The
   links would point into the worktree and dangle once it's removed.
@@ -137,8 +141,20 @@ run it against a scratch `git worktree add` with both env vars set. Lint it with
   Orca can prove it's merged.
 - **Before Force, check the worktree being removed,** not the main checkout:
   `git -C "$W" status --porcelain --ignored --untracked-files=all`. Without
-  `--untracked-files=all`, git collapses a directory into one `!! dir/` line. A clean
-  submodule status doesn't show commits, tags or stash entries that exist only in that clone.
+  `--untracked-files=all`, git collapses a directory into one `!! dir/` line.
+- **Then check every initialized submodule.** Force deletes each submodule clone too, and a
+  clean status, the parent's or the submodule's, doesn't show work that exists only in that
+  clone. This lists, per submodule, its uncommitted changes, stash entries, and commits on
+  local branches that no remote-tracking branch has:
+
+  ```bash
+  git -C "$W" submodule foreach --quiet --recursive \
+    'echo "== $sm_path"; git status --porcelain; git stash list; git log --oneline --branches --not --remotes'
+  ```
+
+  Anything under a `==` line must be pushed or copied out first. Tags you created there aren't
+  listed (`--tags` would also flag upstream release tags), so push those by hand. Remote-tracking
+  refs can be stale, so an empty list is a strong hint, not proof.
 - **Don't write a `scripts.archive` that deletes things.** dotfiles#225 tried one to clear
   the submodule automatically. Four review rounds each found a new way it could lose work: a
   staged gitlink, remote-tracking refs that outlive their branch, a tag-only pin, ref names,

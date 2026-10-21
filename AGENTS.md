@@ -49,8 +49,8 @@ is deferred to v0.2+ if/when the need surfaces.
   (Python 3.12, matching CI), so run `.venv/bin/agentskills validate plugins/dv/skills/<name>`.
   It also copies the gitignored files `.worktreeinclude` names from the main checkout
   (`.compound-engineering/*.local.yaml`, `.claude/settings.local.json`), but not `HANDOFF.md`.
-  Keep anything that touches files outside the worktree out of it; `dv:orca-setup` covers how
-  to change it.
+  Keep anything that changes state other checkouts depend on out of it (uv's shared cache
+  is fine); `dv:orca-setup` covers how to change it.
 - CI gates (`.github/workflows/validate.yml`):
   - `agentskills validate plugins/*/skills/*` — spec conformance per skill
   - Per-plugin skill-version-parity — skills in the same plugin must share a version

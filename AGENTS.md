@@ -18,6 +18,12 @@ the openclaw canonicals/ deploy. v0.1.0 ships for Claude Code only (Mac +
 Axiom). Multi-runtime support (`.codex-plugin/`, `.cursor-plugin/` siblings)
 is deferred to v0.2+ if/when the need surfaces.
 
+## Where the working copy lives
+Since 2026-10-21 the working copy is on hal, as the `david` account: `/Users/david/Projects/skills`,
+Orca project `skills` on the `hal-svc` environment. The Mac checkout is archived, so do the work
+there. Installing the plugin (below) still pulls from GitHub on every machine and needs no local
+checkout.
+
 ## Workflow
 - Branch-first for substantive work; small doc/typo updates may commit directly to main
 - Each plugin release ideally lands as one PR

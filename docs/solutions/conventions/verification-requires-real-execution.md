@@ -19,6 +19,9 @@ tags: [verification, ci, evals, dry-run, execution-environment, false-green, dep
 
 # Verification requires execution: structural validation and green CI prove shape, not behavior
 
+> **`dv:vps-health` was retired in dv 0.7.0**, after its target host, openclaw-prod, was decommissioned. The
+> lesson below still holds. Paths under `plugins/dv/skills/vps-health/` refer to tag `dv--v0.6.0`.
+
 ## Context
 
 Five defects in this repo shipped, or nearly shipped, past every check that did not actually run the code in its real environment.

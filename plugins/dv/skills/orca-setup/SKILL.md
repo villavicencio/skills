@@ -4,7 +4,7 @@ description: "Write, test, and ship an Orca setup script (orca.yaml scripts.setu
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.6.0"
+  version: "0.7.0"
 ---
 
 # /orca-setup — An Orca setup script that works the first time

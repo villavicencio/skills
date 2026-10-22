@@ -10,7 +10,7 @@ One plugin, invoked `dv:<skill>` — modeled on how `compound-engineering` holds
 
 | Plugin | Version | Skills | Description |
 | --- | --- | --- | --- |
-| [`dv`](plugins/dv/) | `0.6.0` | `pickup`, `handoff`, `review-claudemd`, `tmux-window-namer`, `reddit`, `twitter`, `critique`, `cite`, `gauntlet`, `vps-health`, `mnemosyne-ops`, `orca-setup` | Personal skill suite. Session brackets (`dv:pickup` / `dv:handoff`), `CLAUDE.md` hygiene (`dv:review-claudemd`), tmux styling (`dv:tmux-window-namer`), Reddit / X fetchers (`dv:reddit` / `dv:twitter`), parallel plan critique (`dv:critique`), a re-fetch-or-decline freshness contract for realtime facts (`dv:cite`), a staged adversarial code-review loop (`dv:gauntlet`), an openclaw-prod runtime health snapshot (`dv:vps-health`), Mnemosyne memory-provider ops on a Hermes profile (`dv:mnemosyne-ops`), and Orca worktree setup scripts (`dv:orca-setup`). |
+| [`dv`](plugins/dv/) | `0.7.0` | `pickup`, `handoff`, `review-claudemd`, `tmux-window-namer`, `reddit`, `twitter`, `critique`, `cite`, `gauntlet`, `mnemosyne-ops`, `orca-setup` | Personal skill suite. Session brackets (`dv:pickup` / `dv:handoff`), `CLAUDE.md` hygiene (`dv:review-claudemd`), tmux styling (`dv:tmux-window-namer`), Reddit / X fetchers (`dv:reddit` / `dv:twitter`), parallel plan critique (`dv:critique`), a re-fetch-or-decline freshness contract for realtime facts (`dv:cite`), a staged adversarial code-review loop (`dv:gauntlet`), Mnemosyne memory-provider ops on a Hermes profile (`dv:mnemosyne-ops`), and Orca worktree setup scripts (`dv:orca-setup`). |
 
 ### Skills at a glance
 
@@ -22,7 +22,6 @@ One plugin, invoked `dv:<skill>` — modeled on how `compound-engineering` holds
 - **`dv:twitter`** — fetch and summarize an X/Twitter post (and long-form Articles) via the public `api.fxtwitter.com` endpoint (no auth). WebFetch can't reach x.com.
 - **`dv:critique`** — stress-test a plan with three parallel critique subagents (Skeptic / Simplifier / Historian), then synthesize a revised plan.
 - **`dv:cite`** — for realtime-fact queries, re-fetch the source and either ground the quote with a URL + timestamp or decline with a typed reason. Freshness is the trigger; ground-or-decline is the point.
-- **`dv:vps-health`** — snapshot `openclaw-prod`'s runtime health in one SSH call: Hermes gateway and cron scheduler, failing *and* stalled cron jobs (including the silent delivery errors that swallow output), Axiom tmux, host memory and load, feed freshness, SSH brute-force pressure, and cold-backup integrity — then interpret each section. Host-specific by design; read-only.
 - **`dv:mnemosyne-ops`** — enable, health-check, and maintain the Mnemosyne memory provider on a Hermes profile: a gated enable (integrity hashes before/after, memory-block-only config splice, provider smoke through Hermes' loader), a read-only drift check (carried scope patch lost on upgrade, installer override skill reappearing, injected system turns leaking into the store), and a tools-subset verifier. Host-specific; origin VIL-143.
 - **`dv:orca-setup`** — write, test, and ship an Orca setup script (`orca.yaml`) so every new Orca worktree starts ready: submodules checked out, gitignored local files copied via `.worktreeinclude`, dependencies installed, no change to state other checkouts depend on (shared caches like uv's excepted). Tests through a real Orca worktree cut from the PR branch, and explains why removal uses Force rather than an archive script. Origin dotfiles#225.
 - **`dv:gauntlet`** — run a code change through a staged, cost-tiered adversarial review loop (find → refute → fix → verify) driven to convergence. Bare invocation fixes and commits on your current feature branch across a bounded round budget, presenting only at the terminal; `report` gives a single report-only round that never touches your tree. Uses the Codex CLI for cross-provider review when present, self-contained Claude subagents otherwise.
@@ -98,7 +97,7 @@ If you don't keep a dotfiles repo at all, delete the old directory outright — 
 
 ### Linux Claude Code instances
 
-`claude plugin marketplace add <owner/repo>` may fail with `ERR_STREAM_PREMATURE_CLOSE` on Linux Claude Code. Observed on Axiom (Debian, git 2.43, `claude` 2.1.150). This is an upstream `claude` CLI bug; track [issue #8](https://github.com/villavicencio/skills/issues/8) for the fix. Workaround until then:
+`claude plugin marketplace add <owner/repo>` may fail with `ERR_STREAM_PREMATURE_CLOSE` on Linux Claude Code. Observed on Axiom (Debian, git 2.43, `claude` 2.1.150). This is an upstream `claude` CLI bug. That Axiom host was retired on 2026-09-02, and no Linux instance has used this marketplace since, so nobody has checked whether a current CLI still fails ([issue #8](https://github.com/villavicencio/skills/issues/8), closed unverified). If it does, use this workaround:
 
 ```bash
 git clone --depth 1 https://github.com/villavicencio/skills.git ~/.local/share/villavicencio-skills
@@ -114,7 +113,7 @@ claude plugin marketplace update villavicencio-skills
 claude plugin update dv@villavicencio-skills
 ```
 
-**Note on the cause.** This was originally attributed to old git tolerating the CLI's malformed clone command on macOS but not on Linux. That explanation is wrong: git 2.55.0 on macOS rejects the reported invocation with the same `unknown option: -o`, so it is not a git-version difference. The real variable is unconfirmed, and re-verification on a Linux instance with a current `claude` CLI is still open in [issue #8](https://github.com/villavicencio/skills/issues/8).
+**Note on the cause.** This was originally attributed to old git tolerating the CLI's malformed clone command on macOS but not on Linux. That explanation is wrong: git 2.55.0 on macOS rejects the reported invocation with the same `unknown option: -o`, so it is not a git-version difference. The real variable is unconfirmed.
 
 ## Versioning
 

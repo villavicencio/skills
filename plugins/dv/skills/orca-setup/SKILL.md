@@ -122,10 +122,17 @@ orca worktree create --repo id:<repoId> --name <topic>-setup-test --no-parent \
   --base-branch <pr-branch> --setup run --json
 ```
 
-`--setup run` forces the script whatever the repo's policy. The script's output shows in the
-new worktree's setup terminal (`orca terminal list --worktree id:<repoId>::<worktreePath>`, then
-`orca terminal read --terminal <handle>`). Check each gap from Step 1 is closed and
+`--setup run` forces the script whatever the repo's policy. The command returns before the
+script finishes, so wait for something it produces (a copied file, `.venv/bin/<tool>`) before
+reading anything. The script's output then shows in one of the new worktree's terminals, not
+always the first (`orca terminal list --worktree id:<repoId>::<worktreePath>`, then
+`orca terminal read --terminal <handle>` on each). Check each gap from Step 1 is closed and
 `git status --short` is clean, then remove the worktree (Step 5).
+
+A run with nothing to do prints nothing and changes nothing, which looks the same as a script
+that never ran. If the main checkout has none of the files `.worktreeinclude` names yet, put a
+throwaway one there first (one the repo gitignores), check it arrives in the test worktree,
+then delete it.
 
 For the edge cases (a failed copy, a parent path that's a regular file), extract the block and
 run it against a scratch `git worktree add` with both env vars set. Lint it with

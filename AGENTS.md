@@ -59,6 +59,7 @@ checkout.
   is fine); `dv:orca-setup` covers how to change it.
 - CI gates (`.github/workflows/validate.yml`):
   - `agentskills validate plugins/*/skills/*` — spec conformance per skill
+  - `tooling/check_skill_placeholders.py` — no `$` followed by a digit in any SKILL.md: Claude Code replaces `$0`, `$1`, ... with the words typed after the skill command, code blocks included (VIL-517). Write awk's `$0` as `$(0)`, don't use shell `$1`, write prices as `USD 350`
   - Per-plugin skill-version-parity — skills in the same plugin must share a version
   - plugin.json ↔ skill version-parity — plugin manifest version must match skills'
 

@@ -22,7 +22,7 @@
             "(?i)no (fetch|way to (verify|check))"
           ],
           "must_not_match_any": [
-            "\\$\\s?\\d[\\d,]*(?:\\.\\d{2})?"
+            "(?:\\$|\\bUSD)\\s?\\d[\\d,]*(?:\\.\\d{2})?|\\d[\\d,]*(?:\\.\\d{2})?\\s?USD\\b"
           ]
         }
       }

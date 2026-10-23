@@ -122,18 +122,23 @@ orca worktree create --repo id:<repoId> --name <topic>-setup-test --no-parent \
   --base-branch <pr-branch> --setup run --json
 ```
 
-`--setup run` forces the script whatever the repo's policy. The command returns before the
-script finishes, so judge the run by what it leaves behind: poll, with a timeout, for the
-artifacts Step 1 needs (the submodule checkout, `.venv/bin/<tool>`, the included files).
-The script's output shows in one of the new worktree's terminals, not always the first
+`--setup run` forces the script whatever the repo's policy. **A repo with no `orca.yaml`**
+(local files only, Step 3) has no script to force, read or lint: drop `--setup run`, poll for
+the included files, check `git status --short`, and skip the terminal reading and linting
+below.
+
+With a script, the command returns before it finishes, so judge the run by what it leaves
+behind: poll, with a timeout, for the artifacts Step 1 needs (the submodule checkout,
+`.venv/bin/<tool>`, the included files). The script's output shows in one of the new
+worktree's terminals, not always the first
 (`orca terminal list --worktree id:<repoId>::<worktreePath>`, then
 `orca terminal read --terminal <handle>` on each). If the artifacts don't arrive, read them for
 the error: under `set -e` a failed step, such as `git submodule update`, stops the script
 there. Check each gap from Step 1 is closed and `git status --short` is clean, then delete the
 throwaway file and remove the worktree (Step 5).
 
-Lint the extracted script with `sh -n` and `shellcheck -s sh -S warning`. For failure cases,
-run it against a scratch `git worktree add` with both env vars set.
+With a script, lint the extracted script with `sh -n` and `shellcheck -s sh -S warning`. For
+failure cases, run it against a scratch `git worktree add` with both env vars set.
 
 ## Step 5 — Removing worktrees: Force, and no archive script
 

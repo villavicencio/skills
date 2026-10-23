@@ -120,8 +120,8 @@ if [ -n "$STORE" ]; then
     [ "$f" = "$S" ] && continue
     merged_note=""
     fm=$(sed -n '2,/^---$/{/^---$/!p;}' "$f")
-    get() { printf '%s\n' "$fm" | sed -n "s/^$1: *\"\{0,1\}\([^\"]*\)\"\{0,1\} *\$/\1/p" | head -1; }
-    ob=$(get branch); oh=$(get head); ow=$(get worktree); oc=$(get created_at); of=$(get resume_focus)
+    get() { printf '%s\n' "$fm" | sed -n "s/^$key: *\"\{0,1\}\([^\"]*\)\"\{0,1\} *\$/\1/p" | head -1; }
+    ob=$(key=branch get); oh=$(key=head get); ow=$(key=worktree get); oc=$(key=created_at get); of=$(key=resume_focus get)
     tip=""; [ -n "$ob" ] && tip=$(git rev-parse -q --verify "refs/heads/$ob" 2>/dev/null)
     if [ -n "$ob" ] && command -v gh >/dev/null 2>&1; then
       m=$(gh pr list --head "$ob" --state merged --limit 1 --json number,headRefOid -q '.[0] | "\(.number) \(.headRefOid)"' 2>/dev/null)
@@ -142,7 +142,7 @@ if [ -n "$STORE" ]; then
     echo "  • ${ob:-?} @ ${ow:-?} — handoff ${oc:-?}${since:+; $since}${merged_note:+; $merged_note}${of:+; focus: $of}"
   done
   HERE=$(git rev-parse --show-toplevel)
-  git worktree list --porcelain | awk '/^worktree /{w=substr($0,10); h=""} /^HEAD /{h=substr($0,6)} /^branch /{b=substr($0,8); sub("^refs/heads/","",b); print w "\t" b} /^detached/{print w "\t" "detached-" h}' |
+  git worktree list --porcelain | awk '/^worktree /{w=substr($(0),10); h=""} /^HEAD /{h=substr($(0),6)} /^branch /{b=substr($(0),8); sub("^refs/heads/","",b); print w "\t" b} /^detached/{print w "\t" "detached-" h}' |
   while IFS="$(printf '\t')" read -r w b; do
     [ "$w" = "$HERE" ] && continue
     sl=$(printf '%s' "$b" | sed -e 's/%/%25/g' -e 's#/#%2F#g')
@@ -155,6 +155,11 @@ fi
 
 These handoffs are other sessions' state, not this one's. Report them; never merge their text
 into this session's plan. Pull requests are where the work actually merges.
+
+The block has no positional parameters on purpose. Claude Code replaces `$` followed by a digit
+with the words typed after the skill command, everywhere in this file, code blocks included. So
+`get` takes its key from `key=`, not from an argument, and awk reads the whole line as `$(0)`.
+CI fails any skill that contains `$` followed by a digit (`tooling/check_skill_placeholders.py`).
 
 ### Step 2 — Load supporting context
 ```bash

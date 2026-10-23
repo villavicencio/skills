@@ -13,25 +13,29 @@ Exit 0 only if every check passes.
 import json, os, subprocess, sys, yaml
 from pathlib import Path
 
-HOME = Path(sys.argv[sys.argv.index("--home") + 1]) if "--home" in sys.argv else Path.home() / ".hermes/profiles/mnemosyne-pilot"
+if "--home" not in sys.argv or sys.argv.index("--home") + 1 >= len(sys.argv):
+    sys.exit("usage: verify_tools_config.py --home <throwaway profile home> [--disposable] [--out FILE]")
+HOME = Path(sys.argv[sys.argv.index("--home") + 1]).expanduser()
 PILOT_NAME = "mnemosyne-pilot"
 if HOME.resolve().name != PILOT_NAME and "--disposable" not in sys.argv:
     sys.exit(f"refusing: {HOME} is not the '{PILOT_NAME}' profile (pass --disposable to override for a throwaway home)")
 CFG = HOME / "config.yaml"
-PY = "/home/node/.hermes/hermes-agent/venv/bin/python"
+# Hermes checkout and its venv, relative to the running user (run as the account that owns Hermes).
+HERMES_AGENT = Path.home() / ".hermes/hermes-agent"
+PY = str(HERMES_AGENT / "venv/bin/python")
 SIX = ["mnemosyne_remember", "mnemosyne_recall", "mnemosyne_invalidate",
        "mnemosyne_stats", "mnemosyne_triple_add", "mnemosyne_triple_query"]
 
 PROBE = r'''
 import json, os, sys, traceback
-sys.path.insert(0, "/home/node/.hermes/hermes-agent"); os.chdir("/home/node/.hermes/hermes-agent")
+sys.path.insert(0, os.environ["HERMES_AGENT"]); os.chdir(os.environ["HERMES_AGENT"])
 out = {"loaded": False}
 try:
     from plugins.memory import load_memory_provider
     prov = load_memory_provider("mnemosyne", register_skills=False)
     out["provider_is_none"] = prov is None
     if prov is not None:
-        prov.initialize(session_id="tools-cfg-1", hermes_home=os.environ["HERMES_HOME"], agent_identity="mnemosyne-pilot",
+        prov.initialize(session_id="tools-cfg-1", hermes_home=os.environ["HERMES_HOME"], agent_identity=os.environ["IDENT"],
                         agent_context="cli", platform="cli", agent_workspace="hermes")
         sch = prov.get_tool_schemas()
         out["loaded"] = True
@@ -56,7 +60,8 @@ def set_tools(value):
     CFG.write_text(yaml.safe_dump(cfg, sort_keys=False))
 
 def probe():
-    env = {**os.environ, "HERMES_HOME": str(HOME), "OPENROUTER_API_KEY": os.environ.get("OPENROUTER_API_KEY", "x")}
+    env = {**os.environ, "HERMES_HOME": str(HOME), "HERMES_AGENT": str(HERMES_AGENT), "IDENT": HOME.resolve().name,
+           "OPENROUTER_API_KEY": os.environ.get("OPENROUTER_API_KEY", "x")}
     p = subprocess.run([PY, "-c", PROBE], env=env, capture_output=True, text=True, timeout=120)
     line = [l for l in p.stdout.splitlines() if l.startswith("__RESULT__")]
     res: dict = json.loads(line[-1][len("__RESULT__"):]) if line else {"no_result": True}

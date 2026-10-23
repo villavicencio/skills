@@ -15,10 +15,11 @@ turn. It **augments** `MEMORY.md` / `USER.md`, the Obsidian vault, and session s
 replaces them. Origin and evidence: VIL-143 (`~/Projects/mnemosyne-pilot/DECISION.md` on the
 VPS).
 
-**Host-specific by design.** Assumes the side-venv install at
-`~/.hermes/venvs/mnemosyne` (python3.11) with the wrapper plugin at
-`<home>/plugins/mnemosyne`, pinned to `mnemosyne-memory==3.15.1` and
-`mnemosyne-hermes==0.5.0`.
+**Host-specific by design.** Assumes Hermes at `~/.hermes/hermes-agent` (with its `venv/`), the
+side-venv install at `~/.hermes/venvs/mnemosyne` (python3.11, the same minor as Hermes' venv), and
+the wrapper plugin at `<home>/plugins/mnemosyne`, all under the account that runs Hermes. Pinned to
+`mnemosyne-memory==3.15.1` and `mnemosyne-hermes==0.7.1` with patch C carried. The previous pair,
+0.5.0 with patches C and D, is the rollback target; both pairs are in `TESTED_PAIRS`.
 
 ## Step 1 — Health check first, always
 
@@ -40,12 +41,12 @@ Read-only. Exit 0 means healthy and exit 1 means drift. Each `FAIL` line names i
 | `provider` | provider switched off | `hermes config set memory.provider mnemosyne` |
 | `tools` | full 40-tool surface (~6.5k tok/request) | set `memory.mnemosyne.tools` (6 for Atlas, 3 suggested elsewhere) |
 | `filters` | Hermes cron / background-process / system-note turns being stored as `[USER]` | re-run `enable_profile.py` (it writes `ignore_patterns`) |
-| `patch` | fix C or D is not in effect in the loaded provider code: C (MEMORY.md mirrors become session-only) or D (non-default profiles' banks land in the default home under `hermes serve`). The check is functional, so an upstream release that ships the fix passes without the carried patch | re-apply (Step 4) |
-| `isolation` | another profile's bank is living under this home: the multiplex leak | apply patch D, restart `hermes serve`, and move the bank (export, then import into its owner's home) |
+| `patch` | fix C or D is not in effect in the loaded provider code: C (MEMORY.md mirrors become session-only) or D (non-default profiles' banks land in the default home under `hermes serve`). The check is functional: upstream 0.7.1 ships fix D, so it passes there without a carried patch D | re-apply patch C (Step 4); on 0.5.0, also patch D |
+| `isolation` | another profile's bank is living under this home: the multiplex leak | run 0.7.1 (or 0.5.0 with patch D), restart `hermes serve`, and move the bank (export, then import into its owner's home) |
 | `override` | installer re-dropped `mnemosyne-memory-override`, which tells the agent MEMORY.md is deprecated | delete `<home>/skills/memory/mnemosyne-memory-override` |
 | `leak` | injected system turns stored in the last 7 days | widen `ignore_patterns`; invalidate the rows |
 | `freshness` | autosave silent > 48h | check `hermes memory status`, the gateway log |
-| `versions` | the installed (core, hermes) pair isn't one we've tested (`TESTED_PAIRS`; today only 3.15.1 + 0.5.0) | run the pilot verification (Step 3 + `verify_multiplex_isolation.py`), then add the pair to `TESTED_PAIRS` |
+| `versions` | the installed (core, hermes) pair isn't one we've tested (`TESTED_PAIRS`: 3.15.1 + 0.7.1, and 3.15.1 + 0.5.0 for rollback) | run the pilot verification on throwaway homes (Step 3), then add the pair to `TESTED_PAIRS` |
 
 ## Step 2 — Enable on a profile
 
@@ -70,40 +71,85 @@ The script runs these gated steps and stops at the first failure:
    equals the configured subset and that the DB sits under `<home>`.
 
 Any profile other than `default` requires `--owner-confirmed`. Each profile's memory belongs
-to its owner.
+to its owner. `MNEMOSYNE_VENV=<venv>` points the wrapper at a candidate side venv instead of the
+live one, and `MNEMOSYNE_OPS_RECORDS=<dir>` keeps a pilot's backups out of the live records; Step 3
+uses both.
 
 New sessions pick the provider up. A session that was already running keeps the toolset it
 started with.
 
-## Step 3 — Verify the tools knob (after any upgrade)
+## Step 3 — Pilot a new pair on throwaway homes (before any upgrade)
+
+Build the candidate side venv somewhere else, apply patch C to it (Step 4), and enable two
+throwaway homes against it. Neither the live venv nor a live profile is touched:
 
 ```bash
-# Replace PILOT_HOME with the real path; the script refuses any profile not named mnemosyne-pilot unless you add --disposable.
-PILOT_HOME="$HOME/.hermes/profiles/mnemosyne-pilot"
-~/.hermes/hermes-agent/venv/bin/python scripts/verify_tools_config.py --home "$PILOT_HOME"
+T=~/mn-pilot                      # any scratch dir; the homes' names become their bank names
+uv venv --python ~/.hermes/hermes-agent/venv/bin/python "$T/venv"   # same Python minor as Hermes (3.11 here)
+uv pip install --python "$T/venv/bin/python" 'mnemosyne-hermes==0.7.1' 'mnemosyne-memory[embeddings]==3.15.1'
+"$T/venv/bin/python" scripts/apply_patch_c.py --site "$T/venv/lib/python3.11/site-packages"
+for h in pilota pilotb; do
+  mkdir -p "$T/homes/$h" && printf 'memory:\n  memory_enabled: true\n' > "$T/homes/$h/config.yaml"
+  MNEMOSYNE_VENV="$T/venv" MNEMOSYNE_OPS_RECORDS="$T/records" ~/.hermes/hermes-agent/venv/bin/python \
+      scripts/enable_profile.py --home "$T/homes/$h" --identity "$h" --owner-confirmed
+done
+~/.hermes/hermes-agent/venv/bin/python scripts/verify_tools_config.py --home "$T/homes/pilota" --disposable
+~/.hermes/hermes-agent/venv/bin/python scripts/verify_multiplex_isolation.py \
+    --home-a "$T/homes/pilota" --home-b "$T/homes/pilotb" --disposable
+~/.hermes/hermes-agent/venv/bin/python scripts/mnemosyne_health.py --home "$T/homes/pilota"
 ```
 
-Run this against a disposable or pilot home. The verifier rewrites that home's config three
-times, then restores the original bytes in a `finally` block (even if a probe fails), and exits non-zero if any check fails. Expected results: 6 names produce exactly those 6 tools; a typo
-produces a loud `ValueError` rather than a silent fallback to all 40; leaving the key out
-produces all 40.
+- **`verify_tools_config.py`** (`--home` is required) rewrites that home's config three times,
+  then restores the original bytes in a `finally` block, even if a probe fails. Expected: 6 names
+  give exactly those 6 tools, a typo gives a loud `ValueError` rather than a silent fallback to
+  all 40, and leaving the key out gives all 40.
+- **`verify_multiplex_isolation.py`** runs A→B→A in one process with the process-global
+  `HERMES_HOME` pinned to A, the way `hermes serve` multiplexes. It checks that each bank lands in
+  its own home, that A recalls its fact with `dense_score > 0` and can't recall B's, and that
+  neither home holds a foreign bank. On 0.5.0 without patch D it fails 3 of 9 checks (B's bank
+  lands in A), which is the negative control.
+- The health check must be HEALTHY on the throwaway homes, except `versions` until the pair is
+  added to `TESTED_PAIRS`.
 
-## Step 4 — The carried patches
+## Step 4 — Carried patches and upgrades
 
-**D — multiplex bank root.** This is a backport of upstream #958. Supported version pairs: `mnemosyne-hermes` 0.7.0–0.7.2 run on stable core `mnemosyne-memory>=3.11.1` (incl. 3.15.1); only 0.7.3+ require beta core `>=4.0.0b3`. #958 ships in **0.7.1**, so **`mnemosyne-hermes==0.7.1` on core 3.15.1 is an upgrade candidate that would retire patch D** (patch C is still needed there — 0.7.1 still scopes MEMORY.md mirrors to `session`). It is **not yet tested here**: pilot it first, then add `("3.15.1", "0.7.1")` to `TESTED_PAIRS` in the health check. The `patch` check already accepts upstream's fix D, so only `versions` gates the upgrade. In `initialize`, the profile-isolation branch passes `db_path=<hermes_home>/mnemosyne/data[/banks/<bank>]/mnemosyne.db` to `Mnemosyne(...)`. Without it, a multiplexed `hermes serve` puts every non-default profile's bank under the default home. After a tested move to 0.7.1 or later, patch D is no longer needed; keep patch C until upstream #1101 lands. Restart `hermes serve` after applying it.
+**C — MEMORY.md mirror scope (carried).** `mnemosyne_hermes/__init__.py`, `on_memory_write`:
+upstream scopes `MEMORY.md` mirrors to `session`, so a fact evicted from `MEMORY.md` can't be
+recalled from any other session. The patch changes it to `scope = "global"` with an
+`ATLAS CARRIED PATCH C` marker comment. Upstream #1101 is still open, and 0.7.1 still has the
+`session` line. **Re-apply after every `mnemosyne-hermes` upgrade**:
 
-**C — MEMORY.md mirror scope.**
+```bash
+SITE=~/.hermes/venvs/mnemosyne/lib/python3.11/site-packages
+~/.hermes/venvs/mnemosyne/bin/python scripts/apply_patch_c.py --site "$SITE"            # --check: verify only
+```
 
-`mnemosyne_hermes/__init__.py`, `on_memory_write`: upstream scopes `MEMORY.md` mirrors to
-`session`, so a fact evicted from `MEMORY.md` can't be recalled from any other session. The
-patch changes it to `scope = "global"` and adds an `ATLAS CARRIED PATCH` marker comment, which
-the health check looks for. **Re-apply after every `mnemosyne-hermes` upgrade.** Then rescope
-the existing rows:
+It is idempotent and refuses if the upstream line isn't there exactly once. It then checks every
+installed `mnemosyne_hermes` file against the wheel's `RECORD` hashes, so a stale patch (D, after
+0.7.1) can't survive unnoticed. Rows mirrored while the patch was missing need rescoping:
 
 ```sql
 UPDATE working_memory SET scope='global'
  WHERE source LIKE 'builtin_memory_%' AND scope='session' AND (valid_until IS NULL OR valid_until='');
 ```
+
+**D — multiplex bank root (retired by 0.7.1).** A backport of upstream #958, carried only on
+0.5.0. In `initialize`, the profile-isolation branch passes
+`db_path=<hermes_home>/mnemosyne/data[/banks/<bank>]/mnemosyne.db` to `Mnemosyne(...)`; without
+it, a multiplexed `hermes serve` puts every non-default profile's bank under the default home.
+0.7.1 ships #958 itself, so the `patch` check passes there with no patch D. A rollback to 0.5.0
+restores it from the venv backup.
+
+**Upgrading `mnemosyne-hermes`.** `mnemosyne-hermes` 0.7.0–0.7.2 run on stable core
+`mnemosyne-memory>=3.11.1` (including 3.15.1); 0.7.3 and later require beta core `>=4.0.0b3`.
+Pilot the pair first (Step 3). Then, on the live host: back up the side venv (`cp -a`), upgrade it
+in place with the core pinned
+(`uv pip install --python ~/.hermes/venvs/mnemosyne/bin/python 'mnemosyne-hermes==<ver>' 'mnemosyne-memory[embeddings]==3.15.1'`),
+re-apply patch C, run Step 1 on every profile home, and restart every process that loads the
+provider (the per-profile gateways and `hermes serve`). A running process keeps the code it
+imported until it restarts. Use plain `uv pip install`, never `mnemosyne-hermes install` or
+`upgrade`: those rewrite the wrapper and re-drop the override skill. Roll back by restoring the
+venv backup and restarting the same processes.
 
 ## Gotchas
 
@@ -120,7 +166,12 @@ UPDATE working_memory SET scope='global'
   about the same entity rank the older one first.
 - **`mnemosyne-hermes upgrade` re-drops the override skill** and can replace the patched
   `__init__.py`. Run Step 1 immediately afterward.
-- **Multiplex isolation.** CLI and per-profile gateways run one profile per process. `hermes serve` (Desktop) runs many. Isolation tests must cover two homes in one process (A→B→A), or they miss defect D.
+- **Two wrapper formats.** A wrapper written by 0.5.0 assigns `_SITE` in
+  `<home>/plugins/mnemosyne/__init__.py`. One written by 0.7.x keeps the venv in
+  `mnemosyne-wrapper.json` beside it and refuses a side venv whose Python minor differs from
+  Hermes'. The old wrapper loads 0.7.1 unchanged, so an in-place upgrade doesn't need a new
+  wrapper. The health check and `enable_profile.py` read both formats.
+- **Multiplex isolation.** CLI and per-profile gateways run one profile per process. `hermes serve` (Desktop) runs many. Isolation tests must cover two homes in one process (A→B→A, `verify_multiplex_isolation.py`), or they miss defect D.
 - **Host migration.** Move `<home>/mnemosyne/`, `~/.hermes/venvs/mnemosyne/` (or rebuild it
   and re-patch), `<home>/cache/fastembed/`, `<home>/plugins/mnemosyne/`, and the config block.
   Run Step 1 on the new host before trusting it.

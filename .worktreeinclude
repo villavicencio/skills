@@ -1,5 +1,7 @@
-# Gitignored files to copy from the main checkout into a new worktree. Gitignore syntax;
-# only files that are also gitignored are copied. Read by `claude --worktree` and the setup
-# script in orca.yaml. HANDOFF.md is left out on purpose: each worktree starts its own.
-.compound-engineering/*.local.yaml
+# Gitignored files to copy from the main checkout into a new worktree. One literal path per
+# line (file or directory), no globs. Orca reads this file from the main checkout, skips any
+# line with `*`, `?` or a leading `!`, and copies a path only if it exists there and is
+# gitignored. `claude --worktree` and dotfiles' `wt new` read it in gitignore syntax, where a
+# literal path works the same. HANDOFF.md is left out on purpose: each worktree starts its own.
+.compound-engineering/config.local.yaml
 .claude/settings.local.json

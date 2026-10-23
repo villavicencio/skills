@@ -53,10 +53,13 @@ checkout.
   'skills-ref==0.1.1'`, then `<dir>/bin/agentskills validate plugins/dv/skills/<name>`.
   **In an Orca worktree this is already done:** `orca.yaml`'s setup script builds `.venv`
   (Python 3.12, matching CI), so run `.venv/bin/agentskills validate plugins/dv/skills/<name>`.
-  It also copies the gitignored files `.worktreeinclude` names from the main checkout
-  (`.compound-engineering/*.local.yaml`, `.claude/settings.local.json`), but not `HANDOFF.md`.
-  Keep anything that changes state other checkouts depend on out of it (uv's shared cache
-  is fine); `dv:orca-setup` covers how to change it.
+  The script copies no files. Orca itself copies the gitignored files `.worktreeinclude`
+  names (`.compound-engineering/config.local.yaml`, `.claude/settings.local.json`; not
+  `HANDOFF.md`) before setup runs. It reads `.worktreeinclude` from the main checkout, takes
+  literal paths only (it skips any line with `*`, `?` or a leading `!`), and copies a path only
+  if it exists there and this repo ignores it, so list each file literally and ignore it in
+  `.gitignore`. Keep anything that changes state other checkouts depend on out of the script
+  (uv's shared cache is fine); `dv:orca-setup` covers how to change it.
 - CI gates (`.github/workflows/validate.yml`):
   - `agentskills validate plugins/*/skills/*` — spec conformance per skill
   - Per-plugin skill-version-parity — skills in the same plugin must share a version

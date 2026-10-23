@@ -2,9 +2,9 @@ scripts:
   setup: |
     # Runs in each new Orca worktree (see the dv:orca-setup skill). Builds .venv with
     # skills-ref, so `.venv/bin/agentskills validate plugins/dv/skills/<name>` works here:
-    # the Mac's python3 is too old for skills-ref 0.1.1, and CI uses 3.12.
+    # the Mac's python3 is too old for skills-ref 0.1.1, and CI uses 3.12. Gitignored local
+    # files aren't copied here: Orca copies the paths .worktreeinclude lists itself.
     set -eu
-    m=$ORCA_ROOT_PATH
     cd "$ORCA_WORKTREE_PATH"
     PATH="$HOME/.local/bin:$PATH"
     if ! command -v uv >/dev/null 2>&1; then
@@ -15,24 +15,3 @@ scripts:
     uv pip install --quiet --python .venv/bin/python 'skills-ref==0.1.1'
     .venv/bin/agentskills --help > /dev/null
     echo "ready: .venv/bin/agentskills validate plugins/dv/skills/<name>"
-    # Copy from the main checkout the files .worktreeinclude names that are also gitignored.
-    # The list is this worktree's copy, like orca.yaml itself.
-    if [ -f .worktreeinclude ]; then
-      t=$(mktemp -d)
-      git -C "$m" ls-files -o -i --exclude-standard > "$t/ign"
-      git -C "$m" ls-files -o -i --exclude-from="$PWD/.worktreeinclude" > "$t/inc"
-      LC_ALL=C sort -o "$t/ign" "$t/ign"
-      LC_ALL=C sort -o "$t/inc" "$t/inc"
-      LC_ALL=C comm -12 "$t/ign" "$t/inc" > "$t/carry"
-      while IFS= read -r f; do
-        if [ -n "$f" ] && [ ! -e "$f" ] && [ ! -L "$f" ]; then
-          if mkdir -p "$(dirname "$f")" && cp -p "$m/$f" "$f"; then
-            echo "copied $f"
-          else
-            rm -f "$f" 2>/dev/null || :
-            echo "couldn't copy $f; copy it by hand" >&2
-          fi
-        fi
-      done < "$t/carry"
-      rm -rf "$t"
-    fi

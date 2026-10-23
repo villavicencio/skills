@@ -101,7 +101,9 @@ echo "=== Extracted $count transcript(s) with content (current session excluded)
 command ls -lhS "$SCRATCH"
 ```
 
-Note the printed `$SCRATCH` path — you'll reference it in Steps 3 and 6.
+Note the printed `$SCRATCH` path — you'll reference it in Steps 3 and 6. Step 6 needs the
+exact path: it removes only this run's dir, because another run may be using its own
+`claudemd-review.*` dir at the same time.
 
 ## Step 3 — Analyze with parallel subagents
 
@@ -173,12 +175,45 @@ the user review the diff first.
 ## Step 6 — Clean up
 
 Remove the scratch dir — it holds extracted transcript text that may contain secrets, and is
-**not** auto-cleaned. Run this even if the skill was interrupted partway. The glob clears the
-current run plus any leftovers from earlier aborted runs, with no dependence on `$SCRATCH`
-still being set (it won't be, in a fresh shell):
+**not** auto-cleaned. Run this even if the skill was interrupted partway. Shell state doesn't
+carry over from Step 2, so replace the placeholder with the exact path Step 2 printed. The
+block does two things:
+
+1. It removes **this run's** dir, and nothing else. Don't swap this for a
+   `claudemd-review.*` glob: two runs at once (parallel worktree sessions on one machine)
+   would delete each other's transcripts mid-analysis.
+2. It sweeps leftovers from earlier aborted runs, but only dirs older than 24 hours, so
+   another run's live dir is never touched. If you don't have the Step 2 path (the run
+   aborted before printing it), leave the placeholder: part 1 skips, and part 2 removes that
+   dir once it is stale.
 
 ```bash
-rm -rf "${TMPDIR:-/tmp}"/claudemd-review.*
+SCRATCH='<scratch path printed by Step 2>'
+case "$(basename -- "$SCRATCH")" in
+  claudemd-review.*)
+    if [ -d "$SCRATCH" ]; then
+      command rm -rf -- "$SCRATCH" && echo "Removed this run's scratch dir: $SCRATCH"
+    else
+      echo "This run's scratch dir is already gone: $SCRATCH"
+    fi ;;
+  *) echo "No Step 2 path given; leaving this run's dir to the stale sweep." ;;
+esac
+
+# 24h: a live run needs its files only until Step 3 ends, a day clears even one stalled on a
+# prompt, and a 0700 leftover waits for the next run anyway, so the long wait costs little.
+# Stale means the dir AND every file in it are that old (nothing writes there after Step 2;
+# rewriting a file in place doesn't change its dir's mtime, so the inner find checks files).
+# The trailing slash after TMPDIR matters: on macOS /tmp is a symlink, and find won't
+# descend a symlinked starting point without it. `command find`/`command rm` skip shell
+# functions and aliases (see Step 1): Claude Code's shell defines `find` as a function.
+STALE_MIN=1440
+command find "${TMPDIR:-/tmp}/" -mindepth 1 -maxdepth 1 -type d -name 'claudemd-review.*' \
+    -user "$(id -u)" -mmin +"$STALE_MIN" 2>/dev/null |
+  while IFS= read -r d; do
+    if [ -z "$(command find "$d" -mmin -"$STALE_MIN" 2>/dev/null | head -1)" ]; then
+      command rm -rf -- "$d" && echo "Removed stale scratch dir from an earlier run: $d"
+    fi
+  done
 ```
 
 ## Notes

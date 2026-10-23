@@ -95,7 +95,7 @@ def make_convo_dir(root: Path) -> Path:
 
 def step2(shell: str, script: str, env: dict[str, str], label: str) -> Path | None:
     p = run(shell, script, env)
-    m = re.search(r"into: (\S*claudemd-review\.\S+) ===", p.stdout)
+    m = re.search(r"into: (.*claudemd-review\.\S+) ===$", p.stdout, re.M)
     if p.returncode != 0 or not m:
         failures.append(f"{label}: Step 2 did not create a scratch dir\n"
                         f"     rc={p.returncode} stdout={p.stdout!r} stderr={p.stderr!r}")

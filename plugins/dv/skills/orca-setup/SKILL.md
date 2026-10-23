@@ -82,6 +82,7 @@ scripts:
     # gitignored (the claude --worktree convention).
     if [ -f .worktreeinclude ]; then
       t=$(mktemp -d)
+      trap 'rm -rf "$t"' EXIT
       git -C "$m" ls-files -o -i --exclude-standard > "$t/ign"
       git -C "$m" ls-files -o -i --exclude-from="$PWD/.worktreeinclude" > "$t/inc"
       LC_ALL=C sort -o "$t/ign" "$t/ign"
@@ -89,15 +90,17 @@ scripts:
       LC_ALL=C comm -12 "$t/ign" "$t/inc" > "$t/carry"
       while IFS= read -r f; do
         if [ -n "$f" ] && [ ! -e "$f" ] && [ ! -L "$f" ]; then
-          if mkdir -p "$(dirname "$f")" && cp -p "$m/$f" "$f"; then
+          p="$f.orca-setup.$$"
+          if mkdir -p "$(dirname "$f")" && cp -p "$m/$f" "$p" && ln "$p" "$f" 2>/dev/null; then
             echo "copied $f"
+          elif [ -e "$f" ] || [ -L "$f" ]; then
+            echo "kept $f: it appeared during setup"
           else
-            rm -f "$f" 2>/dev/null || :
             echo "couldn't copy $f; copy it by hand" >&2
           fi
+          rm -f "$p" 2>/dev/null || :
         fi
       done < "$t/carry"
-      rm -rf "$t"
     fi
 ```
 
@@ -106,10 +109,17 @@ scripts:
 - **Process:** Orca writes the script to its own `setup-runner.sh` and executes it, so
   `set -e` can't affect the user's shell. Keep it POSIX `sh`: no `<(…)`, no arrays.
 - **Failures:** under `set -e`, a command inside `a && b` or an `if` condition doesn't stop
-  the script. Handle each copy failure explicitly, as above.
+  the script. Handle each copy failure explicitly, as above. Any other failure exits early,
+  so the `EXIT` trap is what removes the temp directory.
+- **Don't overwrite:** an agent Orca starts with the worktree runs while setup does, and it can
+  write one of these files first (Claude Code writes `.claude/settings.local.json`). So the
+  script copies beside the target and `ln`s it into place: `ln` fails rather than replace a
+  file that's already there.
 - **`.worktreeinclude`:** one gitignore pattern per line, comments allowed. Read the list from
   the **worktree's** copy, not the main checkout's, so it travels with the branch like
-  `orca.yaml` does.
+  `orca.yaml` does. Every file it names must be ignored by the **repo's** `.gitignore`. A
+  machine-level rule (`core.excludesFile`) works on your machine and silently skips the copy
+  on any other.
 
 ## Step 4 — Test it through a real Orca worktree before merge
 
@@ -122,19 +132,25 @@ orca worktree create --repo id:<repoId> --name <topic>-setup-test --no-parent \
   --base-branch <pr-branch> --setup run --json
 ```
 
-`--setup run` forces the script whatever the repo's policy. The command returns before the
-script finishes, so wait for something it produces (a copied file, `.venv/bin/<tool>`) before
-reading anything. The script's output then shows in one of the new worktree's terminals, not
-always the first (`orca terminal list --worktree id:<repoId>::<worktreePath>`, then
-`orca terminal read --terminal <handle>` on each). Check each gap from Step 1 is closed and
-`git status --short` is clean, then remove the worktree (Step 5).
-
 A run with nothing to do prints nothing and changes nothing, which looks the same as a script
 that never ran. If the main checkout has none of the files `.worktreeinclude` names yet, put a
-throwaway one there first (one the repo gitignores), check it arrives in the test worktree,
-then delete it.
+throwaway one there (one the repo gitignores) **before** running the command above, check it
+arrives in the test worktree, then delete it.
 
-For the edge cases (a failed copy, a parent path that's a regular file), extract the block and
+`--setup run` forces the script whatever the repo's policy. The command returns before the
+script finishes, so judge the run by what it leaves behind: poll, with a timeout, for the
+copied files, `.venv/bin/<tool>` and whatever else Step 1 needs. Don't count on its output.
+It can show in one of the new worktree's terminals, not always the first
+(`orca terminal list --worktree id:<repoId>::<worktreePath>`, then
+`orca terminal read --terminal <handle>` on each), but on Orca 1.4.235 (2026-10-23) a script
+that finished in well under a second left nothing readable there, while one that built a
+virtualenv first did. If the artifacts don't arrive, read the terminals anyway for the
+error: under `set -e` a failed step, such as `git submodule update`, stops the script before
+the copy. Check each gap from Step 1 is closed and `git status --short` is clean, then
+remove the worktree (Step 5).
+
+For the edge cases (a failed copy, a parent path that's a regular file, a file that appears
+between the check and the copy), extract the block and
 run it against a scratch `git worktree add` with both env vars set. Lint it with
 `sh -n` and `shellcheck -s sh -S warning`.
 

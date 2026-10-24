@@ -124,8 +124,13 @@ orca worktree create --repo id:<repoId> --name <topic>-setup-test --no-parent \
 
 `--setup run` forces the script whatever the repo's policy. **A repo with no `orca.yaml`**
 (local files only, Step 3) has no script to force, read or lint: drop `--setup run`, poll for
-the included files, check `git status --short`, and skip the terminal reading and linting
-below.
+the included files with the same timeout as below and name any that never arrive, check
+`git status --short`, and skip the terminal reading and linting below.
+
+**A PR that changes `.worktreeinclude`, or the `.gitignore` rules for its paths, can't show
+Orca's copy before merge.** Orca reads both from the main checkout (Step 3), so a worktree cut
+from the PR branch is copied by the old rules. Test the rest before merge, and test the copy
+after merge with a worktree cut from the default branch.
 
 With a script, the command returns before it finishes, so judge the run by what it leaves
 behind: poll, with a timeout, for the artifacts Step 1 needs (the submodule checkout,

@@ -9,7 +9,8 @@ synthetic fact into each one's bank. One subprocess, Hermes' own loader, the pro
 HERMES_HOME pinned to A the whole time (the import-time root that defect D wrongly used):
   1. A: remember fact_A; its DB must be <A>/mnemosyne/data/banks/<A name>/mnemosyne.db
   2. B: remember fact_B; its DB must be <B>/mnemosyne/data/banks/<B name>/mnemosyne.db, NOT under A
-  3. A again: recall fact_A -> found with dense_score > 0; recall fact_B -> absent
+  3. A again: recall fact_A -> found with dense_score > 0; recall fact_B -> absent, and no file
+     under <A>/mnemosyne holds fact_B's token (SQLite stores text as-is, so this is exhaustive)
   4. B: recall fact_B -> found (the write really landed in B)
   5. no foreign bank directory under either home
 Exit 0 only if every check passes.
@@ -54,7 +55,7 @@ def run(step, home, ident, remember=None, recalls=()):
     if remember:
         r["remember"] = json.loads(p.handle_tool_call("mnemosyne_remember", {"content": remember}))
     for name, q in recalls:
-        res = json.loads(p.handle_tool_call("mnemosyne_recall", {"query": q, "limit": 5})).get("results", [])
+        res = json.loads(p.handle_tool_call("mnemosyne_recall", {"query": q, "limit": 100})).get("results", [])
         r[name] = [{"content": x.get("content", ""), "dense_score": x.get("dense_score")} for x in res]
     p.shutdown()
     out[step] = r
@@ -91,6 +92,8 @@ else:
     check(ra and (ra[0]["dense_score"] or 0) > 0, "A_recalls_own_fact_with_dense_score", ra[:1])
     check(not hit(res.get("3_A", {}).get("recall_b", []), f"{tok}B"), "A_cannot_recall_B_fact",
           [r["content"][:60] for r in res.get("3_A", {}).get("recall_b", [])])
+    leaked = [str(f) for f in sorted((A / "mnemosyne").rglob("*")) if f.is_file() and f"{tok}B".encode() in f.read_bytes()]
+    check(not leaked, "A_files_hold_no_B_fact", leaked)
     check(hit(res.get("4_B", {}).get("recall_b", []), f"{tok}B"), "B_recalls_own_fact",
           hit(res.get("4_B", {}).get("recall_b", []), f"{tok}B")[:1])
     for h in (A, B):

@@ -9,8 +9,10 @@ Idempotent: a second run reports "already applied". Refuses if the upstream line
 exactly once (a release that changed or fixed it needs a human look, not a blind edit).
 
 After applying (or with --check, without writing), it verifies the installed mnemosyne_hermes
-against its wheel's RECORD hashes: every file must match, and __init__.py must match once patch C is
-reversed. That proves nothing else is patched, so a retired patch (D after 0.7.1) is really gone.
+against its wheel's RECORD hashes: every file must match, __init__.py must match once patch C is
+reversed, and no file may be missing from RECORD. That proves nothing else is patched, so a retired
+patch (D after 0.7.1) is really gone. __pycache__ is skipped: Python rewrites it from the sources.
+--check runs the RECORD check even when patch C is missing, and still exits 1 for it.
 Exit 0 = patch C in place and nothing else differs from the wheel.
 """
 import argparse, base64, csv, hashlib, sys
@@ -32,17 +34,19 @@ if len(dists) != 1:
     sys.exit(f"FAIL: expected one mnemosyne_hermes dist-info in {site}, found {[d.name for d in dists]}")
 
 text = init.read_bytes().decode("utf-8")
+c_missing = False
 if NEW in text:
     print("patch C: already applied")
 elif a.check:
-    sys.exit("FAIL: patch C is not applied (run without --check to apply)")
+    print("FAIL: patch C is not applied (run without --check to apply)")
+    c_missing = True
 elif text.count(OLD) != 1:
     sys.exit(f"FAIL: expected the upstream scope line exactly once in {init}, found {text.count(OLD)}; inspect by hand")
 else:
     init.write_bytes(text.replace(OLD, NEW).encode("utf-8"))
     print("patch C: applied")
     text = init.read_bytes().decode("utf-8")
-if text.count(NEW) != 1:
+if text.count(NEW) > 1:
     sys.exit("FAIL: patch C marker is present more than once")
 
 
@@ -51,9 +55,14 @@ def b64(algo: str, data: bytes) -> str:
 
 
 bad = []
+recorded = set()
 with (dists[0] / "RECORD").open(newline="") as f:
     for path, digest, _ in csv.reader(f):
-        if not digest or not path.startswith("mnemosyne_hermes/"):
+        if not path.startswith("mnemosyne_hermes/") or "/__pycache__/" in path:
+            continue
+        recorded.add(path)
+        if not digest:
+            bad.append(f"{path} (no digest in RECORD)")
             continue
         algo, want = digest.split("=", 1)
         p = site / path
@@ -63,5 +72,9 @@ with (dists[0] / "RECORD").open(newline="") as f:
         data = text.replace(NEW, OLD).encode("utf-8") if path == "mnemosyne_hermes/__init__.py" else p.read_bytes()
         if b64(algo, data) != want:
             bad.append(path)
+for p in sorted((site / "mnemosyne_hermes").rglob("*")):
+    rel = p.relative_to(site).as_posix()
+    if p.is_file() and "__pycache__" not in p.parts and rel not in recorded:
+        bad.append(f"{rel} (not in RECORD)")
 print(f"{dists[0].name[:-len('.dist-info')]}: files differing from the wheel besides patch C: {bad or 'none'}")
-sys.exit(1 if bad else 0)
+sys.exit(1 if bad or c_missing else 0)

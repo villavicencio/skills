@@ -140,9 +140,11 @@ it, a multiplexed `hermes serve` puts every non-default profile's bank under the
 0.7.1 ships #958 itself, so the `patch` check passes there with no patch D. A rollback to 0.5.0
 restores it from the venv backup.
 
-**Upgrading `mnemosyne-hermes`.** `mnemosyne-hermes` 0.7.0–0.7.2 run on stable core
-`mnemosyne-memory>=3.11.1` (including 3.15.1); 0.7.3 and later require beta core `>=4.0.0b3`.
-Pilot the pair first (Step 3). Then, on the live host: back up the side venv (`cp -a`), upgrade it
+**Upgrading `mnemosyne-hermes`.** On stable core, the target is 0.7.1: upstream names
+`mnemosyne-memory` 3.15.1 + `mnemosyne-hermes` 0.7.1 as the last audited stable pair. **Don't use
+0.7.2.** Its declared floor admits a core that lacks APIs it imports, so it installs cleanly and
+then fails when the provider initializes. 0.7.3 and later require beta core `>=4.0.0b3`
+(upstream `docs/hermes-integration.md`, read 2026-10-24). Pilot the pair first (Step 3). Then, on the live host: back up the side venv (`cp -a`), upgrade it
 in place with the core pinned
 (`uv pip install --python ~/.hermes/venvs/mnemosyne/bin/python 'mnemosyne-hermes==<ver>' 'mnemosyne-memory[embeddings]==3.15.1'`),
 re-apply patch C, run Step 1 on every profile home, and restart every process that loads the

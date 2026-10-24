@@ -19,7 +19,7 @@ Steps (each prints what it did; the script stops at the first failure):
 Rollback at any point: `hermes [-p X] memory off` (tested; DB stays), or restore the config backup
 this script writes to records/.
 """
-import argparse, datetime, hashlib, json, os, subprocess, sys, shutil
+import argparse, datetime, hashlib, json, os, re, subprocess, sys, shutil
 from pathlib import Path
 from ruamel.yaml import YAML
 
@@ -75,10 +75,16 @@ WRAP = HOME / "plugins" / "mnemosyne" / "__init__.py"
 MANIFEST = WRAP.with_name("mnemosyne-wrapper.json")  # mnemosyne-hermes >=0.7 wrappers keep the venv here
 
 def wrapper_points_at_venv() -> bool:
-    if str(VENV) in WRAP.read_text():  # legacy wrapper: _SITE / _PYTHON assignments in __init__.py
-        return True
+    # Same precedence as the wrapper and mnemosyne_health.site_for: the manifest wins when both exist.
     try:
-        site = Path(json.loads(MANIFEST.read_text())["site_packages"]).resolve()
+        if MANIFEST.exists():
+            site = json.loads(MANIFEST.read_text())["site_packages"]
+        else:  # legacy wrapper: a _SITE assignment in __init__.py
+            m = re.search(r"^_SITE\s*=\s*['\"]([^'\"]+)['\"]", WRAP.read_text(), re.M)
+            if not m:
+                return False
+            site = m.group(1)
+        site = Path(site).expanduser().resolve()
     except (OSError, ValueError, KeyError, TypeError):
         return False
     return site.is_relative_to(VENV.resolve())

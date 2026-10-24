@@ -125,7 +125,8 @@ orca worktree create --repo id:<repoId> --name <topic>-setup-test --no-parent \
 `--setup run` forces the script whatever the repo's policy. **A repo with no `orca.yaml`**
 (local files only, Step 3) has no script to force, read or lint: drop `--setup run`, poll for
 the included files with the same timeout as below and name any that never arrive, check
-`git status --short`, then delete the throwaway file and remove the test worktree (Step 5).
+`git status --short` is clean (stop and report if it isn't), then delete the throwaway file and
+remove the test worktree (Step 5).
 Skip the terminal reading and linting below.
 
 **A PR that changes `.worktreeinclude`, or the `.gitignore` rules for its paths, can't show

@@ -16,5 +16,8 @@ HANDOFF.md
 # Compound Engineering machine-local config
 .compound-engineering/*.local.yaml
 
+# Claude Code per-checkout permission approvals (copied into worktrees via .worktreeinclude)
+.claude/settings.local.json
+
 # Compound Engineering local scratch (skills that keep scratch write here)
 .context/compound-engineering/

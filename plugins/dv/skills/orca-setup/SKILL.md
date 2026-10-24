@@ -10,9 +10,9 @@ metadata:
 # /orca-setup — An Orca setup script that works the first time
 
 Orca runs a repo's **setup script** once in each worktree it creates, before you work there.
-Its job is whatever git doesn't do for a fresh checkout: submodules, gitignored local files,
-dependencies. Done well, an agent launched into a new worktree can run the project's checks
-straight away.
+Its job is whatever git doesn't do for a fresh checkout: submodules and dependencies. Orca
+copies gitignored local files itself, from the paths `.worktreeinclude` lists (Step 3). Done
+well, an agent launched into a new worktree can run the project's checks straight away.
 
 Origin: villavicencio/dotfiles#225 (2026-10-18 to 10-21). Most facts below came from reading
 the Orca app bundle, not from docs, so Step 0 re-checks the ones that matter.
@@ -39,7 +39,7 @@ Compare the main checkout with a worktree made from the default branch. Check ea
 | Gap | How to see it | Usual fix in setup |
 |---|---|---|
 | Submodules | `git submodule status` lines starting `-` | `git submodule update --init <path>` |
-| Gitignored local files (`.env`, `.claude/settings.local.json`, machine-local tool config) | `git -C <main> ls-files -o -i --exclude-standard` | list them in `.worktreeinclude`, copy them (Step 3) |
+| Gitignored local files (`.env`, `.claude/settings.local.json`, machine-local tool config) | `git -C <main> ls-files -o -i --exclude-standard` | none: list each path in `.worktreeinclude` and Orca copies it (Step 3) |
 | Dependencies, virtualenvs | the project's own install step | `pnpm install`, `uv venv` + `uv pip install`, … |
 | Git hooks | nothing: hooks live in the shared `.git/hooks` | none |
 
@@ -64,41 +64,20 @@ again. Never:
 
 Write each rule the repo needs into its `CLAUDE.md`/`AGENTS.md` too, next to the script.
 
-## Step 3 — Write `orca.yaml`
+## Step 3 — Write `orca.yaml`, and list local files in `.worktreeinclude`
 
-Put it at the repo root, so it's versioned. The other place for it, the repo settings in
-Orca's UI, is local and untracked. **Format:** Orca's parser isn't full YAML. Keys under
+Put `orca.yaml` at the repo root, so it's versioned. The other place for it, the repo settings
+in Orca's UI, is local and untracked. **Format:** Orca's parser isn't full YAML. Keys under
 `scripts:` take two spaces and every script line takes four, as in Orca's own template:
 
 ```yaml
 scripts:
   setup: |
     set -eu
-    m=$ORCA_ROOT_PATH
     cd "$ORCA_WORKTREE_PATH"
     PATH="$HOME/.local/bin:$PATH"   # GUI-launched Orca may not have the shell's PATH
     git submodule update --init <path>
-    # Copy from the main checkout the files .worktreeinclude names that are also
-    # gitignored (the claude --worktree convention).
-    if [ -f .worktreeinclude ]; then
-      t=$(mktemp -d)
-      git -C "$m" ls-files -o -i --exclude-standard > "$t/ign"
-      git -C "$m" ls-files -o -i --exclude-from="$PWD/.worktreeinclude" > "$t/inc"
-      LC_ALL=C sort -o "$t/ign" "$t/ign"
-      LC_ALL=C sort -o "$t/inc" "$t/inc"
-      LC_ALL=C comm -12 "$t/ign" "$t/inc" > "$t/carry"
-      while IFS= read -r f; do
-        if [ -n "$f" ] && [ ! -e "$f" ] && [ ! -L "$f" ]; then
-          if mkdir -p "$(dirname "$f")" && cp -p "$m/$f" "$f"; then
-            echo "copied $f"
-          else
-            rm -f "$f" 2>/dev/null || :
-            echo "couldn't copy $f; copy it by hand" >&2
-          fi
-        fi
-      done < "$t/carry"
-      rm -rf "$t"
-    fi
+    # then the project's install step: pnpm install, uv venv + uv pip install, …
 ```
 
 - **Env:** `ORCA_ROOT_PATH` is the main checkout and `ORCA_WORKTREE_PATH` the new worktree.
@@ -106,30 +85,67 @@ scripts:
 - **Process:** Orca writes the script to its own `setup-runner.sh` and executes it, so
   `set -e` can't affect the user's shell. Keep it POSIX `sh`: no `<(…)`, no arrays.
 - **Failures:** under `set -e`, a command inside `a && b` or an `if` condition doesn't stop
-  the script. Handle each copy failure explicitly, as above.
-- **`.worktreeinclude`:** one gitignore pattern per line, comments allowed. Read the list from
-  the **worktree's** copy, not the main checkout's, so it travels with the branch like
-  `orca.yaml` does.
+  the script. Handle those failures explicitly.
+- **Nothing to set up?** If a fresh worktree needs only local files, write no `orca.yaml` at
+  all.
+
+**Local files go in `.worktreeinclude`, not the script.** Orca copies them itself: in 1.4.235
+its worktree-create pipeline runs `copy_worktreeinclude` before `prepare_setup`, whether or
+not setup runs (found in orcad's server bundle, 2026-10-23). It's the same file
+`claude --worktree` reads. What Orca's copy does:
+
+- It reads `.worktreeinclude` from the **main checkout**, not the new worktree, so an entry
+  takes effect once it's in the main checkout, not on a branch.
+- It takes **literal file or directory paths only**: one per line, with comments and blank lines
+  allowed. A line with `*`, `?` or a leading `!` is skipped with a warning in Orca's log, so
+  write each path out.
+- It copies an entry only if the path exists in the main checkout and `git check-ignore` says
+  it's ignored. Ignore each one in the repo's own `.gitignore`: a machine-level rule
+  (`core.excludesFile`) works on your machine and silently skips the copy on any other.
+- It skips entries over its copy budget and logs a warning.
+
+Don't script the copy as well. The script would duplicate Orca's copy and race both it and the
+agent Orca starts with the worktree, which can write `.claude/settings.local.json` while setup
+runs. villavicencio/hal-bench#1 spent three review rounds hardening a scripted copy (temp file
+and `ln`, then an `O_EXCL` create) before it turned out Orca had already copied the files.
 
 ## Step 4 — Test it through a real Orca worktree before merge
 
 **Orca reads `scripts.setup` from the new worktree's own `orca.yaml`.** A worktree cut from the
 default branch therefore has no script until the PR merges. Testing that way looks like
-failure, but it isn't. Commit on the PR branch, then:
+failure, but it isn't. Commit on the PR branch. If the main checkout has none of the files
+`.worktreeinclude` names yet, put a throwaway one there (one the repo gitignores) **before**
+the next command, so the test shows Orca's copy working. Then:
 
 ```bash
 orca worktree create --repo id:<repoId> --name <topic>-setup-test --no-parent \
   --base-branch <pr-branch> --setup run --json
 ```
 
-`--setup run` forces the script whatever the repo's policy. The script's output shows in the
-new worktree's setup terminal (`orca terminal list --worktree id:<repoId>::<worktreePath>`, then
-`orca terminal read --terminal <handle>`). Check each gap from Step 1 is closed and
-`git status --short` is clean, then remove the worktree (Step 5).
+`--setup run` forces the script whatever the repo's policy. **A repo with no `orca.yaml`**
+(local files only, Step 3) has no script to force, read or lint: drop `--setup run`, poll for
+the included files with the same timeout as below and name any that never arrive, check
+`git status --short` is clean (stop and report if it isn't), then delete the throwaway file and
+remove the test worktree (Step 5).
+Skip the terminal reading and linting below.
 
-For the edge cases (a failed copy, a parent path that's a regular file), extract the block and
-run it against a scratch `git worktree add` with both env vars set. Lint it with
-`sh -n` and `shellcheck -s sh -S warning`.
+**A PR that changes `.worktreeinclude`, or the `.gitignore` rules for its paths, can't show
+Orca's copy before merge.** Orca reads both from the main checkout (Step 3), so a worktree cut
+from the PR branch is copied by the old rules. Test the rest before merge, and test the copy
+after merge with a worktree cut from the default branch.
+
+With a script, the command returns before it finishes, so judge the run by what it leaves
+behind: poll, with a timeout, for the artifacts Step 1 needs (the submodule checkout,
+`.venv/bin/<tool>`, the included files). The script's output shows in one of the new
+worktree's terminals, not always the first
+(`orca terminal list --worktree id:<repoId>::<worktreePath>`, then
+`orca terminal read --terminal <handle>` on each). If the artifacts don't arrive, read them for
+the error: under `set -e` a failed step, such as `git submodule update`, stops the script
+there. Check each gap from Step 1 is closed and `git status --short` is clean, then delete the
+throwaway file and remove the worktree (Step 5).
+
+With a script, lint the extracted script with `sh -n` and `shellcheck -s sh -S warning`. For
+failure cases, run it against a scratch `git worktree add` with both env vars set.
 
 ## Step 5 — Removing worktrees: Force, and no archive script
 

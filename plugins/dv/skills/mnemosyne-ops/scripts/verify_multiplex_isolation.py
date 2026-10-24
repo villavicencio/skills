@@ -11,7 +11,8 @@ HERMES_HOME pinned to A the whole time (the import-time root that defect D wrong
   2. B: remember fact_B; its DB must be <B>/mnemosyne/data/banks/<B name>/mnemosyne.db, NOT under A
   3. A again: recall fact_A -> found with dense_score > 0; recall fact_B -> absent, and no file
      under <A>/mnemosyne holds fact_B's token (SQLite stores text as-is, so this is exhaustive)
-  4. B: recall fact_B -> found (the write really landed in B)
+  4. B: recall fact_B -> found (the write really landed in B); recall fact_A -> absent, and no
+     file under <B>/mnemosyne holds fact_A's token
   5. no foreign bank directory under either home
 Exit 0 only if every check passes.
 """
@@ -64,7 +65,8 @@ run("1_A", E["HOME_A"], E["IDENT_A"], remember=E["FACT_A"])
 run("2_B", E["HOME_B"], E["IDENT_B"], remember=E["FACT_B"])
 run("3_A", E["HOME_A"], E["IDENT_A"], recalls=[("recall_a", "Which colour does the lighthouse keeper paint the doors?"),
                                               ("recall_b", "What trees does the orchard owner grow?")])
-run("4_B", E["HOME_B"], E["IDENT_B"], recalls=[("recall_b", "What trees does the orchard owner grow?")])
+run("4_B", E["HOME_B"], E["IDENT_B"], recalls=[("recall_b", "What trees does the orchard owner grow?"),
+                                              ("recall_a", "Which colour does the lighthouse keeper paint the doors?")])
 print("__RESULT__" + json.dumps(out))
 '''
 
@@ -92,10 +94,13 @@ else:
     check(ra and (ra[0]["dense_score"] or 0) > 0, "A_recalls_own_fact_with_dense_score", ra[:1])
     check(not hit(res.get("3_A", {}).get("recall_b", []), f"{tok}B"), "A_cannot_recall_B_fact",
           [r["content"][:60] for r in res.get("3_A", {}).get("recall_b", [])])
-    leaked = [str(f) for f in sorted((A / "mnemosyne").rglob("*")) if f.is_file() and f"{tok}B".encode() in f.read_bytes()]
-    check(not leaked, "A_files_hold_no_B_fact", leaked)
+    holds = lambda home, tok_: [str(f) for f in sorted((home / "mnemosyne").rglob("*")) if f.is_file() and tok_.encode() in f.read_bytes()]
+    check(not holds(A, f"{tok}B"), "A_files_hold_no_B_fact", holds(A, f"{tok}B"))
     check(hit(res.get("4_B", {}).get("recall_b", []), f"{tok}B"), "B_recalls_own_fact",
           hit(res.get("4_B", {}).get("recall_b", []), f"{tok}B")[:1])
+    check(not hit(res.get("4_B", {}).get("recall_a", []), f"{tok}A"), "B_cannot_recall_A_fact",
+          [r["content"][:60] for r in res.get("4_B", {}).get("recall_a", [])])
+    check(not holds(B, f"{tok}A"), "B_files_hold_no_A_fact", holds(B, f"{tok}A"))
     for h in (A, B):
         banks = h / "mnemosyne/data/banks"
         foreign = sorted(d.name for d in banks.iterdir() if d.is_dir() and d.name != h.name) if banks.exists() else []

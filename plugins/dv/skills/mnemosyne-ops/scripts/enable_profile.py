@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """VIL-143 §11 runbook: enable Mnemosyne on ONE named profile with a before/after integrity gate.
 
-    enable-profile.py --home /home/node/.hermes            --identity default [--tools 6|3] [--dry-run]
-    enable-profile.py --home /home/node/.hermes/profiles/X --identity X
+    enable_profile.py --home ~/.hermes            --identity default [--tools 6|3] [--dry-run]
+    enable_profile.py --home ~/.hermes/profiles/X --identity X --owner-confirmed
+
+Paths are relative to the running user's home: the side venv at ~/.hermes/venvs/mnemosyne (override with
+MNEMOSYNE_VENV) and Hermes at ~/.hermes/hermes-agent (with its venv/). Run it as the account that owns Hermes.
 
 Steps (each prints what it did; the script stops at the first failure):
   0. integrity BEFORE: sha256 of config.yaml, memories/MEMORY.md, memories/USER.md -> records/
@@ -16,11 +19,13 @@ Steps (each prints what it did; the script stops at the first failure):
 Rollback at any point: `hermes [-p X] memory off` (tested; DB stays), or restore the config backup
 this script writes to records/.
 """
-import argparse, datetime, hashlib, json, os, subprocess, sys, shutil
+import argparse, datetime, hashlib, json, os, re, subprocess, sys, shutil
 from pathlib import Path
 from ruamel.yaml import YAML
 
-VENV = Path("/home/node/.hermes/venvs/mnemosyne")
+# MNEMOSYNE_VENV points a throwaway home at a candidate side venv (pilot an upgrade without touching the live one).
+VENV = Path(os.environ.get("MNEMOSYNE_VENV", str(Path.home() / ".hermes/venvs/mnemosyne"))).expanduser()
+HERMES_AGENT = Path.home() / ".hermes/hermes-agent"
 RECORDS = Path(os.environ.get("MNEMOSYNE_OPS_RECORDS", str(Path.home() / ".hermes/mnemosyne/records")))
 RECORDS.mkdir(parents=True, exist_ok=True)
 SIX = ["mnemosyne_remember", "mnemosyne_recall", "mnemosyne_invalidate",
@@ -67,9 +72,25 @@ if not a.dry_run:
 # 1. wrapper install
 step(1, "install wrapper plugin")
 WRAP = HOME / "plugins" / "mnemosyne" / "__init__.py"
+MANIFEST = WRAP.with_name("mnemosyne-wrapper.json")  # mnemosyne-hermes >=0.7 wrappers keep the venv here
+
+def wrapper_points_at_venv() -> bool:
+    # Same precedence as the wrapper and mnemosyne_health.site_for: the manifest wins when both exist.
+    try:
+        if MANIFEST.exists():
+            site = json.loads(MANIFEST.read_text())["site_packages"]
+        else:  # legacy wrapper: a _SITE assignment in __init__.py
+            m = re.search(r"^_SITE\s*=\s*['\"]([^'\"]+)['\"]", WRAP.read_text(), re.M)
+            if not m:
+                return False
+            site = m.group(1)
+        site = Path(site).expanduser().resolve()
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+    return site.is_relative_to(VENV.resolve())
 cmd = [str(VENV / "bin" / "mnemosyne-hermes"), "--hermes-home", str(HOME), "install",
        "--mode", "wrapper", "--python", str(VENV / "bin" / "python")]
-if WRAP.exists() and str(VENV) in WRAP.read_text():
+if WRAP.exists() and wrapper_points_at_venv():
     print(f"  already installed and points at {VENV}; skipping (idempotent)")
 elif WRAP.exists():
     sys.exit(f"refusing: {WRAP} exists but does not point at {VENV}; inspect before --force")
@@ -209,7 +230,7 @@ if a.dry_run:
 else:
     probe = r'''
 import json, os, sys
-sys.path.insert(0, "/home/node/.hermes/hermes-agent"); os.chdir("/home/node/.hermes/hermes-agent")
+sys.path.insert(0, os.environ["HERMES_AGENT"]); os.chdir(os.environ["HERMES_AGENT"])
 from plugins.memory import load_memory_provider
 p = load_memory_provider("mnemosyne", register_skills=False)
 out = {"provider_none": p is None}
@@ -222,9 +243,9 @@ if p is not None:
     p.shutdown()
 print("__R__" + json.dumps(out))
 '''
-    env = {**os.environ, "HERMES_HOME": str(HOME), "IDENT": a.identity}
+    env = {**os.environ, "HERMES_HOME": str(HOME), "IDENT": a.identity, "HERMES_AGENT": str(HERMES_AGENT)}
     try:
-        r = subprocess.run(["/home/node/.hermes/hermes-agent/venv/bin/python", "-c", probe], env=env, capture_output=True, text=True, timeout=180)
+        r = subprocess.run([str(HERMES_AGENT / "venv/bin/python"), "-c", probe], env=env, capture_output=True, text=True, timeout=180)
     except subprocess.TimeoutExpired:
         sys.exit("smoke FAILED: provider probe timed out after 180s (config already written — roll back with the backup or `hermes memory off`)")
     line = [l for l in r.stdout.splitlines() if l.startswith("__R__")]

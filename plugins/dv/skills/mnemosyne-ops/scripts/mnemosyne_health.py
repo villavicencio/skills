@@ -20,9 +20,10 @@ import argparse, ast, json, os, re, sqlite3, sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
-# (mnemosyne_memory, mnemosyne_hermes) pairs verified on this deployment. 0.7.1 on core 3.15.1 is an
-# upgrade CANDIDATE (ships upstream #958 = fix D) — add it here only after a pilot run passes.
-TESTED_PAIRS = {("3.15.1", "0.5.0")}
+# (mnemosyne_memory, mnemosyne_hermes) pairs verified on this deployment. Add a pair only after a pilot run
+# passes. 0.5.0 carries patches C and D; 0.7.1 ships upstream #958 (fix D) and carries only patch C.
+# Both stay listed so the check is HEALTHY before and after a switch, and after a rollback.
+TESTED_PAIRS = {("3.15.1", "0.5.0"), ("3.15.1", "0.7.1")}
 DEFAULT_SITE = Path.home() / ".hermes/venvs/mnemosyne/lib/python3.11/site-packages"
 # Functional, version-agnostic checks on the provider source the wrapper loads, done on the parsed
 # AST so quoting, spacing and line-wrapping can't hide a regression.
@@ -83,14 +84,26 @@ def load_config(p: Path):
 
 def site_for(home: Path):
     """Return (site, error) for the side venv this home's wrapper loads. No silent fallback:
-    a home without its own wrapper is drift, not evidence of an install elsewhere."""
+    a home without its own wrapper is drift, not evidence of an install elsewhere.
+    Wrappers from mnemosyne-hermes >=0.7 keep the venv in mnemosyne-wrapper.json; older ones
+    assign _SITE in __init__.py. The manifest wins when both exist, as it does in the wrapper."""
     wrap = home / "plugins/mnemosyne/__init__.py"
     if not wrap.exists():
         return None, f"wrapper missing: {wrap}"
-    m = re.search(r"^_SITE\s*=\s*['\"]([^'\"]+)['\"]", wrap.read_text(), re.M)
-    if not m:
-        return None, f"wrapper has no _SITE: {wrap}"
-    site = Path(m.group(1))
+    manifest = wrap.with_name("mnemosyne-wrapper.json")
+    if manifest.exists():
+        try:
+            raw = json.loads(manifest.read_text()).get("site_packages")
+        except (OSError, ValueError, AttributeError) as e:
+            return None, f"wrapper manifest unreadable: {manifest}: {type(e).__name__}"
+        if not isinstance(raw, str) or not raw:
+            return None, f"wrapper manifest has no site_packages: {manifest}"
+        site = Path(raw)
+    else:
+        m = re.search(r"^_SITE\s*=\s*['\"]([^'\"]+)['\"]", wrap.read_text(), re.M)
+        if not m:
+            return None, f"wrapper has no _SITE and no {manifest.name}: {wrap}"
+        site = Path(m.group(1))
     if not site.is_dir():
         return None, f"wrapper _SITE does not exist: {site}"
     return site, None

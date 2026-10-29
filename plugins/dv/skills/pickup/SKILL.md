@@ -276,7 +276,9 @@ in the handoff, which they can ask for.
 When a list would break the budget, show its first 3 items and then "+N more": movers, other
 sessions, gotchas and CE artifacts alike. Drift and Needs you are the exception: they are never
 cut or truncated, even when that runs past 10 lines, because they are what the user must act on.
-Mention CE artifacts only when they bear on the next step. End with one question.
+Mention CE artifacts only when they bear on the next step. End with one line offering the next
+step ("Say go and I'll start on X."). That offer is the only question: never stop to ask about
+drift or anything else first.
 
 ## Notes
 - Staleness is measured in commits since `head`, not wall-clock. Date-based framing ("overnight",

@@ -10,7 +10,7 @@ One plugin, invoked `dv:<skill>` — modeled on how `compound-engineering` holds
 
 | Plugin | Version | Skills | Description |
 | --- | --- | --- | --- |
-| [`dv`](plugins/dv/) | `0.7.1` | `pickup`, `handoff`, `review-claudemd`, `tmux-window-namer`, `reddit`, `twitter`, `critique`, `cite`, `gauntlet`, `mnemosyne-ops`, `orca-setup` | Personal skill suite. Session brackets (`dv:pickup` / `dv:handoff`), `CLAUDE.md` hygiene (`dv:review-claudemd`), tmux styling (`dv:tmux-window-namer`), Reddit / X fetchers (`dv:reddit` / `dv:twitter`), parallel plan critique (`dv:critique`), a re-fetch-or-decline freshness contract for realtime facts (`dv:cite`), a staged adversarial code-review loop (`dv:gauntlet`), Mnemosyne memory-provider ops on a Hermes profile (`dv:mnemosyne-ops`), and Orca worktree setup scripts (`dv:orca-setup`). |
+| [`dv`](plugins/dv/) | `0.7.2` | `pickup`, `handoff`, `review-claudemd`, `tmux-window-namer`, `reddit`, `twitter`, `critique`, `cite`, `gauntlet`, `mnemosyne-ops`, `orca-setup` | Personal skill suite. Session brackets (`dv:pickup` / `dv:handoff`), `CLAUDE.md` hygiene (`dv:review-claudemd`), tmux styling (`dv:tmux-window-namer`), Reddit / X fetchers (`dv:reddit` / `dv:twitter`), parallel plan critique (`dv:critique`), a re-fetch-or-decline freshness contract for realtime facts (`dv:cite`), a staged adversarial code-review loop (`dv:gauntlet`), Mnemosyne memory-provider ops on a Hermes profile (`dv:mnemosyne-ops`), and Orca worktree setup scripts (`dv:orca-setup`). |
 
 ### Skills at a glance
 

@@ -250,7 +250,7 @@ This is a fast cross-check, not an interrogation: verify, report the delta, and 
 not stop to ask what to do about the drift** — surface it and proceed to the kickoff below. The
 zero-question orient is the point of this skill.
 
-Then synthesize everything into a short session kickoff, 10 lines at most. The user switches
+Then synthesize everything into a short session kickoff: aim for 10 lines. The user switches
 between several sessions; a wall of text on re-entry costs more than it saves. Full detail stays
 in the handoff, which they can ask for.
 
@@ -273,8 +273,9 @@ in the handoff, which they can ask for.
    about to change, say so: that is a merge conflict waiting to happen.
 6. **Gotchas** that affect the next step. The rest go behind "details?".
 
-When a list would break the limit, show its first 3 items and then "+N more": the movers under
-the anchor line and the other sessions alike. Drift and Needs you are never cut.
+When a list would break the budget, show its first 3 items and then "+N more": movers, other
+sessions, gotchas and CE artifacts alike. Drift and Needs you are the exception: they are never
+cut or truncated, even when that runs past 10 lines, because they are what the user must act on.
 Mention CE artifacts only when they bear on the next step. End with one question.
 
 ## Notes

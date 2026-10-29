@@ -207,7 +207,8 @@ else
 fi
 ```
 
-If any artifacts are found (and the CE plugin is installed so its commands are available):
+If any artifacts are found (and the CE plugin is installed so its commands are available), the
+kickoff mentions the ones that bear on the next step (Step 3), in these terms:
 - **Brainstorms** — mention them as open explorations that may need `/ce:plan` next
 - **Plans** — mention them as ready for `/ce:work` (or already in progress)
 - **Solutions** — briefly note what was learned (read the `problem_type` and `module` from YAML frontmatter if present)
@@ -240,7 +241,8 @@ unable-to-verify:
 gh pr view <n> --json reviewDecision,mergeStateStatus,statusCheckRollup 2>/dev/null
 ```
 
-**Any verified drift LEADS the orientation**, right after the anchor line: open it with
+**Any verified drift LEADS the orientation**, right after the anchor line and its mover lines:
+open it with
 `Drift since handoff:` and name each contradiction — what the handoff claimed, what is true now — before any summary. Never silently
 reconcile one: a handoff saying "zero open PRs" over a repo with two open is the single most
 useful thing you can tell the user, and smoothing it into a tidy summary destroys exactly the
@@ -274,9 +276,10 @@ in the handoff, which they can ask for.
    about to change, say so: that is a merge conflict waiting to happen.
 6. **Gotchas** that affect the next step. The rest go behind "details?".
 
-Any list longer than 3 items shows its first 3 and then "+N more": movers, other sessions,
-gotchas and CE artifacts alike. Drift and Needs you are the exception: they are never
-cut or truncated, even when that runs past 10 lines, because they are what the user must act on.
+Movers, other sessions and CE artifacts: a list longer than 3 shows its first 3 and then
+"+N more". A session touching the files this session is about to change is always listed, ahead of
+the others. Drift, Needs you and the gotchas that affect the next step are never cut or truncated,
+even when that runs past 10 lines: they are what the user must act on or stay safe from.
 Mention CE artifacts only when they bear on the next step. End with one line offering the next
 step ("Say go and I'll start on X."). That offer is the only question: never stop to ask about
 drift or anything else first.

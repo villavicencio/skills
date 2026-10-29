@@ -1,10 +1,10 @@
 ---
 name: pickup
-description: "Read this branch's handoff and orient: anchor on its commit (N commits since, not file age), list the other sessions in flight in sibling worktrees, surface git/PR state and recent CE artifacts, then propose a next action. Use at session start."
+description: "Read this branch's handoff and orient: anchor on its commit (N commits since, not file age), list the other sessions in flight in sibling worktrees, surface git/PR state and any recent CE artifacts that bear on the next step, then propose a next action. Use at session start."
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.7.1"
+  version: "0.7.2"
 ---
 
 # /pickup — Pick Up Where We Left Off
@@ -207,7 +207,8 @@ else
 fi
 ```
 
-If any artifacts are found (and the CE plugin is installed so its commands are available):
+If any artifacts are found (and the CE plugin is installed so its commands are available), the
+kickoff mentions the ones that bear on the next step (Step 3), in these terms:
 - **Brainstorms** — mention them as open explorations that may need `/ce:plan` next
 - **Plans** — mention them as ready for `/ce:work` (or already in progress)
 - **Solutions** — briefly note what was learned (read the `problem_type` and `module` from YAML frontmatter if present)
@@ -240,17 +241,21 @@ unable-to-verify:
 gh pr view <n> --json reviewDecision,mergeStateStatus,statusCheckRollup 2>/dev/null
 ```
 
-**Any verified drift LEADS the orientation.** Open with `Drift since handoff:` and name each
-contradiction — what the handoff claimed, what is true now — before any summary. Never silently
+**Any verified drift LEADS the orientation**, right after the anchor line and its mover lines:
+open it with
+`Drift since handoff:` and name each contradiction — what the handoff claimed, what is true now — before any summary. Never silently
 reconcile one: a handoff saying "zero open PRs" over a repo with two open is the single most
 useful thing you can tell the user, and smoothing it into a tidy summary destroys exactly the
 signal they need.
 
 This is a fast cross-check, not an interrogation: verify, report the delta, and keep going. **Do
 not stop to ask what to do about the drift** — surface it and proceed to the kickoff below. The
-zero-question orient is the point of this skill.
+orient asks nothing until the kickoff is out; the kickoff's closing offer of the next step is
+its only question.
 
-Then synthesize everything into a brief, confident session kickoff:
+Then synthesize everything into a short session kickoff: aim for 10 lines. The user switches
+between several sessions; a wall of text on re-entry costs more than it saves. Full detail stays
+in the handoff, which they can ask for.
 
 1. **Anchor line first** — precision before prose. With frontmatter: "Handoff written at
    `<head>` on `<branch>` (`<created_at>`); now at `<sha>` on `<current branch>`, N commits since",
@@ -261,19 +266,24 @@ Then synthesize everything into a brief, confident session kickoff:
    or "no commit anchor — orienting by timestamp") and anchor on `created_at` alone; never report
    a commit count in that case. Without
    frontmatter: "This handoff is from X days ago (by mtime) — things may have moved."
-2. **2-3 sentence summary** of where things stand — what was completed, what's in flight
-3. **"Next up:"** — the single most important thing to tackle first. If `resume_focus` is set
-   it is the default, unless the handoff body contradicts it — then say which won and why.
-   Otherwise take it from "What's Next" in the handoff
-4. **Other sessions in flight** — one line each from Step 1b: branch, worktree, how far it has
-   moved since its handoff, and its focus. Name anything archived to `_done/`. If one of them is
-   touching the files this session is about to change, say so: that is a merge conflict waiting
-   to happen.
-5. **CE artifacts** — if any brainstorms, plans, or solutions were found, note them briefly (e.g., "There's an open brainstorm on X ready for planning" or "2 new solutions were compounded last session")
-6. **Any gotchas to keep in mind** — surface the watch-outs from the handoff so they're top of mind before touching code
-7. **A ready-to-go prompt** — end with something like: *"Ready when you are — just say go and I'll start on [specific task]."*
+2. **Drift:** what the handoff claimed vs. what's true now, then each load-bearing claim you
+   could not verify and why ("`gh` unavailable, so the open-PR claim is unverified"). Only if any.
+3. **Next up:** one line — the single most important thing to tackle first. If `resume_focus` is
+   set it is the default, unless the handoff body contradicts it — then say which won and why.
+   Otherwise take it from "What's Next" in the handoff.
+4. **Needs you:** blockers or decisions waiting on the user. Omit if none.
+5. **Other sessions:** live ones only, one line each: branch, worktree, how far it has moved since
+   its handoff. Leave out stale and archived entries. If one's branch or focus points at the area
+   this session is about to change, say so: it may conflict.
+6. **Gotchas** that affect the next step. The rest go behind "details?".
 
-Keep the tone direct and energized. This is a fresh start, not a status report.
+Movers, other sessions and CE artifacts: a list longer than 3 shows its first 3 and then
+"+N more". Sessions whose branch or focus points at the area of the next step are listed first. Drift
+(unverified claims included), Needs you and the gotchas that affect the next step are never cut or truncated,
+even when that runs past 10 lines: they are what the user must act on or stay safe from.
+Mention CE artifacts only when they bear on the next step. End with one line offering the next
+step ("Say go and I'll start on X."). That offer is the only question: never stop to ask about
+drift or anything else first.
 
 ## Notes
 - Staleness is measured in commits since `head`, not wall-clock. Date-based framing ("overnight",

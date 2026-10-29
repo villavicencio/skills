@@ -10,11 +10,11 @@ One plugin, invoked `dv:<skill>` — modeled on how `compound-engineering` holds
 
 | Plugin | Version | Skills | Description |
 | --- | --- | --- | --- |
-| [`dv`](plugins/dv/) | `0.7.1` | `pickup`, `handoff`, `review-claudemd`, `tmux-window-namer`, `reddit`, `twitter`, `critique`, `cite`, `gauntlet`, `mnemosyne-ops`, `orca-setup` | Personal skill suite. Session brackets (`dv:pickup` / `dv:handoff`), `CLAUDE.md` hygiene (`dv:review-claudemd`), tmux styling (`dv:tmux-window-namer`), Reddit / X fetchers (`dv:reddit` / `dv:twitter`), parallel plan critique (`dv:critique`), a re-fetch-or-decline freshness contract for realtime facts (`dv:cite`), a staged adversarial code-review loop (`dv:gauntlet`), Mnemosyne memory-provider ops on a Hermes profile (`dv:mnemosyne-ops`), and Orca worktree setup scripts (`dv:orca-setup`). |
+| [`dv`](plugins/dv/) | `0.7.2` | `pickup`, `handoff`, `review-claudemd`, `tmux-window-namer`, `reddit`, `twitter`, `critique`, `cite`, `gauntlet`, `mnemosyne-ops`, `orca-setup` | Personal skill suite. Session brackets (`dv:pickup` / `dv:handoff`), `CLAUDE.md` hygiene (`dv:review-claudemd`), tmux styling (`dv:tmux-window-namer`), Reddit / X fetchers (`dv:reddit` / `dv:twitter`), parallel plan critique (`dv:critique`), a re-fetch-or-decline freshness contract for realtime facts (`dv:cite`), a staged adversarial code-review loop (`dv:gauntlet`), Mnemosyne memory-provider ops on a Hermes profile (`dv:mnemosyne-ops`), and Orca worktree setup scripts (`dv:orca-setup`). |
 
 ### Skills at a glance
 
-- **`dv:pickup`** — read `HANDOFF.md` and orient: surface git/PR state and recent compound-engineering artifacts, then propose a next action. Use at session start.
+- **`dv:pickup`** — read `HANDOFF.md` and orient in a short kickoff: the handoff's anchor, drift, the next step, blockers and live sessions, plus any compound-engineering artifacts that bear on that step. Use at session start.
 - **`dv:handoff`** — write a `HANDOFF.md` serializing the session (what shipped, decisions, what's next, gotchas). Pairs with `dv:pickup`.
 - **`dv:review-claudemd`** — mine recent conversation history to improve `CLAUDE.md`: surface violated rules, missing patterns, and stale entries, then apply approved changes. Requires `jq`.
 - **`dv:tmux-window-namer`** — style tmux windows with a glyph, title, and palette color. Depends on dotfiles-installed tmux persistence infra; preflight-checks and bails cleanly when absent (so it simply no-ops outside that repo).

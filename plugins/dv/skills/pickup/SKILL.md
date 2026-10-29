@@ -273,6 +273,8 @@ in the handoff, which they can ask for.
    about to change, say so: that is a merge conflict waiting to happen.
 6. **Gotchas** that affect the next step. The rest go behind "details?".
 
+When a list would break the limit, show its first 3 items and then "+N more": the movers under
+the anchor line and the other sessions alike. Drift and Needs you are never cut.
 Mention CE artifacts only when they bear on the next step. End with one question.
 
 ## Notes

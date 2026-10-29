@@ -15,8 +15,8 @@ step. CE artifacts are mentioned only when they bear on the next step. Everythin
 handoff, behind "details?".
 
 Ten lines is a budget, not a hard cap: movers, other sessions and CE artifacts show 3 and "+N more"
-(a session touching this one's files always shows), but drift, needs-you and the relevant gotchas
-are never cut, even when that runs past 10 lines. Step 2b now feeds only the relevant CE artifacts
+(sessions whose branch or focus points at the next step's area come first), but drift, unverified
+claims, needs-you and the relevant gotchas are never cut, even when that runs past 10 lines. Step 2b now feeds only the relevant CE artifacts
 to the kickoff. The kickoff ends with one offer of
 the next step, the same as before.
 

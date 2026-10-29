@@ -266,19 +266,20 @@ in the handoff, which they can ask for.
    or "no commit anchor — orienting by timestamp") and anchor on `created_at` alone; never report
    a commit count in that case. Without
    frontmatter: "This handoff is from X days ago (by mtime) — things may have moved."
-2. **Drift:** what the handoff claimed vs. what's true now. Only if there is any.
+2. **Drift:** what the handoff claimed vs. what's true now, then each load-bearing claim you
+   could not verify and why ("`gh` unavailable, so the open-PR claim is unverified"). Only if any.
 3. **Next up:** one line — the single most important thing to tackle first. If `resume_focus` is
    set it is the default, unless the handoff body contradicts it — then say which won and why.
    Otherwise take it from "What's Next" in the handoff.
 4. **Needs you:** blockers or decisions waiting on the user. Omit if none.
 5. **Other sessions:** live ones only, one line each: branch, worktree, how far it has moved since
-   its handoff. Leave out stale and archived entries. If one is touching the files this session is
-   about to change, say so: that is a merge conflict waiting to happen.
+   its handoff. Leave out stale and archived entries. If one's branch or focus points at the area
+   this session is about to change, say so: that is a merge conflict waiting to happen.
 6. **Gotchas** that affect the next step. The rest go behind "details?".
 
 Movers, other sessions and CE artifacts: a list longer than 3 shows its first 3 and then
-"+N more". A session touching the files this session is about to change is always listed, ahead of
-the others. Drift, Needs you and the gotchas that affect the next step are never cut or truncated,
+"+N more". Sessions whose branch or focus points at the area of the next step are listed first. Drift
+(unverified claims included), Needs you and the gotchas that affect the next step are never cut or truncated,
 even when that runs past 10 lines: they are what the user must act on or stay safe from.
 Mention CE artifacts only when they bear on the next step. End with one line offering the next
 step ("Say go and I'll start on X."). That offer is the only question: never stop to ask about

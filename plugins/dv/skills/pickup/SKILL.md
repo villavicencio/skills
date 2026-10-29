@@ -248,7 +248,8 @@ signal they need.
 
 This is a fast cross-check, not an interrogation: verify, report the delta, and keep going. **Do
 not stop to ask what to do about the drift** — surface it and proceed to the kickoff below. The
-zero-question orient is the point of this skill.
+orient asks nothing until the kickoff is out; the kickoff's closing offer of the next step is
+its only question.
 
 Then synthesize everything into a short session kickoff: aim for 10 lines. The user switches
 between several sessions; a wall of text on re-entry costs more than it saves. Full detail stays

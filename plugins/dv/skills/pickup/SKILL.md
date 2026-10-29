@@ -274,7 +274,7 @@ in the handoff, which they can ask for.
 4. **Needs you:** blockers or decisions waiting on the user. Omit if none.
 5. **Other sessions:** live ones only, one line each: branch, worktree, how far it has moved since
    its handoff. Leave out stale and archived entries. If one's branch or focus points at the area
-   this session is about to change, say so: that is a merge conflict waiting to happen.
+   this session is about to change, say so: it may conflict.
 6. **Gotchas** that affect the next step. The rest go behind "details?".
 
 Movers, other sessions and CE artifacts: a list longer than 3 shows its first 3 and then

@@ -1,6 +1,6 @@
 ---
 name: pickup
-description: "Read this branch's handoff and orient: anchor on its commit (N commits since, not file age), list the other sessions in flight in sibling worktrees, surface git/PR state and recent CE artifacts, then propose a next action. Use at session start."
+description: "Read this branch's handoff and orient: anchor on its commit (N commits since, not file age), list the other sessions in flight in sibling worktrees, surface git/PR state and any recent CE artifacts that bear on the next step, then propose a next action. Use at session start."
 license: Apache-2.0
 metadata:
   author: villavicencio
@@ -240,8 +240,8 @@ unable-to-verify:
 gh pr view <n> --json reviewDecision,mergeStateStatus,statusCheckRollup 2>/dev/null
 ```
 
-**Any verified drift LEADS the orientation.** Open with `Drift since handoff:` and name each
-contradiction — what the handoff claimed, what is true now — before any summary. Never silently
+**Any verified drift LEADS the orientation**, right after the anchor line: open it with
+`Drift since handoff:` and name each contradiction — what the handoff claimed, what is true now — before any summary. Never silently
 reconcile one: a handoff saying "zero open PRs" over a repo with two open is the single most
 useful thing you can tell the user, and smoothing it into a tidy summary destroys exactly the
 signal they need.
@@ -274,8 +274,8 @@ in the handoff, which they can ask for.
    about to change, say so: that is a merge conflict waiting to happen.
 6. **Gotchas** that affect the next step. The rest go behind "details?".
 
-When a list would break the budget, show its first 3 items and then "+N more": movers, other
-sessions, gotchas and CE artifacts alike. Drift and Needs you are the exception: they are never
+Any list longer than 3 items shows its first 3 and then "+N more": movers, other sessions,
+gotchas and CE artifacts alike. Drift and Needs you are the exception: they are never
 cut or truncated, even when that runs past 10 lines, because they are what the user must act on.
 Mention CE artifacts only when they bear on the next step. End with one line offering the next
 step ("Say go and I'll start on X."). That offer is the only question: never stop to ask about

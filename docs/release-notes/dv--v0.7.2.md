@@ -14,8 +14,8 @@ next up, needs you (only if any), live sessions only, and only the gotchas that 
 step. CE artifacts are mentioned only when they bear on the next step. Everything else stays in the
 handoff, behind "details?".
 
-Ten lines is a budget, not a hard cap: longer lists show 3 items and "+N more", but drift and
-needs-you are never cut, even when that runs past 10 lines. The kickoff ends with one offer of
+Ten lines is a budget, not a hard cap: any list longer than 3 items shows 3 and "+N more", but drift
+and needs-you are never cut, even when that runs past 10 lines. The kickoff ends with one offer of
 the next step, the same as before.
 
 Steps 1–2b and the drift cross-check are unchanged.

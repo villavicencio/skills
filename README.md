@@ -14,7 +14,7 @@ One plugin, invoked `dv:<skill>` — modeled on how `compound-engineering` holds
 
 ### Skills at a glance
 
-- **`dv:pickup`** — read `HANDOFF.md` and orient: surface git/PR state and recent compound-engineering artifacts, then propose a next action. Use at session start.
+- **`dv:pickup`** — read `HANDOFF.md` and orient: surface git/PR state and the compound-engineering artifacts that bear on the next step, then propose a next action. Use at session start.
 - **`dv:handoff`** — write a `HANDOFF.md` serializing the session (what shipped, decisions, what's next, gotchas). Pairs with `dv:pickup`.
 - **`dv:review-claudemd`** — mine recent conversation history to improve `CLAUDE.md`: surface violated rules, missing patterns, and stale entries, then apply approved changes. Requires `jq`.
 - **`dv:tmux-window-namer`** — style tmux windows with a glyph, title, and palette color. Depends on dotfiles-installed tmux persistence infra; preflight-checks and bails cleanly when absent (so it simply no-ops outside that repo).

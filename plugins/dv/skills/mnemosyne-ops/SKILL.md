@@ -144,7 +144,7 @@ restores it from the venv backup.
 `mnemosyne-memory` 3.15.1 + `mnemosyne-hermes` 0.7.1 as the last audited stable pair. **Don't use
 0.7.2.** Its declared floor admits a core that lacks APIs it imports, so it installs cleanly and
 then fails when the provider initializes. 0.7.3 and later require beta core `>=4.0.0b3`
-(upstream `docs/hermes-integration.md`, read 2026-10-24). Pilot the pair first (Step 3). Then, on the live host: back up the side venv (`cp -a`), upgrade it
+(upstream `docs/hermes-integration.md`, read 2026-10-24). Pilot the pair first (Step 3). Then, on the live host: back up the side venv (`cp -a` to a directory that doesn't exist yet; into an existing one it nests a second copy inside), upgrade it
 in place with the core pinned
 (`uv pip install --python ~/.hermes/venvs/mnemosyne/bin/python 'mnemosyne-hermes==<ver>' 'mnemosyne-memory[embeddings]==3.15.1'`),
 re-apply patch C, run Step 1 on every profile home, and restart every process that loads the
@@ -153,7 +153,27 @@ imported until it restarts. Use plain `uv pip install`, never `mnemosyne-hermes 
 `upgrade`: those rewrite the wrapper and re-drop the override skill. Roll back by restoring the
 venv backup and restarting the same processes.
 
+**Restarting on hal (worked example, 2026-11-03).** Five processes load the provider there, all
+as the `hal` account. Check each one's start time with `ps -o lstart= -p <pid>`, and treat it
+as restarted only if that time is after the install:
+
+- launchd jobs in the gui domain, each restarted with
+  `launchctl kickstart -k gui/$(id -u)/<label>`: `ai.hermes.gateway` (Atlas's Slack and cron;
+  it also carries Axiom's Slack), `dev.hal.hermes-serve` (the Desktop backend), and
+  `dev.hal.hermes-webui`. `launchctl list | grep hermes` shows nothing from a login shell;
+  `launchctl print gui/$(id -u)` lists them.
+- TUIs in tmux: `tmux -L axiom` (`hermes -p axiom --tui`) and `tmux -L atlas` (`atlas`). Quit
+  with `/exit` inside the pane and run the command again; killing it from outside loses a
+  conversation in flight. Ctrl-b doesn't detach these sessions (it reaches Hermes' voice
+  key); `tmux -L <name> detach-client -s <name>` from another shell does.
+
 ## Gotchas
+
+- **Hand-patching leaves files the RECORD check rejects.** An editor or `patch` backup such as
+  `__init__.py.orig-0.5.0` isn't in the wheel's `RECORD`, so `uv pip uninstall` doesn't remove
+  it: it survives the upgrade, and `apply_patch_c.py` then fails `(not in RECORD)` on correct code.
+  Keep patch backups outside `site-packages`, and remove any `*.orig*` left in
+  `mnemosyne_hermes/` before you trust the check.
 
 - **`mnemosyne_stats.vectors` counts the episodic tier only.** With consolidation off it reads
   0 even though every working row is embedded. Check `memory_embeddings` / `vec_working`

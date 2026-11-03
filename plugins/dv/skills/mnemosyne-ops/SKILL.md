@@ -45,7 +45,7 @@ Read-only. Exit 0 means healthy and exit 1 means drift. Each `FAIL` line names i
 | `isolation` | another profile's bank is living under this home: the multiplex leak | run 0.7.1 (or 0.5.0 with patch D), restart `hermes serve`, and move the bank (export, then import into its owner's home) |
 | `override` | installer re-dropped `mnemosyne-memory-override`, which tells the agent MEMORY.md is deprecated | delete `<home>/skills/memory/mnemosyne-memory-override` |
 | `leak` | injected system turns stored in the last 7 days | widen `ignore_patterns`; invalidate the rows |
-| `freshness` | autosave silent > 48h | check `hermes memory status`, the gateway log |
+| `freshness` | autosave stopped: Hermes' `state.db` recorded a user turn after the last autosave row that autosave should have stored and didn't. Cron, subagent, filtered and 5-char-or-shorter turns don't count, nor do turns under 2h old. A quiet agent is healthy. Without a readable `state.db` it falls back to "no write in 48h" and says so | check `hermes memory status`, the gateway log |
 | `versions` | the installed (core, hermes) pair isn't one we've tested (`TESTED_PAIRS`: 3.15.1 + 0.7.1, and 3.15.1 + 0.5.0 for rollback) | run the pilot verification on throwaway homes (Step 3), then add the pair to `TESTED_PAIRS` |
 
 ## Step 2 — Enable on a profile
@@ -97,6 +97,7 @@ done
 ~/.hermes/hermes-agent/venv/bin/python scripts/verify_multiplex_isolation.py \
     --home-a "$T/homes/pilota" --home-b "$T/homes/pilotb" --disposable
 ~/.hermes/hermes-agent/venv/bin/python scripts/mnemosyne_health.py --home "$T/homes/pilota"
+~/.hermes/hermes-agent/venv/bin/python scripts/verify_freshness_check.py
 ```
 
 - **`verify_tools_config.py`** (`--home` is required) rewrites that home's config three times,
@@ -108,6 +109,13 @@ done
   its own home, that A recalls its fact with `dense_score > 0` and can't recall B's, and that
   neither home holds a foreign bank. On 0.5.0 without patch D it fails 3 of 9 checks (B's bank
   lands in A), which is the negative control.
+- **`verify_freshness_check.py`** builds its own temporary homes and needs no venv beyond
+  PyYAML. It runs the health check's `freshness` logic on 9 cases: a quiet agent passes, an
+  unstored real turn fails, cron, subagent, filtered and in-flight turns don't count, and a missing
+  `state.db` falls back to the age rule. The health script from before VIL-535 fails 5 of the 9,
+  which is the negative control. It assumes the `state.db` columns `sessions.source`,
+  `messages.role`, `messages.content` and `messages.timestamp`; the check falls back to the age
+  rule when any of them is missing.
 - The health check must be HEALTHY on the throwaway homes, except `versions` until the pair is
   added to `TESTED_PAIRS`.
 

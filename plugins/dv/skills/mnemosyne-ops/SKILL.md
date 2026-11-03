@@ -148,7 +148,8 @@ then fails when the provider initializes. 0.7.3 and later require beta core `>=4
 in place with the core pinned
 (`uv pip install --python ~/.hermes/venvs/mnemosyne/bin/python 'mnemosyne-hermes==<ver>' 'mnemosyne-memory[embeddings]==3.15.1'`),
 re-apply patch C, run Step 1 on every profile home, and restart every process that loads the
-provider (the per-profile gateways and `hermes serve`). A running process keeps the code it
+provider: the per-profile gateways, `hermes serve`, the web UI, and every interactive TUI
+(`hermes --tui`) session; the hal example below lists them for one host. A running process keeps the code it
 imported until it restarts. Use plain `uv pip install`, never `mnemosyne-hermes install` or
 `upgrade`: those rewrite the wrapper and re-drop the override skill. Roll back by restoring the
 venv backup and restarting the same processes.

@@ -74,6 +74,10 @@ FALLBACK_AGE = timedelta(hours=48)
 # working_memory.created_at is stored to the whole second, Hermes' message timestamp is not: a turn
 # and its autosave row can share a second, with the turn's fractional time after the truncated row.
 # Count only turns from the next whole second on.
+# KNOWN LIMIT (MergeWren b55648d#1): a turn in that same second that autosave did NOT store is
+# missed. The second alone can't tell the two apart, and the other choice reports every healthy
+# agent whose last turn shared a second with its row as DRIFT. The miss costs little: the next
+# eligible turn after that second FAILs as usual.
 SAME_SECOND = 1.0
 REQUIRED_FILTERS = ["scheduled cron job", "Background process", "System note", "Message from 🤖"]
 

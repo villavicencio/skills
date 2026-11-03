@@ -162,19 +162,22 @@ as restarted only if that time is after the install:
   it also carries Axiom's Slack), `dev.hal.hermes-serve` (the Desktop backend), and
   `dev.hal.hermes-webui`. `launchctl list | grep hermes` shows nothing from a login shell;
   `launchctl print gui/$(id -u)` lists them.
-- TUIs in tmux: `tmux -L axiom` (`hermes -p axiom --tui`) and `tmux -L atlas` (`atlas`). Quit
-  with `/exit` inside the pane and run the command again; killing it from outside loses a
-  conversation in flight. Ctrl-b doesn't detach these sessions (it reaches Hermes' voice
-  key); `tmux -L <name> detach-client -s <name>` from another shell does.
+- TUIs in tmux, on the sockets `axiom` (running `hermes -p axiom --tui`) and `atlas` (running
+  `atlas`). `-L` names the socket, not the session, so find the session first with
+  `tmux -L <socket> ls`, then attach with `tmux -L <socket> attach -t <session>`. Quit with
+  `/exit` inside the pane and run the command again; killing it from outside loses a
+  conversation in flight. Ctrl-b doesn't detach these sessions (it reaches Hermes' voice key);
+  `tmux -L <socket> detach-client -s <session>` from another shell does.
 
 ## Gotchas
 
 - **Hand-patching leaves files the RECORD check rejects.** An editor or `patch` backup such as
   `__init__.py.orig-0.5.0` isn't in the wheel's `RECORD`, so `uv pip uninstall` doesn't remove
   it: it survives the upgrade, and `apply_patch_c.py` then fails `(not in RECORD)` on correct code.
-  Keep patch backups outside `site-packages`, and remove any `*.orig*` left in
-  `mnemosyne_hermes/` before you trust the check.
-
+  Keep patch backups outside `site-packages`. Before you trust the check, list
+  `mnemosyne_hermes/*.orig*`, look at each one (it may be the only copy of a hand-patched file),
+  and move them, never delete them, into a new dated directory outside the venv, such as
+  `~/mnemosyne-orig-<YYYYMMDD-HHMM>/`. Then re-run the check.
 - **`mnemosyne_stats.vectors` counts the episodic tier only.** With consolidation off it reads
   0 even though every working row is embedded. Check `memory_embeddings` / `vec_working`
   before you call recall broken.

@@ -27,26 +27,21 @@ checkout.
 ## Workflow
 - Branch-first for substantive work; small doc/typo updates may commit directly to main
 - Each plugin release ideally lands as one PR
-- **PR review: CodeRabbit** — the procedure lives in the **Code Review** section of the user's
-  global Claude Code instructions, the single source of truth as of 2026-08-24. That file is not
-  in this repository: it is tracked in the sibling **dotfiles** repo as `claude/CLAUDE.md` and
-  installed (by symlink) at `~/.claude/CLAUDE.md`, where it loads into every session automatically
-  — so it is already in context and needs no lookup. It covers the fix → push → request →
-  re-review loop, per-developer rate limits, the clean-looking check states, triage-and-standoff
-  rules, and the polling recipe. **Don't restate
-  it here** — that duplication is what drifts. Repo-specific facts only: **`validate` going green
-  is not the merge signal** (it is the spec/parity gate, not a review), and `.coderabbit.yaml`
-  lives at the repo root with `auto_incremental_review: false`, so a re-review is requested with
-  `@coderabbitai review`, never triggered by pushing.
-  (2026-08-24: #33 merged on `validate` pass 52 s before CodeRabbit posted CHANGES_REQUESTED with
-  four valid findings, fixed forward in #34 — where re-reviews caught five more, nine valid
-  findings in total. That incident is the origin of the global "merge on APPROVED, never on a
-  green CI gate" rule.)
-- **Never push while a review is in flight.** A push that lands mid-review aborts it — "Review
-  failed — the head commit changed during the review" — and the spent review is gone with nothing
-  to show. Land every edit first, *then* request the round. (Observed on #36, 2026-08-24, in the
-  very commit that documented the throttle.) **Not yet in the global Code Review section** — it
-  generalizes to any repo, so promote it there rather than copying it into another `AGENTS.md`.
+- **PR review: MergeWren (review-stack) is the gate, since 2026-11-03.** It reviews every new
+  head of a non-draft PR here on its own (onboarded with posting on, VIL-540); there is no
+  trigger and no quota, so pushing a fix starts the next round. Wait for its verdict with
+  `mergewren_review <N>` from dotfiles `bin/lib/mergewren-review.sh`; the procedure is
+  "Merging on a MergeWren review" in dotfiles `docs/agents/code-review.md`. Fix each finding
+  or decline it with the reason on the thread and in the PR body, resolve the threads, and
+  merge with the unresolved-threads check empty. **Don't request CodeRabbit here**:
+  `@coderabbitai review` spends the per-developer quota that other repos still use, and a
+  CodeRabbit check or comment that shows up anyway is informational. (`.coderabbit.yaml` sets
+  `auto_review.enabled: false`, so CodeRabbit reviews only when asked.)
+  Repo-specific: **`validate` going green is not the merge signal** (it is the spec/parity
+  gate, not a review). Why the switch: CodeRabbit's free plan allows 1 review an hour shared
+  across every repo, and on #56 it found nothing actionable while MergeWren found two real bugs.
+  (History: 2026-08-24, #33 merged on `validate` 52 s before CodeRabbit posted four valid
+  findings; that is the origin of the global "never merge on a green CI gate" rule.)
 - Validating a skill locally before pushing: `python3` on the Mac is Xcode's 3.9 but
   `skills-ref==0.1.1` requires **≥3.11**, so `pip install skills-ref` fails with "no matching
   distribution". Use `uv venv --python 3.11 <dir> && uv pip install --python <dir>/bin/python

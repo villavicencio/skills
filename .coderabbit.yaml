@@ -20,8 +20,12 @@
 #     that is a second state where NO review ran at all, and "Review in progress" is a third
 #     where one is running but has no verdict yet. All three report as passing. Never read a
 #     green CodeRabbit check as approval — read the review verdict.
+# 2026-11-03: CodeRabbit is no longer this repo's review gate; MergeWren is (AGENTS.md). Automatic
+# reviews are off entirely so nothing here spends the shared per-developer quota. A review still
+# runs if someone asks with `@coderabbitai review`, which AGENTS.md says not to do.
 reviews:
   auto_review:
+    enabled: false
     auto_incremental_review: false
     ignore_title_keywords:
       - "WIP"

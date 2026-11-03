@@ -1,27 +1,17 @@
 # yaml-language-server: $schema=https://www.coderabbit.ai/integrations/schema.v2.json
 #
-# Why this file exists: CodeRabbit reviews are rate-limited PER DEVELOPER on a rolling
-# hourly window (Pro 5/hr, Pro+ 10/hr), and every run counts against it — including the
-# automatic re-review after each push. On 2026-08-24 one ticket's worth of work (PRs
-# #33-#35, five pushes) exhausted the allowance and left #35 unreviewed for over an hour.
+# CodeRabbit is not this repo's review gate; MergeWren is (AGENTS.md, since 2026-11-03).
+# Reviews here are manual-only: `auto_review.enabled: false` turns off the first automatic
+# review and `auto_incremental_review: false` the re-review on push, so nothing here spends the
+# per-developer quota that other repos still use. A review runs only if someone comments
+# `@coderabbitai review`, which AGENTS.md says not to do.
 #
-# auto_incremental_review: false makes re-review a deliberate act. The first review of a
-# PR is still automatic; each later round is requested with `@coderabbitai review`. That
-# matches the fix -> push -> re-review loop in AGENTS.md without spending a review on
-# every intermediate commit. `@coderabbitai rate limit` reports remaining capacity and
-# does not consume a review.
-#
-# Two facts learned after this file shipped (verified on dotfiles #171, the PR that added it
-# there, 2026-08-24):
-#   * The config is read from the PR HEAD branch, not the base — so a PR introducing or changing
-#     this file governs itself immediately, before it merges.
-#   * A suppressed round shows up as a PASSING check reading
-#     "Review skipped: incremental reviews are disabled". Together with "Review rate limited"
-#     that is a second state where NO review ran at all, and "Review in progress" is a third
-#     where one is running but has no verdict yet. All three report as passing. Never read a
-#     green CodeRabbit check as approval — read the review verdict.
+# CodeRabbit reads this file from the PR head branch, so a PR that changes it governs itself
+# before it merges (verified on dotfiles #171, 2026-08-24). If a CodeRabbit check appears, a
+# passing one doesn't mean a review ran: only the description `Review completed` does.
 reviews:
   auto_review:
+    enabled: false
     auto_incremental_review: false
     ignore_title_keywords:
       - "WIP"

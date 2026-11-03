@@ -13,11 +13,12 @@ Checks the invariants VIL-143 established (DECISION.md §12–§13):
   isolation    no other profile's bank living under this home (multiplex leak, defect D)
   override     installer's 'mnemosyne-memory-override' skill is absent
   leak         no Hermes-injected system turns stored as valid [USER] rows in the last 7 days
-  freshness    last working-memory write within 48h (autosave alive)
+  freshness    no user turn Hermes recorded (state.db) went unstored by autosave; falls back to
+               "last write within 48h" when state.db can't be read (VIL-535)
   versions     installed (core, hermes) pair is one we have TESTED; add a pair only after a pilot run
 """
 import argparse, ast, json, os, re, sqlite3, sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 # (mnemosyne_memory, mnemosyne_hermes) pairs verified on this deployment. Add a pair only after a pilot run
@@ -62,7 +63,64 @@ LEAK_SQL = [
     "[USER] [System note:%",
     "[USER] [ASYNC %COMPLETE%",
 ]
+# Freshness (VIL-535). Autosave (mnemosyne_hermes sync_turn) stores a user turn as a
+# source='conversation' row unless the agent context is skipped, the text is 5 chars or fewer, or an
+# ignore_pattern matches (re.search, IGNORECASE). Hermes' state.db records every turn, so a turn that
+# should have been stored after the last autosave row is the real "autosave died" signal; a quiet
+# agent is not. Turns younger than TURN_GRACE may still be in flight.
+TURN_GRACE = timedelta(hours=2)
+SKIP_SOURCES = {"cron", "subagent", "delegate", "flush", "background", "skill_loop"}
+FALLBACK_AGE = timedelta(hours=48)
+# working_memory.created_at is stored to the whole second, Hermes' message timestamp is not: a turn
+# and its autosave row can share a second, with the turn's fractional time after the truncated row.
+# Count only turns from the next whole second on.
+# KNOWN LIMIT (MergeWren b55648d#1): a turn in that same second that autosave did NOT store is
+# missed. The second alone can't tell the two apart, and the other choice reports every healthy
+# agent whose last turn shared a second with its row as DRIFT. The miss costs little: the next
+# eligible turn after that second FAILs as usual.
+SAME_SECOND = 1.0
 REQUIRED_FILTERS = ["scheduled cron job", "Background process", "System note", "Message from 🤖"]
+
+
+def _epoch(ts: str) -> float:
+    return datetime.fromisoformat(ts.replace("T", " ")[:19]).replace(tzinfo=timezone.utc).timestamp()
+
+
+def unsaved_turns(home: Path, since: float, now: float, patterns):
+    """User turns in <home>/state.db that autosave should have stored after `since` (epoch).
+    Returns (turns, None) with turns = [(epoch, source)], or (None, reason) when the record
+    can't be read; the caller then falls back to the age rule rather than guess."""
+    sdb = home / "state.db"
+    if not sdb.exists():
+        return None, f"no {sdb}"
+    need = {"sessions": {"id", "source"}, "messages": {"session_id", "role", "content", "timestamp"}}
+    try:
+        c = sqlite3.connect(f"file:{sdb}?mode=ro", uri=True)
+        try:
+            missing = [f"{t}.{col}" for t, cols in need.items()
+                       for col in sorted(cols - {r[1] for r in c.execute(f"pragma table_info({t})")})]
+            if missing:
+                return None, f"state.db lacks {missing}"
+            rows = c.execute(
+                "select m.timestamp, s.source, m.content from messages m join sessions s on s.id = m.session_id "
+                "where m.role = 'user' and m.timestamp > ? and m.timestamp <= ?",
+                (since, now - TURN_GRACE.total_seconds())).fetchall()
+        finally:
+            c.close()
+    except sqlite3.Error as e:
+        return None, f"state.db unreadable: {type(e).__name__}: {str(e)[:80]}"
+    regs = []
+    for pat in patterns:
+        if not isinstance(pat, str):
+            continue  # the `filters` check reports it; Mnemosyne str()s it, which can't match a turn usefully
+        try:
+            regs.append(re.compile(pat, re.IGNORECASE))
+        except re.error:
+            pass  # Mnemosyne skips an invalid pattern too
+    turns = [(float(ts), src or "?") for ts, src, text in rows
+             if (src or "") not in SKIP_SOURCES and isinstance(text, str) and len(text) > 5
+             and not any(r.search(text) for r in regs)]
+    return turns, None
 
 
 def load_config(p: Path):
@@ -214,8 +272,25 @@ def main() -> int:
         res["leak"] = (leak == 0, f"{leak} injected system turns stored in last 7d")
         last = c.execute("select max(created_at) from working_memory").fetchone()[0]
         valid = c.execute("select count(*) from working_memory where valid_until is null or valid_until=''").fetchone()[0]
-        fresh = bool(last) and datetime.utcnow() - datetime.fromisoformat(last.replace("T", " ")[:19]) < timedelta(hours=48)
-        res["freshness"] = (fresh, f"last write {last} UTC; {valid} valid rows")
+        wm_cols = {r[1] for r in c.execute("pragma table_info(working_memory)")}
+        last_auto = c.execute("select max(created_at) from working_memory where source = 'conversation'").fetchone()[0] \
+            if "source" in wm_cols else last
+        now = datetime.now(timezone.utc).timestamp()
+        turns, why = unsaved_turns(home, _epoch(last_auto) + SAME_SECOND if last_auto else 0.0, now,
+                                   pats if isinstance(pats, list) else [])
+        if not last:
+            res["freshness"] = (False, "no rows in working_memory")
+        elif turns is None:
+            fresh = now - _epoch(last) < FALLBACK_AGE.total_seconds()
+            res["freshness"] = (fresh, f"last write {last} UTC; {valid} valid rows; "
+                                       f"turn record unavailable ({why}), so judged by age (48h)")
+        elif turns:
+            latest = datetime.fromtimestamp(max(t for t, _ in turns), timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+            srcs = sorted({src for _, src in turns})
+            res["freshness"] = (False, f"{len(turns)} user turn(s) since the last autosave ({last_auto or 'never'} UTC) "
+                                       f"were not stored; latest {latest} UTC from {srcs} — autosave is not writing")
+        else:
+            res["freshness"] = (True, f"last autosave {last_auto} UTC; {valid} valid rows; no unstored turns since")
         c.close()
     else:
         res["leak"] = (False, f"no DB at {db}")

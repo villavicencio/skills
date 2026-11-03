@@ -71,6 +71,10 @@ LEAK_SQL = [
 TURN_GRACE = timedelta(hours=2)
 SKIP_SOURCES = {"cron", "subagent", "delegate", "flush", "background", "skill_loop"}
 FALLBACK_AGE = timedelta(hours=48)
+# working_memory.created_at is stored to the whole second, Hermes' message timestamp is not: a turn
+# and its autosave row can share a second, with the turn's fractional time after the truncated row.
+# Count only turns from the next whole second on.
+SAME_SECOND = 1.0
 REQUIRED_FILTERS = ["scheduled cron job", "Background process", "System note", "Message from 🤖"]
 
 
@@ -103,6 +107,8 @@ def unsaved_turns(home: Path, since: float, now: float, patterns):
         return None, f"state.db unreadable: {type(e).__name__}: {str(e)[:80]}"
     regs = []
     for pat in patterns:
+        if not isinstance(pat, str):
+            continue  # the `filters` check reports it; Mnemosyne str()s it, which can't match a turn usefully
         try:
             regs.append(re.compile(pat, re.IGNORECASE))
         except re.error:
@@ -266,7 +272,7 @@ def main() -> int:
         last_auto = c.execute("select max(created_at) from working_memory where source = 'conversation'").fetchone()[0] \
             if "source" in wm_cols else last
         now = datetime.now(timezone.utc).timestamp()
-        turns, why = unsaved_turns(home, _epoch(last_auto) if last_auto else 0.0, now,
+        turns, why = unsaved_turns(home, _epoch(last_auto) + SAME_SECOND if last_auto else 0.0, now,
                                    pats if isinstance(pats, list) else [])
         if not last:
             res["freshness"] = (False, "no rows in working_memory")

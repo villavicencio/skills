@@ -12,7 +12,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 HEALTH = Path(__file__).with_name("mnemosyne_health.py")
-NOW = datetime.now(timezone.utc)
+# Half a second past the second, so a turn and its autosave share a second deterministically.
+NOW = datetime.now(timezone.utc).replace(microsecond=500000)
 FILTERS = ["scheduled cron job", "Background process", "System note", "Message from 🤖"]
 
 
@@ -24,14 +25,14 @@ def ep(hours_ago: float) -> float:
     return (NOW - timedelta(hours=hours_ago)).timestamp()
 
 
-def build(root: Path, name: str, writes, turns, state_db=True) -> Path:
+def build(root: Path, name: str, writes, turns, state_db=True, extra_patterns=()) -> Path:
     """writes: [(hours_ago, source)] memory rows. turns: [(hours_ago, session_source, text)] user turns."""
     home = root / name
     bank = home / "mnemosyne/data/banks" / name
     bank.mkdir(parents=True)
     (home / "config.yaml").write_text(
         "memory:\n  provider: mnemosyne\n  mnemosyne:\n    ignore_patterns:\n"
-        + "".join(f"    - {json.dumps(f)}\n" for f in FILTERS))
+        + "".join(f"    - {json.dumps(f)}\n" for f in [*FILTERS, *extra_patterns]))
     m = sqlite3.connect(bank / "mnemosyne.db")
     m.execute("create table working_memory (content text, created_at text, valid_until text, source text)")
     m.executemany("insert into working_memory values (?, ?, null, ?)",
@@ -74,14 +75,19 @@ CASES = [
      "no state.db and a recent write: the age rule passes"),
     ("empty", [], [(72, "slack", "anyone home?")], True, False,
      "no working_memory rows at all: FAIL"),
+    ("same-second", [(72, "conversation")], [(72, "slack", "remember the gate code")], True, True,
+     "a turn and its autosave in the same second (row truncated to the second) is stored, not missing"),
+    ("odd-pattern", [(120, "conversation")], [(72, "slack", "please remember the gate code")], True, False,
+     "a non-string ignore_patterns entry doesn't crash the check; the unstored turn still FAILs",
+     (123,)),
 ]
 
 
 def main() -> int:
     failed = 0
     with tempfile.TemporaryDirectory(prefix="mn-fresh-") as tmp:
-        for name, writes, turns, state_db, expect, why in CASES:
-            home = build(Path(tmp), name, writes, turns, state_db)
+        for name, writes, turns, state_db, expect, why, *extra in CASES:
+            home = build(Path(tmp), name, writes, turns, state_db, *extra)
             out = subprocess.run([sys.executable, str(HEALTH), "--home", str(home), "--json"],
                                  capture_output=True, text=True)
             try:

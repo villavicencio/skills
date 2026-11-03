@@ -175,8 +175,9 @@ as restarted only if that time is after the install:
   `__init__.py.orig-0.5.0` isn't in the wheel's `RECORD`, so `uv pip uninstall` doesn't remove
   it: it survives the upgrade, and `apply_patch_c.py` then fails `(not in RECORD)` on correct code.
   Keep patch backups outside `site-packages`. Before you trust the check, list
-  `mnemosyne_hermes/*.orig*`, look at each one (it may be the only copy of a hand-patched file),
-  and move them, never delete them, into a new dated directory outside the venv, such as
+  `$SITE/mnemosyne_hermes/*.orig*` (`SITE` as set in Step 4: the live venv's `site-packages`),
+  look at each one (it may be the only copy of a hand-patched file), and move them, never
+  delete them, into a new dated directory outside the venv, such as
   `~/mnemosyne-orig-<YYYYMMDD-HHMM>/`. Then re-run the check.
 - **`mnemosyne_stats.vectors` counts the episodic tier only.** With consolidation off it reads
   0 even though every working row is embedded. Check `memory_embeddings` / `vec_working`

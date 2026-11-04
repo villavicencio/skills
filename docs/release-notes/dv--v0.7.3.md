@@ -20,9 +20,10 @@ row (`source = 'conversation'`), wasn't stored. It skips the turns autosave skip
 - turns under 2 hours old.
 
 Keying on conversation rows also catches a dead autosave that a later MEMORY.md mirror row used to
-hide. Without a readable `state.db` it falls back to the 48-hour rule and says so.
+hide. Without a readable `state.db` it falls back to the 48-hour rule and says so. A bank with no
+working-memory rows at all, or no bank, still fails.
 
-`scripts/verify_freshness_check.py` runs 11 cases on temporary homes. The pre-0.7.3 script fails 6
+`plugins/dv/skills/mnemosyne-ops/scripts/verify_freshness_check.py` runs 11 cases on temporary homes. The pre-0.7.3 script fails 6
 of them. On hal, Atlas and Axiom both read HEALTHY, and their turn and write times line up in
 UTC. Known limit: an unstored turn in the same second as the last autosave row is missed,
 because `created_at` stores whole seconds. The next turn still fails the check.

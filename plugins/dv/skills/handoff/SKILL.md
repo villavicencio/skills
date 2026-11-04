@@ -4,7 +4,7 @@ description: "Write a HANDOFF.md serializing this session — what shipped, deci
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.7.2"
+  version: "0.7.3"
 ---
 
 # /handoff — Generate Session Handoff Doc

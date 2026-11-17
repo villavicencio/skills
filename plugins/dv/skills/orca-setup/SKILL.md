@@ -24,17 +24,20 @@ outside an Orca terminal, which is the GNOME screen reader). Then confirm the fa
 depends on still hold for the installed version:
 
 ```bash
+c=$(orca worktree create --help) || { echo "FAILED: orca worktree create --help"; exit 1; }
+r=$(orca worktree rm --help) || { echo "FAILED: orca worktree rm --help"; exit 1; }
+# Match the flag where the Options list starts a line with it, not anywhere in the text.
 for f in --setup --base-branch; do
-  orca worktree create --help | grep -q -- "$f" || { echo "MISSING: worktree create $f"; exit 1; }
+  printf '%s\n' "$c" | grep -qE -- "^[[:space:]]+$f([[:space:]]|$)" || { echo "MISSING: worktree create $f"; exit 1; }
 done
 for f in --force --delete-branch --run-hooks; do
-  orca worktree rm --help | grep -q -- "$f" || { echo "MISSING: worktree rm $f"; exit 1; }
+  printf '%s\n' "$r" | grep -qE -- "^[[:space:]]+$f([[:space:]]|$)" || { echo "MISSING: worktree rm $f"; exit 1; }
 done
 orca repo show --repo id:<repoId> --json | jq .result.repo.hookSettings
 ```
 
-If it prints `MISSING`, a flag is gone or renamed: stop and re-derive before writing anything. Step 4's real test
-is the final check either way.
+If it prints `FAILED` or `MISSING`, the CLI didn't answer or a flag is gone or renamed: stop
+and re-derive before writing anything. Step 4's real test is the final check either way.
 
 ## Step 1 — Find what a fresh worktree is missing
 

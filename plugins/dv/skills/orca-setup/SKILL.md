@@ -24,13 +24,20 @@ outside an Orca terminal, which is the GNOME screen reader). Then confirm the fa
 depends on still hold for the installed version:
 
 ```bash
-orca worktree create --help | grep -E -- '--setup|--base-branch'
-orca worktree rm --help | grep -E -- '--force|--run-hooks'
+c=$(orca worktree create --help) || { echo "FAILED: orca worktree create --help"; exit 1; }
+r=$(orca worktree rm --help) || { echo "FAILED: orca worktree rm --help"; exit 1; }
+# Match the flag where the Options list starts a line with it, not anywhere in the text.
+for f in --setup --base-branch; do
+  printf '%s\n' "$c" | grep -qE -- "^[[:space:]]+$f([[:space:]]|$)" || { echo "MISSING: worktree create $f"; exit 1; }
+done
+for f in --force --delete-branch --run-hooks; do
+  printf '%s\n' "$r" | grep -qE -- "^[[:space:]]+$f([[:space:]]|$)" || { echo "MISSING: worktree rm $f"; exit 1; }
+done
 orca repo show --repo id:<repoId> --json | jq .result.repo.hookSettings
 ```
 
-If a flag is gone or renamed, stop and re-derive before writing anything. Step 4's real test
-is the final check either way.
+If it prints `FAILED` or `MISSING`, the CLI didn't answer or a flag is gone or renamed: stop
+and re-derive before writing anything. Step 4's real test is the final check either way.
 
 ## Step 1 — Find what a fresh worktree is missing
 
@@ -75,7 +82,7 @@ scripts:
   setup: |
     set -eu
     cd "$ORCA_WORKTREE_PATH"
-    PATH="$HOME/.local/bin:$PATH"   # GUI-launched Orca may not have the shell's PATH
+    PATH="$HOME/.local/bin:$PATH"   # only if the interactive shell's PATH lacks it (Process, below)
     git submodule update --init <path>
     # then the project's install step: pnpm install, uv venv + uv pip install, …
 ```
@@ -83,7 +90,11 @@ scripts:
 - **Env:** `ORCA_ROOT_PATH` is the main checkout and `ORCA_WORKTREE_PATH` the new worktree.
   `ORCA_WORKSPACE_NAME` is set too.
 - **Process:** Orca writes the script to its own `setup-runner.sh` and executes it, so
-  `set -e` can't affect the user's shell. Keep it POSIX `sh`: no `<(…)`, no arrays.
+  `set -e` can't affect the user's shell. On macOS, Orca 1.4.257 writes it to
+  `.git/worktrees/<name>/orca/setup-runner.sh` and types `bash <that path>` into an
+  interactive shell in a terminal tab titled "Setup" (observed 2026-11-17, and in the app
+  bundle). So the script runs under bash, not `sh`, and gets the interactive shell's PATH
+  (nvm's `node`, say).
 - **Failures:** under `set -e`, a command inside `a && b` or an `if` condition doesn't stop
   the script. Handle those failures explicitly.
 - **Nothing to set up?** If a fresh worktree needs only local files, write no `orca.yaml` at
@@ -122,7 +133,8 @@ orca worktree create --repo id:<repoId> --name <topic>-setup-test --no-parent \
   --base-branch <pr-branch> --setup run --json
 ```
 
-`--setup run` forces the script whatever the repo's policy. **A repo with no `orca.yaml`**
+`--setup run` forces the script whatever the repo's policy. The PR branch needn't be pushed:
+`--base-branch` takes a local branch that isn't on origin (Orca 1.4.257, 2026-11-17). **A repo with no `orca.yaml`**
 (local files only, Step 3) has no script to force, read or lint: drop `--setup run`, poll for
 the included files with the same timeout as below and name any that never arrive, check
 `git status --short` is clean (stop and report if it isn't), then delete the throwaway file and
@@ -137,14 +149,15 @@ after merge with a worktree cut from the default branch.
 With a script, the command returns before it finishes, so judge the run by what it leaves
 behind: poll, with a timeout, for the artifacts Step 1 needs (the submodule checkout,
 `.venv/bin/<tool>`, the included files). The script's output shows in one of the new
-worktree's terminals, not always the first
+worktree's terminals, not always the first; in 1.4.257 it's the tab titled "Setup"
 (`orca terminal list --worktree id:<repoId>::<worktreePath>`, then
 `orca terminal read --terminal <handle>` on each). If the artifacts don't arrive, read them for
 the error: under `set -e` a failed step, such as `git submodule update`, stops the script
 there. Check each gap from Step 1 is closed and `git status --short` is clean, then delete the
 throwaway file and remove the worktree (Step 5).
 
-With a script, lint the extracted script with `sh -n` and `shellcheck -s sh -S warning`. For
+With a script, lint the extracted script with `bash -n <extracted-script>` and
+`shellcheck -s bash -S warning <extracted-script>`, since bash runs it (Step 3). For
 failure cases, run it against a scratch `git worktree add` with both env vars set.
 
 ## Step 5 — Removing worktrees: Force, and no archive script
@@ -153,8 +166,9 @@ failure cases, run it against a scratch `git worktree add` with both env vars se
   initialized submodule, and Orca's plain delete doesn't pass `--force`. Orca then reports
   `removed: true, removing: true` while the worktree stays, stuck in "removing". Use
   `orca worktree rm --force`. It removes the directory (gitignored files and the submodule
-  clone included), the git registration and Orca's entry, and deletes the branch only when
-  Orca can prove it's merged.
+  clone included), the git registration and Orca's entry. In 1.4.257 (2026-11-17) it keeps
+  the local branch by default, `--force` included; `--delete-branch` attempts a safe delete,
+  which keeps any branch Orca can't prove is merged. Older hosts keep their old policy.
 - **Before Force, check the worktree being removed,** not the main checkout:
   `git -C "$W" status --porcelain --ignored --untracked-files=all`. Without
   `--untracked-files=all`, git collapses a directory into one `!! dir/` line.
@@ -191,6 +205,10 @@ failure cases, run it against a scratch `git worktree add` with both env vars se
 
 - **`orca worktree rm` returns `ok: true` before removal finishes** (`removing: true`). Re-check
   `git worktree list` and `orca worktree list` before reporting a removal.
+- **`orca worktree list` hides worktrees under `.claude/worktrees/`** (`wt new`,
+  `claude --worktree`) when the repo's `externalWorktreeVisibility` is `hide`
+  (`orca repo show --repo id:<repoId> --json`; 1.4.257, 2026-11-17). Use `git worktree list`
+  to see every worktree.
 - **Orca names branches `<user>/<name>`.** Rename with `git branch -m` if the repo has a
   convention (`feat/…`); Orca tracks the worktree by path.
 - **Other top-level `orca.yaml` keys exist** (`setupAgentStartupPolicy`, `defaultTabs`,

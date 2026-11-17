@@ -24,12 +24,16 @@ outside an Orca terminal, which is the GNOME screen reader). Then confirm the fa
 depends on still hold for the installed version:
 
 ```bash
-orca worktree create --help | grep -E -- '--setup|--base-branch'
-orca worktree rm --help | grep -E -- '--force|--delete-branch|--run-hooks'
+for f in --setup --base-branch; do
+  orca worktree create --help | grep -q -- "$f" || { echo "MISSING: worktree create $f"; exit 1; }
+done
+for f in --force --delete-branch --run-hooks; do
+  orca worktree rm --help | grep -q -- "$f" || { echo "MISSING: worktree rm $f"; exit 1; }
+done
 orca repo show --repo id:<repoId> --json | jq .result.repo.hookSettings
 ```
 
-If a flag is gone or renamed, stop and re-derive before writing anything. Step 4's real test
+If it prints `MISSING`, a flag is gone or renamed: stop and re-derive before writing anything. Step 4's real test
 is the final check either way.
 
 ## Step 1 — Find what a fresh worktree is missing
@@ -149,8 +153,8 @@ the error: under `set -e` a failed step, such as `git submodule update`, stops t
 there. Check each gap from Step 1 is closed and `git status --short` is clean, then delete the
 throwaway file and remove the worktree (Step 5).
 
-With a script, lint the extracted script with `bash -n` and `shellcheck -s bash -S warning`,
-since bash runs it (Step 3). For
+With a script, lint the extracted script with `bash -n <extracted-script>` and
+`shellcheck -s bash -S warning <extracted-script>`, since bash runs it (Step 3). For
 failure cases, run it against a scratch `git worktree add` with both env vars set.
 
 ## Step 5 — Removing worktrees: Force, and no archive script

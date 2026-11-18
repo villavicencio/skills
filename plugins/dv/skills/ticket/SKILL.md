@@ -230,9 +230,10 @@ own text does not supply. Do not list a gap you can close yourself from the tick
 
 ### 5. Report
 
-Say what you found, shortest first: gaps, stale facts, open decisions. If there are no gaps, no
-stale facts and no open decisions, say that in one sentence, add one line on what you checked, say
-you changed nothing, and go to step 8.
+Say what you found, shortest first: gaps, stale facts, open decisions, and `[assumed]` markers that
+checking has settled. If there are none of these, say that in one sentence, add one line on what you
+checked, say you changed nothing, and go to step 8. Otherwise go on to step 6, or to step 7 when
+there are no open decisions.
 
 ### 6. Decisions
 

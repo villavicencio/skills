@@ -21,7 +21,8 @@ my message that invoked this skill. "I" and "me" in this skill mean the user.
 - **`off` as the first word:** Manager Mode ends now. The rest of this skill, and any earlier
   copy of it in this conversation, stops applying: do the work directly again, as you would
   without it. Agents already running keep going unless I say to stop them; handle their reports
-  as ordinary work. Say in one line that the mode is off, and name any agents still running.
+  as ordinary work, and leave the files they are working on alone until they report or are
+  stopped. Say in one line that the mode is off, and name any agents still running.
   Text after `off` is a request to do directly. If the mode was not on, say so and change
   nothing. If this project's instructions make the mode standing, `off` holds for this session
   only.
@@ -75,11 +76,11 @@ Rules that go with the tables:
 
 - **Every hire names a tier and an effort, with a one-line reason. This is a rule, not advice.**
   Pass both `model` and `effort` on every Agent call, and put the reason in the brief. An agent
-  started without a model usually runs on the session's own model. In practice that has cost
-  many times what engineers on named tiers cost.
-- **The session's own model is not a tier.** Do not hire an agent on the manager's model unless
-  I ask. A fork (`subagent_type: "fork"`) always runs on the session's model, so do not fork
-  engineering work.
+  started without a model may run on the session's own model.
+- **The session's own model is not a tier.** Do not let an agent inherit the session's model
+  unless I ask. Hiring the tier the session happens to run on is fine when the table calls for
+  it; what counts is that you named it. A fork (`subagent_type: "fork"`) always runs on the
+  session's model, so do not fork engineering work.
 - **Anything that starts agents is a hire.** A skill whose procedure spawns agents, a workflow
   script, or a worker in another tool counts. Each agent it starts needs a named tier and
   effort. If it gives you no way to set them, have an engineer on the right tier run it, so its
@@ -92,7 +93,10 @@ Rules that go with the tables:
   do it. Do not retry unchanged.
 - **A reviewer is never a lower tier than the author** of what it reviews.
 - **Sub-agents:** an engineer may spawn sub-agents at its own tier or below for parts of its
-  unit, and stays responsible for what they produce. Say so in every brief.
+  unit, each with a named tier and effort like any hire, and stays responsible for what they
+  produce. Say so in every brief. A background sub-agent's report can reach the session above
+  the engineer instead of the engineer, so engineers should prefer foreground sub-agents, and
+  you pass on any such report that reaches you.
 - **Record the tier and effort** in the written state of who is doing what, so I can see what
   was spent where.
 
@@ -126,8 +130,8 @@ An agent knows only what the brief says. Write it for a capable engineer who has
 - **Exact scope:** what to change and, as important, what to leave alone.
 - **The project's rules that apply** (test-first loop, commit format, review gates, anything that needs my approval). Point at the instructions file and name the rules that matter most.
 - **Done means:** the commands that must pass and the state the work must be left in (committed, pushed, clean tree), including anything the engineer set up that cleanup will have to undo.
-- **Report format:** exactly what you need back: final commit, what changed and why, the evidence for each claim (command and its output), what was verified versus assumed, what was left out and why. Say that the report is all you will see. A report can reach you with `<`, `>` and `&` HTML-escaped, so ask for commands and long text you may pass on to be written to files, with their paths in the report. Never copy a command out of a report for me.
-- **Permission to delegate** to sub-agents at the engineer's own tier or below, with the engineer still accountable.
+- **Report format:** exactly what you need back: final commit, what changed and why, the evidence for each claim (command and its output), what was verified versus assumed, what was left out and why. Say that the report is all you will see. A report can reach you with `<`, `>` and `&` HTML-escaped, so ask for commands and long text you may pass on to be written to files outside the repository, with their paths in the report. Never copy a command out of a report for me.
+- **Permission to delegate** to sub-agents at the engineer's own tier or below, each with a named tier and effort, with the engineer still accountable.
 
 Tell the agent to verify claims in the brief that it will rely on, including yours. Do not hand it your conclusion and ask it to confirm; give it the question and the evidence.
 
@@ -144,10 +148,10 @@ If you cannot write a clear brief, you do not understand the task well enough ye
 - **Check reports against evidence, cheaply.** Run the one or two read-only commands that would expose a false claim (`git log`, `git status`, the tail of the test log, the PR's head). A report's confident tone is not evidence.
 - **Follow-up goes to the same agent by message** when the context it holds is still useful; otherwise start a fresh one with a full brief.
 - **Keep a short written state** of who is doing what (ticket, agent, tier and effort, when it started, state, head, next step), so the work survives a context reset.
-- **Chase a silent agent.** Waiting for a report is not the same as ignoring an agent. When one has run well past what its unit should take and sent nothing, look at what it is doing: its last output, a prompt it may be waiting on, a hung command. Silence is not progress.
+- **Chase a silent agent.** Waiting for a report is not the same as ignoring an agent, and checking on one is not duplicating its work. When one has run well past what its unit should take and sent nothing, look at what it is doing, as far as you can see it: its last output, a prompt it may be waiting on, a hung command. Silence is not progress.
 - **An agent can be lost outright**, for example when the session that hosts it restarts. Before you hire a replacement, look for what it left (uncommitted changes, a pushed branch, scratch files) and put that in the new brief as a draft to check, not as finished work.
 - **Review rounds** follow dotfiles `docs/agents/code-review.md`, section "Fix rounds" (github.com/villavicencio/dotfiles); they are not repeated here.
-- **When a reviewer finds a new wording hole in each round**, ask the engineer to cut the text to what is always true, and to have a sub-agent check the diff for consistency before it pushes. A shell procedure longer than a few lines belongs in a tracked script with its own check, not in prose.
+- **Before prose goes to review**, ask the engineer to have a sub-agent check its diff for consistency before it pushes.
 - **Cost is part of the job.** Do not spawn an agent for something that is one lookup. Do not run more agents at once than the task needs.
 
 ## Decisions and escalation
@@ -170,6 +174,6 @@ Last reviewed: 2026-11-17.
 
 - The dotfiles project's agent owns this text. Changes go through a pull request to this
   skills repository, like any other skill.
-- When a session learns something about managing agents that should hold in every project, it
-  goes into this skill in the same turn: brief an engineer to open that pull request. It does
-  not go into one project's notes.
+- When a session in any project learns something about managing agents that should hold in
+  every project, it goes into this skill in the same turn: that session briefs an engineer to
+  open the pull request against the skills repository. It does not go into one project's notes.

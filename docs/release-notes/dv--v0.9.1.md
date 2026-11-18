@@ -1,7 +1,8 @@
 # dv — v0.9.1
 
-Patch release. It changes one sentence in `dv:manager-mode`: the line it suggests a project put in
-its `CLAUDE.md` or `AGENTS.md`. The other ten skills have no behaviour changes; their version moves
+Patch release. It changes the line `dv:manager-mode` suggests a project put in its `CLAUDE.md` or
+`AGENTS.md`: the line gains a second sentence, and the sentence after it says "two sentences" instead
+of "that line". The other ten skills have no behaviour changes; their version moves
 to `0.9.1` only because the suite is released as one plugin.
 
 `0.9.0` was merged but never tagged or published as a GitHub release, so this is the first release

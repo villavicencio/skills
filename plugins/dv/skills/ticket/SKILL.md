@@ -266,8 +266,9 @@ not, and leave the rest.
 
 An empty description takes the new sections with `append`. A description of plain text with no
 headings gets each heading added in front of the text it covers, with `insert_before` anchored on
-that text, as items I approve by number; do not move or rewrite the text. If you cannot tell what a
-stretch of text covers, ask me.
+that text, as items I approve by number; do not move or rewrite the text. A required section that
+has no text at all is added with `insert_after` on the last line before any Agent notes block, after
+the sections above it. If you cannot tell what a stretch of text covers, ask me.
 
 Do not change the state, labels or project unless I ask, or unless I chose that change in an
 interview answer. Change labels with `addLabels` and `removeLabels`, since `labels` replaces the

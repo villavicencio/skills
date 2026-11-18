@@ -44,7 +44,7 @@ spec.loader.exec_module(harness)
 parse_choice = harness.parse_choice
 UNPARSEABLE = harness.UNPARSEABLE
 
-NAMES = ["cite", "critique", "gauntlet", "handoff", "pickup", "reddit",
+NAMES = ["cite", "critique", "handoff", "pickup", "reddit",
          "review-claudemd", "tmux-window-namer", "twitter"]
 
 

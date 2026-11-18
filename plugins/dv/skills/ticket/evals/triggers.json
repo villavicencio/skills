@@ -1,0 +1,29 @@
+{
+  "skill": "ticket",
+  "description": "Trigger evals for dv:ticket (file a Linear ticket in the agreed format from a rough request, or groom an existing ticket against it). Hard near-misses in no_trigger: doing the work a ticket describes, reading a ticket's status, GitHub issues and PRs, a handoff (dv:handoff) and a plan critique (dv:critique). See tooling/evals/README.md.",
+  "runs_per_query": 3,
+  "pass_threshold": 0.5,
+  "queries": [
+    { "split": "train", "expect": "trigger",    "q": "File a ticket for the login page timing out after five minutes." },
+    { "split": "train", "expect": "trigger",    "q": "Create a Linear issue to look into why the nightly export is slow." },
+    { "split": "train", "expect": "trigger",    "q": "Groom VIL-123." },
+    { "split": "train", "expect": "trigger",    "q": "Write this up as a ticket: the CSV import drops the last row." },
+    { "split": "train", "expect": "trigger",    "q": "Check VIL-88 against our ticket format and tell me what is missing." },
+    { "split": "train", "expect": "trigger",    "q": "Open a Linear ticket to research whether we should move the queue to a managed service." },
+    { "split": "val",   "expect": "trigger",    "q": "Make a ticket for adding a retry to the webhook sender." },
+    { "split": "val",   "expect": "trigger",    "q": "Is VIL-210 ready to be worked? Groom it and tell me what's stale." },
+    { "split": "val",   "expect": "trigger",    "q": "Turn this into a proper Linear ticket with a Done means list." },
+    { "split": "val",   "expect": "trigger",    "q": "Draft a ticket for the cron job that should alert when the backup fails." },
+
+    { "split": "train", "expect": "no_trigger", "q": "Start working on VIL-123." },
+    { "split": "train", "expect": "no_trigger", "q": "Fix the off-by-one in the pagination helper." },
+    { "split": "train", "expect": "no_trigger", "q": "What's the status of VIL-88?" },
+    { "split": "train", "expect": "no_trigger", "q": "Open a GitHub issue for the broken link in the README." },
+    { "split": "train", "expect": "no_trigger", "q": "Write a handoff for this session." },
+    { "split": "train", "expect": "no_trigger", "q": "Critique my plan for the migration before I build it." },
+    { "split": "val",   "expect": "no_trigger", "q": "List the Linear issues assigned to me this week." },
+    { "split": "val",   "expect": "no_trigger", "q": "Open a pull request for this branch." },
+    { "split": "val",   "expect": "no_trigger", "q": "Mark VIL-210 as Done now that the PR merged." },
+    { "split": "val",   "expect": "no_trigger", "q": "Write a design doc for the new sync service." }
+  ]
+}

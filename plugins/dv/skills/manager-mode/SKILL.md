@@ -76,15 +76,18 @@ Rules that go with the tables:
 
 - **Every hire names a tier and an effort, with a one-line reason. This is a rule, not advice.**
   Pass both `model` and `effort` on every Agent call, and put the reason in the brief. An agent
-  started without a model may run on the session's own model.
+  started without a model may run on the session's own model. The one exception, for procedures
+  that start their own agents, is in the hire rule below.
 - **The session's own model is not a tier.** Do not let an agent inherit the session's model
   unless I ask. Hiring the tier the session happens to run on is fine when the table calls for
   it; what counts is that you named it. A fork (`subagent_type: "fork"`) always runs on the
   session's model, so do not fork engineering work.
 - **Anything that starts agents is a hire.** A skill whose procedure spawns agents, a workflow
-  script, or a worker in another tool counts. Each agent it starts needs a named tier and
-  effort. If it gives you no way to set them, have an engineer on the right tier run it, so its
-  agents start from that engineer's model instead of yours.
+  script, or a worker in another tool counts. Where it lets you set the model and effort of each
+  agent it starts, set them. Where it does not, that is the one exception to the rule above: an
+  engineer on a named tier runs it, so an agent it starts without a model runs on that
+  engineer's model instead of yours, and an agent it gives a model keeps that model. Record the
+  exception in the written state, with what each of its agents runs on.
 - **When two settings fit, take the lower one** and rely on the evidence check. This holds for
   tier and for effort.
 - **Escalate on a failed check, one setting at a time.** If a report fails your evidence check,
@@ -149,8 +152,8 @@ If you cannot write a clear brief, you do not understand the task well enough ye
 - **Follow-up goes to the same agent by message** when the context it holds is still useful; otherwise start a fresh one with a full brief.
 - **Keep a short written state** of who is doing what (ticket, agent, tier and effort, when it started, state, head, next step), so the work survives a context reset.
 - **Chase a silent agent.** Waiting for a report is not the same as ignoring an agent, and checking on one is not duplicating its work. When one has run well past what its unit should take and sent nothing, look at what it is doing, as far as you can see it: its last output, a prompt it may be waiting on, a hung command. Silence is not progress.
-- **An agent can be lost outright**, for example when the session that hosts it restarts. Before you hire a replacement, look for what it left (uncommitted changes, a pushed branch, scratch files) and put that in the new brief as a draft to check, not as finished work.
-- **Review rounds** follow dotfiles `docs/agents/code-review.md`, section "Fix rounds" (github.com/villavicencio/dotfiles); they are not repeated here.
+- **An agent can be lost outright**, for example when the session that hosts it restarts. Before you hire a replacement, look for what it left (uncommitted changes, a pushed branch, scratch files) and put that in the new brief as a draft to check, not as finished work. A notice that an agent or a shell was lost is not proof that it was: a session forked from another can be told that the original's agents did not finish while they are still running under the original. Before hiring a replacement, check for a live owner: list the running agents and sessions, and look at file times in the work area. A forked session does not take over the original's units: it hires nothing into them, and it tells the original by message what it did.
+- **Review rounds** follow the "Fix rounds" section of dotfiles `docs/agents/code-review.md` (https://github.com/villavicencio/dotfiles/blob/master/docs/agents/code-review.md#fix-rounds); they are not repeated here. If you cannot read that section, say so and ask me; do not guess the rules.
 - **Before prose goes to review**, ask the engineer to have a sub-agent check its diff for consistency before it pushes.
 - **Cost is part of the job.** Do not spawn an agent for something that is one lookup. Do not run more agents at once than the task needs.
 

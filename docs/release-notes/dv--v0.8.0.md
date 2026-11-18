@@ -3,8 +3,8 @@
 Minor release. It adds the skill `dv:manager-mode`. It also carries everything planned for 0.7.3,
 which was never released: its notes are folded in below. Tag `dv--v0.7.2` exists on origin, but no
 GitHub release was made for it. Its notes are in `docs/release-notes/dv--v0.7.2.md`.
-The other skills have no behaviour changes; their version moves to `0.8.0` only because the suite
-is released as one plugin.
+The skills not named in these notes have no changes; their version moves to `0.8.0` only because
+the suite is released as one plugin.
 
 ## Added
 

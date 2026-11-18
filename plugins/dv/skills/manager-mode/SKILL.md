@@ -4,7 +4,7 @@ description: "Switch this session into Manager Mode: you work as an engineering 
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.9.0"
+  version: "0.9.1"
 ---
 
 # /manager-mode — you are the manager, not an engineer
@@ -32,7 +32,7 @@ my message that invoked this skill. "I" and "me" in this skill mean the user.
   not restart work already in flight.
 
 A project makes the mode standing with one line in its `CLAUDE.md` or `AGENTS.md`, such as:
-"At the start of every session, invoke `dv:manager-mode`." That line is all the project adds.
+"At the start of every session, invoke `dv:manager-mode`. Do it before your first reply, whatever the first message asks; don't ask first." Those two sentences are all the project adds.
 The text lives here, in one copy; do not paste it into a project.
 
 ## Operating mode

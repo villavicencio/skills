@@ -4,7 +4,7 @@ description: "File a Linear ticket in the agreed format, or groom an existing on
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.8.0"
+  version: "0.9.1"
 ---
 
 # /ticket — file or groom a Linear ticket

@@ -22,22 +22,26 @@ Read the block above first. If it is empty or still shows a placeholder, take th
 message that invoked this skill. "I" and "me" in this skill mean the user.
 
 - **`groom VIL-N`** (or `groom` with a Linear issue link): groom mode. Go to "Groom".
-- **Anything else:** file mode. The text is the request for the ticket. Go to "File".
-- **Nothing:** ask what the ticket is for, as a plain question.
-- **A bare ticket id with no verb:** ask whether I want it groomed, as a plain question.
 - **`groom` with no ticket id or link:** ask which ticket, as a plain question.
+- **A bare ticket id or issue link with no verb:** ask whether I want it groomed, as a plain
+  question.
+- **Nothing:** ask what the ticket is for, as a plain question.
+- **Anything else:** file mode. The text is the request for the ticket. Go to "File".
 
 ## Before anything else
 
 1. **Linear tools.** This skill needs the Linear MCP tools. If they are listed as deferred, load
    them in one ToolSearch call: `list_projects`, `list_teams`, `list_issue_labels`, `list_issues`,
-   `get_issue`, `list_comments`, `list_issue_statuses`, `whoami` and `save_issue`. If the tools are not there, say so in one line and
-   stop. Do not file a GitHub issue or write the ticket anywhere else instead.
+   `get_issue`, `list_comments`, `list_issue_statuses`, `whoami` and `save_issue`. If the tools are
+   not there, say so in one line and stop. Do not file a GitHub issue or write the ticket anywhere
+   else instead.
 2. **The format.** The format lives in one place, and that file wins on any difference with this
    skill: https://github.com/villavicencio/dotfiles/blob/master/docs/agents/tickets.md
-   Read it now: WebFetch on that page, then `gh api repos/villavicencio/dotfiles/contents/docs/agents/tickets.md -H "Accept: application/vnd.github.raw"`. If both fail, a local checkout
-   of that repo may be used if the session knows where one is (say that you used it). If you
-   cannot read it, say so in your reply and use this fallback:
+   Read it now with this command, or with WebFetch on the file's raw URL (the same path under
+   raw.githubusercontent.com, branch master):
+   `gh api repos/villavicencio/dotfiles/contents/docs/agents/tickets.md -H "Accept: application/vnd.github.raw"`
+   If both fail, a local checkout of that repo may be used if the session knows where one is (say
+   that you used it). If you cannot read it, say so in your reply and use this fallback:
    - Sections: Why, Scope, Out of scope, Done means, Decisions, Size, Agent notes. A section with
      nothing to say is left out. Why and Done means are required, and Scope appears when there
      is more than one step.
@@ -182,7 +186,7 @@ Compare the ticket with the format and list each gap:
 - A required section is missing: Why, or Done means.
 - A Done means line is an activity ("update the check") and not a result that a command or an
   observation can prove. Quote the line.
-- A type block the ticket needs is missing (a bug, research or automation ticket; the fallback
+- A type block the ticket needs is missing (a bug, research or automation ticket; the format
   names the sections).
 - A Backlog ticket has no pull condition, or its condition names no event or decision someone can
   observe. A ticket with the `someday` label does not need one.
@@ -197,22 +201,25 @@ but holds something useful stays as it is, and so does a section name that is no
 ### 3. Verify the facts
 
 Take each fact the ticket states (paths, commands and their output, versions, ids of tickets and
-PRs, "X already exists") and check it against the repo or system, Agent
-notes included. Run a command taken from the ticket only when you can see that it only reads files
-or runs on a copy in a scratch directory; otherwise the fact is not checked. The repo is the current one when it matches the ticket's project (match it as in
-File, step 1); otherwise say which facts you could not check for that reason. Check against the
-branch or version the ticket names, or the default branch if it names none, and say which. A Done
-means line describes the future, so it is not checked as a fact; check only that the command or
-observation in it can be carried out. Report each fact as current, stale (with what is true now) or
-not checked. A fact about another tool or a web page is not checked unless one lookup settles it; if
-the ticket depends on it, it is an open decision.
+PRs, "X already exists") and check it against the repo or system, Agent notes included. The repo is
+the current one when it matches the ticket's project (match it as in File, step 1); otherwise say
+which facts you could not check for that reason. Check against the branch or version the ticket
+names, or the default branch if it names none, and say which. Run a command taken from the ticket
+only when you can see that it only reads files or runs on a copy in a scratch directory; otherwise
+the fact is not checked. A Done means line describes the future, so it is not checked as a fact;
+check only that the command or observation in it can be carried out. Treat each `[assumed]` marker
+as a fact to check: if it holds, propose removing the marker (a replace item in step 7); if it is
+stale, say what is true now. Report each fact as current, stale (with what is true now) or not
+checked. A fact about another tool or a web page is not checked unless one lookup settles it; if the
+ticket depends on it, it is an open decision.
 
 ### 4. List open decisions
 
 Collect what is undecided: a reason in the ticket that checking suggests may be false, a Decisions
 line marked open, an unanswered question in a comment, a choice the ticket leaves to whoever works
-it, a missing pull condition that only I can supply. Do not list a gap you can close yourself from
-the ticket.
+it, a missing pull condition that only I can supply, a Done means line that is an activity whose
+result is not clear from the ticket, and a Decisions line with no who or no date that the ticket's
+own text does not supply. Do not list a gap you can close yourself from the ticket.
 
 ### 5. Report
 
@@ -224,8 +231,9 @@ you changed nothing, and go to step 8.
 
 Ask the open decisions as the multiple-choice interview. Ask before you write the edit list, so the
 list uses my answers. Each answer becomes an item in the edit list that only adds: "the decision.
-Who, date", under Decisions, with the Decisions section added if the ticket has none. Who is my name
-from `whoami` or the session's instructions, not "me" and not "the user". The date is today's date.
+Who, date", under Decisions, with the Decisions section added if the ticket has none. An answer that
+supplies a pull condition also goes at the end of Why as the one-line condition. Who is my name from
+`whoami` or the session's instructions, not "me" and not "the user". The date is today's date.
 Nothing is written until step 7.
 
 ### 7. Edit
@@ -234,8 +242,9 @@ Propose the edits as a list. For each item say whether it adds text or replaces 
 existing text. The list includes a new title (changed with the `title` field, not a patch) and the
 rename of a section.
 
-- Propose a rewrite of an activity line only when the result is clear from the ticket; otherwise it
-  is an open decision.
+- Propose a rewrite of an activity line only when the result is clear from the ticket; otherwise
+  leave the line as it is, since step 4 already raised it. Do not fill in a who or a date by
+  guessing.
 - A missing pull condition goes at the end of Why.
 - A stale fact is replaced with what is true now, and the list says so.
 - Size is proposed (small, medium or large, with the repo and PR count), not asked.
@@ -245,12 +254,12 @@ Ask one plain question to approve the list. A bare yes approves only the items t
 that replaces or removes text is applied only when I approve that item by number.
 
 Then edit with `patch` operations on `save_issue` (`replace`, `insert_before`, `insert_after`,
-`replace_range`), not by sending the whole description again. To add a section, use `insert_after`
-on the last line of the section above it, so it lands before the Agent notes. Do not use `append` on
-a ticket that has an Agent notes block. Copy each anchor from the text `get_issue` just returned,
-from inside a section and not from the `>>>` lines; it must match exactly once. If one fails, read
-the ticket again and rebuild the patch. If a patch cannot be placed, say so and leave the ticket as
-it is.
+`replace_range`), not by sending the whole description again. Apply them one at a time. To add a
+section, use `insert_after` on the last line of the section above it, so it lands before the Agent
+notes. Do not use `append` on a ticket that has an Agent notes block. Copy each anchor from the text
+`get_issue` just returned, from inside a section and not from the `>>>` lines; it must match exactly
+once. If one fails, read the ticket again and rebuild the patch. If a patch cannot be placed, stop,
+say which items landed and which did not, and leave the rest.
 
 Do not change the state, labels or project unless I ask, or unless I chose that change in an
 interview answer. Change labels with `addLabels` and `removeLabels`, since `labels` replaces the
@@ -263,11 +272,12 @@ there was nothing to edit. Judge the ticket as it now stands. Name the ticket as
 using the url `get_issue` returned (the bare id if none came back). Say whether it is ready to start
 (no gaps, Done means lines that can be proved, and nothing it waits on). Give the branch name it
 would use: `<type>/vil-N-<slug>`, with the ticket's own id in lowercase, where the type is feat for
-new capability, fix for a bug, docs for a docs-only change and chore otherwise. Take the nearest; it
-is a name, not a rule.
+new capability, fix for a bug, docs for a docs-only change and chore otherwise. Pick the closest
+type; the name is a suggestion.
 
-If the ticket is ready, ask whether I want the work started. My answers to your questions are not a
-go. Do not start the work until I say so. If it is blocked, name the blocker and stop.
+If the ticket is ready and in Backlog or Todo, ask whether I want the work started. In any other
+state, name the state and stop. My answers to your questions are not a go. Do not start the work
+until I say so. If the ticket is blocked, name the blocker and stop.
 
 ## Rules
 

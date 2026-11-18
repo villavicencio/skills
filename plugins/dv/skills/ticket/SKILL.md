@@ -257,12 +257,12 @@ Ask one plain question to approve the list. A bare yes approves only the items t
 that replaces or removes text is applied only when I approve that item by number.
 
 Then edit with `patch` operations on `save_issue` (`replace`, `insert_before`, `insert_after`,
-`replace_range`, and `append` for an empty description), not by sending the whole description again. Apply them one
-at a time. To add a section, use `insert_after` on the last line of the section above it, so it
-lands before the Agent notes. Copy each anchor from the text `get_issue` just returned, from inside
-a section and not from the `>>>` lines; it must match exactly once. If one fails, read the ticket
-again and rebuild the patch. If a patch cannot be placed, stop, say which items landed and which did
-not, and leave the rest.
+`replace_range`, and `append` for an empty description), not by sending the whole description again.
+Apply them one at a time. To add a section, use `insert_after` on the last line of the section above
+it, so it lands before the Agent notes. Copy each anchor from the text `get_issue` just returned,
+from inside a section and not from the `>>>` lines; it must match exactly once. If one fails, read
+the ticket again and rebuild the patch. If a patch cannot be placed, stop, say which items landed
+and which did not, and leave the rest.
 
 An empty description takes the new sections with `append`. A description with no headings that has
 text (plain text, or only an Agent notes block) has no safe place to anchor a patch. Show me the

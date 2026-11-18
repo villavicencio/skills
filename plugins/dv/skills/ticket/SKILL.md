@@ -23,8 +23,8 @@ message that invoked this skill. "I" and "me" in this skill mean the user.
 
 - **`groom VIL-N`** (or `groom` with a Linear issue link): groom mode. Go to "Groom".
 - **`groom` with no ticket id or link:** ask which ticket, as a plain question.
-- **A bare ticket id or issue link with no verb:** ask whether I want it groomed, as a plain
-  question.
+- **A ticket id or issue link in the text, without `groom`:** ask whether I want that ticket groomed
+  or mean a new ticket that refers to it, as a plain question.
 - **Nothing:** ask what the ticket is for, as a plain question.
 - **Anything else:** file mode. The text is the request for the ticket. Go to "File".
 
@@ -54,8 +54,8 @@ message that invoked this skill. "I" and "me" in this skill mean the user.
 3. **Questions to me.** A real choice (which project, which type, what to do about a duplicate, an
    open decision) goes to me as a multiple-choice interview with AskUserQuestion (load it with
    ToolSearch if it is deferred): up to 4 questions, each standing on its own, 2 to 4 options with
-   a one-line trade-off, your recommendation first and marked "(Recommended)". A yes or no is a
-   plain question in your reply.
+   a one-line trade-off, your recommendation first and marked "(Recommended)" (when nothing favors
+   one option, say so in the question and mark none). A yes or no is a plain question in your reply.
 4. **Question or assumption.** Ask when the answer would change the project, the type, the scope or
    a Done means line, or the reason for the ticket, and you cannot look it up. Otherwise state your
    best reading and mark it `[assumed]`. Ask before drafting, so the draft ends with a single yes or
@@ -238,11 +238,12 @@ there are no open decisions.
 ### 6. Decisions
 
 Ask the open decisions as the multiple-choice interview. Ask before you write the edit list, so the
-list uses my answers. Each answer becomes an item in the edit list that only adds: "the decision.
-Who, date", under Decisions, with the Decisions section added if the ticket has none. An answer that
-supplies a pull condition also goes at the end of Why as the one-line condition. Who is my name from
-`whoami` or the session's instructions, not "me" and not "the user". The date is today's date.
-Nothing is written until step 7.
+list uses my answers. Each answer becomes an item in the edit list: "the decision. Who, date", under
+Decisions, with the Decisions section added if the ticket has none. An answer that settles a
+Decisions line marked open replaces that line, as a replace item. An answer that supplies a pull
+condition also goes at the end of Why as the one-line condition. Who is my name from `whoami` or the
+session's instructions, not "me" and not "the user". The date is today's date. Nothing is written
+until step 7.
 
 ### 7. Edit
 
@@ -264,10 +265,11 @@ that replaces or removes text is applied only when I approve that item by number
 Then edit with `patch` operations on `save_issue` (`replace`, `insert_before`, `insert_after`,
 `replace_range`, and `append` for an empty description), not by sending the whole description again.
 Apply them one at a time. To add a section, use `insert_after` on the last line of the section above
-it, so it lands before the Agent notes. Copy each anchor from the text `get_issue` just returned,
-from inside a section and not from the `>>>` lines; it must match exactly once. If one fails, read
-the ticket again and rebuild the patch. If a patch cannot be placed, stop, say which items landed
-and which did not, and leave the rest.
+it, so it lands before the Agent notes; a missing first section goes in with `insert_before` on the
+first heading line. Copy each anchor from the text `get_issue` just returned, from inside a section
+or a heading line and not from the `>>>` lines; it must match exactly once. If one fails, read the
+ticket again and rebuild the patch. If a patch cannot be placed, stop, say which items landed and
+which did not, and leave the rest.
 
 An empty description takes the new sections with `append`. A description that has text but no
 headings (plain text, or only an Agent notes block) has no safe place to anchor a patch. Leave the
@@ -289,8 +291,9 @@ new capability, fix for a bug, docs for a docs-only change and chore otherwise. 
 type; the name is a suggestion.
 
 If the ticket is ready and in Backlog or Todo, ask whether I want the work started. In any other
-state, name the state and stop. My answers to your questions are not a go. Do not start the work
-until I say so. If the ticket is blocked, name the blocker and stop.
+state, name the state and stop. My answers to your questions are not a go. This skill does not do
+the work: after a yes, the session carries on as ordinary work outside it. Do not start before I say
+so. If the ticket is blocked, name the blocker and stop.
 
 ## Rules
 

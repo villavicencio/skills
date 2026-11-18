@@ -10,7 +10,7 @@ One plugin, invoked `dv:<skill>` — modeled on how `compound-engineering` holds
 
 | Plugin | Version | Skills | Description |
 | --- | --- | --- | --- |
-| [`dv`](plugins/dv/) | `0.9.1` | `pickup`, `handoff`, `review-claudemd`, `tmux-window-namer`, `reddit`, `twitter`, `critique`, `cite`, `mnemosyne-ops`, `orca-setup`, `manager-mode`, `ticket` | Personal skill suite. Session brackets (`dv:pickup` / `dv:handoff`), `CLAUDE.md` hygiene (`dv:review-claudemd`), tmux styling (`dv:tmux-window-namer`), Reddit / X fetchers (`dv:reddit` / `dv:twitter`), parallel plan critique (`dv:critique`), a re-fetch-or-decline freshness contract for realtime facts (`dv:cite`), Mnemosyne memory-provider ops on a Hermes profile (`dv:mnemosyne-ops`), Orca worktree setup scripts (`dv:orca-setup`), and a switch that makes a session work as an engineering manager over hired agents (`dv:manager-mode`), and Linear tickets filed or groomed in one format (`dv:ticket`). |
+| [`dv`](plugins/dv/) | `0.10.0` | `pickup`, `handoff`, `review-claudemd`, `tmux-window-namer`, `reddit`, `twitter`, `critique`, `cite`, `mnemosyne-ops`, `orca-setup`, `manager-mode`, `ticket` | Personal skill suite. Session brackets (`dv:pickup` / `dv:handoff`), `CLAUDE.md` hygiene (`dv:review-claudemd`), tmux styling (`dv:tmux-window-namer`), Reddit / X fetchers (`dv:reddit` / `dv:twitter`), parallel plan critique (`dv:critique`), a re-fetch-or-decline freshness contract for realtime facts (`dv:cite`), Mnemosyne memory-provider ops on a Hermes profile (`dv:mnemosyne-ops`), Orca worktree setup scripts (`dv:orca-setup`), and a switch that makes a session work as an engineering manager over hired agents (`dv:manager-mode`), and Linear tickets filed or groomed in one format (`dv:ticket`). |
 
 ### Skills at a glance
 

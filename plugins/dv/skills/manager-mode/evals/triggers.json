@@ -1,6 +1,6 @@
 {
   "skill": "manager-mode",
-  "description": "Trigger evals for dv:manager-mode (the session works as an engineering manager; hired agents with named tiers do the engineering; `off` ends it). Hard near-misses in no_trigger: handing one task to one subagent is ordinary delegation, not the mode; stress-testing a plan with parallel critics is dv:critique; adversarial review of a diff is dv:gauntlet; a handoff is dv:handoff. See tooling/evals/README.md.",
+  "description": "Trigger evals for dv:manager-mode (the session works as an engineering manager; hired agents with named tiers do the engineering; `off` ends it). Hard near-misses in no_trigger: handing one task to one subagent is ordinary delegation, not the mode; stress-testing a plan with parallel critics is dv:critique; a handoff is dv:handoff. See tooling/evals/README.md.",
   "runs_per_query": 3,
   "pass_threshold": 0.5,
   "queries": [
@@ -17,7 +17,7 @@
 
     { "split": "train", "expect": "no_trigger", "q": "Spawn a subagent to search the repo for every use of this function." },
     { "split": "train", "expect": "no_trigger", "q": "Critique my plan with a skeptic, a simplifier and a historian before I build it." },
-    { "split": "train", "expect": "no_trigger", "q": "Run the gauntlet on my branch." },
+    { "split": "train", "expect": "no_trigger", "q": "Check this plan for risks and prior art before I implement it." },
     { "split": "train", "expect": "no_trigger", "q": "Write a handoff for this session." },
     { "split": "train", "expect": "no_trigger", "q": "Fix the off-by-one in the pagination helper." },
     { "split": "train", "expect": "no_trigger", "q": "Read the handoff and tell me where we left off." },

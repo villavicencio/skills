@@ -97,11 +97,12 @@ those is my call.
 
 Before drafting, call `list_issues` for the project with the main words of the request, and once
 more across the team without the project, to catch a duplicate filed elsewhere. Include completed
-tickets (set the state filter if the default leaves them out). Read the first page of results. One
-or two keyword searches are enough. A match is the same problem, not the same words. If one matches,
-say so, with its id and state, and ask what to do: use that ticket (groom it), file anyway, or stop.
-Do not draft past a match without my answer. A related ticket that is not the same problem is listed
-in the draft, with its id, and needs no question.
+tickets (set the state filter if the default leaves them out). Follow the cursor through all the pages
+of the project search, and try a second wording if the first finds nothing. A match is the same
+problem, not the same words. If one matches, say so, with its id and state, and ask what to do: use
+that ticket (groom it), file anyway, or stop. Do not draft past a match without my answer. A related
+ticket that is not the same problem is listed in the draft, with its id, and needs no question. Run
+the project search again just before step 7, in case a ticket was filed while I reviewed the draft.
 
 ### 4. Draft
 
@@ -158,6 +159,8 @@ this? Create nothing in Linear before I say yes. If I answer with changes, make 
 new fact, and show the draft again.
 
 ### 7. Create
+
+Run the project search from step 3 again first. If a new match has appeared, go back to step 3.
 
 Call `save_issue` with the team, project, title, description, labels and state. Use real newlines
 in the description, not `\n` escapes. Do not set an assignee, priority or estimate unless I asked.
@@ -264,10 +267,9 @@ from inside a section and not from the `>>>` lines; it must match exactly once. 
 the ticket again and rebuild the patch. If a patch cannot be placed, stop, say which items landed
 and which did not, and leave the rest.
 
-An empty description takes the new sections with `append`. A description with no headings that has
-text (plain text, or only an Agent notes block) has no safe place to anchor a patch. Show me the
-whole description as you would restructure it, mark it as a replace of existing text, and send it
-only if I approve it by number.
+An empty description takes the new sections with `append`. A description that has text but no
+headings (plain text, or only an Agent notes block) has no safe place to anchor a patch. Say so,
+show me the sections you would add as text, and leave the ticket as it is; I will edit it in Linear.
 
 Do not change the state, labels or project unless I ask, or unless I chose that change in an
 interview answer. Change labels with `addLabels` and `removeLabels`, since `labels` replaces the

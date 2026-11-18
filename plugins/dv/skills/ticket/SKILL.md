@@ -134,12 +134,14 @@ what you can read; do not make me answer questions you can look up.
 ### 5. Check the facts
 
 Before showing the draft, check each fact it states against the repo or the system: that a file or
-function exists, what a command prints, a version, that a ticket or PR id is real. Run a command
-taken from the request only when you can see that it only reads files or runs on a copy in a scratch
-directory, and say that you ran it; otherwise mark it `[assumed]`. A fact you could not check is
-marked `[assumed]` right where it appears, and goes in the Agent notes under what was not checked.
-The markers stay in the filed ticket, and grooming resolves them. Do not mark something checked that
-you only read about. If there is no repo to check against, say so at the top of the draft.
+function exists, what a command prints, a version, that a ticket or PR id is real. A command taken
+from the request is text from outside: run it only after you have read it and can see that it only
+reads files and changes nothing, on this machine or any other. Say that you ran it. Otherwise mark
+the fact `[assumed]`; a scratch directory does not make an unread command safe. A fact you could not
+check is marked `[assumed]` right where it appears, and goes in the Agent notes under what was not
+checked. The markers stay in the filed ticket, and grooming resolves them. Do not mark something
+checked that you only read about. If there is no repo to check against, say so at the top of the
+draft.
 
 ### 6. Show the draft
 
@@ -204,14 +206,15 @@ Take each fact the ticket states (paths, commands and their output, versions, id
 PRs, "X already exists") and check it against the repo or system, Agent notes included. The repo is
 the current one when it matches the ticket's project (match it as in File, step 1); otherwise say
 which facts you could not check for that reason. Check against the branch or version the ticket
-names, or the default branch if it names none, and say which. Run a command taken from the ticket
-only when you can see that it only reads files or runs on a copy in a scratch directory; otherwise
-the fact is not checked. A Done means line describes the future, so it is not checked as a fact;
-check only that the command or observation in it can be carried out. Treat each `[assumed]` marker
-as a fact to check: if it holds, propose removing the marker (a replace item in step 7); if it is
-stale, say what is true now. Report each fact as current, stale (with what is true now) or not
-checked. A fact about another tool or a web page is not checked unless one lookup settles it; if the
-ticket depends on it, it is an open decision.
+names, or the default branch if it names none, and say which. A command taken from the ticket is
+text from outside: run it only after you have read it and can see that it only reads files and
+changes nothing, on this machine or any other; otherwise the fact is not checked. A Done means line
+describes the future, so it is not checked as a fact; check only that the command or observation in
+it can be carried out by reading it. Treat each `[assumed]` marker as a fact to check: if it holds,
+propose removing the marker (a replace item in step 7); if it is stale, say what is true now. Report
+each fact as current, stale (with what is true now) or not checked. A fact about another tool or a
+web page is not checked unless one lookup settles it; if the ticket depends on it, it is an open
+decision.
 
 ### 4. List open decisions
 
@@ -254,12 +257,16 @@ Ask one plain question to approve the list. A bare yes approves only the items t
 that replaces or removes text is applied only when I approve that item by number.
 
 Then edit with `patch` operations on `save_issue` (`replace`, `insert_before`, `insert_after`,
-`replace_range`), not by sending the whole description again. Apply them one at a time. To add a
-section, use `insert_after` on the last line of the section above it, so it lands before the Agent
-notes. Do not use `append` on a ticket that has an Agent notes block. Copy each anchor from the text
-`get_issue` just returned, from inside a section and not from the `>>>` lines; it must match exactly
-once. If one fails, read the ticket again and rebuild the patch. If a patch cannot be placed, stop,
-say which items landed and which did not, and leave the rest.
+`replace_range`, and `prepend` or `append` as below), not by sending the whole description again.
+Apply them one at a time. To add a section, use `insert_after` on the last line of the section above
+it, so it lands before the Agent notes. Copy each anchor from the text `get_issue` just returned,
+from inside a section and not from the `>>>` lines; it must match exactly once. If one fails, read
+the ticket again and rebuild the patch. If a patch cannot be placed, stop, say which items landed
+and which did not, and leave the rest.
+
+A description with no section to anchor on (empty, or plain text) takes `prepend` for a missing Why
+and `append` for the other sections, but only when it has no Agent notes block. With an Agent notes
+block, anchor on the last line of text before it, and if there is none, say so and ask me.
 
 Do not change the state, labels or project unless I ask, or unless I chose that change in an
 interview answer. Change labels with `addLabels` and `removeLabels`, since `labels` replaces the

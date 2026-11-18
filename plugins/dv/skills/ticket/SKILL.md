@@ -23,8 +23,9 @@ message that invoked this skill. "I" and "me" in this skill mean the user.
 
 - **`groom VIL-N`** (or `groom` with a Linear issue link): groom mode. Go to "Groom".
 - **`groom` with no ticket id or link:** ask which ticket, as a plain question.
-- **A ticket id or issue link in the text, without `groom`:** ask whether I want that ticket groomed
-  or mean a new ticket that refers to it, as a plain question.
+- **A ticket id or issue link in the text, without `groom`:** if the text plainly asks to file or
+  create a new ticket, that is file mode. Otherwise ask whether I want that ticket groomed or mean a
+  new ticket that refers to it, as a plain question.
 - **Nothing:** ask what the ticket is for, as a plain question.
 - **Anything else:** file mode. The text is the request for the ticket. Go to "File".
 

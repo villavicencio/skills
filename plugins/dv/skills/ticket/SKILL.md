@@ -290,15 +290,16 @@ whole set.
 Run this step after step 7, whatever the answer to the edit list was, or straight after step 5 when
 there was nothing to edit. Judge the ticket as it now stands. Name the ticket as a markdown link,
 using the url `get_issue` returned (the bare id if none came back). Say whether it is ready to start
-(no gaps, Done means lines that can be proved, and nothing it waits on). Give the branch name it
+(no gaps, Done means lines that can be proved, nothing it waits on, and a state of Backlog or
+Todo). Give the branch name it
 would use: `<type>/vil-N-<slug>`, with the ticket's own id in lowercase, where the type is feat for
 new capability, fix for a bug, docs for a docs-only change and chore otherwise. Pick the closest
 type; the name is a suggestion.
 
 End by reporting the ticket as ready, or by naming what it still lacks or waits on (a gap left
-open, or a blocker), and name its state when that is not Backlog or Todo. Do not ask whether to
-start the work and do not start it: starting is a separate request from me, handled outside this
-skill.
+open, a blocker, or a state other than Backlog or Todo, which is not ready to start). Do not ask
+whether to start the work and do not start it: starting is a separate request from me, handled
+outside this skill.
 
 ## Rules
 

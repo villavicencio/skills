@@ -97,12 +97,13 @@ those is my call.
 
 Before drafting, call `list_issues` for the project with the main words of the request, and once
 more across the team without the project, to catch a duplicate filed elsewhere. Include completed
-tickets (set the state filter if the default leaves them out). Follow the cursor through all the pages
-of the project search, and try a second wording if the first finds nothing. A match is the same
-problem, not the same words. If one matches, say so, with its id and state, and ask what to do: use
-that ticket (groom it), file anyway, or stop. Do not draft past a match without my answer. A related
-ticket that is not the same problem is listed in the draft, with its id, and needs no question. Run
-both searches again just before step 7, in case a ticket was filed while I reviewed the draft.
+tickets (set the state filter if the default leaves them out). Follow the cursor through all the
+pages of each search, and run each search a second time with different words (a synonym, or the
+title you would give the ticket). A match is the same problem, not the same words. If one matches,
+say so, with its id and state, and ask what to do: use that ticket (groom it), file anyway, or stop.
+Do not draft past a match without my answer. A related ticket that is not the same problem is listed
+in the draft, with its id, and needs no question. Run both searches again just before step 7, in
+case a ticket was filed while I reviewed the draft.
 
 ### 4. Draft
 

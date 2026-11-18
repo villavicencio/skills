@@ -257,16 +257,17 @@ Ask one plain question to approve the list. A bare yes approves only the items t
 that replaces or removes text is applied only when I approve that item by number.
 
 Then edit with `patch` operations on `save_issue` (`replace`, `insert_before`, `insert_after`,
-`replace_range`, and `prepend` or `append` as below), not by sending the whole description again.
-Apply them one at a time. To add a section, use `insert_after` on the last line of the section above
-it, so it lands before the Agent notes. Copy each anchor from the text `get_issue` just returned,
-from inside a section and not from the `>>>` lines; it must match exactly once. If one fails, read
-the ticket again and rebuild the patch. If a patch cannot be placed, stop, say which items landed
-and which did not, and leave the rest.
+`replace_range`, and `append` as below), not by sending the whole description again. Apply them one
+at a time. To add a section, use `insert_after` on the last line of the section above it, so it
+lands before the Agent notes. Copy each anchor from the text `get_issue` just returned, from inside
+a section and not from the `>>>` lines; it must match exactly once. If one fails, read the ticket
+again and rebuild the patch. If a patch cannot be placed, stop, say which items landed and which did
+not, and leave the rest.
 
-A description with no section to anchor on (empty, or plain text) takes `prepend` for a missing Why
-and `append` for the other sections, but only when it has no Agent notes block. With an Agent notes
-block, anchor on the last line of text before it, and if there is none, say so and ask me.
+An empty description takes the new sections with `append`. A description of plain text with no
+headings gets each heading added in front of the text it covers, with `insert_before` anchored on
+that text, as items I approve by number; do not move or rewrite the text. If you cannot tell what a
+stretch of text covers, ask me.
 
 Do not change the state, labels or project unless I ask, or unless I chose that change in an
 interview answer. Change labels with `addLabels` and `removeLabels`, since `labels` replaces the

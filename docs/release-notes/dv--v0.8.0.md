@@ -87,4 +87,6 @@ claude plugin marketplace update villavicencio-skills
 claude plugin update dv@villavicencio-skills
 ```
 
+A machine whose marketplace is a local checkout also pulls that checkout first; see "Linux Claude Code instances" in `README.md`.
+
 The new version takes effect in a new session.

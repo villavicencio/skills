@@ -1,0 +1,29 @@
+{
+  "skill": "manager-mode",
+  "description": "Trigger evals for dv:manager-mode (the session works as an engineering manager; hired agents with named tiers do the engineering; `off` ends it). Hard near-misses in no_trigger: handing one task to one subagent is ordinary delegation, not the mode; stress-testing a plan with parallel critics is dv:critique; adversarial review of a diff is dv:gauntlet; a handoff is dv:handoff. See tooling/evals/README.md.",
+  "runs_per_query": 3,
+  "pass_threshold": 0.5,
+  "queries": [
+    { "split": "train", "expect": "trigger",    "q": "Switch to manager mode for this session." },
+    { "split": "train", "expect": "trigger",    "q": "Work as the engineering manager here: plan and brief, and let hired agents write all the code." },
+    { "split": "train", "expect": "trigger",    "q": "Manager mode off, just make the change yourself from now on." },
+    { "split": "train", "expect": "trigger",    "q": "Be the manager, not an engineer. Delegate all the engineering on this ticket." },
+    { "split": "train", "expect": "trigger",    "q": "Turn on manager mode and run the team for the next three tickets." },
+    { "split": "train", "expect": "trigger",    "q": "You plan, agents build. Don't touch the code yourself this session." },
+    { "split": "val",   "expect": "trigger",    "q": "Go into manager mode: you brief, check and report, and the agents do the work." },
+    { "split": "val",   "expect": "trigger",    "q": "Stop managing and go back to doing the work directly." },
+    { "split": "val",   "expect": "trigger",    "q": "For the rest of this session act as engineering manager and hire engineers per unit of work." },
+    { "split": "val",   "expect": "trigger",    "q": "Load the manager mode text; this project should run that way." },
+
+    { "split": "train", "expect": "no_trigger", "q": "Spawn a subagent to search the repo for every use of this function." },
+    { "split": "train", "expect": "no_trigger", "q": "Critique my plan with a skeptic, a simplifier and a historian before I build it." },
+    { "split": "train", "expect": "no_trigger", "q": "Run the gauntlet on my branch." },
+    { "split": "train", "expect": "no_trigger", "q": "Write a handoff for this session." },
+    { "split": "train", "expect": "no_trigger", "q": "Fix the off-by-one in the pagination helper." },
+    { "split": "train", "expect": "no_trigger", "q": "Read the handoff and tell me where we left off." },
+    { "split": "val",   "expect": "no_trigger", "q": "Review my CLAUDE.md for stale rules." },
+    { "split": "val",   "expect": "no_trigger", "q": "Write a status report for my manager about this sprint." },
+    { "split": "val",   "expect": "no_trigger", "q": "Summarize this Reddit thread: https://www.reddit.com/r/programming/comments/abc/." },
+    { "split": "val",   "expect": "no_trigger", "q": "Set up an orca.yaml so new worktrees get their dependencies." }
+  ]
+}

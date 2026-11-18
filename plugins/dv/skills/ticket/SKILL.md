@@ -102,7 +102,7 @@ of the project search, and try a second wording if the first finds nothing. A ma
 problem, not the same words. If one matches, say so, with its id and state, and ask what to do: use
 that ticket (groom it), file anyway, or stop. Do not draft past a match without my answer. A related
 ticket that is not the same problem is listed in the draft, with its id, and needs no question. Run
-the project search again just before step 7, in case a ticket was filed while I reviewed the draft.
+both searches again just before step 7, in case a ticket was filed while I reviewed the draft.
 
 ### 4. Draft
 
@@ -160,7 +160,7 @@ new fact, and show the draft again.
 
 ### 7. Create
 
-Run the project search from step 3 again first. If a new match has appeared, go back to step 3.
+Run both searches from step 3 again first. If a new match has appeared, go back to step 3.
 
 Call `save_issue` with the team, project, title, description, labels and state. Use real newlines
 in the description, not `\n` escapes. Do not set an assignee, priority or estimate unless I asked.
@@ -268,8 +268,9 @@ the ticket again and rebuild the patch. If a patch cannot be placed, stop, say w
 and which did not, and leave the rest.
 
 An empty description takes the new sections with `append`. A description that has text but no
-headings (plain text, or only an Agent notes block) has no safe place to anchor a patch. Say so,
-show me the sections you would add as text, and leave the ticket as it is; I will edit it in Linear.
+headings (plain text, or only an Agent notes block) has no safe place to anchor a patch. Leave the
+description as it is, show me the sections you would add as text, and say I will edit it in Linear.
+Other approved edits, such as the title, still apply.
 
 Do not change the state, labels or project unless I ask, or unless I chose that change in an
 interview answer. Change labels with `addLabels` and `removeLabels`, since `labels` replaces the

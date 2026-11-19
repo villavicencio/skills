@@ -33,8 +33,8 @@ Grooming moved out of `dv:ticket` into its own skill and does more than before:
   that the interview answer stands in for File's draft review (you can still ask to see a draft).
   A split files the children first and changes the parent last, in one all-or-none save that
   stops if the parent changed since you approved the split; a failure part way leaves work
-  duplicated and reported rather than removed. After a save error it reads the ticket back, or for
-  a new ticket searches for it by title, before retrying or reporting. No id is written before its ticket exists.
+  duplicated and reported rather than removed. After an edit error it reads the ticket back before
+  retrying; after a create error it stops and reports what it finds for you to settle. No id is written before its ticket exists.
 
 ## Changed
 

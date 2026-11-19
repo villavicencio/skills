@@ -1,6 +1,6 @@
 ---
 name: closeout
-description: "Close out a finished worktree session and brief the parent session in the main checkout. Verifies from git, gh and the tracker (not from memory) the ticket's state, every PR the session opened and whether each merged, anything in the worktree that is uncommitted or not on the default branch, and whether the main checkout is level with its remote. Writes a plain-text note for the parent (what shipped, tickets filed or changed, things noticed and not filed, decisions waiting, cleanup the parent owns, whether a reply is needed) and copies it to the clipboard, says whether the worktree is safe to delete and what would be lost if not, and when it is safe archives the session's handoff. Never removes the worktree without a yes. Use when the user says \"close out this worktree\", \"this session is finished, brief the parent\", \"is this worktree safe to delete\" or \"wrap up this worktree\". NOT for work that continues in a later session (that is dv:handoff), NOT for merging a PR or deleting a merged branch."
+description: "Close out a finished worktree session and brief the parent session in the main checkout. Verifies from git, gh and the tracker (not from memory) the ticket, the session's PRs, what the worktree holds that is uncommitted, only here or not on the default branch, and the main checkout against its upstream; a check that cannot run makes the verdict 'not confirmed safe'. Writes a plain-text note for the parent (what shipped, tickets filed or changed, things noticed and not filed, decisions waiting, cleanup the parent owns, whether a reply is needed) and copies it to the clipboard, says whether the worktree is safe to delete and what would be lost if not, and when it is safe archives the session's handoff. Never removes the worktree without a yes. Use when the user says \"close out this worktree\", \"is this worktree safe to delete\" or \"wrap up this worktree\". NOT for work that continues in a later session (that is dv:handoff), NOT for merging a PR or deleting a merged branch."
 license: Apache-2.0
 metadata:
   author: villavicencio
@@ -60,9 +60,10 @@ else
   [ "$TOP" = "$MAIN" ] && echo "!! this IS the main checkout, not a linked worktree: never report it safe to delete"
   [ -n "$B" ] && echo "ticket id in the branch name (a hint, confirm it): $(printf '%s' "$B" | grep -o -i -E '[a-z]{2,10}-[0-9]+' | head -1 | tr '[:lower:]' '[:upper:]')"
 
-  # --prune drops remote-tracking refs whose branch is gone, so "on origin" below is current.
+  # No --prune: the remote-tracking refs are shared with every worktree and are not this skill's
+  # to delete. Where a commit lives on origin is asked of origin directly (ls-remote) further down.
   FETCH=ok
-  if git remote | grep -q -x origin; then git fetch --quiet --prune origin 2>/dev/null || FETCH=FAILED; else FETCH=no-origin; fi
+  if git remote | grep -q -x origin; then git fetch --quiet origin 2>/dev/null || FETCH=FAILED; else FETCH=no-origin; fi
   echo "fetch from origin: $FETCH"
   [ "$FETCH" = ok ] || FAILS="$FAILS- fetch from origin ($FETCH): remote state is the last fetched copy$NL"
   DEFAULT=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's@^origin/@@')
@@ -109,11 +110,31 @@ else
     FAILS="$FAILS- git status in the worktree failed: uncommitted and ignored files unknown$NL"
   fi
 
+  # State that lives in this worktree's own git dir and goes with it: an operation in progress,
+  # per-worktree refs, a lock.
+  echo "=== Worktree-private git state ==="
+  WGD=$(git rev-parse --absolute-git-dir); PRIV=""
+  for x in rebase-merge rebase-apply MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD BISECT_LOG; do
+    [ -e "$WGD/$x" ] && PRIV="$PRIV  in progress: $x$NL"
+  done
+  if WREFS=$(git for-each-ref --format='%(refname)' refs/worktree/); then
+    [ -n "$WREFS" ] && PRIV="$PRIV$(printf '%s\n' "$WREFS" | sed 's/^/  per-worktree ref: /')$NL"
+  else FAILS="$FAILS- listing per-worktree refs failed$NL"; fi
+  [ -e "$WGD/locked" ] && PRIV="$PRIV  worktree is locked: $(cat "$WGD/locked" 2>/dev/null)$NL"
+  if [ -n "$PRIV" ]; then printf '%s' "$PRIV"; else echo "(none)"; fi
+
   if [ -f "$TOP/.gitmodules" ]; then
-    echo "=== Submodules: uncommitted changes, stashes, commits on no remote-tracking branch ==="
+    echo "=== Submodules ==="
+    if SMST=$(git -C "$TOP" submodule status --recursive); then
+      NINIT=$(printf '%s\n' "$SMST" | grep -c '^[^-]')
+      echo "initialized submodules: $NINIT"
+      [ "$NINIT" -gt 0 ] && echo "!! a plain worktree removal refuses a worktree with an initialized submodule (see Step 5)"
+    else FAILS="$FAILS- git submodule status failed$NL"; fi
+    echo "--- uncommitted changes, stashes, commits on no remote-tracking branch, per submodule:"
+    # Each git call must succeed, or the foreach fails and the check is listed as not run.
     if SUB=$(git -C "$TOP" submodule foreach --quiet --recursive \
-        'o=$(git status --porcelain; git stash list; git log --oneline --branches --not --remotes); [ -z "$o" ] || printf "== %s\n%s\n" "$sm_path" "$o"'); then
-      if [ -n "$SUB" ]; then printf '%s\n' "$SUB"; else echo "(none)"; fi
+        'a=$(git status --porcelain) && b=$(git stash list) && c=$(git log --oneline --branches --not --remotes) || exit 1; o="$a$b$c"; [ -z "$o" ] || printf "== %s\n%s\n%s\n%s\n" "$sm_path" "$a" "$b" "$c"'); then
+      if [ -n "$SUB" ]; then printf '%s\n' "$SUB" | grep .; else echo "(none)"; fi
     else FAILS="$FAILS- submodule check failed: work inside a submodule clone is unknown$NL"; fi
   fi
 
@@ -163,8 +184,19 @@ UPS_END
       [ -n "$CHOK" ] || FAILS="$FAILS- git cherry failed: commits already merged by patch may be listed as unmerged$NL"
       UNMERGED=$(printf '%s\n' "$CAND" | grep . | grep -v -x -F -e "$(printf '%s' "$SAME" | grep . || echo NONE)")
       if [ -z "$UNMERGED" ]; then echo "(none)"; else
+        # Ask origin which branch tips exist now, then test each commit against those tips.
+        RH=""; RHOK=""
+        if [ "$FETCH" != no-origin ] && RH=$(git ls-remote --heads origin | cut -f1); then RHOK=1
+        else FAILS="$FAILS- git ls-remote origin failed: whether each unmerged commit is on origin is unknown$NL"; fi
         printf '%s\n' "$UNMERGED" | while IFS= read -r c; do
-          if [ -n "$(git branch -r --contains "$c" 2>/dev/null | head -1)" ]; then where="on origin as of this fetch"; else where="NOT on origin"; fi
+          where="origin unknown"
+          if [ -n "$RHOK" ]; then
+            where="NOT on any origin branch"
+            for h in $(printf '%s\n' "$RH"); do
+              if ! git cat-file -e "$h^{commit}" 2>/dev/null; then where="origin has a tip not fetched here: unknown"
+              elif git merge-base --is-ancestor "$c" "$h"; then where="on an origin branch"; break; fi
+            done
+          fi
           echo "  $(git log -1 --format='%h %s' "$c") [$where]"
         done
       fi
@@ -173,20 +205,27 @@ UPS_END
       FAILS="$FAILS- git rev-list failed: commits not on the default branch are unknown$NL"
     fi
   fi
-  if [ -n "$B" ]; then
-    ST=$(git stash list | grep -F -e " on $B:" -e " On $B:")
-    [ -n "$ST" ] && { echo "=== Stashes made on this branch (they outlive the worktree, but nobody will look for them) ==="; printf '%s\n' "$ST"; }
-  fi
+  if SL=$(git stash list); then
+    ST=$(printf '%s\n' "$SL" | grep -F -e " on ${B:-(no branch)}:" -e " On ${B:-(no branch)}:")
+    [ -n "$ST" ] && { echo "=== Stashes made on ${B:-a detached HEAD} (they outlive the worktree, but nobody will look for them) ==="; printf '%s\n' "$ST"; }
+  else FAILS="$FAILS- git stash list failed$NL"; fi
 
   echo "=== Main checkout vs its own upstream ==="
   MB=$(git -C "$MAIN" branch --show-current)
   if MS=$(git -C "$MAIN" status --porcelain); then
     echo "branch: ${MB:-(detached)}; uncommitted entries: $(printf '%s' "$MS" | grep -c .)"
   else FAILS="$FAILS- git status in the main checkout failed$NL"; fi
-  if UP=$(git -C "$MAIN" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null) && LR=$(git -C "$MAIN" rev-list --left-right --count "$UP...HEAD"); then
-    echo "upstream: $UP; behind it: $(printf '%s' "$LR" | cut -f1); ahead of it: $(printf '%s' "$LR" | cut -f2)"
+  MR=""; [ -n "$MB" ] && MR=$(git -C "$MAIN" config "branch.$MB.remote")
+  if [ -z "$MR" ] || [ "$MR" = "." ]; then
+    FAILS="$FAILS- the main checkout's branch has no remote upstream: level with the remote is unknown$NL"
   else
-    FAILS="$FAILS- the main checkout's branch has no upstream (or the count failed): level with the remote is unknown$NL"
+    MFETCH=ok
+    if [ "$MR" != origin ] || [ "$FETCH" != ok ]; then git -C "$MAIN" fetch --quiet "$MR" 2>/dev/null || MFETCH=FAILED; fi
+    if [ "$MFETCH" = ok ] && UP=$(git -C "$MAIN" rev-parse --abbrev-ref --symbolic-full-name '@{u}') && LR=$(git -C "$MAIN" rev-list --left-right --count "$UP...HEAD"); then
+      echo "upstream: $UP (remote $MR, fetched now); behind it: $(printf '%s' "$LR" | cut -f1); ahead of it: $(printf '%s' "$LR" | cut -f2)"
+    else
+      FAILS="$FAILS- the main checkout's upstream on remote $MR could not be fetched or counted: level with the remote is unknown$NL"
+    fi
   fi
 
   echo "=== Checks that did not run ==="
@@ -221,8 +260,15 @@ Then complete the picture from the systems, not from memory:
   checkout's, and rebuildable output (a virtualenv, `node_modules`, caches), lose nothing. Any
   other "only here" entry, a "different" one (an edited `.env`) or a "not examined" one is a loss
   until you have looked at it: name it.
-- No submodule line was printed under a `==` header (when the repo has submodules).
+- "Worktree-private git state" says none: an operation in progress or a per-worktree ref goes
+  with the worktree.
+- No submodule was listed under a `==` header (when the repo has submodules).
+- No stash is listed as made on this branch or detached HEAD. A stash survives the removal but
+  nobody will look for it, so name it.
 - "Checks that did not run" says none. Any line there makes the verdict not confirmed safe.
+
+Safe to delete is about data. Whether a given removal command can do it is separate: see the
+initialized-submodule case in Step 5.
 
 Otherwise it is **not safe to delete**, and the reply names exactly what would be lost: each
 file, and each commit by short sha and subject. Say where a commit still lives. On a named branch
@@ -354,6 +400,11 @@ after this session has ended. Do not run it.
 - Otherwise: `git -C <main checkout> worktree remove <worktree path>`. It keeps the branch;
   deleting a merged branch is a separate procedure and not this skill's.
 - If the optional section below applies, it replaces this command with its own offer.
+- **Initialized submodules.** If Step 1 printed "initialized submodules" above 0, `wt done`,
+  `git worktree remove` and a plain `orca worktree rm` all refuse this worktree. Say so, and point
+  to the guarded procedure instead of a plain command: `dv:orca-setup` Step 5 (`orca worktree rm
+  --force`, after its submodule checks) or dotfiles `docs/agents/code-review.md`, "Worktrees with
+  submodules are detached, not removed". Do not offer `--force` yourself.
 
 When the worktree is not safe, or not confirmed safe, name no removal command and offer none.
 
@@ -396,8 +447,8 @@ field: that marks a running agent. A terminal without it is a plain shell, and a
 would be run as commands, so never send to one.
 
 - Exactly one qualifying terminal: send the saved note from Step 3, once, with the CLI path the
-  block printed in place of `<orca CLI>` (no variable from that block survives to this call):
-  `<orca CLI> terminal send --terminal <handle> --text "$(cat "<note path>")" --enter --wait-submit 20 --json`
+  block printed in place of `<orca CLI>`, kept inside the quotes (no variable from that block survives to this call):
+  `"<orca CLI>" terminal send --terminal <handle> --text "$(cat "<note path>")" --enter --wait-submit 20 --json`
   Report what the result says (`input_accepted`, and whether a turn was seen to start), not
   "delivered". Do not resend on a timeout. After a transport error, reissue the same command with
   the `--retry-request` id the error reports.
@@ -415,10 +466,11 @@ still need it pasted.
 remove this worktree now? Run the removal only after my yes, in a later turn, as the last action
 of the session, because it stops this worktree's sessions:
 
-`<orca CLI> worktree rm --worktree "path:<worktree path>" --json`
+`"<orca CLI>" worktree rm --worktree "path:<worktree path>" --json`
 
 Use the `path:` selector (`current` and `active` are refused). Add no `--force` and no
-`--delete-branch`: if the removal is refused, report the refusal and stop. Without my yes, name
+`--delete-branch`: if the removal is refused, report the refusal and stop. With an initialized
+submodule, do not offer this command at all (Step 5). Without my yes, name
 this command in the reply instead and leave it to me.
 
 ## Notes

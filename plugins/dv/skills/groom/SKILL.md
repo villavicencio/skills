@@ -303,34 +303,34 @@ approves only the items that add.
 may offer this instead of patches: show the complete new description, say that the old one stays
 in Linear's history, and ask one plain question to replace the whole description. Relations, the
 title and filings stay numbered items beside it. A no leaves the description exactly as it was.
+Just before saving, read the ticket again; if its description is no longer the one the
+replacement was built from, do not save: say what changed and ask again.
 Patches stay the default; three changed sections allow the offer and do not decide it.
 
 **Order of writes.**
 
-1. **A split, parent first.** Keep the parent's description exactly as `get_issue` returns it
-   now; it is the copy to restore. Then apply the parent's approved change in one `save_issue`
-   call (its patch list is atomic: one failing operation aborts the whole save), so it lands whole
-   or not at all: the reduced description (Scope naming the children by title) or, when the parent
-   becomes the first child, its reduction to that child's scope. Read the ticket again and confirm
-   the change is there. If it did not land, file no children: say why, and stop the split there.
-2. **Then file approved children and spin-offs.** Read `dv:ticket`'s `SKILL.md`
-   (`../ticket/SKILL.md` from this skill's directory), section "File", and create each with its
-   rules: project found live (a child takes the parent's project), labels from the team, the
-   format, facts checked or marked `[assumed]`, Backlog with a pull condition unless it can start
-   now, the re-run of the duplicate searches just before creating, and `save_issue`. My interview
-   answer stands in for File step 6's draft and question. Set each one's relations in the
-   `save_issue` call that creates it: `parentId` for a child under a parent that stays,
-   `blockedBy` for a child that waits on another child or for any ticket whose pull condition names
-   an open ticket (unless File mode already sets it), and `relatedTo` the groomed ticket for a
-   spin-off. If a child's filing fails, stop filing and put the parent back: save the kept copy as
-   its description, read it again to confirm, and name the children that exist under Needs you
-   (they hold part of the parent's work, now in two places, and are not deleted). If a spin-off's
-   filing fails, the parent stays as it is; name the missing spin-off and its draft under Needs you.
-3. **Never write a ticket id that does not exist yet.** Add a child's or spin-off's id to the
-   groomed ticket only in a follow-up edit after the `save_issue` call that created it, using the
-   id it returned.
-4. **Then the rest of the approved items** on the groomed ticket. If a patch fails, the rule below
-   applies.
+1. **A split never loses work.** Linear cannot create several tickets and edit another in one
+   step, so a split can fail part way. Order it so that a failure can only leave work in two
+   places, never in none: file the children first, and change the parent last.
+2. **File approved children and spin-offs.** Read `dv:ticket`'s `SKILL.md` (`../ticket/SKILL.md`
+   from this skill's directory), section "File", and create each with its rules: project found
+   live (a child takes the parent's project), labels from the team, the format, facts checked or
+   marked `[assumed]`, Backlog with a pull condition unless it can start now, the re-run of the
+   duplicate searches just before creating, and `save_issue`. My interview answer stands in for
+   File step 6's draft and question. Set each one's relations in the `save_issue` call that
+   creates it: `parentId` for a child under a parent that stays, `blockedBy` for a child that waits
+   on another child or for any ticket whose pull condition names an open ticket (unless File mode
+   already sets it), and `relatedTo` the groomed ticket for a spin-off. If a filing fails, stop:
+   leave the parent as it is (it still holds all the work), and name the tickets that exist, and
+   the draft of each that does not, under Needs you. Delete nothing.
+3. **Never write a ticket id that does not exist yet.** Write a child's or spin-off's id into the
+   groomed ticket only after the `save_issue` call that created it, using the id it returned.
+4. **Then change the groomed ticket.** For a split, the parent's approved change (the reduced
+   description with Scope naming the children by id, or its reduction to the first child's scope)
+   goes in one `save_issue` call with all its patches, which Linear applies all or none. Read the
+   ticket again from `get_issue` just before building the patches. If that call fails, read the
+   ticket again and retry once; if it still fails, stop and say under Needs you that the children
+   exist and the parent still carries their work. Then apply the rest of the approved items.
 
 **Patches.** Edit with `patch` operations on `save_issue` (`replace`, `insert_before`,
 `insert_after`, `replace_range`, and `append` for an empty description), not by sending the whole

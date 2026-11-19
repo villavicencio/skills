@@ -327,14 +327,20 @@ Patches stay the default; three changed sections allow the offer and do not deci
    groomed ticket only after the `save_issue` call that created it, using the id it returned.
 4. **Then change the groomed ticket.** For a split, the parent's approved change (the reduced
    description with Scope naming the children by id, or its reduction to the first child's scope)
-   goes in one `save_issue` call with all its patches, which Linear applies all or none. Read the
-   ticket again from `get_issue` just before building the patches. If that call fails, read the
-   ticket again and retry once; if it still fails, stop and say under Needs you that the children
-   exist and the parent still carries their work. Then apply the rest of the approved items.
+   goes in one `save_issue` call with all its patches, which Linear applies all or none; this is
+   the one exception to applying patches one at a time. Just before building it, read the ticket
+   again and compare its description with the one the split was approved on: if it changed, do not
+   save; say what changed and ask again. If the call returns an error, read the ticket before
+   doing anything else, because a save can land even when the reply is an error: if the change is
+   there, go on; if not, retry once; if it still is not there, stop and say under Needs you that
+   the children exist and the parent still carries their work. Then apply the rest of the approved
+   items.
 
 **Patches.** Edit with `patch` operations on `save_issue` (`replace`, `insert_before`,
 `insert_after`, `replace_range`, and `append` for an empty description), not by sending the whole
-description again, unless the whole-description replacement was approved. Apply them one at a time.
+description again, unless the whole-description replacement was approved. Apply them one at a time,
+except a split's parent change (above). After any error from `save_issue`, read the ticket before
+retrying: the edit may have landed.
 To add a section, use `insert_after` on the last line of the section above it, so it lands before
 the Agent notes; a missing first section goes in with `insert_before` on the first heading line.
 Copy each anchor from the text `get_issue` just returned, from inside a section or a heading line

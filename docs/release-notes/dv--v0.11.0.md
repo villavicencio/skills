@@ -31,9 +31,10 @@ Grooming moved out of `dv:ticket` into its own skill and does more than before:
   Patches stay the default; a whole-description replacement can be offered when three or more
   sections change. Approved children and spin-offs are filed with `dv:ticket`'s File rules, except
   that the interview answer stands in for File's draft review (you can still ask to see a draft).
-  A split files the children first and changes the parent last in one all-or-none save, so a
-  failure part way leaves work duplicated and reported, never lost. No id is written before its
-  ticket exists.
+  A split files the children first and changes the parent last, in one all-or-none save that
+  stops if the parent changed since you approved the split; a failure part way leaves work
+  duplicated and reported rather than removed. After any save error it reads the ticket before
+  retrying. No id is written before its ticket exists.
 
 ## Changed
 

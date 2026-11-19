@@ -311,7 +311,9 @@ Patches stay the default; three changed sections allow the offer and do not deci
 
 1. **A split never loses work.** Linear cannot create several tickets and edit another in one
    step, so a split can fail part way. Order it so that a failure can only leave work in two
-   places, never in none: file the children first, and change the parent last.
+   places, never in none: file the children first, and change the parent last. Before filing the
+   first child, read the parent again and compare its description with the one the split was
+   approved on; if it changed, file nothing, say what changed and ask again.
 2. **File approved children and spin-offs.** Read `dv:ticket`'s `SKILL.md` (`../ticket/SKILL.md`
    from this skill's directory), section "File", and create each with its rules: project found
    live (a child takes the parent's project), labels from the team, the format, facts checked or
@@ -320,9 +322,11 @@ Patches stay the default; three changed sections allow the offer and do not deci
    File step 6's draft and question. Set each one's relations in the `save_issue` call that
    creates it: `parentId` for a child under a parent that stays, `blockedBy` for a child that waits
    on another child or for any ticket whose pull condition names an open ticket (unless File mode
-   already sets it), and `relatedTo` the groomed ticket for a spin-off. If a filing fails, stop:
-   leave the parent as it is (it still holds all the work), and name the tickets that exist, and
-   the draft of each that does not, under Needs you. Delete nothing.
+   already sets it), and `relatedTo` the groomed ticket for a spin-off. If a `save_issue` that
+   creates a ticket returns an error, search the project for its exact title (`list_issues`) before
+   anything else: it may exist. If it does, use its id and go on. If not, stop: leave the parent as
+   it is (it still holds all the work), and name the tickets that exist, and the draft of each that
+   does not, under Needs you. Delete nothing.
 3. **Never write a ticket id that does not exist yet.** Write a child's or spin-off's id into the
    groomed ticket only after the `save_issue` call that created it, using the id it returned.
 4. **Then change the groomed ticket.** For a split, the parent's approved change (the reduced
@@ -330,7 +334,9 @@ Patches stay the default; three changed sections allow the offer and do not deci
    goes in one `save_issue` call with all its patches, which Linear applies all or none; this is
    the one exception to applying patches one at a time. Just before building it, read the ticket
    again and compare its description with the one the split was approved on: if it changed, do not
-   save; say what changed and ask again. If the call returns an error, read the ticket before
+   save. Say what changed, list the children already filed with their ids, and ask again. A
+   revised split reuses those children (edit them, or keep them as they are) and files only what
+   is new; a declined split leaves them under the parent and listed under Needs you. If the call returns an error, read the ticket before
    doing anything else, because a save can land even when the reply is an error: if the change is
    there, go on; if not, retry once; if it still is not there, stop and say under Needs you that
    the children exist and the parent still carries their work. Then apply the rest of the approved

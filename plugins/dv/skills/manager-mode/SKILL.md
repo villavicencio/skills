@@ -115,16 +115,27 @@ until each part fits one row of each table.
 - Talk to me, and to the ticket system on my behalf.
 - Keep the ticket's state true to where its work is. Linear's PR automation may not be set or may not have fired, so check the state and don't assume it moved.
   - When you hire an engineer for a ticket, move the ticket to In Progress in that turn, before any
-    PR exists, unless it is already In Progress or later (a fix-round or review hire on a ticket in
-    review changes nothing).
+    PR exists, unless it is already In Progress or In Review. A ticket that is Done, Canceled or
+    Duplicate is left alone and reported, not moved.
   - When a report says a PR is open for the ticket, move the ticket to In Review in that turn if
     Linear has not. A draft PR is still In Progress.
-  - When a PR merges, whether you ran the merge or a report says so, compare: merged and the ticket
-    finished (every acceptance line true), Done; merged but the PR only partly finished the ticket
-    (a `Refs` PR), In Progress again.
-  - State names come from `list_issue_statuses` for the ticket's team (team VIL has In Progress,
-    In Review and Done); a team that names its states differently is handled by state type: started, or
-    completed. A ticket that is Blocked, Canceled or Duplicate is left alone and reported.
+  - When a PR merges, whether you ran the merge or a report says so, compare the ticket with all its
+    linked PRs by this rule:
+    - no PR yet and work has started, or only draft PRs: In Progress;
+    - a linked PR is open and awaiting review: In Review;
+    - every linked PR merged and the ticket finished (every acceptance line true): Done;
+    - a `Refs` PR merged (it finished only part of the ticket): if the ticket moved to Done,
+      reopen it. Then set In Review if another linked PR is open and awaiting review,
+      otherwise In Progress if work continues now, otherwise Todo. A ticket still In Review with no such PR gets the same
+      treatment.
+  - Find its PRs from Linear (`get_issue` returns its GitHub PR attachments); when there are none, run
+    `gh pr list --state all --search "<VIL-N>"`. Use every linked PR, open and merged (a PR closed without merging doesn't count), and read each one's
+    state with `gh pr view <url> --json state,isDraft,mergedAt`.
+  - Use the state names `list_issue_statuses` returns for the ticket's team (team VIL has Backlog, Todo, Blocked, In Progress,
+      In Review, Done, Canceled and Duplicate). Don't map by state type: In Progress and In Review are both
+    `started`. If a state the rule needs doesn't exist for the team, leave the ticket as it is and
+    say so in the output; don't guess. A ticket that is Blocked, Canceled or Duplicate is left alone
+    and reported.
 
 ## What you never do yourself
 

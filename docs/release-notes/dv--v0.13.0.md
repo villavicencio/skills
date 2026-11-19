@@ -11,23 +11,48 @@ fired, so these skills check the state and correct it.
 
 ## Changed
 
-The rule, in each skill's own words: no PR yet and work started, In Progress; PR open and under
-review, In Review; PR merged and the ticket finished, Done; PR merged but only part of the ticket
-finished (a `Refs` PR), reopen it. State names come from `list_issue_statuses` for the ticket's
-team; a team with other names is handled by state type.
+Four skills compare a Linear ticket's state with its pull requests. Three correct a mismatch and
+one reports it (see below). The rule is the same in each:
 
-- **`dv:manager-mode`**: the manager moves the ticket to In Progress in the turn it hires an
-  engineer for it, to In Review in the turn a report says a PR is open, and compares state with PR
-  when a merge is reported. It fixes the state itself.
-- **`dv:handoff`**: a new Step 1b compares the session's ticket with its PR before the handoff is
-  written, fixes the state, and records it in the handoff. It fixes the state itself: the session's
-  own work is what the state describes.
-- **`dv:closeout`**: the ticket check in Step 1 compares state with PR and fixes the state (the
-  state only, never the description or checklist), and lists the change under TICKETS FILED OR
-  CHANGED. A merged PR does not make the ticket Done while an acceptance line is untrue.
-- **`dv:pickup`**: the Step 3 cross-check compares state with PR and reports a mismatch as drift,
-  with the move that would fix it in the closing offer. It does not change the tracker: pickup reads
-  and orients, and no work has started yet.
+- no PR yet and work has started, or only draft PRs: In Progress;
+- a linked PR is open and awaiting review: In Review;
+- every linked PR merged and the ticket finished (every acceptance line true): Done;
+- a `Refs` PR merged (it finished only part of the ticket): if the ticket moved to Done, reopen it,
+  then set In Review if another linked PR is open and awaiting review, otherwise In Progress
+  if work continues now, otherwise Todo.
+
+How the skills apply it:
+
+- **State names, not state types.** They use the state names `list_issue_statuses` returns for the
+  ticket's team. In Progress and In Review are both of type `started`, so the type cannot choose
+  between them. If a state the rule needs does not exist for the team, the ticket is left as it is
+  and the skill's output says so. A ticket that is Blocked, Canceled or Duplicate is left alone and
+  reported.
+- **PRs from the ticket.** They take the ticket's linked PRs from Linear (`get_issue` returns its
+  GitHub PR attachments), and fall back to `gh pr list --state all --search "<VIL-N>"` when there
+  are none. Every linked PR counts, open and merged; a PR closed without merging does not.
+- **No assumption about Linear's own PR automation.** It may not be set, so each skill checks the
+  state.
+
+Per skill:
+
+- **`dv:manager-mode`** fixes the state itself. It moves the ticket to In Progress in the turn it
+  hires an engineer, unless the ticket is already In Progress or In Review (a Done, Canceled or
+  Duplicate ticket is left alone and reported); to In Review in the
+  turn a report says a PR is open; and applies the rule above when a PR merges.
+- **`dv:handoff`** (new Step 1b) applies the rule to the session's ticket before the handoff is
+  written, moves the state when it differs (when it is unclear whether the PR finished the ticket, it leaves the
+  state and asks), and records the ticket, its state and any move in the
+  handoff.
+- **`dv:closeout`** applies the rule in Step 1 and moves the state when it differs (the state only,
+  never the description or checklist), then reads it back and lists the change under TICKETS FILED
+  OR CHANGED.
+- **`dv:pickup`** applies the rule when the handoff, the branch name or the arguments name a ticket.
+  It changes nothing in the tracker: it reports a mismatch under Drift and folds the move into its
+  closing offer, and makes the move once the user says go.
+
+Not covered: a session that starts work with no hire and no pickup has no skill step that moves the
+ticket; the global instructions cover that case.
 
 ## Upgrade
 

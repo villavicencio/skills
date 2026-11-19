@@ -84,18 +84,26 @@ echo "created_at: $(date +%Y-%m-%dT%H:%M:%S%z | sed 's/\([0-9][0-9]\)$/:\1/')"
 
 Before writing, make the ticket's state true. The ticket is the one this session worked on, from
 its branch name (`<type>/vil-N-...`), its PR or the arguments. If none is clear, skip this step
-and say so in Step 4. Read its state from the tracker (for Linear, `get_issue`) and compare it
-with its PR from Step 1 (`gh pr list --head <branch> --state all` finds one the lists missed):
+and say so in Step 4. Read its state from the tracker (for Linear, `get_issue`).
+Find its PRs from Linear (`get_issue` returns its GitHub PR attachments); when there are none, run
+`gh pr list --state all --search "<VIL-N>"`. Use every linked PR, open and merged (a PR closed without merging doesn't count), and read each one's
+state with `gh pr view <url> --json state,isDraft,mergedAt`.
+Compare the state with those PRs:
 
-- no PR yet, and work has started (commits on the branch or uncommitted changes): In Progress;
-- PR open and under review: In Review (a draft PR is still In Progress);
-- PR merged and the ticket finished (every acceptance line true): Done;
-- PR merged but the PR only partly finished the ticket (a `Refs` PR): In Progress again.
+- no PR yet and work has started, or only draft PRs: In Progress;
+- a linked PR is open and awaiting review: In Review;
+- every linked PR merged and the ticket finished (every acceptance line true): Done;
+- a `Refs` PR merged (it finished only part of the ticket): if the ticket moved to Done,
+  reopen it. Then set In Review if another linked PR is open and awaiting review,
+  otherwise In Progress if work continues now, otherwise Todo. A ticket still In Review with no such PR gets the same
+  treatment.
 
 Linear's PR automation may not be set or may not have fired, so check rather than assume.
-State names come from `list_issue_statuses` for the ticket's team (team VIL has In Progress,
-In Review and Done); a team that names its states differently is handled by state type: started, or
-completed. A ticket that is Blocked, Canceled or Duplicate is left alone and reported.
+Use the state names `list_issue_statuses` returns for the ticket's team (team VIL has Backlog, Todo, Blocked, In Progress,
+In Review, Done, Canceled and Duplicate). Don't map by state type: In Progress and In Review are both
+`started`. If a state the rule needs doesn't exist for the team, leave the ticket as it is and
+say so in the output; don't guess. A ticket that is Blocked, Canceled or Duplicate is left alone
+and reported.
 When the state differs, move it (for Linear, `save_issue` with `state`). The session's own work is
 what the state describes, so this step fixes it instead of leaving a note. When it is unclear
 whether the PR finished the ticket, leave the state and list the question under Decisions Made or

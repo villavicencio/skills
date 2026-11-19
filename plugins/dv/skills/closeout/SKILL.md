@@ -284,20 +284,30 @@ Then complete the picture from the systems, not from memory:
   Read its state from the tracker now, with whatever access this session has (for Linear, the
   `get_issue` tool or a CLI). Read its acceptance checklist too and note each line that is not
   yet true. If the tracker can't be read, the ticket state is unverified: say so.
-- **The ticket's state matches its PR.** Compare the ticket with the PRs read above: no PR yet,
-  and the session did work: In Progress; PR open and under review: In Review; PR merged, and every
-  acceptance line is true: Done; PR merged but it only partly finished the ticket (a `Refs` PR),
-  or an acceptance line is not true: not Done, so In Progress again. A draft PR is still In
-  Progress. Linear's PR automation may not be set or may not have fired, so check rather than
-  assume.
-  State names come from `list_issue_statuses` for the ticket's team (team VIL has In Progress,
-  In Review and Done); a team that names its states differently is handled by state type: started, or
-  completed. A ticket that is Blocked, Canceled or Duplicate is left alone and reported.
-  When the state differs, fix it (for Linear, `save_issue` with `state`), read it back with `get_issue`, and list the change
-  under TICKETS FILED OR CHANGED. This is the one tracker write this skill makes: the state, never
-  the description or the checklist. When it is unclear whether the PR finished the ticket, change
-  nothing and put the question under WAITING ON. If the tracker can't be read or written, the
-  ticket state is unverified, as in the rule above.
+- **The ticket's state matches its PRs.** Read the ticket's state (for Linear, `get_issue`).
+  Find its PRs from Linear (`get_issue` returns its GitHub PR attachments); when there are none, run
+  `gh pr list --state all --search "<VIL-N>"`. Use every linked PR, open and merged (a PR closed without merging doesn't count), and read each one's
+  state with `gh pr view <url> --json state,isDraft,mergedAt`.
+  Compare the state with those PRs:
+  - no PR yet and work has started, or only draft PRs: In Progress;
+  - a linked PR is open and awaiting review: In Review;
+  - every linked PR merged and the ticket finished (every acceptance line true): Done;
+  - a `Refs` PR merged (it finished only part of the ticket): if the ticket moved to Done,
+    reopen it. Then set In Review if another linked PR is open and awaiting review,
+    otherwise In Progress if work continues now, otherwise Todo. A ticket still In Review with no such PR gets the same
+    treatment.
+
+  Linear's PR automation may not be set or may not have fired, so check rather than assume.
+  Use the state names `list_issue_statuses` returns for the ticket's team (team VIL has Backlog, Todo, Blocked, In Progress,
+  In Review, Done, Canceled and Duplicate). Don't map by state type: In Progress and In Review are both
+  `started`. If a state the rule needs doesn't exist for the team, leave the ticket as it is and
+  say so in the output; don't guess. A ticket that is Blocked, Canceled or Duplicate is left alone
+  and reported.
+  When the state differs, fix it (for Linear, `save_issue` with `state`), read it back with
+  `get_issue`, and list the change under TICKETS FILED OR CHANGED. This is the one tracker write
+  this skill makes: the state, never the description or the checklist. When it is unclear whether
+  the PR finished the ticket, change nothing and put the question under WAITING ON. If the tracker
+  can't be read or written, the ticket state is unverified, as in the rule above.
 - **Releases and tags** the session made, if any: `gh release view <tag>` or `git ls-remote --tags origin <tag>`.
 
 ### Step 2 — Decide whether the worktree is safe to delete

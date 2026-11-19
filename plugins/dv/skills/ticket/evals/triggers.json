@@ -1,17 +1,17 @@
 {
   "skill": "ticket",
-  "description": "Trigger evals for dv:ticket (file a Linear ticket in the agreed format from a rough request, or groom an existing ticket against it). Hard near-misses in no_trigger: doing the work a ticket describes, reading a ticket's status, GitHub issues and PRs, a handoff (dv:handoff) and a plan critique (dv:critique). See tooling/evals/README.md.",
+  "description": "Trigger evals for dv:ticket (file a Linear ticket in the agreed format from a rough request). Grooming an existing ticket moved to dv:groom in 0.11.0, so grooming requests are near-misses here. Hard near-misses in no_trigger: grooming, sizing or splitting an existing ticket (dv:groom), doing the work a ticket describes, reading a ticket's status, GitHub issues and PRs, a handoff (dv:handoff) and a plan critique (dv:critique). See tooling/evals/README.md.",
   "runs_per_query": 3,
   "pass_threshold": 0.5,
   "queries": [
     { "split": "train", "expect": "trigger",    "q": "File a ticket for the login page timing out after five minutes." },
     { "split": "train", "expect": "trigger",    "q": "Create a Linear issue to look into why the nightly export is slow." },
-    { "split": "train", "expect": "trigger",    "q": "Groom VIL-123." },
+    { "split": "train", "expect": "trigger",    "q": "File a Linear ticket: the settings page loses unsaved changes when you switch tabs." },
     { "split": "train", "expect": "trigger",    "q": "Write this up as a ticket: the CSV import drops the last row." },
-    { "split": "train", "expect": "trigger",    "q": "Check VIL-88 against our ticket format and tell me what is missing." },
+    { "split": "train", "expect": "trigger",    "q": "Log a ticket in Linear for upgrading the Postgres client before it goes out of support." },
     { "split": "train", "expect": "trigger",    "q": "Open a Linear ticket to research whether we should move the queue to a managed service." },
     { "split": "val",   "expect": "trigger",    "q": "Make a ticket for adding a retry to the webhook sender." },
-    { "split": "val",   "expect": "trigger",    "q": "Is VIL-210 ready to be worked? Groom it and tell me what's stale." },
+    { "split": "val",   "expect": "trigger",    "q": "Can you write up a Linear issue for adding rate limits to the public API?" },
     { "split": "val",   "expect": "trigger",    "q": "Turn this into a proper Linear ticket with a Done means list." },
     { "split": "val",   "expect": "trigger",    "q": "Draft a ticket for the cron job that should alert when the backup fails." },
 
@@ -24,6 +24,8 @@
     { "split": "val",   "expect": "no_trigger", "q": "List the Linear issues assigned to me this week." },
     { "split": "val",   "expect": "no_trigger", "q": "Open a pull request for this branch." },
     { "split": "val",   "expect": "no_trigger", "q": "Mark VIL-210 as Done now that the PR merged." },
-    { "split": "val",   "expect": "no_trigger", "q": "Write a design doc for the new sync service." }
+    { "split": "val",   "expect": "no_trigger", "q": "Write a design doc for the new sync service." },
+    { "split": "train", "expect": "no_trigger", "q": "Groom VIL-123 and size it." },
+    { "split": "val",   "expect": "no_trigger", "q": "Is VIL-210 ready to be worked? Check it and split it up if we have to." }
   ]
 }

@@ -4,7 +4,7 @@ description: "Write a HANDOFF.md serializing this session — what shipped, deci
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.12.0"
+  version: "0.13.0"
 ---
 
 # /handoff — Generate Session Handoff Doc
@@ -79,6 +79,28 @@ else
 fi
 echo "created_at: $(date +%Y-%m-%dT%H:%M:%S%z | sed 's/\([0-9][0-9]\)$/:\1/')"
 ```
+
+### Step 1b — Match the ticket's state to its PR
+
+Before writing, make the ticket's state true. The ticket is the one this session worked on, from
+its branch name (`<type>/vil-N-...`), its PR or the arguments. If none is clear, skip this step
+and say so in Step 4. Read its state from the tracker (for Linear, `get_issue`) and compare it
+with its PR from Step 1 (`gh pr list --head <branch> --state all` finds one the lists missed):
+
+- no PR yet, and work has started (commits on the branch or uncommitted changes): In Progress;
+- PR open and under review: In Review (a draft PR is still In Progress);
+- PR merged and the ticket finished (every acceptance line true): Done;
+- PR merged but the PR only partly finished the ticket (a `Refs` PR): In Progress again.
+
+Linear's PR automation may not be set or may not have fired, so check rather than assume.
+State names come from `list_issue_statuses` for the ticket's team (team VIL has In Progress,
+In Review and Done); a team that names its states differently is handled by state type: started, or
+completed. A ticket that is Blocked, Canceled or Duplicate is left alone and reported.
+When the state differs, move it (for Linear, `save_issue` with `state`). The session's own work is
+what the state describes, so this step fixes it instead of leaving a note. When it is unclear
+whether the PR finished the ticket, leave the state and list the question under Decisions Made or
+What's Next. Record the ticket, its state now and any move in the handoff body. If the tracker
+can't be read or written, say so in Gotchas & Watch-outs and in Step 4; don't claim the state is right.
 
 ### Step 2 — Write HANDOFF.md
 

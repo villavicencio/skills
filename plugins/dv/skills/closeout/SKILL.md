@@ -4,7 +4,7 @@ description: "Close out a finished worktree session and brief the parent session
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.12.0"
+  version: "0.13.0"
 ---
 
 # /closeout — close out a finished worktree session
@@ -284,6 +284,20 @@ Then complete the picture from the systems, not from memory:
   Read its state from the tracker now, with whatever access this session has (for Linear, the
   `get_issue` tool or a CLI). Read its acceptance checklist too and note each line that is not
   yet true. If the tracker can't be read, the ticket state is unverified: say so.
+- **The ticket's state matches its PR.** Compare the ticket with the PRs read above: no PR yet,
+  and the session did work: In Progress; PR open and under review: In Review; PR merged, and every
+  acceptance line is true: Done; PR merged but it only partly finished the ticket (a `Refs` PR),
+  or an acceptance line is not true: not Done, so In Progress again. A draft PR is still In
+  Progress. Linear's PR automation may not be set or may not have fired, so check rather than
+  assume.
+  State names come from `list_issue_statuses` for the ticket's team (team VIL has In Progress,
+  In Review and Done); a team that names its states differently is handled by state type: started, or
+  completed. A ticket that is Blocked, Canceled or Duplicate is left alone and reported.
+  When the state differs, fix it (for Linear, `save_issue` with `state`), read it back with `get_issue`, and list the change
+  under TICKETS FILED OR CHANGED. This is the one tracker write this skill makes: the state, never
+  the description or the checklist. When it is unclear whether the PR finished the ticket, change
+  nothing and put the question under WAITING ON. If the tracker can't be read or written, the
+  ticket state is unverified, as in the rule above.
 - **Releases and tags** the session made, if any: `gh release view <tag>` or `git ls-remote --tags origin <tag>`.
 
 ### Step 2 — Decide whether the worktree is safe to delete

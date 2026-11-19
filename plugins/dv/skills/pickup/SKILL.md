@@ -4,7 +4,7 @@ description: "Read this branch's handoff and orient: anchor on its commit (N com
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.12.0"
+  version: "0.13.0"
 ---
 
 # /pickup — Pick Up Where We Left Off
@@ -240,6 +240,25 @@ unable-to-verify:
 ```bash
 gh pr view <n> --json reviewDecision,mergeStateStatus,statusCheckRollup 2>/dev/null
 ```
+
+**Check the ticket against its PR.** When the handoff, the branch name (`<type>/vil-N-...`) or
+the arguments name a ticket, read its state from the tracker (for Linear, `get_issue`) and
+compare it with its PR. Step 2 lists open PRs only, so for a merged or closed one run
+`gh pr list --head <branch> --state all --json number,state,mergedAt,url`:
+
+- no PR yet, and work has started: should be In Progress;
+- PR open and under review: should be In Review (a draft PR is still In Progress);
+- PR merged and the ticket finished (every acceptance line true): should be Done;
+- PR merged but the PR only partly finished the ticket (a `Refs` PR): should be In Progress again.
+
+Linear's PR automation may not be set or may not have fired, so don't assume it moved the ticket.
+State names come from `list_issue_statuses` for the ticket's team (team VIL has In Progress,
+In Review and Done); a team that names its states differently is handled by state type: started, or
+completed. A ticket that is Blocked, Canceled or Duplicate is left alone and reported.
+A mismatch is verified drift. This skill reads and orients and changes nothing in the tracker, so name
+the move that would fix it under Drift, and include it in the closing offer ("Say go and I'll start
+on X and move VIL-N to In Progress."). Once I say go, make the move in the same turn work starts. If the tracker
+can't be read, the ticket's state is unverified.
 
 **Any verified drift LEADS the orientation**, right after the anchor line and its mover lines:
 open it with

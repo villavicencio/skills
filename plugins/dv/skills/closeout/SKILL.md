@@ -232,12 +232,13 @@ UNMERGED_END
     FAILS="$FAILS- the main checkout's branch has no remote upstream: level with the remote is unknown$NL"
   else
     # Ask the remote for the upstream branch's tip itself, so a narrow fetch refspec or a stale
-    # tracking ref cannot stand in for it. A missing object is fetched by name into FETCH_HEAD only.
+    # tracking ref cannot stand in for it. A missing object is fetched by name with an empty
+    # --refmap, which turns off the configured mapping, so no remote-tracking ref is updated.
     # Both run in the main checkout, so its own remote configuration applies.
     MM=$(git -C "$MAIN" config "branch.$MB.merge"); RS=""
     if [ -n "$MM" ] && LSU=$(git -C "$MAIN" ls-remote "$MR" "$MM"); then RS=$(printf '%s\n' "$LSU" | awk -v r="$MM" '$(2)==r {print $(1)}')
     fi
-    if [ -n "$RS" ] && { git cat-file -e "$RS^{commit}" 2>/dev/null || git -C "$MAIN" fetch --quiet "$MR" "$MM" 2>/dev/null; } \
+    if [ -n "$RS" ] && { git cat-file -e "$RS^{commit}" 2>/dev/null || git -C "$MAIN" fetch --quiet --refmap= "$MR" "$MM" 2>/dev/null; } \
        && git cat-file -e "$RS^{commit}" 2>/dev/null && LR=$(git -C "$MAIN" rev-list --left-right --count "$RS...HEAD"); then
       echo "upstream: $MR $MM, tip $(git rev-parse --short "$RS") per the remote now; behind it: $(printf '%s' "$LR" | cut -f1); ahead of it: $(printf '%s' "$LR" | cut -f2)"
     else
@@ -436,8 +437,15 @@ after this session has ended. Do not run it.
 
 When the worktree is not safe, or not confirmed safe, name no removal command and offer none.
 When it is safe once I accept losing build output, end the reply with one plain question that
-names those paths: accept losing them? On my yes, run Step 4, then name the removal command (or
-make the Orca offer below).
+names those paths: accept losing them? On my yes, recheck first (below), then run Step 4, then
+name the removal command (or make the Orca offer below).
+
+**Recheck in every later turn.** A yes arrives in a later turn, and the worktree may have changed
+since the verdict. Before acting on any yes (accepting losses, archiving, removing), run the Step 1
+block again and apply Step 2 to its output. Act only if the verdict is the same and, for "safe
+once you accept losing", the list of paths and their entry counts is the same. If anything
+changed, act on nothing: report the new verdict, update the saved note if it no longer holds, and
+ask again.
 
 Reply in this order, short:
 
@@ -494,7 +502,8 @@ one that is mid-turn reads it. So say in the reply that the note was sent and th
 still need it pasted.
 
 **Offer the removal.** Only when Step 2 said safe to delete (or I have accepted the listed
-build-output losses), end the reply with one question:
+build-output losses), end the reply with one question. Before running the removal on my yes,
+recheck as Step 5 says; if the verdict changed, do not remove. The question is:
 remove this worktree now? Run the removal only after my yes, in a later turn, as the last action
 of the session, because it stops this worktree's sessions:
 

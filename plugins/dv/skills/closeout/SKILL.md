@@ -134,8 +134,9 @@ else
   if [ -n "$RLOK" ] && ONLY=$(printf '%s\n%s\n' "$RL" "$OH" | grep . | sort -u | git rev-list --stdin --not --all); then
     ONLY=$(printf '%s\n' "$ONLY" | grep . | sort -u)
     if [ -n "$ONLY" ]; then
-      echo "$(printf '%s\n' "$ONLY" | grep -c .) commit(s), for example:"
-      printf '%s\n' "$ONLY" | head -5 | while IFS= read -r c; do echo "  $(git log -1 --format='%h %s' "$c")"; done
+      NO=$(printf '%s\n' "$ONLY" | grep -c .)
+      echo "$NO commit(s); list id $(printf '%s\n' "$ONLY" | git hash-object --stdin | cut -c1-12)$( [ "$NO" -gt 50 ] && echo "; the first 50:")"
+      printf '%s\n' "$ONLY" | head -50 | while IFS= read -r c; do echo "  $(git log -1 --format='%h %s' "$c")"; done
     else echo "(none)"; fi
   else FAILS="$FAILS- reflog check failed: commits reachable only from this worktree's reflog are unknown$NL"; fi
 
@@ -146,10 +147,10 @@ else
       echo "initialized submodules: $NINIT"
       [ "$NINIT" -gt 0 ] && echo "!! a plain worktree removal refuses a worktree with an initialized submodule (see Step 5)"
     else FAILS="$FAILS- git submodule status failed$NL"; fi
-    echo "--- per submodule: uncommitted, untracked and ignored entries, stashes, commits on no remote-tracking branch (local branches and tags):"
+    echo "--- per submodule: uncommitted, untracked and ignored entries, stashes, commits on local branches that no remote-tracking branch has:"
     # Each git call must succeed, or the foreach fails and the check is listed as not run.
     if SUB=$(git -C "$TOP" submodule foreach --quiet --recursive \
-        'a=$(git status --porcelain --ignored --untracked-files=all) && b=$(git stash list) && c=$(git log --oneline --branches --tags --not --remotes) || exit 1; o="$a$b$c"; [ -z "$o" ] || printf "== %s\n%s\n%s\n%s\n" "$sm_path" "$a" "$b" "$c"'); then
+        'a=$(git status --porcelain --ignored --untracked-files=all) && b=$(git stash list) && c=$(git log --oneline --branches --not --remotes) || exit 1; o="$a$b$c"; [ -z "$o" ] || printf "== %s\n%s\n%s\n%s\n" "$sm_path" "$a" "$b" "$c"'); then
       if [ -n "$SUB" ]; then printf '%s\n' "$SUB" | grep .; else echo "(none)"; fi
     else FAILS="$FAILS- submodule check failed: work inside a submodule clone is unknown$NL"; fi
   fi
@@ -287,6 +288,10 @@ Then complete the picture from the systems, not from memory:
 
 ### Step 2 — Decide whether the worktree is safe to delete
 
+Every verdict here means "by these checks". Git keeps state in more places than any list of
+checks covers, so the reply and the note always carry the **Not checked** list below with the
+verdict, and never say "safe" without it.
+
 **Safe to delete** only when all of these hold:
 
 - This is a linked worktree, not the main checkout.
@@ -298,8 +303,8 @@ Then complete the picture from the systems, not from memory:
   per-worktree config goes with the worktree.
 - No commit is listed as reachable only from this worktree's HEAD reflog or ORIG_HEAD.
 - No submodule was listed under a `==` header (when the repo has submodules): its uncommitted,
-  untracked or ignored entries, stashes, and commits on local branches or tags that no
-  remote-tracking branch has. Remote-tracking refs can be stale, so for a worktree with
+  untracked or ignored entries, stashes, and commits on local branches that no remote-tracking
+  branch has. Remote-tracking refs can be stale, so for a worktree with
   initialized submodules also apply the checks in `dv:orca-setup` Step 5 before any removal.
 - No stash is listed as made on this branch or detached HEAD. A stash survives the removal but
   nobody will look for it, so name it.
@@ -311,11 +316,24 @@ breaks them is only this. Ignored entries that are not the same as the main chec
 `venv/`, `node_modules/`, `__pycache__/`, `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`. And
 commits listed as reachable only from this worktree's HEAD reflog or ORIG_HEAD (usually commits
 amended or reset away; removal ends their recovery path). The verdict names each path with its
-entry count, and the reflog-only commits with their count and examples. It is not "safe" until I accept losing them: nothing in Steps 4 and 5
-that needs "safe" runs before that yes, and the question that asks for it names the paths.
+entry count, and the reflog-only commits with their count, list id and the commits as listed
+(all of them, or the first 50 when there are more). It is not "safe" until I accept losing them:
+nothing in Steps 4 and 5 that needs "safe" runs before that yes, and the question that asks for
+it names the paths and the reflog-only commits.
 
 Safe to delete is about data. Whether a given removal command can do it is separate: see the
 initialized-submodule case in Step 5.
+
+**Not checked** (a fixed list; copy it into the reply and the note under the verdict):
+
+- Tags created inside a submodule. A tag-only commit there is lost with the clone; push such tags
+  by hand.
+- Whether a submodule's remote-tracking refs are current. They can be stale, so "on no
+  remote-tracking branch" is a strong hint, not proof.
+- Anything outside git's view of the worktree that refers to it: editor or tool state, running
+  processes, paths written into other repos' configuration.
+- An ignored file compared only by content with the main checkout's copy, not by whether either
+  copy is the one that matters.
 
 Otherwise it is **not safe to delete**, and the reply names exactly what would be lost: each
 file (an edited `.env`, anything "different" or "not examined", anything "only here" outside the
@@ -335,7 +353,8 @@ Use these headings in this order, and write "none" under one with nothing to say
 
 ```
 CLOSEOUT NOTE from <branch or "detached"> at <worktree path>, <date and time with zone>
-Worktree: <safe to delete | safe once you accept losing: <build-output paths> | NOT safe to delete: what would be lost | not confirmed safe: what is unverified>
+Worktree: <safe to delete | safe once you accept losing: <build-output paths, reflog-only commits> | NOT safe to delete: what would be lost | not confirmed safe: what is unverified>, by these checks
+Not checked: <the fixed list from Step 2>
 
 WHAT SHIPPED
 <ticket id, title and state now; each PR with number, merge state and link; releases and tags>
@@ -467,21 +486,24 @@ after this session has ended. Do not run it.
   submodules are detached, not removed". Do not offer `--force` yourself.
 
 When the worktree is not safe, or not confirmed safe, name no removal command and offer none.
-When it is safe once I accept losing build output, end the reply with one plain question that
-names those paths: accept losing them? On my yes, recheck first (below), then run Step 4, then
+When it is safe once I accept losing, end the reply with one plain question that names what would
+be lost: the build-output paths with their entry counts, and the reflog-only commits with their
+count and list id. Accept losing them? On my yes, recheck first (below), then run Step 4, then
 name the removal command (or make the Orca offer below).
 
 **Recheck in every later turn.** A yes arrives in a later turn, and the worktree may have changed
 since the verdict. Before acting on any yes (accepting losses, archiving, removing), run the Step 1
 block again and apply Step 2 to its output. Act only if the verdict is the same and, for "safe
-once you accept losing", the listed paths, entry counts and reflog-only commits are the same. If anything
+once you accept losing", the listed paths, entry counts, reflog-only commit count and list id are
+the same. If anything
 changed, act on nothing: report the new verdict, update the saved note if it no longer holds, and
 ask again.
 
 Reply in this order, short:
 
-1. One line: safe to delete; safe once you accept losing (the build-output paths); not safe to
-   delete (and what would be lost); or not confirmed safe (and which check is missing).
+1. One line: safe to delete; safe once you accept losing (the build-output paths and reflog-only
+   commits); not safe to delete (and what would be lost); or not confirmed safe (and which check
+   is missing). Then the Not checked list from Step 2.
 2. **Needs you:** decisions waiting on me, and anything still owed on the ticket that this
    session could not close. Leave it out if there is none.
 3. The verified facts, one line each: the ticket and its state; each PR and its merge state; what

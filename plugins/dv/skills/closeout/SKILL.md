@@ -121,6 +121,7 @@ else
     [ -n "$WREFS" ] && PRIV="$PRIV$(printf '%s\n' "$WREFS" | sed 's/^/  per-worktree ref: /')$NL"
   else FAILS="$FAILS- listing per-worktree refs failed$NL"; fi
   [ -e "$WGD/locked" ] && PRIV="$PRIV  worktree is locked: $(cat "$WGD/locked" 2>/dev/null)$NL"
+  [ -s "$WGD/config.worktree" ] && PRIV="$PRIV  per-worktree config: $WGD/config.worktree$NL"
   if [ -n "$PRIV" ]; then printf '%s' "$PRIV"; else echo "(none)"; fi
 
   if [ -f "$TOP/.gitmodules" ]; then
@@ -185,20 +186,31 @@ UPS_END
       UNMERGED=$(printf '%s\n' "$CAND" | grep . | grep -v -x -F -e "$(printf '%s' "$SAME" | grep . || echo NONE)")
       if [ -z "$UNMERGED" ]; then echo "(none)"; else
         # Ask origin which branch tips exist now, then test each commit against those tips.
-        RH=""; RHOK=""
-        if [ "$FETCH" != no-origin ] && RH=$(git ls-remote --heads origin | cut -f1); then RHOK=1
+        # merge-base --is-ancestor exits 1 for "no" and anything else for an error, so an error is
+        # never read as "not on origin". The loops read here-docs, not pipes, so FAILS survives.
+        RHOK=""
+        if [ "$FETCH" != no-origin ] && LSR=$(git ls-remote --heads origin); then RHOK=1
         else FAILS="$FAILS- git ls-remote origin failed: whether each unmerged commit is on origin is unknown$NL"; fi
-        printf '%s\n' "$UNMERGED" | while IFS= read -r c; do
+        RH=$(printf '%s\n' "$LSR" | cut -f1 | grep .)
+        while IFS= read -r c; do
           where="origin unknown"
           if [ -n "$RHOK" ]; then
             where="NOT on any origin branch"
-            for h in $(printf '%s\n' "$RH"); do
-              if ! git cat-file -e "$h^{commit}" 2>/dev/null; then where="origin has a tip not fetched here: unknown"
-              elif git merge-base --is-ancestor "$c" "$h"; then where="on an origin branch"; break; fi
-            done
+            while IFS= read -r h; do
+              [ -n "$h" ] || continue
+              if ! git cat-file -e "$h^{commit}" 2>/dev/null; then where="unknown: origin has a tip not fetched here"; continue; fi
+              git merge-base --is-ancestor "$c" "$h"; rc=$?
+              if [ "$rc" = 0 ]; then where="on an origin branch"; break
+              elif [ "$rc" != 1 ]; then where="unknown: git merge-base failed"
+                FAILS="$FAILS- git merge-base failed for $c: whether it is on origin is unknown$NL"; fi
+            done <<RH_END
+$RH
+RH_END
           fi
           echo "  $(git log -1 --format='%h %s' "$c") [$where]"
-        done
+        done <<UNMERGED_END
+$UNMERGED
+UNMERGED_END
       fi
       echo "this worktree is $(git rev-list --count "HEAD..$BASE") commit(s) behind $BASE"
     else
@@ -219,12 +231,16 @@ UPS_END
   if [ -z "$MR" ] || [ "$MR" = "." ]; then
     FAILS="$FAILS- the main checkout's branch has no remote upstream: level with the remote is unknown$NL"
   else
-    MFETCH=ok
-    if [ "$MR" != origin ] || [ "$FETCH" != ok ]; then git -C "$MAIN" fetch --quiet "$MR" 2>/dev/null || MFETCH=FAILED; fi
-    if [ "$MFETCH" = ok ] && UP=$(git -C "$MAIN" rev-parse --abbrev-ref --symbolic-full-name '@{u}') && LR=$(git -C "$MAIN" rev-list --left-right --count "$UP...HEAD"); then
-      echo "upstream: $UP (remote $MR, fetched now); behind it: $(printf '%s' "$LR" | cut -f1); ahead of it: $(printf '%s' "$LR" | cut -f2)"
+    # Ask the remote for the upstream branch's tip itself, so a narrow fetch refspec or a stale
+    # tracking ref cannot stand in for it. A missing object is fetched by sha into FETCH_HEAD only.
+    MM=$(git -C "$MAIN" config "branch.$MB.merge"); RS=""
+    if [ -n "$MM" ] && LSU=$(git ls-remote "$MR" "$MM"); then RS=$(printf '%s\n' "$LSU" | awk -v r="$MM" '$(2)==r {print $(1)}')
+    fi
+    if [ -n "$RS" ] && { git cat-file -e "$RS^{commit}" 2>/dev/null || git fetch --quiet "$MR" "$MM" 2>/dev/null; } \
+       && git cat-file -e "$RS^{commit}" 2>/dev/null && LR=$(git -C "$MAIN" rev-list --left-right --count "$RS...HEAD"); then
+      echo "upstream: $MR $MM, tip $(git rev-parse --short "$RS") per the remote now; behind it: $(printf '%s' "$LR" | cut -f1); ahead of it: $(printf '%s' "$LR" | cut -f2)"
     else
-      FAILS="$FAILS- the main checkout's upstream on remote $MR could not be fetched or counted: level with the remote is unknown$NL"
+      FAILS="$FAILS- the main checkout's upstream ($MR ${MM:-?}) could not be read from the remote or counted: level with the remote is unknown$NL"
     fi
   fi
 
@@ -239,10 +255,13 @@ Then complete the picture from the systems, not from memory:
 
 - **Other PRs.** The block finds only PRs whose head is this branch (or, on a detached HEAD, PRs
   containing this commit). A session may have opened others from another branch, such as a
-  release PR. List your recent PRs and pick out this session's:
-  `gh pr list --author @me --state all --limit 30 --json number,title,headRefName,state,createdAt,url`.
-  Check each one with `gh pr view <n> --json number,state,mergedAt,baseRefName,url`. The note
-  names the PRs you checked; it does not claim the list is complete when you could not tell.
+  release PR. List every PR you opened in this repo since the session began, with the date the
+  session started (or the date of this branch's oldest commit not on the default branch):
+  `gh pr list --author @me --state all --search "created:>=<YYYY-MM-DD>" --limit 1000 --json number,title,headRefName,state,createdAt,url`.
+  Pick out this session's and check each with `gh pr view <n> --json number,state,mergedAt,baseRefName,url`.
+  This covers PRs opened under your account in this repo only. The note names the PRs you checked
+  and does not call the list complete; a PR in another repo, or opened under another account, is
+  named only if the session knows of it.
 - **The ticket.** Find its id from the arguments, the branch name, the PR titles or the session.
   Read its state from the tracker now, with whatever access this session has (for Linear, the
   `get_issue` tool or a CLI). Read its acceptance checklist too and note each line that is not
@@ -257,11 +276,13 @@ Then complete the picture from the systems, not from memory:
 - Nothing is uncommitted or untracked, `HANDOFF.md` aside.
 - No commit is listed under "Commits here that are not on" the default branch.
 - No ignored entry holds something that exists only here. Entries the same as the main
-  checkout's, and rebuildable output (a virtualenv, `node_modules`, caches), lose nothing. Any
-  other "only here" entry, a "different" one (an edited `.env`) or a "not examined" one is a loss
-  until you have looked at it: name it.
-- "Worktree-private git state" says none: an operation in progress or a per-worktree ref goes
-  with the worktree.
+  checkout's lose nothing. The only "only here" or "different" entries that may pass are build
+  output a setup step recreates, under one of these top-level paths: `.venv/`, `venv/`,
+  `node_modules/`, `__pycache__/`, `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`; name each one
+  you let pass in the reply. Any other "only here" or "different" entry (an edited `.env`), and
+  every "not examined" one, makes the worktree not safe: name it.
+- "Worktree-private git state" says none: an operation in progress, a per-worktree ref or
+  per-worktree config goes with the worktree.
 - No submodule was listed under a `==` header (when the repo has submodules).
 - No stash is listed as made on this branch or detached HEAD. A stash survives the removal but
   nobody will look for it, so name it.

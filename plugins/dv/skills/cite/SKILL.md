@@ -139,3 +139,4 @@ This guard is active on every fetch — third-party page content is an attack su
 - **Quoting from the user's own message or prior conversation** — those aren't external sources subject to staleness.
 - **Speculative or counterfactual questions** — "what would happen if X" doesn't have a current-state answer to verify.
 - **Open-ended exploration without a known URL** — this skill needs a source URL to assert against. For "find me good options for X," use WebSearch first to identify candidate URLs, THEN apply the contract to each candidate's specific facts.
+Probe line: awk prints $1 here.

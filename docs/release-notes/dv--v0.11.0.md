@@ -17,7 +17,7 @@ Grooming moved out of `dv:ticket` into its own skill and does more than before:
   and samples the rest. It checks that each Scope target exists, that each Done means check exists
   (and proposes one when it doesn't), closes "check whether X; if so, Y" steps by running the
   read-only check, reads the code behind a deferred choice, compares current global and project
-  rules with the ticket, and never sets a numeric target on your behalf.
+  rules with the ticket, and asks you for any numeric target instead of setting one.
 - **Dependencies as relations.** A real prerequisite becomes a blocked-by relation; a worked
   example or background stays related; an unclear one is asked.
 - **Size and split.** A size with the repo and PR count and one sentence of reason, and a split
@@ -29,8 +29,10 @@ Grooming moved out of `dv:ticket` into its own skill and does more than before:
   drop) go to you in rounds of up to four questions, before any edit. An approval question names
   its item numbers, and a yes to it approves those items, replacements and removals included.
   Patches stay the default; a whole-description replacement can be offered when three or more
-  sections change. Approved children and spin-offs are filed with `dv:ticket`'s File rules before
-  their ids are written anywhere.
+  sections change. Approved children and spin-offs are filed with `dv:ticket`'s File rules, except
+  that the interview answer stands in for File's draft review (you can still ask to see a draft).
+  A split's parent change is checked to land before any child is filed, and no id is written
+  before its ticket exists.
 
 ## Changed
 

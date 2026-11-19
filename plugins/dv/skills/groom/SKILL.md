@@ -71,8 +71,9 @@ many were skipped. Note each neighbor whose state contradicts what the ticket sa
 ticket that was canceled.
 
 **Overlapping work.** Run two or three `list_issues` searches across the team, completed tickets
-included, with the main words of the Scope steps (not the title alone). Read each candidate whose
-title matches a Scope step, at most 5, and classify it: already done (a Scope step is finished
+included, with the main words of the Scope steps (not the title alone), following each search's
+cursor through all its pages. Then read each candidate whose title matches a Scope step, at most 5,
+and classify it: already done (a Scope step is finished
 elsewhere), overlaps (the same work is planned elsewhere) or unrelated. An unlinked ticket that is
 already done or overlaps is a finding. This search is separate from the duplicate search for
 spin-offs in step 5.
@@ -83,7 +84,10 @@ ticket wait on something: "pull when", "wait for", "after X merges", "requires X
 
 **Repos.** Note the repo or repos the ticket changes. For each one the session can read, record
 the commit you check against: the branch or version the ticket names, or the default branch if it
-names none (`git rev-parse --short <ref>` after a fetch). A repo you cannot read is named in the
+names none. Do not fetch; grooming writes nothing to a repo. Take the local commit
+(`git rev-parse --short <ref>`) and the remote's (`git ls-remote origin <ref>`, which only reads).
+If they differ, the local copy is behind: say so, and check facts against the remote commit
+(`gh api`) or mark them as checked against the older one. A repo you cannot read is named in the
 report, with the facts left unchecked because of it.
 
 ## 2. Check against the format
@@ -151,8 +155,8 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
   quietly prefer the ticket or one of the files. If you cannot tell when a rule changed, say so.
 - **Targets.** A numeric threshold or target (a time, a count, a size) is mine to set. Do not
   confirm one for me, and do not make up one for a check you propose. Bring it to the interview
-  with any measured figures beside it, or write it as "proposed, not confirmed" and list it under
-  Needs you in the report.
+  with any measured figures beside it. Only when I decline to set it, or say I cannot yet, write it
+  as "proposed, not confirmed" and list it under Needs you in the report.
 - **Comment evidence.** When a Scope step depends on evidence that sits in a comment, link to that
   comment from the description (its url from `list_comments`) instead of copying the evidence in.
 - **Prerequisites.** For each one found in step 1:
@@ -194,7 +198,8 @@ these holds:
 - one part is risky and the rest is not.
 
 Do not split when the parts must land together to be correct. A proposed split names each child:
-a title in the format, its Done means lines taken from the parent, its order, and what blocks what.
+a title in the format, its Done means lines taken from the parent, its order, what blocks what, and
+one line with its project, state and labels.
 It also says what happens to the parent: it becomes the first child, or it stays as the parent with
 the children under it (`parentId`). When it stays as the parent, write its full replacement
 description: Why, a Scope that names the children, Done means and Decisions. The rest of its text
@@ -215,8 +220,8 @@ command's output, a ticket id). Three kinds:
   misses (search the repo for every spelling of a value the ticket changes). These become
   edit-list items.
 - **Spin-offs:** work the ticket suggests but should not carry: a helper, a follow-up measurement,
-  a neighbor with the same flaw. Each is one line: a title in the format, why, and the Linear
-  project it would go in (found live, as in `dv:ticket` File step 1). Before offering one, run
+  a neighbor with the same flaw. Each is one line: a title in the format, why, the Linear project
+  it would go in (found live, as in `dv:ticket` File step 1), and its state and labels. Before offering one, run
   File step 3's duplicate search for it and keep any match, with its id and state.
 - **Process observations:** something about how the work is set up that will trip whoever does it:
   a branch name that breaks the repo's rule (compare the ticket's `gitBranchName` with the
@@ -255,8 +260,10 @@ open replaces that line. An answer that supplies a pull condition also goes at t
 is my name from `whoami` or the session's instructions, not "me" and not "the user"; the date is
 today's date.
 
-An answer that approves a split or files a spin-off is my approval to create those tickets; do not
-show a draft and ask again unless I ask to see it. It is not approval to start the work.
+An answer that approves a split or files a spin-off is my approval to create those tickets, with
+what the proposal showed; do not show a draft and ask again unless I ask to see it. It is not
+approval to start the work. A split approval covers the children and the parent's change together:
+the two are one unit, filed and edited in step 7 without a second approval.
 
 ## 7. Edit
 
@@ -295,7 +302,10 @@ Patches stay the default; three changed sections allow the offer and do not deci
 
 **Order of writes.**
 
-1. File approved children and spin-offs first. Read `dv:ticket`'s `SKILL.md` (`../ticket/SKILL.md`
+1. Before filing children, make sure the parent's change can land: read the ticket again and check
+   that each patch anchor for that change matches exactly once (or that a whole-description
+   replacement was approved). If it cannot land, file no children: say why, and leave the split
+   for me to do in Linear or groom again. Then file approved children and spin-offs. Read `dv:ticket`'s `SKILL.md` (`../ticket/SKILL.md`
    from this skill's directory), section "File", and create each with its rules: project found
    live (a child takes the parent's project), labels from the team, the format, facts checked or
    marked `[assumed]`, Backlog with a pull condition unless it can start now, the re-run of the
@@ -306,7 +316,10 @@ Patches stay the default; three changed sections allow the offer and do not deci
    already sets it), and `relatedTo` the groomed ticket for a spin-off.
 2. Never write a ticket id that does not exist yet. Write a child's or spin-off's id into the
    groomed ticket only after the `save_issue` call that created it, using the id it returned.
-3. Then edit the groomed ticket, with the approved items only.
+3. Then edit the groomed ticket, with the approved items only, the split's parent change first.
+   If that change fails after its children exist, read the ticket again and retry it once. If it
+   still fails, stop: name the children that exist and the parent text that still describes the
+   unsplit work, and list it under Needs you. Do not delete the children.
 
 **Patches.** Edit with `patch` operations on `save_issue` (`replace`, `insert_before`,
 `insert_after`, `replace_range`, and `append` for an empty description), not by sending the whole

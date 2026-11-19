@@ -1,0 +1,29 @@
+{
+  "skill": "closeout",
+  "description": "Trigger evals for dv:closeout (close out a finished worktree session: verify ticket, PRs and worktree contents, brief the parent session, say whether the worktree is safe to delete). Hard near-misses in no_trigger: a handoff for work that continues (dv:handoff), orienting at session start (dv:pickup), merging a PR, deleting a merged branch, creating a worktree or its setup script (dv:orca-setup), and marking a ticket Done. See tooling/evals/README.md.",
+  "runs_per_query": 3,
+  "pass_threshold": 0.5,
+  "queries": [
+    { "split": "train", "expect": "trigger",    "q": "This worktree's work is finished. Close it out and brief the parent session." },
+    { "split": "train", "expect": "trigger",    "q": "Is this worktree safe to delete? Check that nothing in it is unmerged." },
+    { "split": "train", "expect": "trigger",    "q": "Close out this session: the PR merged and the ticket is done." },
+    { "split": "train", "expect": "trigger",    "q": "Write a note for the main checkout's session about what this worktree shipped, then tell me if I can remove it." },
+    { "split": "train", "expect": "trigger",    "q": "We're done here. Wrap up this worktree and tell the home session what happened." },
+    { "split": "train", "expect": "trigger",    "q": "Before I delete this worktree, verify the ticket state and every PR this branch opened." },
+    { "split": "val",   "expect": "trigger",    "q": "Closeout." },
+    { "split": "val",   "expect": "trigger",    "q": "The ticket for this worktree is finished. Brief the parent and archive this session's handoff." },
+    { "split": "val",   "expect": "trigger",    "q": "Can this worktree go? Tell me what would be lost if I removed it now." },
+    { "split": "val",   "expect": "trigger",    "q": "Finish up this worktree session and put a summary for the main session on my clipboard." },
+
+    { "split": "train", "expect": "no_trigger", "q": "Write a handoff for this session, I'll continue tomorrow." },
+    { "split": "train", "expect": "no_trigger", "q": "Pick up where we left off." },
+    { "split": "train", "expect": "no_trigger", "q": "Merge the PR for this branch." },
+    { "split": "train", "expect": "no_trigger", "q": "Create a new worktree for the billing fix." },
+    { "split": "train", "expect": "no_trigger", "q": "Write an Orca setup script so new worktrees get their .env copied in." },
+    { "split": "train", "expect": "no_trigger", "q": "Mark VIL-210 as Done now that the PR merged." },
+    { "split": "val",   "expect": "no_trigger", "q": "Delete the merged branch locally and on origin." },
+    { "split": "val",   "expect": "no_trigger", "q": "Close the GitHub issue about the broken link." },
+    { "split": "val",   "expect": "no_trigger", "q": "Save my progress with focus: finish the parser tests." },
+    { "split": "val",   "expect": "no_trigger", "q": "List the other sessions working in this repo." }
+  ]
+}

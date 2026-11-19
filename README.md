@@ -131,6 +131,7 @@ Every PR and every push to `main` runs:
 - `agentskills validate` against each skill directory under `plugins/*/skills/*` ([Agent Skills spec](https://agentskills.io/specification)).
 - A per-plugin skill-version-parity check (skills in the same plugin must share `metadata.version`).
 - A plugin-manifest-↔-skill-version-parity check (each plugin's `plugin.json` version must match the skill versions inside).
+- `tooling/check_skill_placeholders.py` fails on any `$` followed by a digit in a `SKILL.md`, because Claude Code replaces `$0`, `$1`, ... with the words typed after the skill command. Each hit shows as an error annotation on that file and line, inline on the PR diff when the line is part of it.
 
 The marketplace manifest (`.claude-plugin/marketplace.json`) and each plugin manifest (`.claude-plugin/plugin.json`) can also be validated locally with `claude plugin validate <path>`.
 

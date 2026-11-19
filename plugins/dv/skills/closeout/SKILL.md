@@ -276,12 +276,8 @@ Then complete the picture from the systems, not from memory:
 - This is a linked worktree, not the main checkout.
 - Nothing is uncommitted or untracked, `HANDOFF.md` aside.
 - No commit is listed under "Commits here that are not on" the default branch.
-- No ignored entry holds something that exists only here. Entries the same as the main
-  checkout's lose nothing. The only "only here" or "different" entries that may pass are build
-  output a setup step recreates, under one of these top-level paths: `.venv/`, `venv/`,
-  `node_modules/`, `__pycache__/`, `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`; name each one
-  you let pass in the reply. Any other "only here" or "different" entry (an edited `.env`), and
-  every "not examined" one, makes the worktree not safe: name it.
+- Every ignored entry is the same as the main checkout's. No ignored entry is "only here",
+  "different" or "not examined".
 - "Worktree-private git state" says none: an operation in progress, a per-worktree ref or
   per-worktree config goes with the worktree.
 - No submodule was listed under a `==` header (when the repo has submodules).
@@ -289,11 +285,19 @@ Then complete the picture from the systems, not from memory:
   nobody will look for it, so name it.
 - "Checks that did not run" says none. Any line there makes the verdict not confirmed safe.
 
+**Safe once you accept losing** the listed paths: every rule above holds except the ignored-entry
+rule, and every ignored entry that is not the same as the main checkout's is "only here" under one
+of these top-level paths, build output a setup step recreates: `.venv/`, `venv/`, `node_modules/`,
+`__pycache__/`, `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`. The verdict names each such
+path with its entry count. It is not "safe" until I accept losing them: nothing in Steps 4 and 5
+that needs "safe" runs before that yes, and the question that asks for it names the paths.
+
 Safe to delete is about data. Whether a given removal command can do it is separate: see the
 initialized-submodule case in Step 5.
 
 Otherwise it is **not safe to delete**, and the reply names exactly what would be lost: each
-file, and each commit by short sha and subject. Say where a commit still lives. On a named branch
+file (an edited `.env`, anything "different" or "not examined", anything "only here" outside the
+build-output paths), and each commit by short sha and subject. Say where a commit still lives. On a named branch
 the commit stays on that branch after the worktree goes, and on the remote if it says pushed; on a
 detached HEAD nothing refers to it once the worktree is gone. When a check could not run, the
 verdict is **not confirmed safe**, with the check that is missing.
@@ -309,7 +313,7 @@ Use these headings in this order, and write "none" under one with nothing to say
 
 ```
 CLOSEOUT NOTE from <branch or "detached"> at <worktree path>, <date and time with zone>
-Worktree: <safe to delete | NOT safe to delete: what would be lost | not confirmed safe: what is unverified>
+Worktree: <safe to delete | safe once you accept losing: <build-output paths> | NOT safe to delete: what would be lost | not confirmed safe: what is unverified>
 
 WHAT SHIPPED
 <ticket id, title and state now; each PR with number, merge state and link; releases and tags>
@@ -364,7 +368,8 @@ failed or no command was found, say so.
 
 ### Step 4 — Archive the handoff (only when safe to delete)
 
-Run this only when Step 2 said safe to delete. It moves this session's handoff out of the shared
+Run this only when Step 2 said safe to delete, or said safe once I accept losing the listed
+build-output paths and I have said yes to that. It moves this session's handoff out of the shared
 store into `handoffs/_done/`, the way `/pickup` does for a branch whose PR merged, so `/pickup` in
 other worktrees stops listing a closed session. It also covers a detached worktree, which
 `/pickup` never archives: the handoff is found by the worktree path it records, and archived
@@ -410,7 +415,8 @@ fi
 ```
 
 The `HANDOFF.md` in the worktree is left in place; it goes with the worktree. When Step 2 did not
-say safe, skip this step and say the handoff was left where it is.
+say safe (or I have not yet accepted the listed losses), skip this step and say the handoff was
+left where it is.
 
 ### Step 5 — Reply, and leave the removal to me
 
@@ -429,11 +435,14 @@ after this session has ended. Do not run it.
   submodules are detached, not removed". Do not offer `--force` yourself.
 
 When the worktree is not safe, or not confirmed safe, name no removal command and offer none.
+When it is safe once I accept losing build output, end the reply with one plain question that
+names those paths: accept losing them? On my yes, run Step 4, then name the removal command (or
+make the Orca offer below).
 
 Reply in this order, short:
 
-1. One line: safe to delete, not safe to delete (and what would be lost), or not confirmed safe
-   (and which check is missing).
+1. One line: safe to delete; safe once you accept losing (the build-output paths); not safe to
+   delete (and what would be lost); or not confirmed safe (and which check is missing).
 2. **Needs you:** decisions waiting on me, and anything still owed on the ticket that this
    session could not close. Leave it out if there is none.
 3. The verified facts, one line each: the ticket and its state; each PR and its merge state; what
@@ -484,7 +493,8 @@ in the main checkout's terminal. Not tested: whether a parent agent acts on a no
 one that is mid-turn reads it. So say in the reply that the note was sent and that the parent may
 still need it pasted.
 
-**Offer the removal.** Only when Step 2 said safe to delete, end the reply with one question:
+**Offer the removal.** Only when Step 2 said safe to delete (or I have accepted the listed
+build-output losses), end the reply with one question:
 remove this worktree now? Run the removal only after my yes, in a later turn, as the last action
 of the session, because it stops this worktree's sessions:
 

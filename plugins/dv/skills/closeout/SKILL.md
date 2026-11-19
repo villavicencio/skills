@@ -42,6 +42,11 @@ mention. Bare invocation takes none. "I" and "me" in this skill mean the user.
 ### Step 1 — Verify the worktree, its PRs and the main checkout
 
 ```bash
+# FAILS collects every check that did not run. It is only ever changed at the top level of
+# this block, never inside a pipeline, so the change survives in both bash and zsh.
+FAILS=""
+NL='
+'
 if ! git rev-parse --git-dir >/dev/null 2>&1; then
   echo "(not a git repo — nothing to close out)"
 else
@@ -55,9 +60,11 @@ else
   [ "$TOP" = "$MAIN" ] && echo "!! this IS the main checkout, not a linked worktree: never report it safe to delete"
   [ -n "$B" ] && echo "ticket id in the branch name (a hint, confirm it): $(printf '%s' "$B" | grep -o -i -E '[a-z]{2,10}-[0-9]+' | head -1 | tr '[:lower:]' '[:upper:]')"
 
+  # --prune drops remote-tracking refs whose branch is gone, so "on origin" below is current.
   FETCH=ok
-  if git remote | grep -q -x origin; then git fetch --quiet origin 2>/dev/null || FETCH=FAILED; else FETCH=no-origin; fi
+  if git remote | grep -q -x origin; then git fetch --quiet --prune origin 2>/dev/null || FETCH=FAILED; else FETCH=no-origin; fi
   echo "fetch from origin: $FETCH"
+  [ "$FETCH" = ok ] || FAILS="$FAILS- fetch from origin ($FETCH): remote state is the last fetched copy$NL"
   DEFAULT=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's@^origin/@@')
   [ -z "$DEFAULT" ] && git rev-parse -q --verify refs/heads/main >/dev/null && DEFAULT=main
   [ -z "$DEFAULT" ] && git rev-parse -q --verify refs/heads/master >/dev/null && DEFAULT=master
@@ -65,48 +72,70 @@ else
   if [ -n "$DEFAULT" ]; then
     if git rev-parse -q --verify "refs/remotes/origin/$DEFAULT" >/dev/null; then BASE="origin/$DEFAULT"; else BASE="$DEFAULT"; fi
   fi
-  echo "default branch: ${DEFAULT:-UNKNOWN}; comparing against: ${BASE:-NOTHING (unmerged work cannot be verified)}"
+  echo "default branch: ${DEFAULT:-UNKNOWN}; comparing against: ${BASE:-NOTHING}"
+  [ -n "$BASE" ] || FAILS="$FAILS- no default branch found: unmerged commits cannot be checked$NL"
 
-  echo "=== Uncommitted or untracked (HANDOFF.md aside) ==="
-  DIRTY=$(git status --porcelain --untracked-files=all | grep -v '^.. HANDOFF\.md$')
-  if [ -n "$DIRTY" ]; then printf '%s\n' "$DIRTY"; else echo "(none)"; fi
+  # One status call, every entry listed on its own line (-uall stops git collapsing a directory).
+  if STATUS=$(git status --porcelain --ignored --untracked-files=all); then
+    echo "=== Uncommitted or untracked (HANDOFF.md aside) ==="
+    DIRTY=$(printf '%s\n' "$STATUS" | grep -v '^!! ' | grep -v '^.. HANDOFF\.md$' | grep .)
+    if [ -n "$DIRTY" ]; then printf '%s\n' "$DIRTY"; else echo "(none)"; fi
 
-  echo "=== Ignored files (removing the worktree deletes them) ==="
-  IGN=$(git status --porcelain --ignored | sed -n 's/^!! //p' | grep -v -x 'HANDOFF\.md')
-  if [ -z "$IGN" ]; then echo "(none)"; else
-    printf '%s\n' "$IGN" | while IFS= read -r p; do
-      if [ "$TOP" = "$MAIN" ]; then echo "  $p"
-      elif [ -f "$TOP/$p" ] && [ -f "$MAIN/$p" ] && cmp -s "$TOP/$p" "$MAIN/$p"; then echo "  same as the main checkout's: $p"
-      elif [ -d "$TOP/$p" ] && [ -d "$MAIN/$p" ]; then
-        DIFF=$(cd "$TOP/$p" && find . -type f | while IFS= read -r q; do cmp -s "$q" "$MAIN/$p$q" || echo "$p${q#./}"; done)
-        if [ -z "$DIFF" ]; then echo "  same as the main checkout's: $p"
-        else echo "  $(printf '%s\n' "$DIFF" | wc -l | tr -d ' ') file(s) in $p missing from the main checkout or different there:"; printf '%s\n' "$DIFF" | head -5 | sed 's/^/    /'; fi
-      elif [ -e "$MAIN/${p%/}" ]; then echo "  DIFFERENT from the main checkout's: $p"
-      else echo "  ONLY HERE: $p"; fi
-    done
+    echo "=== Ignored entries (removing the worktree deletes them), by top-level path ==="
+    IGN=$(printf '%s\n' "$STATUS" | sed -n 's/^!! //p' | grep -v -x 'HANDOFF\.md')
+    if [ -z "$IGN" ]; then echo "(none)"
+    elif [ "$TOP" = "$MAIN" ]; then printf '%s\n' "$IGN" | sed 's/^/  /'
+    else
+      # Each entry: same (identical in the main checkout), different, only-here, or
+      # not-examined (not a regular file or symlink). Symlinks compare by target.
+      printf '%s\n' "$IGN" | while IFS= read -r p; do
+        a="$TOP/$p"; m="$MAIN/$p"
+        if [ -L "$a" ]; then
+          if [ -L "$m" ] && [ "$(readlink "$a")" = "$(readlink "$m")" ]; then k=same
+          elif [ -e "$m" ] || [ -L "$m" ]; then k=different; else k=only-here; fi
+        elif [ -f "$a" ]; then
+          if [ -f "$m" ] && [ ! -L "$m" ]; then if cmp -s "$a" "$m"; then k=same; else k=different; fi
+          elif [ -e "$m" ] || [ -L "$m" ]; then k=different; else k=only-here; fi
+        else k=not-examined; fi
+        printf '%s\t%s\n' "$k" "$p"
+      done | awk -F '\t' '
+        { top=$(2); if (index(top, "/")) top=substr(top, 1, index(top, "/")); n[top]++; c[top, $(1)]++
+          if ($(1) != "same" && $(1) != "only-here" && shown < 10) { ex[++shown]=$(1) ": " $(2) } }
+        END { for (t in n) printf "  %s  %d entries: %d same as the main checkout, %d only here, %d different, %d not examined\n",
+                t, n[t], c[t,"same"], c[t,"only-here"], c[t,"different"], c[t,"not-examined"]
+              for (i=1; i<=shown; i++) print "    " ex[i] }'
+    fi
+  else
+    FAILS="$FAILS- git status in the worktree failed: uncommitted and ignored files unknown$NL"
   fi
 
-  echo "=== PRs for this session ==="
-  PRS=""; REPO=""
+  if [ -f "$TOP/.gitmodules" ]; then
+    echo "=== Submodules: uncommitted changes, stashes, commits on no remote-tracking branch ==="
+    if SUB=$(git -C "$TOP" submodule foreach --quiet --recursive \
+        'o=$(git status --porcelain; git stash list; git log --oneline --branches --not --remotes); [ -z "$o" ] || printf "== %s\n%s\n" "$sm_path" "$o"'); then
+      if [ -n "$SUB" ]; then printf '%s\n' "$SUB"; else echo "(none)"; fi
+    else FAILS="$FAILS- submodule check failed: work inside a submodule clone is unknown$NL"; fi
+  fi
+
+  echo "=== PRs with this branch as head (or, detached, containing this commit) ==="
+  PRS=""; REPO=""; PRFAIL=""
   if command -v gh >/dev/null 2>&1; then REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null); fi
   if [ -z "$REPO" ]; then
-    echo "(gh missing or no GitHub remote — PR and merge state UNVERIFIED)"
+    PRFAIL=1; FAILS="$FAILS- gh missing or no GitHub remote: PR and merge state unknown$NL"
   elif [ -n "$B" ]; then
-    PRS=$(gh pr list --repo "$REPO" --head "$B" --state all --limit 50 --json number,state,headRefOid,baseRefName,url,title \
-      -q '.[]|[.number,.state,.headRefOid,.baseRefName,.url,.title]|@tsv' 2>/dev/null) || echo "(gh pr list failed — PR state UNVERIFIED)"
+    PRS=$(gh pr list --repo "$REPO" --head "$B" --state all --limit 1000 --json number,state,headRefOid,baseRefName,url,title \
+      -q '.[]|[.number,.state,.headRefOid,.baseRefName,.url,.title]|@tsv' 2>/dev/null) || { PRFAIL=1; FAILS="$FAILS- gh pr list failed: PR state unknown$NL"; }
   else
-    PRS=$(gh api "repos/$REPO/commits/$HEAD_SHA/pulls" \
-      -q '.[]|[.number,(if .merged_at then "MERGED" else (.state|ascii_upcase) end),.head.sha,.base.ref,.html_url,.title]|@tsv' 2>/dev/null) || echo "(PR lookup by commit failed — PR state UNVERIFIED)"
+    PRS=$(gh api --paginate "repos/$REPO/commits/$HEAD_SHA/pulls" \
+      -q '.[]|[.number,(if .merged_at then "MERGED" else (.state|ascii_upcase) end),.head.sha,.base.ref,.html_url,.title]|@tsv' 2>/dev/null) || { PRFAIL=1; FAILS="$FAILS- PR lookup by commit failed: PR state unknown$NL"; }
   fi
   TAB=$(printf '\t')
-  if [ -n "$PRS" ]; then
-    printf '%s\n' "$PRS" | while IFS="$TAB" read -r n st h base url title; do echo "  #$n $st (into $base) $url — $title"; done
-  elif [ -n "$REPO" ]; then echo "(none found for ${B:-this commit})"; fi
+  if [ -n "$PRFAIL" ]; then echo "(lookup did not run — see the checks that did not run)"
+  elif [ -n "$PRS" ]; then printf '%s\n' "$PRS" | while IFS="$TAB" read -r n st h base url title; do echo "  #$n $st (into $base) $url — $title"; done
+  else echo "(none found for ${B:-this commit})"; fi
 
-  echo "=== Commits here that are not on ${BASE:-the default branch} ==="
-  if [ -z "$BASE" ]; then
-    echo "(no default branch to compare against — UNVERIFIED)"
-  else
+  if [ -n "$BASE" ]; then
+    echo "=== Commits here that are not on $BASE ==="
     # A squash merge leaves the branch's commits off the default branch, so a merged PR's head
     # counts as merged work too, when that PR went into the default branch.
     NOTS="^$BASE"; UPS="$BASE"
@@ -121,34 +150,47 @@ else
         UPS=$(printf '%s\n%s\n' "$UPS" "$HEADS")
       fi
     fi
-    CAND=$(printf '%s\n' "$NOTS" | git rev-list HEAD --stdin)
     # Drop a commit whose patch is already in the default branch or a merged head (a rebase on
     # GitHub rewrites the shas). git cherry never matches a merge commit, so those stay listed.
-    SAME=$(mktemp)
-    printf '%s\n' "$UPS" | while IFS= read -r u; do git cherry "$u" HEAD 2>/dev/null | sed -n 's/^- //p'; done > "$SAME"
-    UNMERGED=$(printf '%s\n' "$CAND" | grep -v -x -F -f "$SAME" | grep .)
-    rm -f "$SAME"
-    if [ -z "$UNMERGED" ]; then echo "(none)"; else
-      printf '%s\n' "$UNMERGED" | while IFS= read -r c; do
-        if [ -n "$(git branch -r --contains "$c" 2>/dev/null | head -1)" ]; then where="pushed"; else where="NOT pushed"; fi
-        echo "  $(git log -1 --format='%h %s' "$c") [$where]"
-      done
+    UNMERGED=""; CHOK=1
+    if CAND=$(printf '%s\n' "$NOTS" | git rev-list HEAD --stdin); then
+      SAME=""
+      while IFS= read -r u; do
+        if OUT=$(git cherry "$u" HEAD); then SAME="$SAME$(printf '%s\n' "$OUT" | sed -n 's/^- //p')$NL"; else CHOK=""; fi
+      done <<UPS_END
+$UPS
+UPS_END
+      [ -n "$CHOK" ] || FAILS="$FAILS- git cherry failed: commits already merged by patch may be listed as unmerged$NL"
+      UNMERGED=$(printf '%s\n' "$CAND" | grep . | grep -v -x -F -e "$(printf '%s' "$SAME" | grep . || echo NONE)")
+      if [ -z "$UNMERGED" ]; then echo "(none)"; else
+        printf '%s\n' "$UNMERGED" | while IFS= read -r c; do
+          if [ -n "$(git branch -r --contains "$c" 2>/dev/null | head -1)" ]; then where="on origin as of this fetch"; else where="NOT on origin"; fi
+          echo "  $(git log -1 --format='%h %s' "$c") [$where]"
+        done
+      fi
+      echo "this worktree is $(git rev-list --count "HEAD..$BASE") commit(s) behind $BASE"
+    else
+      FAILS="$FAILS- git rev-list failed: commits not on the default branch are unknown$NL"
     fi
-    echo "this worktree is $(git rev-list --count "HEAD..$BASE") commit(s) behind $BASE"
   fi
   if [ -n "$B" ]; then
     ST=$(git stash list | grep -F -e " on $B:" -e " On $B:")
     [ -n "$ST" ] && { echo "=== Stashes made on this branch (they outlive the worktree, but nobody will look for them) ==="; printf '%s\n' "$ST"; }
   fi
 
-  echo "=== Main checkout vs its remote ==="
+  echo "=== Main checkout vs its own upstream ==="
   MB=$(git -C "$MAIN" branch --show-current)
-  echo "branch: ${MB:-(detached)}; uncommitted entries: $(git -C "$MAIN" status --porcelain | wc -l | tr -d ' ')"
-  if [ -n "$BASE" ]; then
-    LR=$(git rev-list --left-right --count "$BASE...$(git -C "$MAIN" rev-parse HEAD)")
-    echo "behind $BASE: $(printf '%s' "$LR" | cut -f1); ahead of it: $(printf '%s' "$LR" | cut -f2)"
+  if MS=$(git -C "$MAIN" status --porcelain); then
+    echo "branch: ${MB:-(detached)}; uncommitted entries: $(printf '%s' "$MS" | grep -c .)"
+  else FAILS="$FAILS- git status in the main checkout failed$NL"; fi
+  if UP=$(git -C "$MAIN" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null) && LR=$(git -C "$MAIN" rev-list --left-right --count "$UP...HEAD"); then
+    echo "upstream: $UP; behind it: $(printf '%s' "$LR" | cut -f1); ahead of it: $(printf '%s' "$LR" | cut -f2)"
+  else
+    FAILS="$FAILS- the main checkout's branch has no upstream (or the count failed): level with the remote is unknown$NL"
   fi
-  [ "$FETCH" != ok ] && echo "(fetch was '$FETCH': the counts above are against the last fetched ref, so 'level with the remote' is UNVERIFIED)"
+
+  echo "=== Checks that did not run ==="
+  if [ -n "$FAILS" ]; then printf '%s' "$FAILS"; else echo "(none — every check ran)"; fi
 fi
 ```
 
@@ -156,9 +198,12 @@ Outside a git repo, stop here and say there is nothing to close out.
 
 Then complete the picture from the systems, not from memory:
 
-- **Other PRs.** The block finds PRs by this branch (or, on a detached HEAD, by this commit). A
-  session may have opened others from another branch, such as a release PR. Check each one you
-  know of: `gh pr view <n> --json number,state,mergedAt,baseRefName,url`.
+- **Other PRs.** The block finds only PRs whose head is this branch (or, on a detached HEAD, PRs
+  containing this commit). A session may have opened others from another branch, such as a
+  release PR. List your recent PRs and pick out this session's:
+  `gh pr list --author @me --state all --limit 30 --json number,title,headRefName,state,createdAt,url`.
+  Check each one with `gh pr view <n> --json number,state,mergedAt,baseRefName,url`. The note
+  names the PRs you checked; it does not claim the list is complete when you could not tell.
 - **The ticket.** Find its id from the arguments, the branch name, the PR titles or the session.
   Read its state from the tracker now, with whatever access this session has (for Linear, the
   `get_issue` tool or a CLI). Read its acceptance checklist too and note each line that is not
@@ -172,11 +217,12 @@ Then complete the picture from the systems, not from memory:
 - This is a linked worktree, not the main checkout.
 - Nothing is uncommitted or untracked, `HANDOFF.md` aside.
 - No commit is listed under "Commits here that are not on" the default branch.
-- No ignored file holds something that exists only here. "Same as the main checkout's" entries
-  and rebuildable output (a virtualenv, `node_modules`, caches) lose nothing. Any other "ONLY
-  HERE" entry, or a file that is different from the main checkout's (an edited `.env`), is a
-  loss until you have looked at it: name it.
-- Every check above actually ran: the fetch worked, `gh` answered, a default branch was found.
+- No ignored entry holds something that exists only here. Entries the same as the main
+  checkout's, and rebuildable output (a virtualenv, `node_modules`, caches), lose nothing. Any
+  other "only here" entry, a "different" one (an edited `.env`) or a "not examined" one is a loss
+  until you have looked at it: name it.
+- No submodule line was printed under a `==` header (when the repo has submodules).
+- "Checks that did not run" says none. Any line there makes the verdict not confirmed safe.
 
 Otherwise it is **not safe to delete**, and the reply names exactly what would be lost: each
 file, and each commit by short sha and subject. Say where a commit still lives. On a named branch
@@ -223,17 +269,23 @@ if git rev-parse --git-dir >/dev/null 2>&1; then
   GCD=$(git rev-parse --git-common-dir) && D="$(cd "$GCD" && pwd -P)/closeouts"
   B=$(git branch --show-current)
   SLUG=$(printf '%s' "${B:-detached-$(git rev-parse HEAD 2>/dev/null)}" | sed -e 's/%/%25/g' -e 's#/#%2F#g')
-  NOTE="$D/$SLUG.$(date -u +%Y%m%dT%H%M%SZ).txt"
-  mkdir -p "$D" && cat > "$NOTE" <<'CLOSEOUT_NOTE_END'
+  BASEN="$D/$SLUG.$(date -u +%Y%m%dT%H%M%SZ)"; NOTE="$BASEN.txt"; n=0
+  while [ -e "$NOTE" ]; do n=$((n+1)); NOTE="$BASEN-$n.txt"; done
+  # set -C refuses to overwrite a file that appeared after the check above.
+  if mkdir -p "$D" && ( set -C; cat > "$NOTE" ) <<'CLOSEOUT_NOTE_END'
 [the note]
 CLOSEOUT_NOTE_END
-  echo "note saved: $NOTE"
-  if command -v pbcopy >/dev/null 2>&1; then pbcopy < "$NOTE" && echo "copied to the clipboard (pbcopy)"
-  elif command -v wl-copy >/dev/null 2>&1; then wl-copy < "$NOTE" && echo "copied to the clipboard (wl-copy)"
-  elif command -v xclip >/dev/null 2>&1; then xclip -selection clipboard < "$NOTE" && echo "copied to the clipboard (xclip)"
-  elif command -v xsel >/dev/null 2>&1; then xsel --clipboard --input < "$NOTE" && echo "copied to the clipboard (xsel)"
-  elif command -v clip.exe >/dev/null 2>&1; then clip.exe < "$NOTE" && echo "copied to the clipboard (clip.exe)"
-  else echo "(no clipboard command found — note NOT copied)"; fi
+  then
+    echo "note saved: $NOTE"
+    if command -v pbcopy >/dev/null 2>&1; then pbcopy < "$NOTE" && echo "copied to the clipboard (pbcopy)"
+    elif command -v wl-copy >/dev/null 2>&1; then wl-copy < "$NOTE" && echo "copied to the clipboard (wl-copy)"
+    elif command -v xclip >/dev/null 2>&1; then xclip -selection clipboard < "$NOTE" && echo "copied to the clipboard (xclip)"
+    elif command -v xsel >/dev/null 2>&1; then xsel --clipboard --input < "$NOTE" && echo "copied to the clipboard (xsel)"
+    elif command -v clip.exe >/dev/null 2>&1; then clip.exe < "$NOTE" && echo "copied to the clipboard (clip.exe)"
+    else echo "(no clipboard command found — note NOT copied)"; fi
+  else
+    echo "!! the note could NOT be saved to $NOTE — nothing was copied; paste it from the reply"
+  fi
 fi
 ```
 
@@ -272,9 +324,12 @@ if git rev-parse --git-dir >/dev/null 2>&1; then
       [ "$f" = "$STORE/$SLUG.md" ] && mine=1
       [ "$fw" = "$TOP" ] && [ "$fb" = "${B:-(detached)}" ] && mine=1
       [ -n "$mine" ] || continue
-      # A file already archived byte for byte is skipped: HANDOFF.md mirrors the store copy, and a rerun adds nothing.
-      dup=$(find "$STORE/_done" -maxdepth 1 -type f -name "$SLUG.*.md" 2>/dev/null | while IFS= read -r a; do cmp -s "$a" "$f" && echo 1; done)
-      [ -n "$dup" ] && continue
+      # The store file is always moved, so the active slot is cleared even on a rerun. HANDOFF.md is
+      # copied only when no archived file already matches it byte for byte (it mirrors the store copy).
+      if [ "$f" = "$TOP/HANDOFF.md" ]; then
+        dup=$(find "$STORE/_done" -maxdepth 1 -type f -name "$SLUG.*.md" 2>/dev/null | while IFS= read -r a; do cmp -s "$a" "$f" && echo 1; done)
+        [ -n "$dup" ] && continue
+      fi
       n=0; dest="$STORE/_done/$SLUG.$TS.md"
       while [ -e "$dest" ]; do n=$((n+1)); dest="$STORE/_done/$SLUG.$TS-$n.md"; done
       mkdir -p "$STORE/_done" || continue
@@ -340,8 +395,9 @@ screen reader, which is why the block does not try it there.)
 field: that marks a running agent. A terminal without it is a plain shell, and a note sent there
 would be run as commands, so never send to one.
 
-- Exactly one qualifying terminal: send the saved note from Step 3, once.
-  `"$C" terminal send --terminal <handle> --text "$(cat "<note path>")" --enter --wait-submit 20 --json`
+- Exactly one qualifying terminal: send the saved note from Step 3, once, with the CLI path the
+  block printed in place of `<orca CLI>` (no variable from that block survives to this call):
+  `<orca CLI> terminal send --terminal <handle> --text "$(cat "<note path>")" --enter --wait-submit 20 --json`
   Report what the result says (`input_accepted`, and whether a turn was seen to start), not
   "delivered". Do not resend on a timeout. After a transport error, reissue the same command with
   the `--retry-request` id the error reports.
@@ -359,7 +415,7 @@ still need it pasted.
 remove this worktree now? Run the removal only after my yes, in a later turn, as the last action
 of the session, because it stops this worktree's sessions:
 
-`"$C" worktree rm --worktree "path:<worktree path>" --json`
+`<orca CLI> worktree rm --worktree "path:<worktree path>" --json`
 
 Use the `path:` selector (`current` and `active` are refused). Add no `--force` and no
 `--delete-branch`: if the removal is refused, report the refusal and stop. Without my yes, name

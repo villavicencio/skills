@@ -232,11 +232,12 @@ UNMERGED_END
     FAILS="$FAILS- the main checkout's branch has no remote upstream: level with the remote is unknown$NL"
   else
     # Ask the remote for the upstream branch's tip itself, so a narrow fetch refspec or a stale
-    # tracking ref cannot stand in for it. A missing object is fetched by sha into FETCH_HEAD only.
+    # tracking ref cannot stand in for it. A missing object is fetched by name into FETCH_HEAD only.
+    # Both run in the main checkout, so its own remote configuration applies.
     MM=$(git -C "$MAIN" config "branch.$MB.merge"); RS=""
-    if [ -n "$MM" ] && LSU=$(git ls-remote "$MR" "$MM"); then RS=$(printf '%s\n' "$LSU" | awk -v r="$MM" '$(2)==r {print $(1)}')
+    if [ -n "$MM" ] && LSU=$(git -C "$MAIN" ls-remote "$MR" "$MM"); then RS=$(printf '%s\n' "$LSU" | awk -v r="$MM" '$(2)==r {print $(1)}')
     fi
-    if [ -n "$RS" ] && { git cat-file -e "$RS^{commit}" 2>/dev/null || git fetch --quiet "$MR" "$MM" 2>/dev/null; } \
+    if [ -n "$RS" ] && { git cat-file -e "$RS^{commit}" 2>/dev/null || git -C "$MAIN" fetch --quiet "$MR" "$MM" 2>/dev/null; } \
        && git cat-file -e "$RS^{commit}" 2>/dev/null && LR=$(git -C "$MAIN" rev-list --left-right --count "$RS...HEAD"); then
       echo "upstream: $MR $MM, tip $(git rev-parse --short "$RS") per the remote now; behind it: $(printf '%s' "$LR" | cut -f1); ahead of it: $(printf '%s' "$LR" | cut -f2)"
     else

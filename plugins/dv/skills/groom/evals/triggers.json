@@ -1,0 +1,29 @@
+{
+  "skill": "groom",
+  "description": "Trigger evals for dv:groom (groom one existing Linear ticket: format check, neighbors, verification, size, split, scouting, interview, approved edits; never starts the work). The should-trigger set carries the phrases David used on 2026-11-18 (groom the ticket, size it, split it up if we have to, admin work first, don't start work yet). Hard near-misses in no_trigger: filing a new ticket (dv:ticket), starting the work, reading a ticket's status, a handoff (dv:handoff) and a plan critique (dv:critique). See tooling/evals/README.md.",
+  "runs_per_query": 3,
+  "pass_threshold": 0.5,
+  "queries": [
+    { "split": "train", "expect": "trigger",    "q": "Groom VIL-123." },
+    { "split": "train", "expect": "trigger",    "q": "Please groom the ticket VIL-810 before anyone picks it up." },
+    { "split": "train", "expect": "trigger",    "q": "Take VIL-402, size it, and tell me whether it's one PR or two." },
+    { "split": "train", "expect": "trigger",    "q": "VIL-77 feels too big. Look it over and split it up if we have to." },
+    { "split": "train", "expect": "trigger",    "q": "Check VIL-88 against our ticket format and tell me what is missing." },
+    { "split": "train", "expect": "trigger",    "q": "Do the admin work first on VIL-530: verify what it says, fix the stale bits, and set its blockers." },
+    { "split": "val",   "expect": "trigger",    "q": "Is VIL-210 ready to be worked? Groom it and tell me what's stale. Don't start work yet." },
+    { "split": "val",   "expect": "trigger",    "q": "Go through VIL-640, interview me on anything that isn't obvious, and look for follow-up tickets it suggests." },
+    { "split": "val",   "expect": "trigger",    "q": "Before we build VIL-301, check its Done means can actually be run and size it." },
+    { "split": "val",   "expect": "trigger",    "q": "Review the ticket VIL-415 and tell me if it should be split into separate tickets." },
+
+    { "split": "train", "expect": "no_trigger", "q": "File a ticket for the login page timing out after five minutes." },
+    { "split": "train", "expect": "no_trigger", "q": "Start working on VIL-123." },
+    { "split": "train", "expect": "no_trigger", "q": "What's the status of VIL-88?" },
+    { "split": "train", "expect": "no_trigger", "q": "Write a handoff for this session." },
+    { "split": "train", "expect": "no_trigger", "q": "Critique my plan for the migration before I build it." },
+    { "split": "train", "expect": "no_trigger", "q": "Create a Linear issue to look into why the nightly export is slow." },
+    { "split": "val",   "expect": "no_trigger", "q": "Mark VIL-210 as Done now that the PR merged." },
+    { "split": "val",   "expect": "no_trigger", "q": "List the Linear issues assigned to me this week." },
+    { "split": "val",   "expect": "no_trigger", "q": "Implement VIL-415 and open a PR." },
+    { "split": "val",   "expect": "no_trigger", "q": "Pick up where the last session left off." }
+  ]
+}

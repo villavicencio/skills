@@ -124,6 +124,21 @@ else
   [ -s "$WGD/config.worktree" ] && PRIV="$PRIV  per-worktree config: $WGD/config.worktree$NL"
   if [ -n "$PRIV" ]; then printf '%s' "$PRIV"; else echo "(none)"; fi
 
+  # This worktree's HEAD reflog and ORIG_HEAD go with it. Commits reachable from them and from no
+  # ref (a commit reset or amended away) lose their last recovery path when the worktree goes.
+  echo "=== Commits reachable only from this worktree's HEAD reflog or ORIG_HEAD ==="
+  RL=""; RLOK=1
+  if git reflog exists HEAD; then RL=$(git rev-list --walk-reflogs HEAD) || RLOK=""; fi
+  OH=$(git rev-parse -q --verify ORIG_HEAD)
+  # Everything reachable from the reflog entries or ORIG_HEAD that no ref (or any worktree's HEAD) reaches.
+  if [ -n "$RLOK" ] && ONLY=$(printf '%s\n%s\n' "$RL" "$OH" | grep . | sort -u | git rev-list --stdin --not --all); then
+    ONLY=$(printf '%s\n' "$ONLY" | grep . | sort -u)
+    if [ -n "$ONLY" ]; then
+      echo "$(printf '%s\n' "$ONLY" | grep -c .) commit(s), for example:"
+      printf '%s\n' "$ONLY" | head -5 | while IFS= read -r c; do echo "  $(git log -1 --format='%h %s' "$c")"; done
+    else echo "(none)"; fi
+  else FAILS="$FAILS- reflog check failed: commits reachable only from this worktree's reflog are unknown$NL"; fi
+
   if [ -f "$TOP/.gitmodules" ]; then
     echo "=== Submodules ==="
     if SMST=$(git -C "$TOP" submodule status --recursive); then
@@ -131,10 +146,10 @@ else
       echo "initialized submodules: $NINIT"
       [ "$NINIT" -gt 0 ] && echo "!! a plain worktree removal refuses a worktree with an initialized submodule (see Step 5)"
     else FAILS="$FAILS- git submodule status failed$NL"; fi
-    echo "--- uncommitted changes, stashes, commits on no remote-tracking branch, per submodule:"
+    echo "--- per submodule: uncommitted, untracked and ignored entries, stashes, commits on no remote-tracking branch (local branches and tags):"
     # Each git call must succeed, or the foreach fails and the check is listed as not run.
     if SUB=$(git -C "$TOP" submodule foreach --quiet --recursive \
-        'a=$(git status --porcelain) && b=$(git stash list) && c=$(git log --oneline --branches --not --remotes) || exit 1; o="$a$b$c"; [ -z "$o" ] || printf "== %s\n%s\n%s\n%s\n" "$sm_path" "$a" "$b" "$c"'); then
+        'a=$(git status --porcelain --ignored --untracked-files=all) && b=$(git stash list) && c=$(git log --oneline --branches --tags --not --remotes) || exit 1; o="$a$b$c"; [ -z "$o" ] || printf "== %s\n%s\n%s\n%s\n" "$sm_path" "$a" "$b" "$c"'); then
       if [ -n "$SUB" ]; then printf '%s\n' "$SUB" | grep .; else echo "(none)"; fi
     else FAILS="$FAILS- submodule check failed: work inside a submodule clone is unknown$NL"; fi
   fi
@@ -281,16 +296,22 @@ Then complete the picture from the systems, not from memory:
   "different" or "not examined".
 - "Worktree-private git state" says none: an operation in progress, a per-worktree ref or
   per-worktree config goes with the worktree.
-- No submodule was listed under a `==` header (when the repo has submodules).
+- No commit is listed as reachable only from this worktree's HEAD reflog or ORIG_HEAD.
+- No submodule was listed under a `==` header (when the repo has submodules): its uncommitted,
+  untracked or ignored entries, stashes, and commits on local branches or tags that no
+  remote-tracking branch has. Remote-tracking refs can be stale, so for a worktree with
+  initialized submodules also apply the checks in `dv:orca-setup` Step 5 before any removal.
 - No stash is listed as made on this branch or detached HEAD. A stash survives the removal but
   nobody will look for it, so name it.
 - "Checks that did not run" says none. Any line there makes the verdict not confirmed safe.
 
-**Safe once you accept losing** the listed paths: every rule above holds except the ignored-entry
-rule, and every ignored entry that is not the same as the main checkout's is "only here" under one
-of these top-level paths, build output a setup step recreates: `.venv/`, `venv/`, `node_modules/`,
-`__pycache__/`, `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`. The verdict names each such
-path with its entry count. It is not "safe" until I accept losing them: nothing in Steps 4 and 5
+**Safe once you accept losing** the listed items: every rule above holds except two, and what
+breaks them is only this. Ignored entries that are not the same as the main checkout's are all
+"only here" under one of these top-level paths, build output a setup step recreates: `.venv/`,
+`venv/`, `node_modules/`, `__pycache__/`, `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`. And
+commits listed as reachable only from this worktree's HEAD reflog or ORIG_HEAD (usually commits
+amended or reset away; removal ends their recovery path). The verdict names each path with its
+entry count, and the reflog-only commits with their count and examples. It is not "safe" until I accept losing them: nothing in Steps 4 and 5
 that needs "safe" runs before that yes, and the question that asks for it names the paths.
 
 Safe to delete is about data. Whether a given removal command can do it is separate: see the
@@ -388,9 +409,12 @@ if git rev-parse --git-dir >/dev/null 2>&1; then
   elif [ -n "$(git status --porcelain --untracked-files=all | grep -v '^.. HANDOFF\.md$')" ]; then
     echo "!! uncommitted changes — not safe to delete, nothing archived"
   else
-    TS=$(date -u +%Y%m%dT%H%M%SZ)
-    { find "$STORE" -maxdepth 1 -type f -name '*.md' 2>/dev/null | sort; [ -f "$TOP/HANDOFF.md" ] && echo "$TOP/HANDOFF.md"; } |
+    TS=$(date -u +%Y%m%dT%H%M%SZ); AFAIL=""; LIST=""
+    if [ -d "$STORE" ]; then LIST=$(find "$STORE" -maxdepth 1 -type f -name '*.md' | sort) || AFAIL="listing the handoff store failed"; fi
+    [ -f "$TOP/HANDOFF.md" ] && LIST=$(printf '%s\n%s\n' "$LIST" "$TOP/HANDOFF.md")
+    # A here-doc, not a pipe, so AFAIL survives the loop in bash.
     while IFS= read -r f; do
+      [ -n "$f" ] || continue
       fm=$(sed -n '2,/^---$/{/^---$/!p;}' "$f")
       fb=$(printf '%s\n' "$fm" | sed -n 's/^branch: *"\{0,1\}\([^"]*\)"\{0,1\} *$/\1/p' | head -1)
       fw=$(printf '%s\n' "$fm" | sed -n 's/^worktree: *"\{0,1\}\([^"]*\)"\{0,1\} *$/\1/p' | head -1)
@@ -406,16 +430,23 @@ if git rev-parse --git-dir >/dev/null 2>&1; then
       fi
       n=0; dest="$STORE/_done/$SLUG.$TS.md"
       while [ -e "$dest" ]; do n=$((n+1)); dest="$STORE/_done/$SLUG.$TS-$n.md"; done
-      mkdir -p "$STORE/_done" || continue
-      if [ "$f" = "$TOP/HANDOFF.md" ]; then cp "$f" "$dest" && echo "archived a copy of HANDOFF.md: $dest"
-      else mv "$f" "$dest" && echo "archived: $f -> $dest"; fi
-    done
-    find "$STORE/_done" -maxdepth 1 -type f -name "$SLUG.*.md" 2>/dev/null | grep -q . || echo "(no handoff for this session — nothing to archive)"
+      if ! mkdir -p "$STORE/_done"; then AFAIL="$AFAIL; mkdir $STORE/_done failed"; continue; fi
+      if [ "$f" = "$TOP/HANDOFF.md" ]; then
+        if cp "$f" "$dest"; then echo "archived a copy of HANDOFF.md: $dest"; else AFAIL="$AFAIL; copying HANDOFF.md failed"; fi
+      elif mv "$f" "$dest" && [ ! -e "$f" ]; then echo "archived: $f -> $dest"
+      else AFAIL="$AFAIL; moving $f failed"; fi
+    done <<LIST_END
+$LIST
+LIST_END
+    [ -e "$STORE/$SLUG.md" ] && AFAIL="$AFAIL; $STORE/$SLUG.md is still in the store"
+    if [ -n "$AFAIL" ]; then echo "!! ARCHIVE INCOMPLETE: ${AFAIL#; } — offer no removal until this is fixed"
+    elif ! find "$STORE/_done" -maxdepth 1 -type f -name "$SLUG.*.md" 2>/dev/null | grep -q .; then echo "(no handoff for this session — nothing to archive)"; fi
   fi
 fi
 ```
 
-The `HANDOFF.md` in the worktree is left in place; it goes with the worktree. When Step 2 did not
+If the block prints `ARCHIVE INCOMPLETE`, say what failed, and offer and name no removal: the
+session would stay listed by `/pickup`. The `HANDOFF.md` in the worktree is left in place; it goes with the worktree. When Step 2 did not
 say safe (or I have not yet accepted the listed losses), skip this step and say the handoff was
 left where it is.
 
@@ -443,7 +474,7 @@ name the removal command (or make the Orca offer below).
 **Recheck in every later turn.** A yes arrives in a later turn, and the worktree may have changed
 since the verdict. Before acting on any yes (accepting losses, archiving, removing), run the Step 1
 block again and apply Step 2 to its output. Act only if the verdict is the same and, for "safe
-once you accept losing", the list of paths and their entry counts is the same. If anything
+once you accept losing", the listed paths, entry counts and reflog-only commits are the same. If anything
 changed, act on nothing: report the new verdict, update the saved note if it no longer holds, and
 ask again.
 
@@ -508,6 +539,13 @@ remove this worktree now? Run the removal only after my yes, in a later turn, as
 of the session, because it stops this worktree's sessions:
 
 `"<orca CLI>" worktree rm --worktree "path:<worktree path>" --json`
+
+The command can return `ok: true` with `removing: true` before the removal has finished
+(`dv:orca-setup` Step 5). Before reporting it done, check from the main checkout that the path is
+gone from `git worktree list` and from `"<orca CLI>" worktree list --json`, and that the
+directory no longer exists. If any of them still shows it, report the removal as pending or
+failed, with what each check showed. (Orca's list hides worktrees under `.claude/worktrees/`, so
+`git worktree list` is the one that settles it there.)
 
 Use the `path:` selector (`current` and `active` are refused). Add no `--force` and no
 `--delete-branch`: if the removal is refused, report the refusal and stop. With an initialized

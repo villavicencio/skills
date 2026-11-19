@@ -84,10 +84,12 @@ ticket wait on something: "pull when", "wait for", "after X merges", "requires X
 
 **Repos.** Note the repo or repos the ticket changes. For each one the session can read, record
 the commit you check against: the branch or version the ticket names, or the default branch if it
-names none. Do not fetch; grooming writes nothing to a repo. Take the local commit
-(`git rev-parse --short <ref>`) and the remote's (`git ls-remote origin <ref>`, which only reads).
-If they differ, the local copy is behind: say so, and check facts against the remote commit
-(`gh api`) or mark them as checked against the older one. A repo you cannot read is named in the
+names none. Do not fetch; grooming writes nothing to a repo. Compare full commit ids: the local
+one from `git rev-parse <ref>` and the remote one from the first field of
+`git ls-remote origin refs/heads/<branch>` (which only reads). If they differ, say so without
+guessing which is newer, and either read files at the remote commit
+(`gh api "repos/<owner>/<repo>/contents/<path>?ref=<remote id>" -H "Accept: application/vnd.github.raw"`)
+or name the local commit as the one the facts were checked against. A repo you cannot read is named in the
 report, with the facts left unchecked because of it.
 
 ## 2. Check against the format
@@ -302,24 +304,27 @@ Patches stay the default; three changed sections allow the offer and do not deci
 
 **Order of writes.**
 
-1. Before filing children, make sure the parent's change can land: read the ticket again and check
-   that each patch anchor for that change matches exactly once (or that a whole-description
-   replacement was approved). If it cannot land, file no children: say why, and leave the split
-   for me to do in Linear or groom again. Then file approved children and spin-offs. Read `dv:ticket`'s `SKILL.md` (`../ticket/SKILL.md`
-   from this skill's directory), section "File", and create each with its rules: project found
-   live (a child takes the parent's project), labels from the team, the format, facts checked or
-   marked `[assumed]`, Backlog with a pull condition unless it can start now, the re-run of the
-   duplicate searches just before creating, and `save_issue`. My interview answer stands in for
-   File step 6's draft and question. Set each one's relations in the `save_issue` call that
-   creates it: `parentId` for a child under a parent that stays, `blockedBy` for a child that waits
-   on another child or for any ticket whose pull condition names an open ticket (unless File mode
-   already sets it), and `relatedTo` the groomed ticket for a spin-off.
-2. Never write a ticket id that does not exist yet. Write a child's or spin-off's id into the
-   groomed ticket only after the `save_issue` call that created it, using the id it returned.
-3. Then edit the groomed ticket, with the approved items only, the split's parent change first.
-   If that change fails after its children exist, read the ticket again and retry it once. If it
-   still fails, stop: name the children that exist and the parent text that still describes the
-   unsplit work, and list it under Needs you. Do not delete the children.
+1. **A split, parent first.** Apply the parent's approved change before any child exists: the
+   reduced description (Scope naming the children by title) or, when the parent becomes the first
+   child, its reduction to that child's scope. Read the ticket again with `get_issue` and confirm
+   the change is there. If it failed or cannot be placed, file no children: say why, and stop the
+   split there.
+2. **Then file approved children and spin-offs.** Read `dv:ticket`'s `SKILL.md`
+   (`../ticket/SKILL.md` from this skill's directory), section "File", and create each with its
+   rules: project found live (a child takes the parent's project), labels from the team, the
+   format, facts checked or marked `[assumed]`, Backlog with a pull condition unless it can start
+   now, the re-run of the duplicate searches just before creating, and `save_issue`. My interview
+   answer stands in for File step 6's draft and question. Set each one's relations in the
+   `save_issue` call that creates it: `parentId` for a child under a parent that stays,
+   `blockedBy` for a child that waits on another child or for any ticket whose pull condition names
+   an open ticket (unless File mode already sets it), and `relatedTo` the groomed ticket for a
+   spin-off. If a filing fails, stop filing: name what exists and what does not under Needs you,
+   with the draft of each missing ticket, and do not delete what was created.
+3. **Never write a ticket id that does not exist yet.** Add a child's or spin-off's id to the
+   groomed ticket only in a follow-up edit after the `save_issue` call that created it, using the
+   id it returned.
+4. **Then the rest of the approved items** on the groomed ticket. If a patch fails, the rule below
+   applies.
 
 **Patches.** Edit with `patch` operations on `save_issue` (`replace`, `insert_before`,
 `insert_after`, `replace_range`, and `append` for an empty description), not by sending the whole

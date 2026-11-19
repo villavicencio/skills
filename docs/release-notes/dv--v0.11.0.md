@@ -31,8 +31,8 @@ Grooming moved out of `dv:ticket` into its own skill and does more than before:
   Patches stay the default; a whole-description replacement can be offered when three or more
   sections change. Approved children and spin-offs are filed with `dv:ticket`'s File rules, except
   that the interview answer stands in for File's draft review (you can still ask to see a draft).
-  A split's parent change is checked to land before any child is filed, and no id is written
-  before its ticket exists.
+  A split's parent change is applied and confirmed before any child is filed, and no id is
+  written before its ticket exists.
 
 ## Changed
 

@@ -85,9 +85,12 @@ ticket wait on something: "pull when", "wait for", "after X merges", "requires X
 **Repos.** Note the repo or repos the ticket changes. For each one the session can read, record
 the commit you check against: the branch or version the ticket names, or the default branch if it
 names none. Do not fetch; grooming writes nothing to a repo. Compare full commit ids: the local
-one from `git rev-parse <ref>` and the remote one from the first field of
-`git ls-remote origin refs/heads/<branch>` (which only reads). If they differ, say so without
-guessing which is newer, and either read files at the remote commit
+one from `git rev-parse "<ref>^{commit}"` and the remote one from
+`git ls-remote origin "refs/heads/<branch>"`, or for a version tag
+`git ls-remote origin "refs/tags/<tag>" "refs/tags/<tag>^{}"` (take the `^{}` line when there is
+one; it is the commit an annotated tag points to). Both commands only read. If the remote returns
+no line, say the ref is not on the remote and use the local commit. If the ids differ, say so
+without guessing which is newer, and either read files at the remote commit
 (`gh api "repos/<owner>/<repo>/contents/<path>?ref=<remote id>" -H "Accept: application/vnd.github.raw"`)
 or name the local commit as the one the facts were checked against. A repo you cannot read is named in the
 report, with the facts left unchecked because of it.
@@ -304,11 +307,12 @@ Patches stay the default; three changed sections allow the offer and do not deci
 
 **Order of writes.**
 
-1. **A split, parent first.** Apply the parent's approved change before any child exists: the
-   reduced description (Scope naming the children by title) or, when the parent becomes the first
-   child, its reduction to that child's scope. Read the ticket again with `get_issue` and confirm
-   the change is there. If it failed or cannot be placed, file no children: say why, and stop the
-   split there.
+1. **A split, parent first.** Keep the parent's description exactly as `get_issue` returns it
+   now; it is the copy to restore. Then apply the parent's approved change in one `save_issue`
+   call (its patch list is atomic: one failing operation aborts the whole save), so it lands whole
+   or not at all: the reduced description (Scope naming the children by title) or, when the parent
+   becomes the first child, its reduction to that child's scope. Read the ticket again and confirm
+   the change is there. If it did not land, file no children: say why, and stop the split there.
 2. **Then file approved children and spin-offs.** Read `dv:ticket`'s `SKILL.md`
    (`../ticket/SKILL.md` from this skill's directory), section "File", and create each with its
    rules: project found live (a child takes the parent's project), labels from the team, the
@@ -318,8 +322,10 @@ Patches stay the default; three changed sections allow the offer and do not deci
    `save_issue` call that creates it: `parentId` for a child under a parent that stays,
    `blockedBy` for a child that waits on another child or for any ticket whose pull condition names
    an open ticket (unless File mode already sets it), and `relatedTo` the groomed ticket for a
-   spin-off. If a filing fails, stop filing: name what exists and what does not under Needs you,
-   with the draft of each missing ticket, and do not delete what was created.
+   spin-off. If a child's filing fails, stop filing and put the parent back: save the kept copy as
+   its description, read it again to confirm, and name the children that exist under Needs you
+   (they hold part of the parent's work, now in two places, and are not deleted). If a spin-off's
+   filing fails, the parent stays as it is; name the missing spin-off and its draft under Needs you.
 3. **Never write a ticket id that does not exist yet.** Add a child's or spin-off's id to the
    groomed ticket only in a follow-up edit after the `save_issue` call that created it, using the
    id it returned.

@@ -7,18 +7,18 @@
 Steps, in order:
   1. checkout  ~/Projects/<name>, one bootstrap commit (AGENTS.md, CLAUDE.md, README.md,
                .gitignore, docs/discovery.md). AGENTS.md has the `## Vault` section.
-  2. github    <owner>/<name>, created with --private, pushed, then read back. A read-back
-               that is not PRIVATE fails the run.
+  2. github    <owner>/<name>, created with --private and read back; nothing is pushed until
+               visibility reads back PRIVATE, and only the bootstrap commit is pushed.
   3. orca      `orca repo add --path <checkout> --kind git --json`, read back with
                `orca repo list --json`.
   4. section   ~/Obsidian/scriptorium/<section>/memory and /inbox.
   5. memory    ~/.claude/projects/<slug>/ (created when missing) and its `memory`, a symlink
-               to the section's memory/. A real memory/ folder's files move into the section;
-               a name in both folders is a collision.
+               to the section's memory/. A real memory/ folder moves into the section in one
+               rename when the section's memory/ is empty; otherwise it is a collision.
 The Linear project and the MergeWren onboarding ticket are the agent's steps (SKILL.md); the
 plan lists them last so a dry run shows the whole order.
 
-Every check runs before the first write. A step already done is skipped, so a second run
+The checks run before the first write; the GitHub visibility read-back runs before the push. A step already done is skipped, so a second run
 after a full one writes nothing and a run after a partial one does only what is missing.
 Anything at a target that this tool did not make, or that belongs to another project, is a
 collision: the run stops before writing anything.
@@ -43,6 +43,7 @@ import tempfile
 from pathlib import Path
 
 MARKER = "Bootstrapped-by: dv:new-project"
+BRANCH = "main"
 NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 EXIT_OK, EXIT_FAIL, EXIT_USAGE, EXIT_STOP = 0, 1, 2, 3
 
@@ -139,11 +140,8 @@ def check_checkout(c: Ctx) -> tuple[str, str]:
         return TODO, f"create {p} with the bootstrap commit"
     if p.is_symlink() or not p.is_dir():
         return STOP, f"{p} exists and is not a folder this tool made"
-    entries = [e for e in os.listdir(p) if e != ".DS_Store"]
-    if not entries:
-        return TODO, f"create the bootstrap commit in the empty folder {p}"
     if not (p / ".git").exists():
-        return STOP, f"{p} already holds files and is not a git repository made by dv:new-project"
+        return STOP, f"{p} already exists and is not a git repository made by dv:new-project"
     roots = git(p, "rev-list", "--max-parents=0", "HEAD", check=False)
     if roots.returncode != 0 or not roots.stdout.strip():
         return STOP, f"{p} is a git repository with no commits; dv:new-project did not make it"
@@ -188,7 +186,12 @@ def remote_has_root(c: Ctx) -> bool:
     if not root:
         return False
     has = run(["gh", "api", f"repos/{c.full}/commits/{root}", "--jq", ".sha"], check=False)
-    return has.returncode == 0 and has.stdout.strip() == root
+    if has.returncode == 0:
+        return has.stdout.strip() == root
+    err = has.stderr + has.stdout
+    if "No commit found" in err or "Git Repository is empty" in err:
+        return False
+    raise Blocked(f"`gh api repos/{c.full}/commits/{root[:7]}` failed: {err.strip()}")
 
 
 def check_github(c: Ctx, checkout_state: str) -> tuple[str, str]:
@@ -227,19 +230,27 @@ def same_path(a: str, b: Path) -> bool:
 
 def check_orca(c: Ctx, checkout_state: str) -> tuple[str, str]:
     want_key = f"github.com/{c.full}".lower()
-    for r in orca_repos():
-        path = r.get("path") or ""
-        key = ((r.get("gitRemoteIdentity") or {}).get("canonicalKey") or "").lower()
-        if same_path(path, c.checkout):
-            if checkout_state != DONE:
-                return STOP, f"Orca already has a project at {path} (id {r.get('id')}), before this run made it"
-            if r.get("kind", "git") != "git":
-                return STOP, f"Orca has {path} registered as kind {r.get('kind')}, not git"
-            c.report["orca_id"] = r.get("id")
-            return DONE, f"Orca has {path} (id {r.get('id')})"
-        if key and key == want_key:
-            return STOP, f"Orca already has github.com/{c.full} at another path: {path} (id {r.get('id')})"
-    return TODO, f"orca repo add --path {c.checkout} --kind git --json, read back with orca repo list"
+
+    def key(r: dict) -> str:
+        return ((r.get("gitRemoteIdentity") or {}).get("canonicalKey") or "").lower()
+
+    repos = orca_repos()
+    here = [r for r in repos if same_path(r.get("path") or "", c.checkout)]
+    elsewhere = [r for r in repos if r not in here and key(r) == want_key]
+    if elsewhere:
+        r = elsewhere[0]
+        return STOP, f"Orca already has github.com/{c.full} at another path: {r.get('path')} (id {r.get('id')})"
+    if not here:
+        return TODO, f"orca repo add --path {c.checkout} --kind git --json, read back with orca repo list"
+    r = here[0]
+    if checkout_state != DONE:
+        return STOP, f"Orca already has a project at {r.get('path')} (id {r.get('id')}), before this run made it"
+    if r.get("kind", "git") != "git":
+        return STOP, f"Orca has {r.get('path')} registered as kind {r.get('kind')}, not git"
+    if key(r) and key(r) != want_key:
+        return STOP, f"Orca's project at {r.get('path')} is for {key(r)}, not github.com/{c.full}"
+    c.report["orca_id"] = r.get("id")
+    return DONE, f"Orca has {r.get('path')} (id {r.get('id')})"
 
 
 def section_is_scaffold(sec: Path) -> bool:
@@ -294,11 +305,10 @@ def check_memory(c: Ctx) -> tuple[str, str]:
         return TODO, f"{made}ln -s {c.sec / 'memory'} {m}"
     if not m.is_dir():
         return STOP, f"{m} exists and is not a folder or a link"
-    entries = sorted(os.listdir(m))
-    clash = [e for e in entries if os.path.lexists(c.sec / "memory" / e)]
-    if clash:
-        return STOP, f"{m} and {c.sec / 'memory'} both hold {', '.join(clash)}"
-    return TODO, f"move {len(entries)} file(s) from {m} into {c.sec / 'memory'}, then link it"
+    sec_mem = c.sec / "memory"
+    if sec_mem.is_dir() and os.listdir(sec_mem):
+        return STOP, f"{m} and {sec_mem} both hold files; merge them by hand"
+    return TODO, f"move {m} to {sec_mem} (one rename), then link it"
 
 
 # ---------------------------------------------------------------- writes
@@ -374,12 +384,8 @@ def do_checkout(c: Ctx) -> None:
                f".gitignore and a discovery doc. No feature code.\n\n"
                f"{MARKER}\nProject: {c.name}\nSection: {c.section}\n")
         git(tmp, "commit", "-q", "-m", msg)
-        if c.checkout.is_dir():
-            # The checks allowed only an empty folder (or one holding .DS_Store) here. rmdir
-            # refuses a folder that gained files since, so nothing else is removed.
-            if (c.checkout / ".DS_Store").is_file():
-                (c.checkout / ".DS_Store").unlink()
-            c.checkout.rmdir()
+        if os.path.lexists(c.checkout):
+            raise Fail(f"{c.checkout} appeared after the checks; leaving it alone")
         os.rename(tmp, c.checkout)
     except BaseException:
         shutil.rmtree(tmp, ignore_errors=True)
@@ -387,38 +393,48 @@ def do_checkout(c: Ctx) -> None:
     c.report["root_commit"] = git(c.checkout, "rev-list", "--max-parents=0", "HEAD").stdout.split()[-1]
 
 
-def do_github(c: Ctx) -> None:
-    origin = has_origin(c)
-    if c.github_view is None:
-        desc = ["--description", c.description] if c.description else []
-        if origin:
-            run(["gh", "repo", "create", c.full, "--private", *desc])
-        else:
-            run(["gh", "repo", "create", c.full, "--private", *desc, "--source", str(c.checkout),
-                 "--remote", "origin", "--push"])
-            return
-    elif not origin:
-        proto = run(["gh", "config", "get", "git_protocol", "--host", "github.com"],
-                    check=False).stdout.strip()
-        url = f"git@github.com:{c.full}.git" if proto == "ssh" else f"https://github.com/{c.full}.git"
-        git(c.checkout, "remote", "add", "origin", url)
-    if not remote_has_root(c):
-        git(c.checkout, "push", "-q", "--set-upstream", "origin", "HEAD")
-
-
-def read_back_github(c: Ctx) -> None:
-    view = gh_repo_view(c)
+def require_private(view: dict | None, c: Ctx) -> dict:
     if view is None:
         raise Fail(f"read-back: github.com/{c.full} does not exist after the create")
-    c.report["github"] = {
-        "owner": c.owner, "repo": view.get("nameWithOwner"), "url": view.get("url"),
-        "visibility": view.get("visibility"),
-        "default_branch": (view.get("defaultBranchRef") or {}).get("name"),
-    }
     if view.get("visibility") != "PRIVATE":
         raise Fail(f"read-back: github.com/{c.full} is {view.get('visibility')}, not PRIVATE. "
                    f"Make it private now (gh repo edit {c.full} --visibility private "
                    f"--accept-visibility-change-consequences) and tell David")
+    return view
+
+
+def do_github(c: Ctx) -> None:
+    if c.github_view is None:
+        desc = ["--description", c.description] if c.description else []
+        run(["gh", "repo", "create", c.full, "--private", *desc])
+    # Nothing is pushed until the repository reads back PRIVATE.
+    view = require_private(gh_repo_view(c), c)
+    if not has_origin(c):
+        proto = run(["gh", "config", "get", "git_protocol", "--host", "github.com"],
+                    check=False).stdout.strip()
+        url = f"git@github.com:{c.full}.git" if proto == "ssh" else f"https://github.com/{c.full}.git"
+        git(c.checkout, "remote", "add", "origin", url)
+    if view.get("isEmpty"):
+        # Push the bootstrap commit only: later local commits are the user's to push.
+        root = c.report["root_commit"]
+        git(c.checkout, "push", "-q", "origin", f"{root}:refs/heads/{BRANCH}")
+        if git(c.checkout, "rev-parse", "--verify", "-q", f"refs/heads/{BRANCH}", check=False).returncode == 0:
+            git(c.checkout, "branch", "-q", f"--set-upstream-to=origin/{BRANCH}", BRANCH, check=False)
+
+
+def read_back_github(c: Ctx) -> None:
+    view = require_private(gh_repo_view(c), c)
+    full = view.get("nameWithOwner") or ""
+    url = (view.get("url") or "").rstrip("/")
+    branch = (view.get("defaultBranchRef") or {}).get("name") or ""
+    c.report["github"] = {
+        "owner": full.split("/")[0] if "/" in full else None, "repo": full, "url": url,
+        "visibility": view.get("visibility"), "default_branch": branch,
+    }
+    if full.lower() != c.full.lower() or url.lower() != f"https://github.com/{c.full}".lower():
+        raise Fail(f"read-back: asked for {c.full}, GitHub answered {full} at {url}")
+    if not branch:
+        raise Fail(f"read-back: github.com/{c.full} has no default branch")
     if not remote_has_root(c):
         raise Fail(f"read-back: github.com/{c.full} does not hold the bootstrap commit")
 
@@ -443,18 +459,23 @@ def do_section(c: Ctx) -> None:
 
 
 def do_memory(c: Ctx) -> None:
-    m = c.harness / "memory"
+    m, sec_mem = c.harness / "memory", c.sec / "memory"
     c.harness.mkdir(parents=True, exist_ok=True)
+    moved = False
     if m.is_dir() and not m.is_symlink():
-        for e in sorted(os.listdir(m)):
-            target = c.sec / "memory" / e
-            if os.path.lexists(target):
-                raise Fail(f"{target} appeared after the checks; stopping before overwriting it")
-            shutil.move(str(m / e), str(target))
-        m.rmdir()
-    os.symlink(str(c.sec / "memory"), str(m))
+        # One rename, so an interrupted run never leaves the files split between the two.
+        if sec_mem.is_dir():
+            sec_mem.rmdir()  # refuses a folder that holds anything, so nothing is deleted
+        os.rename(m, sec_mem)
+        moved = True
+    try:
+        os.symlink(str(sec_mem), str(m))
+    except OSError:
+        if moved:
+            os.rename(sec_mem, m)  # put the folder back, so a rerun sees the same state
+        raise
     if not memory_link_ok(c):
-        raise Fail(f"read-back: {m} does not resolve to {c.sec / 'memory'}")
+        raise Fail(f"read-back: {m} does not resolve to {sec_mem}")
 
 
 # ---------------------------------------------------------------- main

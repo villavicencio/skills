@@ -21,7 +21,9 @@ Checked (the ticket's Done means, plus the partial-run and memory-folder cases):
     missing steps
   - a collision at the checkout, the GitHub repository, the Orca registration or the section
     exits non-zero with nothing written and no create call
-  - a check that can't run (`orca repo list` failing) exits 1 with nothing written
+  - a check that can't run (`orca repo list` or `gh api` failing) exits 1 with nothing written
+  - nothing is pushed before visibility reads back PRIVATE, only the bootstrap commit is pushed,
+    and a read-back naming another repository fails the run
 
 Stdlib only, no network. Needs git.
 
@@ -79,6 +81,10 @@ if argv[:2] == ["api", "user"]:
     print(st["login"]); sys.exit(0)
 if argv[:1] == ["api"] and argv[1].startswith("repos/") and "/commits/" in argv[1]:
     full, sha = argv[1][len("repos/"):].split("/commits/")
+    if st.get("fail_commits_api"):
+        sys.stderr.write("gh: Bad Gateway (HTTP 502)\n"); sys.exit(1)
+    if full in st["repos"] and not git("-C", bare(full), "for-each-ref", "refs/heads").stdout.strip():
+        sys.stderr.write("gh: Git Repository is empty. (HTTP 409)\n"); sys.exit(1)
     if full in st["repos"] and git("-C", bare(full), "cat-file", "-e", sha + "^{commit}").returncode == 0:
         print(git("-C", bare(full), "rev-parse", sha).stdout.strip()); sys.exit(0)
     sys.stderr.write(f"gh: No commit found for SHA: {sha} (HTTP 422)\n"); sys.exit(1)
@@ -91,7 +97,8 @@ if argv[:2] == ["repo", "view"]:
     b = bare(full)
     heads = git("-C", b, "for-each-ref", "refs/heads").stdout.strip()
     head = git("-C", b, "symbolic-ref", "--short", "HEAD").stdout.strip() if heads else ""
-    print(json.dumps({"nameWithOwner": full, "url": "https://github.com/" + full,
+    shown = st.get("force_name") or full
+    print(json.dumps({"nameWithOwner": shown, "url": "https://github.com/" + shown,
                       "visibility": st.get("force_visibility") or st["repos"][full]["visibility"],
                       "defaultBranchRef": {"name": head}, "isEmpty": not heads}))
     sys.exit(0)
@@ -335,6 +342,8 @@ def test_full_then_idempotent() -> None:
         bare = sb.remotes / LOGIN / f"{NAME}.git"
         check("full run: commit pushed to the (stub) GitHub repository",
               git_out(bare, "rev-parse", "main").strip() == git_out(sb.checkout, "rev-parse", "HEAD").strip())
+        check("full run: local main tracks origin/main",
+              git_out(sb.checkout, "rev-parse", "--abbrev-ref", "main@{u}").strip() == "origin/main")
         st = sb.read_state()
         check("full run: stub repository is PRIVATE", st["repos"].get(f"{LOGIN}/{NAME}", {}).get("visibility") == "PRIVATE")
         check("full run: Orca has the checkout", [r["path"] for r in st["orca"]] == [str(sb.checkout)])
@@ -394,6 +403,9 @@ def test_public_readback_fails() -> None:
         check("PUBLIC read-back: the create still asked for --private",
               len(gh_create) == 1 and "--private" in gh_create[0], str(gh_create))
         check("PUBLIC read-back: no Orca add after it", not any(c[:3] == ["orca", "repo", "add"] for c in calls))
+        bare = sb.remotes / LOGIN / f"{NAME}.git"
+        check("PUBLIC read-back: nothing pushed to the repository",
+              git_out(bare, "for-each-ref", "refs/heads").strip() == "")
         check("PUBLIC read-back: no section, no memory link",
               not sb.section.exists() and not os.path.lexists(sb.harness / "memory"))
         # A rerun sees an existing PUBLIC repository and stops before writing anything.
@@ -438,12 +450,47 @@ def test_partial_gh_died_after_create() -> None:
               report.get("did") == ["github", "orca", "section", "memory"], str(report.get("did")))
 
 
+def test_partial_empty_remote_pushes_bootstrap_only() -> None:
+    sb, td = sandbox()
+    with td:
+        st = sb.read_state(); st["fail_create_after"] = True; sb.write_state(st)
+        sb.run(NAME, "--section", SECTION)
+        root = git_out(sb.checkout, "rev-parse", "HEAD").strip()
+        (sb.checkout / "later.txt").write_text("work in progress\n")
+        subprocess.run(["git", "-C", str(sb.checkout), "add", "later.txt"], env=sb.env(), check=True)
+        subprocess.run(["git", "-C", str(sb.checkout), "commit", "-qm", "later"], env=sb.env(), check=True)
+        p, _, _ = sb.run(NAME, "--section", SECTION)
+        bare = sb.remotes / LOGIN / f"{NAME}.git"
+        check("empty remote + later local commit: rerun exit 0", p.returncode == 0, p.stderr[-1500:])
+        check("empty remote + later local commit: only the bootstrap commit is pushed",
+              git_out(bare, "rev-parse", "main").strip() == root)
+
+
+def test_github_check_errors() -> None:
+    sb, td = sandbox()
+    with td:
+        ok_run(sb, "setup for a failing commits API")
+        st = sb.read_state(); st["fail_commits_api"] = True; sb.write_state(st)
+        expect_stop("gh api commits fails with a 502 (a check that can't run)", sb, code=1)
+    sb, td = sandbox()
+    with td:
+        st = sb.read_state(); st["force_name"] = f"{LOGIN}/renamed"; sb.write_state(st)
+        p, _, report = sb.run(NAME, "--section", SECTION)
+        check("read-back names another repository: run fails", p.returncode == 1, f"exit {p.returncode}")
+        check("read-back names another repository: no Orca add",
+              "orca" not in report.get("did", []), str(report.get("did")))
+
+
 def test_collision_checkout() -> None:
     sb, td = sandbox()
     with td:
         sb.checkout.mkdir(parents=True)
         (sb.checkout / "notes.txt").write_text("someone else's\n")
         expect_stop("collision: checkout path holds other files", sb)
+    sb, td = sandbox()
+    with td:
+        sb.checkout.mkdir(parents=True)
+        expect_stop("collision: checkout path is an existing empty folder", sb)
     sb, td = sandbox()
     with td:
         sb.checkout.mkdir(parents=True)
@@ -499,6 +546,21 @@ def test_collision_orca() -> None:
                        "kind": "git", "gitRemoteIdentity": {"canonicalKey": f"github.com/{LOGIN}/{NAME}"}}]
         sb.write_state(st)
         expect_stop("collision: Orca has the same GitHub repository at another path", sb)
+    sb, td = sandbox()
+    with td:
+        ok_run(sb, "setup for Orca drift")
+        st = sb.read_state()
+        st["orca"][0]["gitRemoteIdentity"] = {"canonicalKey": "github.com/someone/else"}
+        sb.write_state(st)
+        expect_stop("collision: Orca's entry at the checkout is for another repository", sb)
+    sb, td = sandbox()
+    with td:
+        ok_run(sb, "setup for an Orca duplicate")
+        st = sb.read_state()
+        st["orca"].append({"id": "o-3", "path": str(sb.root / "copy" / NAME), "kind": "git",
+                           "gitRemoteIdentity": {"canonicalKey": f"github.com/{LOGIN}/{NAME}"}})
+        sb.write_state(st)
+        expect_stop("collision: a second Orca entry for the same repository", sb)
 
 
 def test_check_cannot_run() -> None:
@@ -557,7 +619,8 @@ def main() -> int:
         return 1
     for t in (test_missing_section, test_dry_run_fresh, test_full_then_idempotent,
               test_public_readback_fails, test_partial_orca_failure,
-              test_partial_gh_died_after_create, test_collision_checkout, test_collision_github,
+              test_partial_gh_died_after_create, test_partial_empty_remote_pushes_bootstrap_only,
+              test_github_check_errors, test_collision_checkout, test_collision_github,
               test_collision_orca, test_check_cannot_run, test_collision_section,
               test_section_scaffold_and_memory_move):
         print(f"--- {t.__name__}")

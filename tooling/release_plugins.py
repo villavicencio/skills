@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Publish a GitHub release for each plugin whose version has none yet.
 
-`.github/workflows/release.yml` runs this on every push to `main` (VIL-809). For
-each `plugins/<dir>/.claude-plugin/plugin.json` it checks whether a GitHub
+`.github/workflows/release.yml` runs this after `validate` passes on a push to
+`main` (VIL-809), checked out at that push's commit, which it passes in as
+RELEASE_SHA. For each `plugins/<dir>/.claude-plugin/plugin.json` it checks whether a GitHub
 release exists for the tag `<name>--v<version>`. If none does, it publishes one
 with
 
@@ -21,11 +22,15 @@ Rules:
   (`--verify-tag`, no `--target`), so the tag stays where it is.
 - No tag and no release: the tag is created at the checked-out commit
   (`--target <sha>`).
+- A version lower than the plugin's highest release, with no tag of its own:
+  if the commit is no longer main's tip (two merges whose `validate` runs
+  finished out of order, so the newer version released first), it is released
+  at its own commit without Latest; if the commit is main's tip (say, a revert
+  of plugin.json), the run refuses and names it.
 - All checks run before anything is created. A plugin directory without a
   readable plugin.json, a missing or empty notes file, a draft release on the
-  tag, a malformed name or version, or a version lower than the plugin's
-  highest release without its own tag all exit 1, naming the problem, with
-  nothing tagged or released.
+  tag, a malformed name or version, or a lower version on main's tip (above)
+  all exit 1, naming the problem, with nothing tagged or released.
 - "Latest" goes only to a version higher than every release the plugin already
   has, so it ends on the plugin's highest version. GitHub keeps one Latest per
   repo, so with several plugins it ends on the last plugin to publish a new
@@ -35,8 +40,9 @@ Rules:
   hand (a re-run won't retry it: the release exists by then).
 
 `--dry-run` makes the same checks (it reads releases and tags from GitHub) and
-prints what it would publish; it creates nothing. Publishing for real only runs
-inside GitHub Actions on `refs/heads/main`, so a local run cannot tag a branch.
+prints what it would publish; it creates nothing; it treats the commit as the
+tip-to-be of main. Publishing for real only runs inside GitHub Actions on
+`refs/heads/main` with RELEASE_SHA set, so a local run cannot tag a branch.
 
 Stdlib only; needs `git` and an authenticated `gh` (GH_TOKEN in Actions).
 
@@ -164,6 +170,7 @@ def plan(
     draft_tags: set[str],
     existing_tags: set[str],
     notes_check: Callable[[str], str | None],
+    is_tip: bool = True,
 ) -> list[Release]:
     """Decide what to publish. Pure: all GitHub state comes in as arguments.
 
@@ -171,6 +178,7 @@ def plan(
     draft_tags: tags named by draft releases.
     existing_tags: which of the candidate tags already exist on the remote.
     notes_check: notes path -> problem string, or None when the file is usable.
+    is_tip: whether the commit being released is main's current tip.
 
     Raises ReleaseError listing every problem; returns [] when nothing is due.
     """
@@ -196,11 +204,11 @@ def plan(
         highest = max(released, default=None)
         mine = parse_version(p.version)
         tag_exists = tag in existing_tags
-        if highest is not None and mine is not None and mine < highest and not tag_exists:
+        if highest is not None and mine is not None and mine < highest and not tag_exists and is_tip:
             problems.append(
                 f"{where}, but it is lower than the released "
-                f"{p.name} {'.'.join(map(str, highest))}; refusing to tag this "
-                "commit with an older version. Set plugin.json to a new version"
+                f"{p.name} {'.'.join(map(str, highest))}; refusing to tag main's "
+                "tip with an older version. Set plugin.json to a new version"
             )
             continue
         notes = f"{NOTES_DIR}/{tag}.md"
@@ -273,6 +281,10 @@ def tag_exists(repo: str, tag: str) -> bool:
     return any(ref.get("ref") == f"refs/tags/{tag}" for ref in json.loads(out))
 
 
+def main_tip(repo: str) -> str:
+    return run(["gh", "api", f"repos/{repo}/git/ref/heads/main", "--jq", ".object.sha"]).strip()
+
+
 def detect_repo(root: Path) -> str:
     repo = os.environ.get("GITHUB_REPOSITORY") or run(
         ["gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"], cwd=root
@@ -300,23 +312,29 @@ def main(argv: list[str] | None = None) -> int:
         sha = run(["git", "rev-parse", "HEAD"], cwd=root).strip()
         if not SHA_RE.fullmatch(sha):
             raise ReleaseError([f"git rev-parse HEAD gave {sha!r}, not a commit SHA"])
-        env_sha = os.environ.get("GITHUB_SHA")
+        # On workflow_run, GITHUB_SHA is main's tip, not the validated commit,
+        # so the workflow passes that commit as RELEASE_SHA.
+        env_var = "RELEASE_SHA" if os.environ.get("RELEASE_SHA") else "GITHUB_SHA"
+        env_sha = os.environ.get(env_var)
         if env_sha and env_sha != sha:
-            raise ReleaseError([f"checkout is at {sha} but GITHUB_SHA is {env_sha}"])
+            raise ReleaseError([f"checkout is at {sha} but {env_var} is {env_sha}"])
         if not args.dry_run and not (
             os.environ.get("GITHUB_ACTIONS") == "true"
             and os.environ.get("GITHUB_REF") == "refs/heads/main"
+            and os.environ.get("RELEASE_SHA")
         ):
             raise ReleaseError([
-                "publishing runs only in GitHub Actions on refs/heads/main; "
-                "use --dry-run to see what would be published"
+                "publishing runs only in GitHub Actions on refs/heads/main with RELEASE_SHA "
+                "set; use --dry-run to see what would be published"
             ])
 
         plugins = read_plugins(root)
         published, drafts = fetch_releases(repo)
         candidates = {tag_for(p.name, p.version) for p in plugins} - published
         existing = {t for t in candidates if tag_exists(repo, t)}
-        releases = plan(plugins, published, drafts, existing, lambda n: notes_problem(root, n))
+        is_tip = args.dry_run or main_tip(repo) == sha
+        releases = plan(plugins, published, drafts, existing,
+                        lambda n: notes_problem(root, n), is_tip=is_tip)
     except ReleaseError as exc:
         for problem in exc.problems:
             say_error(problem)

@@ -72,6 +72,20 @@ class PlanTest(unittest.TestCase):
         with self.assertRaises(ReleaseError) as cm:
             plan([p], RELEASED, set(), set(), notes_ok)
         self.assertIn("lower than the released dv 0.14.1", str(cm.exception))
+        self.assertIn("main's tip", str(cm.exception))
+
+    def test_older_version_off_tip_is_released_without_latest(self):
+        # Two merges whose validate runs finished out of order: 0.14.1 already
+        # released from the newer commit, this older commit carries 0.14.0.
+        p = Plugin("dv", "0.14.0", DV.manifest)
+        [r] = plan([p], {"dv--v0.14.1"}, set(), set(), notes_ok, is_tip=False)
+        self.assertFalse(r.tag_exists)
+        self.assertFalse(r.latest)
+
+    def test_older_version_on_tip_is_still_refused(self):
+        p = Plugin("dv", "0.14.0", DV.manifest)
+        with self.assertRaises(ReleaseError):
+            plan([p], {"dv--v0.14.1"}, set(), set(), notes_ok, is_tip=True)
 
     def test_missing_notes_names_the_path_and_plans_nothing(self):
         with self.assertRaises(ReleaseError) as cm:

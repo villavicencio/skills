@@ -1,20 +1,26 @@
 name: release
 
-# Publishes plugin releases (VIL-809). On every push to main, for each plugin
-# whose plugin.json version has no GitHub release yet, tooling/release_plugins.py
-# creates the tag `<plugin>--v<version>` at the pushed commit, publishes the
-# release with docs/release-notes/<plugin>--v<version>.md as its notes, and starts
-# `validate` on the tag (a tag made with GITHUB_TOKEN does not start workflows on
-# its own; workflow_dispatch is the exception). It skips a version that already
-# has a release, publishes on an existing tag without moving it, and runs its
-# checks (notes file included) before creating anything. A person bumps the
-# version, writes the notes file and merges; this does the rest.
+# Publishes plugin releases (VIL-809). After `validate` passes on a push to main,
+# for each plugin whose plugin.json version has no GitHub release yet,
+# tooling/release_plugins.py creates the tag `<plugin>--v<version>` at that
+# push's commit, publishes the release with
+# docs/release-notes/<plugin>--v<version>.md as its notes, and starts `validate`
+# on the tag (a tag made with GITHUB_TOKEN does not start workflows on its own;
+# workflow_dispatch is the exception). It skips a version that already has a
+# release, publishes on an existing tag without moving it, and runs its checks
+# (notes file included) before creating anything. A person bumps the version,
+# writes the notes file and merges; this does the rest.
 #
 # On a pull request it runs the same script with --dry-run and a read-only token,
 # so a release PR whose notes file is missing fails before it merges.
 
 on:
-  push:
+  # Fires when any `validate` run whose head branch is main completes, whatever
+  # its conclusion; the publish job's `if:` and first step narrow that down.
+  # Runs only from the copy of this file on the default branch.
+  workflow_run:
+    workflows: [validate]
+    types: [completed]
     branches: [main]
   pull_request:
 
@@ -42,7 +48,15 @@ jobs:
         run: python3 tooling/release_plugins.py --dry-run
 
   publish:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Only a validate run started by a push to main in this repo. That leaves out
+    # validate's pull_request runs (event pull_request), its runs on release tags
+    # (head_branch is the tag) and the run this job starts on a new tag (event
+    # workflow_dispatch, head_branch the tag), so the dispatch can't loop back.
+    if: >-
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -51,15 +65,31 @@ jobs:
     # One group for all publish runs. With cancel-in-progress false a run isn't
     # canceled by a newer one, and `queue: max` keeps pending runs (default
     # `single` would cancel a pending run when a newer one queues, skipping that
-    # push's release check).
-    # They run one at a time in push order, so two quick merges cannot race on a tag.
+    # push's release check). They run one at a time, in the order their validate
+    # runs finished; release_plugins.py handles an older commit arriving after a
+    # newer one has released.
     concurrency:
       group: release-plugins
       cancel-in-progress: false
       queue: max
+    env:
+      # On workflow_run, github.sha is main's tip; the commit validate checked is
+      # the workflow_run's head_sha.
+      RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+      VALIDATE_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+      VALIDATE_URL: ${{ github.event.workflow_run.html_url }}
     steps:
+      - name: Require validate to have passed on this commit
+        run: |
+          if [ "$VALIDATE_CONCLUSION" != "success" ]; then
+            echo "::error::validate did not pass on $RELEASE_SHA (conclusion: $VALIDATE_CONCLUSION, $VALIDATE_URL); nothing was tagged or released. The next push to main whose validate passes publishes any version still unreleased."
+            exit 1
+          fi
+          echo "validate passed on $RELEASE_SHA ($VALIDATE_URL)"
+
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          ref: ${{ github.event.workflow_run.head_sha }}
           persist-credentials: false
 
       - name: Unit-test the release logic

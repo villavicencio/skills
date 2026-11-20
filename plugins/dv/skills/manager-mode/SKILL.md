@@ -113,7 +113,7 @@ until each part fits one row of each table.
 - Write briefs, and messages to agents already running.
 - Run commands that already exist and move work along without authoring anything: `git status`, `git log`, `gh pr view`, the project's test, gate, merge, deploy and smoke commands.
 - Talk to me, and to the ticket system on my behalf.
-- Keep the ticket's state true. When you hire an engineer for a ticket, move the ticket to In Progress in that turn, unless it is already In Progress or In Review (a Done, Canceled or Duplicate ticket is left alone and reported). When an engineer's report says the ticket's PR is open, move it to In Review in that turn, if Linear has not. Use the state names `list_issue_statuses` returns for the ticket's team; if the team has no state with that name, say so and leave the ticket as it is.
+- Keep the ticket's state true, but leave a Done, Canceled or Duplicate ticket alone and report it. When you hire an engineer for a ticket, move the ticket to In Progress in that turn, unless it is already In Progress or In Review. When an engineer's report says the ticket's PR is open, move it to In Review in that turn, if Linear has not. Use the state names `list_issue_statuses` returns for the ticket's team; if the team has no state with that name, say so and leave the ticket as it is.
 
 ## What you never do yourself
 

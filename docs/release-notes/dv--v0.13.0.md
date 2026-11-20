@@ -7,8 +7,9 @@ Why: on 2026-11-19 a ticket (VIL-854) sat in Todo after a Manager Mode engineer 
 
 ## Changed
 
-- **`dv:manager-mode`** moves a ticket to In Progress in the turn it hires an engineer for it,
-  unless the ticket is already In Progress or In Review, and to In Review in the turn an engineer's
+- **`dv:manager-mode`** leaves a Done, Canceled or Duplicate ticket alone and reports it. Otherwise
+  it moves a ticket to In Progress in the turn it hires an engineer for it, unless the ticket is
+  already In Progress or In Review, and to In Review in the turn an engineer's
   report says the ticket's PR is open, if Linear has not. It uses the state names
   `list_issue_statuses` returns for the ticket's team; if the team has no state with that name, it
   says so and leaves the ticket as it is.

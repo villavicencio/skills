@@ -116,9 +116,9 @@ what you can read; do not make me answer questions you can look up.
     "once X lands".
   - **Check each one.** Read its current state: `get_issue` for a ticket. When the condition is a
     PR merging, read that PR's merge state with
-    `gh pr view <N> -R <owner>/<repo> --json state,mergedAt,title,url`, not only the state of its
-    ticket. A met prerequisite (the PR merged, the ticket Done) is not a blocker. Say so in the
-    draft, and file the ticket in the ready-to-start state, not Backlog.
+    `gh pr view <N> -R <owner>/<repo> --json state,mergedAt,title,url,headRefName,body`, not only the state of its
+    ticket. A met prerequisite (the PR merged, the ticket Done) is not a blocker: say so in the draft.
+    File the ticket in the ready-to-start state, not Backlog, only when every prerequisite is met.
   - **Prerequisite or reference.** A ticket named as a worked example, as background or as related
     work is not a blocker, and a reference alone never implies one. The test: could this ticket's
     work start and finish correctly if the other were never done? If yes, it is related, not

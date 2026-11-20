@@ -21,6 +21,8 @@ Checked (the ticket's Done means, plus the partial-run and memory-folder cases):
     missing steps
   - a collision at the checkout, the GitHub repository, the Orca registration or the section
     exits non-zero with nothing written and no create call
+  - a ~/Projects folder sharing the harness slug, or a real memory/ folder with no session
+    from this checkout, stops the run with nothing written
   - a check that can't run (`orca repo list` or `gh api` failing) exits 1 with nothing written
   - nothing is pushed before visibility reads back PRIVATE, only the bootstrap commit is pushed,
     and a read-back naming another repository fails the run
@@ -639,6 +641,29 @@ def test_collision_shared_slug() -> None:
         expect_stop("collision: harness folder holds another checkout's sessions", sb)
 
 
+def test_memory_guard() -> None:
+    sb, td = sandbox()
+    with td:
+        # foo_bar and foo-bar share a harness folder name: the second project stops.
+        (sb.home / "Projects" / "foo_bar").mkdir()
+        (sb.home / "Projects" / "foo_bar" / "notes.txt").write_text("another project\n")
+        expect_stop("collision: another ~/Projects folder shares the harness slug", sb,
+                    "foo-bar", "--section", SECTION)
+    sb, td = sandbox()
+    with td:
+        # The checkout is ours (an earlier run stopped at Orca), but the real memory folder has
+        # no session file from this checkout: it is not moved.
+        st = sb.read_state(); st["fail_orca_add"] = True; sb.write_state(st)
+        sb.run(NAME, "--section", SECTION)
+        st = sb.read_state(); st["fail_orca_add"] = False; sb.write_state(st)
+        (sb.harness / "memory").mkdir(parents=True)
+        (sb.harness / "memory" / "MEMORY.md").write_text("whose?\n")
+        expect_stop("memory folder with no session from this checkout is not moved", sb)
+        check("memory folder with no session from this checkout: still in place",
+              (sb.harness / "memory" / "MEMORY.md").read_text() == "whose?\n"
+              and not (sb.section / "memory" / "MEMORY.md").exists())
+
+
 def main() -> int:
     if not SCRIPT.is_file():
         print(f"FAILED: {SCRIPT} not found")
@@ -647,7 +672,7 @@ def main() -> int:
               test_public_readback_fails, test_partial_orca_failure,
               test_partial_gh_died_after_create, test_partial_empty_remote_pushes_bootstrap_only,
               test_github_check_errors, test_collision_checkout, test_collision_github,
-              test_collision_orca, test_check_cannot_run, test_collision_section, test_collision_shared_slug,
+              test_collision_orca, test_check_cannot_run, test_collision_section, test_collision_shared_slug, test_memory_guard,
               test_section_scaffold_and_memory_move):
         print(f"--- {t.__name__}")
         t()

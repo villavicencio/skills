@@ -14,9 +14,11 @@ Steps, in order:
                `orca repo list --json`.
   4. section   ~/Obsidian/scriptorium/<section>/memory and /inbox.
   5. memory    ~/.claude/projects/<slug>/ (created when missing; an existing one must hold only
-               sessions from this checkout) and its `memory`, a symlink
+               sessions from this checkout, and no other ~/Projects folder may share the slug)
+               and its `memory`, a symlink
                to the section's memory/. A real memory/ folder moves into the section in one
-               rename when the section's memory/ is empty; otherwise it is a collision.
+               rename when a session file shows it came from this checkout and the section's
+               memory/ is empty; otherwise it is a collision.
 The Linear project and the MergeWren onboarding ticket are the agent's steps (SKILL.md); the
 plan lists them last so a dry run shows the whole order.
 
@@ -315,6 +317,15 @@ def check_memory(c: Ctx, checkout_state: str) -> tuple[str, str]:
     h, m = c.harness, c.harness / "memory"
     if os.path.lexists(h) and (h.is_symlink() or not h.is_dir()):
         return STOP, f"{h} exists and is not a folder"
+    if c.projects.is_dir():
+        # Different names can share a slug (foo-bar, foo_bar, foo.bar). Another folder in
+        # ~/Projects with this slug would share this project's harness folder and memory.
+        parent = real(c.projects)
+        clash = sorted(e for e in os.listdir(c.projects)
+                       if e != c.name and slug_for(os.path.join(parent, e)) == c.slug)
+        if clash:
+            return STOP, (f"~/Projects/{clash[0]} maps to the same harness folder ({c.slug}) "
+                          f"as {c.name}; pick another name")
     if h.is_dir():
         # Different names can share a slug (foo-bar, foo_bar, foo.bar). The folder is this
         # project's only if its sessions all ran in this checkout, and a folder that predates
@@ -333,6 +344,8 @@ def check_memory(c: Ctx, checkout_state: str) -> tuple[str, str]:
         return TODO, f"{made}ln -s {c.sec / 'memory'} {m}"
     if not m.is_dir():
         return STOP, f"{m} exists and is not a folder or a link"
+    if not any(os.path.realpath(x) == real(c.checkout) for x in session_cwds(h)):
+        return STOP, f"{m} is a real folder and no session file shows it came from {c.checkout}"
     sec_mem = c.sec / "memory"
     if sec_mem.is_dir() and os.listdir(sec_mem):
         return STOP, f"{m} and {sec_mem} both hold files; merge them by hand"

@@ -18,17 +18,20 @@ so a project brief only needs the product and the tracker links.
   section, `CLAUDE.md` importing it, `README.md`, `.gitignore`, `docs/discovery.md`); the GitHub
   repository, created with `--private`, and pushed (the bootstrap commit alone) only after the
   read-back names this repository and shows it private; the Orca registration with a
-  read-back; the scriptorium section's `memory/` and `inbox/`; and the harness memory link, creating the harness project
-  folder when it is missing. An existing harness folder must hold only this checkout's sessions,
-  since names that differ only in `-`, `_` or `.` share one.
+  read-back; the scriptorium section's `memory/` and `inbox/`; and the harness memory link,
+  creating the harness project folder when it is missing. Names that differ only in `-`, `_` or
+  `.` share a harness folder, so another `~/Projects` folder with the same harness folder name
+  stops the run before any write, an existing harness folder must hold only this checkout's
+  sessions, and a real `memory/` folder moves into the section only when a session file shows
+  it came from this checkout.
 - **The agent does Linear**: it checks for the Linear project before the script runs, creates it
   when none exists (or uses the one `--linear-project` names), and files the MergeWren onboarding
   ticket from the model ticket. Filing is not adoption: the repository has no reviewer until a
   real MergeWren verdict is seen on a PR.
 - **No pause, no partial overwrite.** The run doesn't ask for approval. It stops only on a
   collision (anything at a target this tool didn't make, or that belongs to another project,
-  the harness folder included), with nothing written. A rerun does only what is missing. `--dry-run` prints every action in
-  order and writes nothing.
+  the harness folder included), with nothing written. A rerun does only what is missing.
+  `--dry-run` prints every action in order and writes nothing.
 - **Tested with stubs.** `tooling/evals/test_new_project.py` runs the script against temp folders
   with `gh` and `orca` stubbed, in the `validate` workflow. The first live run is the next real
   project.

@@ -109,12 +109,12 @@ What it does, in order:
    the vault is Scribe's work. There is no `.obsidian` step; the vault already has one.
 5. **Memory link.** Creates the harness project folder under `~/.claude/projects/` when it is
    missing (it doesn't exist until a session has run in the new folder). Names that differ only
-   in `-`, `_` or `.` share that folder's name, so an existing one is this project's only when
-   the checkout already existed and every session in it ran in this checkout; otherwise it is a
-   collision. Then it links its
-   `memory` to the section's `memory/`. A real `memory/` folder replaces the section's empty
-   `memory/` in one rename before the link is made; if the section's `memory/` holds anything,
-   that is a collision.
+   in `-`, `_` or `.` share that folder's name, so another `~/Projects` folder with the same
+   name is a collision, and an existing one is this project's only when the checkout already
+   existed and every session in it ran in this checkout. Then it links its `memory` to the
+   section's `memory/`. A real `memory/` folder replaces the section's empty `memory/` in one
+   rename before the link is made, and only when a session file shows it came from this
+   checkout; otherwise, or if the section's `memory/` holds anything, that is a collision.
 
 ## Step 3 — The Linear project
 

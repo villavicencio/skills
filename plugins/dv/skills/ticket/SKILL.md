@@ -128,6 +128,10 @@ what you can read; do not make me answer questions you can look up.
     ticket, the waiting one, is blocked by the prerequisite. A PR maps to the ticket it is attached
     to: the ticket's attachments, or the `VIL-N` id in the PR's branch name or description. The
     pull-condition line at the end of Why stays; the relation does not replace it.
+    Never set `blockedBy` to a Done issue. If a prerequisite PR is still open but the issue it
+    maps to is already Done, keep the ticket in Backlog with the pull-condition line for the PR
+    ("Pull when PR N merges"), set no relation, and say so in the draft. dv:groom removes a
+    blocked-by on a Done issue as stale.
   - **Ask.** When the dependency is unclear, or the PR or condition maps to no issue or to more
     than one, ask me as an interview question before showing the draft. Set no relation on a
     guess.
@@ -137,9 +141,10 @@ what you can read; do not make me answer questions you can look up.
   stating the exact event or decision. If you cannot write that line, say so and ask what it waits
   for; do not add `someday` yourself. A ticket with an unmet prerequisite goes to Backlog
   with the pull-condition line. It also gets the blocked-by relation only when that prerequisite
-  maps to exactly one Linear issue. Any other confirmed wait, such as an unmerged PR with no
-  mapped ticket or a decision still pending, keeps the ticket in Backlog with its pull-condition
-  line and no relation. A ticket whose prerequisites are all met is ready to start.
+  maps to exactly one Linear issue that is not Done. Any other confirmed wait, such as an
+  unmerged PR with no mapped ticket, an open PR whose mapped issue is already Done, or a decision
+  still pending, keeps the ticket in Backlog with its pull-condition line and no relation.
+  A ticket whose prerequisites are all met is ready to start.
 - **Agent notes.** Paths, findings, what was checked and what was not, in a collapsed section,
   with the markers the shared rules give.
 - **Length.** Cut what the reader does not need to start and to know when to stop.
@@ -182,15 +187,20 @@ Then, just before `save_issue`, read each prerequisite's state again: `get_issue
 
 - If any prerequisite can't be read (the call fails or returns nothing), tell me which one and
   why, and save nothing.
+- Redo the mapping of each PR under the "Map it" rules in step 4, from the fresh branch name and
+  body you just read.
 - If any state changed since the draft (a PR merged, a blocker went Done, or a met one reopened),
-  rebuild the draft under the rules in step 4: its state, the pull-condition line at the end of
-  Why, and its relations. Show me the full revised draft as in step 6 and ask again. Save nothing
-  until I answer.
+  or the mapping changed (a PR now maps to a different issue, to no issue or to more than one, or
+  to one that is now Done), rebuild the draft under the rules in step 4: its state, the
+  pull-condition line at the end of Why, and its relations. Show me the full revised draft as in
+  step 6 and ask again. Save nothing until I answer.
 
 Call `save_issue` with the draft as last confirmed: the team, project, title and labels, that
-draft's state and description, and `blockedBy` with the issue ids of its prerequisites that are
-still unmet, when there are any. Use real newlines in the description, not `\n` escapes. Do not
-set an assignee, priority or estimate unless I asked.
+draft's state and description, `blockedBy` with the issue ids of its prerequisites that are still
+unmet and map to an issue that is not Done, when there are any, and `relatedTo` with the ids of
+the related tickets in that draft, when there are any. dv:groom passes relations the same way:
+`save_issue` with `blockedBy`, `relatedTo` and `removeBlockedBy`. Use real newlines in the
+description, not `\n` escapes. Do not set an assignee, priority or estimate unless I asked.
 
 Then reply with:
 

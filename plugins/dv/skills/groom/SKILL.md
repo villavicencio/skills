@@ -290,6 +290,13 @@ removes existing text. It covers:
   and "After the merge" (follow-ups that are not the worker's: notes to update, a ticket to comment
   on, a re-measurement). When Agent notes already exist, the grooming line goes before their first
   line, and the lists go after their last line.
+- the `groomed` label, added with `addLabels` as its own numbered item and applied with the other
+  approved edits; when the ticket needs nothing else, it is the only item (see Rules).
+
+Resolve `groomed` before any write. Call `list_issue_labels` for each team this run edits or
+files into: the groomed ticket's team, and the team of each child or spin-off. If a team has no
+active `groomed` label (it is missing or retired), do not create one. Leave it out of that write
+and say so in the report (step 8).
 
 Propose a rewrite of an activity line only when the result is clear from the ticket. Do not fill
 in a who or a date by guessing. Mark anything you add that you could not check with `[assumed]`.
@@ -316,7 +323,8 @@ Patches stay the default; three changed sections allow the offer and do not deci
    approved on; if it changed, file nothing, say what changed and ask again.
 2. **File approved children and spin-offs.** Read `dv:ticket`'s `SKILL.md` (`../ticket/SKILL.md`
    from this skill's directory), section "File", and create each with its rules: project found
-   live (a child takes the parent's project), labels from the team, the format, facts checked or
+   live (a child takes the parent's project), labels from the team plus the `groomed` label when
+   that team has it, the format, facts checked or
    marked `[assumed]`, Backlog with a pull condition unless it can start now, the re-run of the
    duplicate searches just before creating, and `save_issue`. My interview answer stands in for
    File step 6's draft and question. Set each one's relations in the `save_issue` call that
@@ -360,8 +368,10 @@ whole-description replacement). Other approved edits, such as the title, still a
 
 Relations go on `save_issue` with `blockedBy`, `relatedTo` and `removeBlockedBy`. Do not change
 the state, labels, project, priority, assignee or estimate unless I ask, or unless I chose that
-change in an interview answer. Change labels with `addLabels` and `removeLabels`, since `labels`
-replaces the whole set.
+change in an interview answer. `groomed` is the one label added without a separate request, as
+an item on the edit list. Any other label change still needs my explicit request or an interview
+answer, as above. Change labels with `addLabels` and `removeLabels`, since `labels` replaces the
+whole set.
 
 ## 8. Report
 
@@ -377,8 +387,10 @@ reply-format rules when the session's instructions give any:
    children. When not ready, name what it lacks or waits on.
 2. **Needs you:** what only I can do or decide: a target proposed and not confirmed, an item I did
    not approve that still matters, a repo the session could not read. Left out when empty.
-3. One line each: size; split verdict; what changed in the ticket (or "nothing changed"); spin-offs
-   and children filed, as links; what was not checked; the branch to work it on.
+3. One line each: size; split verdict; what changed in the ticket (or "nothing changed"); the
+   `groomed` label: added, already there, not approved, or could not be applied because the team
+   has no active `groomed` label; spin-offs and children filed, as links; what was not checked; the
+   branch to work it on.
 
 Do not ask whether to start the work and do not start it: starting is a separate request from me.
 
@@ -391,6 +403,10 @@ Do not ask whether to start the work and do not start it: starting is a separate
   spin-off.
 - No file edits, branches or commits: grooming reads repos and writes only to Linear.
 - Do not put secrets or credentials in a ticket.
-- A ticket with nothing stale, open or missing, that already has its Size, stays as it is: propose
-  no edits, say so in one line, and go to step 8. The no-split line and the grooming line in Agent
-  notes are added only alongside other edits.
+- A ticket with nothing stale, open or missing, that already has its Size, gets no edits to its
+  text: say so in one line and propose an edit list that holds only the `groomed` label, as one
+  numbered item. This path stays in step 7: resolve the label as step 7 says, ask for approval of
+  that one item as step 7's Approval paragraph does ("Apply item 1?"), and when I approve it,
+  apply it with `addLabels`, and only then go to step 8. A no changes nothing and still goes to
+  step 8. The no-split line and the grooming line in Agent notes are added only alongside edits to
+  the text.

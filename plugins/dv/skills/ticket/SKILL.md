@@ -179,12 +179,18 @@ Run both searches from step 3 again first. If a new match has appeared, go back 
 
 Then, just before `save_issue`, read each prerequisite's state again: `get_issue` for a ticket, and
 `gh pr view <N> -R <owner>/<repo> --json state,mergedAt,title,url,headRefName,body` for a PR.
-If a state changed since the draft (a PR merged, a blocker went Done, or a met one reopened),
-show me the revised state and relations and ask before saving. Save nothing until I answer.
 
-Call `save_issue` with the team, project, title, description, labels, state, and `blockedBy` with
-the prerequisite issue ids from the draft, when there are any. Use real newlines in the
-description, not `\n` escapes. Do not set an assignee, priority or estimate unless I asked.
+- If any prerequisite can't be read (the call fails or returns nothing), tell me which one and
+  why, and save nothing.
+- If any state changed since the draft (a PR merged, a blocker went Done, or a met one reopened),
+  rebuild the draft under the rules in step 4: its state, the pull-condition line at the end of
+  Why, and its relations. Show me the full revised draft as in step 6 and ask again. Save nothing
+  until I answer.
+
+Call `save_issue` with the draft as last confirmed: the team, project, title and labels, that
+draft's state and description, and `blockedBy` with the issue ids of its prerequisites that are
+still unmet, when there are any. Use real newlines in the description, not `\n` escapes. Do not
+set an assignee, priority or estimate unless I asked.
 
 Then reply with:
 

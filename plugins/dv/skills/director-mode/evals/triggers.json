@@ -1,0 +1,29 @@
+{
+  "skill": "director-mode",
+  "description": "Trigger evals for dv:director-mode (the home session in the main checkout directs worktree sessions: names newly unblocked tickets, recommends which worktrees to start and which can run in parallel, takes closeout notes, merges after MergeWren passes, keeps ticket states true; `off` ends it). Hard near-misses in no_trigger: running one ticket's work with hired engineers is dv:manager-mode; closing out a worktree is dv:closeout; merging one PR, creating a worktree, grooming or filing a ticket, and a handoff are ordinary work or their own skills. See tooling/evals/README.md.",
+  "runs_per_query": 3,
+  "pass_threshold": 0.5,
+  "queries": [
+    { "split": "train", "expect": "trigger",    "q": "Switch to director mode: this is the home session and the worktrees run manager mode." },
+    { "split": "train", "expect": "trigger",    "q": "Be the director for this repo. Tell me which worktree sessions to start next and which can run in parallel." },
+    { "split": "train", "expect": "trigger",    "q": "Director mode off, I'll handle things myself." },
+    { "split": "train", "expect": "trigger",    "q": "You're the home session now: take the closeout notes, merge what passed MergeWren, and keep the tickets' states right." },
+    { "split": "train", "expect": "trigger",    "q": "Turn on director mode and coordinate the worktree sessions for this project." },
+    { "split": "train", "expect": "trigger",    "q": "Run the main checkout as the engineering director while each ticket's worktree hires its own engineers." },
+    { "split": "val",   "expect": "trigger",    "q": "Director mode." },
+    { "split": "val",   "expect": "trigger",    "q": "Act as the director over the worktree managers: advise what to start and do the merges." },
+    { "split": "val",   "expect": "trigger",    "q": "Stop being the director and go back to normal work." },
+    { "split": "val",   "expect": "trigger",    "q": "Load the director mode text; this session is the main checkout and should coordinate the others." },
+
+    { "split": "train", "expect": "no_trigger", "q": "Switch to manager mode and hire engineers for this ticket." },
+    { "split": "train", "expect": "no_trigger", "q": "Close out this worktree and brief the parent session." },
+    { "split": "train", "expect": "no_trigger", "q": "Merge PR 42 now that the checks are green." },
+    { "split": "train", "expect": "no_trigger", "q": "Create a new worktree for the billing fix." },
+    { "split": "train", "expect": "no_trigger", "q": "Groom VIL-210 before anyone starts it." },
+    { "split": "train", "expect": "no_trigger", "q": "Write a handoff for this session." },
+    { "split": "val",   "expect": "no_trigger", "q": "File a ticket for the flaky login test." },
+    { "split": "val",   "expect": "no_trigger", "q": "Pick up where we left off." },
+    { "split": "val",   "expect": "no_trigger", "q": "Delete the merged branch locally and on origin." },
+    { "split": "val",   "expect": "no_trigger", "q": "Write a status report for my director about this sprint." }
+  ]
+}

@@ -35,8 +35,10 @@ A project makes the mode standing with one line in its `CLAUDE.md` or `AGENTS.md
 worktree sessions run `dv:manager-mode`, the line names both, such as:
 "At the start of every session, invoke `dv:director-mode` if this is the main checkout and `dv:manager-mode` if it is a linked worktree. Do it before your first reply, whatever the first message asks; don't ask first."
 A session is in the main checkout when `git rev-parse --absolute-git-dir` and
-`git rev-parse --path-format=absolute --git-common-dir` print the same path. The text lives
-here, in one copy; do not paste it into a project.
+`git rev-parse --path-format=absolute --git-common-dir` print the same path. The Director also
+needs the main checkout on the default branch: the check under "Merge and clean up" stops a
+merge or a pull when it is not. The text lives here, in one copy; do not paste it into a
+project.
 
 ## Expected setting: Opus at high effort
 
@@ -145,11 +147,12 @@ session never does.
   worktree session; you don't rebase it.
 - After the merge, pull the main checkout. Then clean up with "After the merge: delete the
   branch" in the same file (`wt done` where the repo uses `wt`), which removes the worktree on
-  the PR's branch. Run it only when that worktree's latest `dv:closeout` note says it is safe to
-  delete, or says I accepted the losses it names, and its session has done nothing there since.
-  Otherwise leave the worktree and its branch in place, ask that session for a fresh
-  `dv:closeout`, and tell me. An Orca worktree with submodules is only detached; its removal is
-  Force delete in Orca, which I do.
+  the PR's branch. Run it only in one of two cases. First, that worktree's latest `dv:closeout`
+  note says it is safe to delete, and its session has done nothing there since. Second, the
+  note listed losses, I said yes to those losses in so many words, and a fresh `dv:closeout`
+  recheck in that worktree after my yes shows nothing new. Otherwise leave the worktree and its
+  branch in place, ask that session for a fresh `dv:closeout`, and tell me. An Orca worktree
+  with submodules is only detached; its removal is Force delete in Orca, which I do.
 - Re-check every ticket id the PR named. Reopen one only if it moved to Done and its work is not
   finished; leave the others' states to the rules below.
 - If you cannot read that file, say so and ask me; do not guess the rules.

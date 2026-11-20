@@ -1,0 +1,28 @@
+{
+  "skill": "new-project",
+  "description": "Trigger evals for dv:new-project (bootstrap a new project on the personal Mac: checkout, private GitHub repository, Orca registration, scriptorium section and memory link, Linear project, MergeWren onboarding ticket). Hard near-misses in no_trigger: an Orca setup script for an existing repo (dv:orca-setup), filing one Linear ticket (dv:ticket), cloning an existing repository, adding an existing repo to Orca, and creating a git worktree. See tooling/evals/README.md.",
+  "runs_per_query": 3,
+  "pass_threshold": 0.5,
+  "queries": [
+    { "split": "train", "expect": "trigger",    "q": "Start a new project called recipe-box, section recipes." },
+    { "split": "train", "expect": "trigger",    "q": "Bootstrap a new private repo for a tide-chart app: GitHub, Orca, a vault section and the Linear project." },
+    { "split": "train", "expect": "trigger",    "q": "Set up a brand-new project named photo-sorter with its scriptorium section photo-sorter, and file its MergeWren onboarding ticket." },
+    { "split": "train", "expect": "trigger",    "q": "Dry-run the new-project bootstrap for invoice-bot so I can see every step before it runs." },
+    { "split": "train", "expect": "trigger",    "q": "I want to start a fresh project for a garden planner. Make the repo and everything around it." },
+    { "split": "train", "expect": "trigger",    "q": "The last new-project run failed halfway at Orca. Run it again for trail-log, section trails." },
+    { "split": "val",   "expect": "trigger",    "q": "New project: budget-lens, section budget." },
+    { "split": "val",   "expect": "trigger",    "q": "Create a new private GitHub repo and local checkout for a podcast-notes project, with its vault section and Linear project." },
+    { "split": "val",   "expect": "trigger",    "q": "Bootstrap project weather-strip with section weather; use the existing Linear project Weather." },
+    { "split": "val",   "expect": "trigger",    "q": "Spin up a new project for the bird-feeder camera idea on this Mac." },
+    { "split": "train", "expect": "no_trigger", "q": "Write an orca.yaml setup script for the skills repo so new worktrees get their venv." },
+    { "split": "train", "expect": "no_trigger", "q": "File a Linear ticket to add dark mode to bryancola.com." },
+    { "split": "train", "expect": "no_trigger", "q": "Clone villavicencio/hal-bench into ~/Projects." },
+    { "split": "train", "expect": "no_trigger", "q": "Make a new worktree for the VIL-900 fix." },
+    { "split": "train", "expect": "no_trigger", "q": "Change the visibility of my dotfiles repo to private." },
+    { "split": "train", "expect": "no_trigger", "q": "Write a handoff for this session before I clear it." },
+    { "split": "val",   "expect": "no_trigger", "q": "Add the existing ~/Projects/mergewren checkout to Orca." },
+    { "split": "val",   "expect": "no_trigger", "q": "Groom the ticket for the new project's first feature." },
+    { "split": "val",   "expect": "no_trigger", "q": "Create a new Python package inside this repo for the parser." },
+    { "split": "val",   "expect": "no_trigger", "q": "What's in the scriptorium vault's david section?" }
+  ]
+}

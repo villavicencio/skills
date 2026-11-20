@@ -13,7 +13,8 @@ Steps, in order:
                `orca repo list --json`.
   4. section   ~/Obsidian/scriptorium/<section>/memory and /inbox.
   5. memory    ~/.claude/projects/<slug>/ (created when missing) and its `memory`, a symlink
-               to the section's memory/. A real memory/ folder's files move into the section.
+               to the section's memory/. A real memory/ folder's files move into the section;
+               a name in both folders is a collision.
 The Linear project and the MergeWren onboarding ticket are the agent's steps (SKILL.md); the
 plan lists them last so a dry run shows the whole order.
 
@@ -22,8 +23,8 @@ after a full one writes nothing and a run after a partial one does only what is 
 Anything at a target that this tool did not make, or that belongs to another project, is a
 collision: the run stops before writing anything.
 
-Exit codes: 0 done (or dry run planned), 1 a step or a read-back failed, 2 usage error,
-3 a collision or a blocker found by the checks (nothing written).
+Exit codes: 0 done (or dry run planned), 1 a check could not run (nothing written) or a step
+or a read-back failed, 2 usage error, 3 a collision found by the checks (nothing written).
 
 Stdlib only, Python 3.9+ (the Mac's /usr/bin/python3).
 """

@@ -78,7 +78,7 @@ steps in order, then a report. Python 3.9 or later, stdlib only. Exit codes:
 |---|---|---|
 | 0 | done, or the dry run's plan | Go on to Step 3 (after a dry run, print Steps 3 and 4 as plans and stop) |
 | 1 | a check couldn't run, or a step or read-back failed | Report the error and what was done before it. Fix the cause and rerun |
-| 2 | usage error (no `--section`, a bad name) | Report it; nothing was checked or written |
+| 2 | usage error (no `--section`, a bad name, `--section david`) | Report it; nothing was checked or written |
 | 3 | collision: the `STOP` lines name each one | Report them; nothing was written |
 
 What it does, in order:
@@ -90,7 +90,9 @@ What it does, in order:
    which is how a rerun knows the checkout is its own.
 2. **GitHub.** `gh repo create <owner>/<name> --private --source <checkout> --remote origin --push`,
    then `gh repo view` reads back owner, URL, visibility and default branch. An existing
-   repository counts as this project's only when it is empty or holds the bootstrap commit.
+   repository counts as this project's only when the checkout is this tool's, the repository is
+   PRIVATE, and it is empty or holds the bootstrap commit. Anything else is a collision,
+   including an existing repository that isn't private.
 3. **Orca.** `orca repo add --path <checkout> --kind git --json`, read back with
    `orca repo list --json`. Name and icon are set in the Orca app, not the CLI.
 4. **Section.** `<section>/memory` and `<section>/inbox` in `~/Obsidian/scriptorium`, after
@@ -99,7 +101,7 @@ What it does, in order:
 5. **Memory link.** Creates the harness project folder under `~/.claude/projects/` when it is
    missing (it doesn't exist until a session has run in the new folder), then links its
    `memory` to the section's `memory/`. A real `memory/` folder's files move into the section
-   first, unless a name is in both.
+   first; a name in both folders is a collision.
 
 ## Step 3 — The Linear project
 

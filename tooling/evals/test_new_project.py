@@ -21,6 +21,7 @@ Checked (the ticket's Done means, plus the partial-run and memory-folder cases):
     missing steps
   - a collision at the checkout, the GitHub repository, the Orca registration or the section
     exits non-zero with nothing written and no create call
+  - a check that can't run (`orca repo list` failing) exits 1 with nothing written
 
 Stdlib only, no network. Needs git.
 
@@ -129,6 +130,8 @@ with open(log_path, "a") as f:
     f.write(json.dumps(["orca"] + argv) + "\n")
 st = json.load(open(state_path))
 if argv == ["repo", "list", "--json"]:
+    if st.get("fail_orca_list"):
+        sys.stderr.write("Error: Orca runtime is not reachable (stubbed)\n"); sys.exit(1)
     print(json.dumps({"id": str(uuid.uuid4()), "ok": True, "result": {"repos": st["orca"]}}, indent=2))
     sys.exit(0)
 if argv[:2] == ["repo", "add"] and "--json" in argv:
@@ -498,6 +501,13 @@ def test_collision_orca() -> None:
         expect_stop("collision: Orca has the same GitHub repository at another path", sb)
 
 
+def test_check_cannot_run() -> None:
+    sb, td = sandbox()
+    with td:
+        st = sb.read_state(); st["fail_orca_list"] = True; sb.write_state(st)
+        expect_stop("a check can't run (orca repo list fails)", sb, code=1)
+
+
 def test_collision_section() -> None:
     sb, td = sandbox()
     with td:
@@ -548,7 +558,8 @@ def main() -> int:
     for t in (test_missing_section, test_dry_run_fresh, test_full_then_idempotent,
               test_public_readback_fails, test_partial_orca_failure,
               test_partial_gh_died_after_create, test_collision_checkout, test_collision_github,
-              test_collision_orca, test_collision_section, test_section_scaffold_and_memory_move):
+              test_collision_orca, test_check_cannot_run, test_collision_section,
+              test_section_scaffold_and_memory_move):
         print(f"--- {t.__name__}")
         t()
     if failures:

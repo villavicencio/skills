@@ -88,7 +88,7 @@ linked PRs. Take the PRs from the ticket's Linear PR attachments (`get_issue`), 
 `gh pr view <url> --json state,isDraft,mergedAt`; don't search GitHub. Flag a mismatch, such as a
 ticket in Todo beside an open PR, in the handoff's Gotchas & Watch-outs and on Step 4's ⚠️ line. What to do
 about it is in the Linear rules in the global instructions (dotfiles `claude/CLAUDE.md`, "Linear");
-this skill moves nothing. If Linear can't be read, say the ticket's state is unverified.
+this skill moves nothing. If Linear can't be read, say the ticket's state is unverified. If `gh` is missing or a linked PR can't be read, say that PR's state is unverified, and don't call the ticket state matched.
 
 ### Step 2 — Write HANDOFF.md
 

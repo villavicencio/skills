@@ -247,7 +247,7 @@ ticket's Linear PR attachments (`get_issue`), and read each with
 `gh pr view <url> --json state,isDraft,mergedAt`; don't search GitHub. Flag a mismatch, such as a
 ticket in Todo beside an open PR, in the kickoff (under Drift when it contradicts the handoff). What to do about it is in the Linear rules in the global
 instructions (dotfiles `claude/CLAUDE.md`, "Linear"); this skill moves nothing. If Linear can't be
-read, the ticket's state is unverified.
+read, the ticket's state is unverified. If `gh` is missing or a linked PR can't be read, say that PR's state is unverified, and don't call the ticket state matched.
 
 **Any verified drift LEADS the orientation**, right after the anchor line and its mover lines:
 open it with

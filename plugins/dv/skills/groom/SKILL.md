@@ -404,9 +404,14 @@ Do not ask whether to start the work and do not start it: starting is a separate
 - No file edits, branches or commits: grooming reads repos and writes only to Linear.
 - Do not put secrets or credentials in a ticket.
 - A ticket with nothing stale, open or missing, that already has its Size, gets no edits to its
-  text: say so in one line and propose an edit list that holds only the `groomed` label, as one
-  numbered item. This path stays in step 7: resolve the label as step 7 says, ask for approval of
-  that one item as step 7's Approval paragraph does ("Apply item 1?"), and when I approve it,
-  apply it with `addLabels`, and only then go to step 8. A no changes nothing and still goes to
-  step 8. The no-split line and the grooming line in Agent notes are added only alongside edits to
-  the text.
+  text: say so in one line. This path stays in step 7: resolve the label as step 7 says, then:
+  - When the team has no active `groomed` label (missing or retired): no item, no ask and no
+    write. Say why in the report and go to step 8.
+  - When the ticket already has `groomed`: no item, no ask and no write. Report that it was
+    already there and go to step 8.
+  - Otherwise (the label exists and the ticket lacks it), propose an edit list that holds only the
+    `groomed` label, as one numbered item, ask for approval of that one item as step 7's Approval
+    paragraph does ("Apply item 1?"), and when I approve it, apply it with `addLabels`, and only
+    then go to step 8. A no changes nothing and still goes to step 8.
+  The no-split line and the grooming line in Agent notes are added only alongside edits to the
+  text.

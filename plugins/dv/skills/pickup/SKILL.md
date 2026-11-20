@@ -171,12 +171,16 @@ Shells the harness started are child processes of the Claude Code process whose 
 a file under `shell-snapshots`; the block below reads them with `ps -o pid,lstart,etime,command`,
 showing start time and elapsed time, and skips its own shell. If the session-process line is not
 the Claude Code process, the shell list is unverified, and the kickoff says so.
+If the block prints `(shell list unverified: ps failed)`, the list is unverified too: don't
+report it as empty.
 ```bash
 # This shell is one the harness started, so its parent is the Claude Code process.
 ME=$$; CC=$PPID
 echo "=== Session process: $(ps -o pid=,command= -p "$CC" 2>/dev/null | cut -c1-120) ==="
 echo "=== Shells still running under it (flag, pid, ppid, elapsed, start time, command) ==="
-ps -A -o pid=,ppid=,etime=,lstart=,command= | awk -v me="$ME" -v cc="$CC" '
+if ! PS_OUT=$(ps -A -o pid=,ppid=,etime=,lstart=,command= 2>/dev/null) || [ -z "$PS_OUT" ]; then
+  echo "(shell list unverified: ps failed)"
+elif ! printf '%s\n' "$PS_OUT" | awk -v me="$ME" -v cc="$CC" '
   $(2) == cc && $(1) != me && index($(0), "shell-snapshots") {
     n = split($(3), t, /[-:]/); s = 0
     if (n == 4) s = t[1]*86400 + t[2]*3600 + t[3]*60 + t[4]
@@ -185,7 +189,9 @@ ps -A -o pid=,ppid=,etime=,lstart=,command= | awk -v me="$ME" -v cc="$CC" '
     flag = (s >= 1800) ? "OVER 30 MIN  " : "             "
     print flag $(0); found = 1
   }
-  END { if (!found) print "(none)" }' | cut -c1-300
+  END { if (!found) print "(none)" }'; then
+  echo "(shell list unverified: ps failed)"
+fi
 ```
 
 Agents: call ListAgents if the session has it, or else read the harness's task list. For each

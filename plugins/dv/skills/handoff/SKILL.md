@@ -100,12 +100,16 @@ Shells the harness started are child processes of the Claude Code process whose 
 a file under `shell-snapshots`; the block below reads them with `ps -o pid,lstart,etime,command`,
 showing start time and elapsed time, and skips its own shell. If the session-process line is not
 the Claude Code process, the shell list is unverified, and the handoff says so.
+If the block prints `(shell list unverified: ps failed)`, the list is unverified too: don't
+report it as empty.
 ```bash
 # This shell is one the harness started, so its parent is the Claude Code process.
 ME=$$; CC=$PPID
 echo "=== Session process: $(ps -o pid=,command= -p "$CC" 2>/dev/null | cut -c1-120) ==="
 echo "=== Shells still running under it (flag, pid, ppid, elapsed, start time, command) ==="
-ps -A -o pid=,ppid=,etime=,lstart=,command= | awk -v me="$ME" -v cc="$CC" '
+if ! PS_OUT=$(ps -A -o pid=,ppid=,etime=,lstart=,command= 2>/dev/null) || [ -z "$PS_OUT" ]; then
+  echo "(shell list unverified: ps failed)"
+elif ! printf '%s\n' "$PS_OUT" | awk -v me="$ME" -v cc="$CC" '
   $(2) == cc && $(1) != me && index($(0), "shell-snapshots") {
     n = split($(3), t, /[-:]/); s = 0
     if (n == 4) s = t[1]*86400 + t[2]*3600 + t[3]*60 + t[4]
@@ -114,7 +118,9 @@ ps -A -o pid=,ppid=,etime=,lstart=,command= | awk -v me="$ME" -v cc="$CC" '
     flag = (s >= 1800) ? "OVER 30 MIN  " : "             "
     print flag $(0); found = 1
   }
-  END { if (!found) print "(none)" }' | cut -c1-300
+  END { if (!found) print "(none)" }'; then
+  echo "(shell list unverified: ps failed)"
+fi
 ```
 
 Agents: call ListAgents if the session has it, or else read the harness's task list. For each
@@ -124,9 +130,9 @@ Anything running longer than about 30 minutes is reported in the handoff: what i
 has run, and whether it waits on something that has already finished — for example a loop polling
 a PID, file, PR or job that is done. Check that with one cheap command when you can.
 
-Everything the step lists that is still running goes under **Gotchas & Watch-outs** in
+Only work running longer than about 30 minutes goes under **Gotchas & Watch-outs** in
 `HANDOFF.md`, one bullet each: what it is, how long it has run, and whether it waits on something
-that has finished.
+that has finished. Shorter-lived work is left out.
 
 A handoff written while such work runs says so plainly: start the bullet with "Still running
 when this handoff was written:".
@@ -179,8 +185,9 @@ Be specific: name the file, PR, or component. Vague summaries don't help the nex
 
 ## Gotchas & Watch-outs
 [Anything that bit us, workarounds in place, known fragile spots, or things to check before
-touching related code. List any background shells or agents still running from Step 1c, each with
-how long it has run. When in doubt, over-document here.]
+touching related code. List any background shells or agents
+from Step 1c that have run longer than about 30 minutes, each with how long it has run.
+When in doubt, over-document here.]
 ```
 
 **Pointer-first:** every bullet names its artifact and adds one clause on *what matters there* —

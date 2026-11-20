@@ -85,28 +85,33 @@ echo "created_at: $(date +%Y-%m-%dT%H:%M:%S%z | sed 's/\([0-9][0-9]\)$/:\1/')"
 Before writing, make the ticket's state true. The ticket is the one this session worked on, from
 its branch name (`<type>/vil-N-...`), its PR or the arguments. If none is clear, skip this step
 and say so in Step 4. Read its state from the tracker (for Linear, `get_issue`).
-Find its PRs from Linear (`get_issue` returns its GitHub PR attachments); when there are none, run
-`gh pr list --state all --search "<VIL-N>"`. Use every linked PR, open and merged (a PR closed without merging doesn't count), and read each one's
-state with `gh pr view <url> --json state,isDraft,mergedAt`.
-Compare the state with those PRs:
+Find the ticket's PRs from both sources, always, and take the union: the PR attachments Linear
+returns with the ticket (`get_issue`), and
+`gh pr list --state all --search "<VIL-N>" --limit 1000 --json number,state,isDraft,mergedAt,headRefName,title,body,url`.
+Keep only search results whose head branch, title or body names the ticket id. Read each
+attachment's PR with `gh pr view <url> --json state,isDraft,mergedAt`. Use every linked PR, open and
+merged; a PR closed without merging doesn't count.
 
-- no PR yet and work has started, or only draft PRs: In Progress;
-- a linked PR is open and awaiting review: In Review;
-- every linked PR merged and the ticket finished (every acceptance line true): Done;
-- a `Refs` PR merged (it finished only part of the ticket): if the ticket moved to Done,
-  reopen it. Then set In Review if another linked PR is open and awaiting review,
-  otherwise In Progress if work continues now, otherwise Todo. A ticket still In Review with no such PR gets the same
-  treatment.
+Decide the state from those PRs and the ticket's acceptance lines (Done means). The first match wins:
+
+1. a linked PR is open and awaiting review (a draft PR is not, and counts as work continuing): In Review;
+2. otherwise, at least one linked PR has merged and every acceptance line is true: Done;
+3. otherwise, work continues now: In Progress;
+4. otherwise: Todo.
+
+A ticket in Done whose acceptance is not all true is reopened by this decision, whatever words its
+PRs used (`Refs` or `Fixes`). A ticket in Done whose acceptance is all true stays in Done. A ticket in Backlog stays there until its pull condition is met and
+work starts. A `someday` ticket's state is not changed.
 
 Linear's PR automation may not be set or may not have fired, so check rather than assume.
-Use the state names `list_issue_statuses` returns for the ticket's team (team VIL has Backlog, Todo, Blocked, In Progress,
-In Review, Done, Canceled and Duplicate). Don't map by state type: In Progress and In Review are both
-`started`. If a state the rule needs doesn't exist for the team, leave the ticket as it is and
-say so in the output; don't guess. A ticket that is Blocked, Canceled or Duplicate is left alone
-and reported.
+Use the state names `list_issue_statuses` returns for the ticket's team (team VIL has Backlog,
+Todo, Blocked, In Progress, In Review, Done, Canceled and Duplicate). Don't map by state type: In
+Progress and In Review are both `started`. If a state the decision needs doesn't exist for the team,
+leave the ticket as it is and say so in the output; don't guess. A ticket that is Blocked, Canceled
+or Duplicate is left alone and reported.
 When the state differs, move it (for Linear, `save_issue` with `state`). The session's own work is
 what the state describes, so this step fixes it instead of leaving a note. When it is unclear
-whether the PR finished the ticket, leave the state and list the question under Decisions Made or
+whether every acceptance line is true, leave the state and list the question under Decisions Made or
 What's Next. Record the ticket, its state now and any move in the handoff body. If the tracker
 can't be read or written, say so in Gotchas & Watch-outs and in Step 4; don't claim the state is right.
 

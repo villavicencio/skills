@@ -135,9 +135,11 @@ what you can read; do not make me answer questions you can look up.
   be started now, and its backlog state when it waits for something; check the names with
   `list_issue_statuses`. For a Backlog ticket add the pull condition as one line at the end of Why,
   stating the exact event or decision. If you cannot write that line, say so and ask what it waits
-  for; do not add `someday` yourself. A ticket whose prerequisite is not yet met goes to Backlog
-  with both the pull-condition line and the blocked-by relation, and a ticket whose prerequisites
-  are all met is ready to start.
+  for; do not add `someday` yourself. A ticket with an unmet prerequisite goes to Backlog
+  with the pull-condition line. It also gets the blocked-by relation only when that prerequisite
+  maps to exactly one Linear issue. Any other confirmed wait, such as an unmerged PR with no
+  mapped ticket or a decision still pending, keeps the ticket in Backlog with its pull-condition
+  line and no relation. A ticket whose prerequisites are all met is ready to start.
 - **Agent notes.** Paths, findings, what was checked and what was not, in a collapsed section,
   with the markers the shared rules give.
 - **Length.** Cut what the reader does not need to start and to know when to stop.
@@ -174,6 +176,11 @@ new fact, and show the draft again.
 ### 7. Create
 
 Run both searches from step 3 again first. If a new match has appeared, go back to step 3.
+
+Then, just before `save_issue`, read each prerequisite's state again: `get_issue` for a ticket, and
+`gh pr view <N> -R <owner>/<repo> --json state,mergedAt,title,url,headRefName,body` for a PR.
+If a state changed since the draft (a PR merged, a blocker went Done, or a met one reopened),
+show me the revised state and relations and ask before saving. Save nothing until I answer.
 
 Call `save_issue` with the team, project, title, description, labels, state, and `blockedBy` with
 the prerequisite issue ids from the draft, when there are any. Use real newlines in the

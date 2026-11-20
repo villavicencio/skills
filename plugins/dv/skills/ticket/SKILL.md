@@ -44,9 +44,9 @@ message that invoked this skill. "I" and "me" in this skill mean the user.
    format cannot be read, how to ask me questions, how to treat ticket text, the Agent notes
    markers and the branch-name rule. `dv:groom` reads the same file.
 3. **Question or assumption.** Ask when the answer would change the project, the type, the scope or
-   a Done means line, or the reason for the ticket, and you cannot look it up. Otherwise state your
-   best reading and mark it `[assumed]`. Ask before drafting, so the draft ends with a single yes or
-   no.
+   a Done means line, or the reason for the ticket or a relation, and you cannot look it up.
+   Otherwise state your best reading and mark it `[assumed]`. Ask before drafting, so the draft
+   ends with a single yes or no.
 
 ## File
 
@@ -109,11 +109,42 @@ what you can read; do not make me answer questions you can look up.
 - **Done means.** A checklist of `- [ ]` lines. Each is a result a command or an observation can
   prove. Write the command or the observation into the line. If you cannot write one, the ticket is
   not ready: say what is missing and ask me.
+- **Prerequisites.** For each one the draft waits on: find it, check its current state, and decide
+  what it means for the ticket.
+  - **Find them.** While drafting, look in the request, and in any ticket or PR it names, for
+    phrases such as "pull when", "wait for", "after X merges", "requires X", "blocked by" and
+    "once X lands".
+  - **Check each one.** Read its current state: `get_issue` for a ticket. When the condition is a
+    PR merging, read that PR's merge state with
+    `gh pr view <N> -R <owner>/<repo> --json state,mergedAt,title,url,headRefName,body`, not only the state of its
+    ticket. A met prerequisite (the PR merged, the ticket Done) is not a blocker: say so in the draft.
+    File the ticket in the ready-to-start state, not Backlog, only when every prerequisite is met.
+  - **Prerequisite or reference.** A ticket named as a worked example, as background or as related
+    work is not a blocker, and a reference alone never implies one. The test: could this ticket's
+    work start and finish correctly if the other were never done? If yes, it is related, not
+    blocking.
+  - **Map it.** A prerequisite that maps clearly to one Linear issue goes in the draft as
+    "Blocked by VIL-N", and step 7 sets it with `blockedBy`. Get the direction right: the new
+    ticket, the waiting one, is blocked by the prerequisite. A PR maps to the ticket it is attached
+    to: the ticket's attachments, or the `VIL-N` id in the PR's branch name or description. The
+    pull-condition line at the end of Why stays; the relation does not replace it.
+    Never set `blockedBy` to a Done issue. If a prerequisite PR is still open but the issue it
+    maps to is already Done, keep the ticket in Backlog with the pull-condition line for the PR
+    ("Pull when PR N merges"), set no relation, and say so in the draft. dv:groom removes a
+    blocked-by on a Done issue as stale.
+  - **Ask.** When the dependency is unclear, or the PR or condition maps to no issue or to more
+    than one, ask me as an interview question before showing the draft. Set no relation on a
+    guess.
 - **State.** Use the team's state for ready to start (an unstarted state, such as Todo) when it can
   be started now, and its backlog state when it waits for something; check the names with
   `list_issue_statuses`. For a Backlog ticket add the pull condition as one line at the end of Why,
   stating the exact event or decision. If you cannot write that line, say so and ask what it waits
-  for; do not add `someday` yourself.
+  for; do not add `someday` yourself. A ticket with an unmet prerequisite goes to Backlog
+  with the pull-condition line. It also gets the blocked-by relation only when that prerequisite
+  maps to exactly one Linear issue that is not Done. Any other confirmed wait, such as an
+  unmerged PR with no mapped ticket, an open PR whose mapped issue is already Done, or a decision
+  still pending, keeps the ticket in Backlog with its pull-condition line and no relation.
+  A ticket whose prerequisites are all met is ready to start.
 - **Agent notes.** Paths, findings, what was checked and what was not, in a collapsed section,
   with the markers the shared rules give.
 - **Length.** Cut what the reader does not need to start and to know when to stop.
@@ -136,6 +167,9 @@ Show, in this order:
 
 - The project, team, state, labels and type, each with where it came from (named in the request,
   the repo's instructions, asked).
+- The relations, if any: each blocked-by with its evidence (the ticket's state, or the PR's merge
+  state), and each related ticket; for each, where it came from (the request, a named ticket or
+  PR, asked).
 - The title and the full description as it will be filed.
 - The assumptions, as a short list.
 - Any near-match or related tickets found in step 3.
@@ -148,8 +182,25 @@ new fact, and show the draft again.
 
 Run both searches from step 3 again first. If a new match has appeared, go back to step 3.
 
-Call `save_issue` with the team, project, title, description, labels and state. Use real newlines
-in the description, not `\n` escapes. Do not set an assignee, priority or estimate unless I asked.
+Then, just before `save_issue`, read each prerequisite's state again: `get_issue` for a ticket, and
+`gh pr view <N> -R <owner>/<repo> --json state,mergedAt,title,url,headRefName,body` for a PR.
+
+- If any prerequisite can't be read (the call fails or returns nothing), tell me which one and
+  why, and save nothing.
+- Redo the mapping of each PR under the "Map it" rules in step 4, from the fresh branch name and
+  body you just read.
+- If any state changed since the draft (a PR merged, a blocker went Done, or a met one reopened),
+  or the mapping changed (a PR now maps to a different issue, to no issue or to more than one, or
+  to one that is now Done), rebuild the draft under the rules in step 4: its state, the
+  pull-condition line at the end of Why, and its relations. Show me the full revised draft as in
+  step 6 and ask again. Save nothing until I answer.
+
+Call `save_issue` with the draft as last confirmed: the team, project, title and labels, that
+draft's state and description, `blockedBy` with the issue ids of its prerequisites that are still
+unmet and map to an issue that is not Done, when there are any, and `relatedTo` with the ids of
+the related tickets in that draft, when there are any. dv:groom passes relations the same way:
+`save_issue` with `blockedBy`, `relatedTo` and `removeBlockedBy`. Use real newlines in the
+description, not `\n` escapes. Do not set an assignee, priority or estimate unless I asked.
 
 Then reply with:
 

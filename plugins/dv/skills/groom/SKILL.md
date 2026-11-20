@@ -77,13 +77,16 @@ one on the first:
 
 - Ask for short rows: `limit: 100` and `fields: ["id", "title", "status"]`. A candidate's full
   text comes later, from `get_issue`.
-- Linear's text search returns at most 100 matches in all, and at 100 it says
-  `hasNextPage: false` even though more matched. So a search whose pages add up to 100 has been
-  cut off. Narrow it until it returns fewer than 100: use more specific words, or split it with a
-  `state` filter, one search per state type (`backlog`, `unstarted`, `started`, `completed`,
-  `canceled`), or a `project` filter. Tally each
-  narrowed search on its own. A search still at 100 after two narrowings is reported as capped,
-  and counts as incomplete (next bullet).
+- Linear's text search returns only its first 100 matches, and at 100 it says
+  `hasNextPage: false` even though more matched. A `state` or `project` filter does not help: it
+  filters those 100, not every match. So a search that returns 100 is cut off, and only a title
+  scan finishes it. List the team's issues with no `query` (`limit: 250`,
+  `fields: ["id", "title", "status"]`, every page, as the next bullet says), and pick out yourself
+  each title that holds the search's words. Do the scan once per run and reuse it for every
+  capped search. A capped search whose scan finished counts as finished, and its tally says so
+  ("capped at 100; titles scanned: <N> issues"). Matches past the first 100 are found by title
+  only, so list "descriptions beyond the first 100 matches" under what was not checked. If the
+  scan stops early, the search is incomplete (next bullet).
 - Every reply carries `hasNextPage`. While it is `true`, call `list_issues` again with the same
   arguments plus `cursor` set to that reply's `cursor`. A search is finished only when a reply says
   `hasNextPage: false`. If a page fails, call for it once more with the same cursor. A search

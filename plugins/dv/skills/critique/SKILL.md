@@ -16,9 +16,9 @@ the approach.
 #$ARGUMENTS
 </change_to_critique>
 
-Optionally scope it: `/critique migrate from NVM to fnm` or `/critique redesign the lazy loader pattern`.
+Optionally scope it: `/dv:critique migrate from NVM to fnm` or `/dv:critique redesign the lazy loader pattern`.
 
-Optionally set the model and effort of the three critique agents at the start of the arguments: `/critique model: opus effort: high migrate from NVM to fnm`. `model` takes `haiku`, `sonnet` or `opus`; `effort` takes `low`, `medium`, `high`, `xhigh` or `max`. Either may be left out. The defaults are today's behaviour (default: Sonnet, no effort set). A leading `model:` or `effort:` is a setting, not part of the change to critique.
+Optionally set the model and effort of the three critique agents at the start of the arguments: `/dv:critique model: opus effort: high migrate from NVM to fnm`. `model` takes `haiku`, `sonnet` or `opus`; `effort` takes `low`, `medium`, `high`, `xhigh` or `max`. Either may be left out. The defaults are today's behaviour (default: Sonnet, no effort set). A leading `model:` or `effort:` is a setting, not part of the change to critique.
 
 ## Steps
 

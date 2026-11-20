@@ -29,9 +29,14 @@ reply says there is nothing more.
     "descriptions beyond the first 100 matches" goes under what was not checked. If the scan stops
     early, the search is incomplete, and 0.14.1's rule applies: it rules nothing out and the ticket
     is not reported ready.
+  - Known limit: a ticket past the first 100 matches whose search words appear only in its
+    description is not found. Only reading every issue's description would find it, which costs
+    megabytes of context per run (David chose to accept the limit and state it, 2026-11-20). The
+    limit is reported, not counted against ready.
   - Step 5's spin-off duplicate search follows the same rule, since it reads pages as step 1 does.
 - **`dv:ticket` File step 3, "Existing tickets"**: a duplicate search that returns 100 is finished
-  the same way, by listing the team's issues with no `query` and reading the titles.
+  the same way, by listing the team's issues with no `query` and reading the titles, and the draft
+  says when a search was capped.
 
 Refs VIL-813.
 

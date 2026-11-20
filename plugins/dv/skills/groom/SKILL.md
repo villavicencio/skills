@@ -83,10 +83,12 @@ one on the first:
   scan finishes it. List the team's issues with no `query` (`limit: 250`,
   `fields: ["id", "title", "status"]`, every page, as the next bullet says), and pick out yourself
   each title that holds the search's words. Do the scan once per run and reuse it for every
-  capped search. A capped search whose scan finished counts as finished, and its tally says so
-  ("capped at 100; titles scanned: <N> issues"). Matches past the first 100 are found by title
-  only, so list "descriptions beyond the first 100 matches" under what was not checked. If the
-  scan stops early, the search is incomplete (next bullet).
+  capped search. This has a known limit: a ticket past the first 100 matches whose words appear
+  only in its description is not found, and reading every description costs too much. So a
+  capped search whose scan finished counts as finished with that limit stated: its tally says
+  "capped at 100; titles scanned: <N> issues", and "descriptions beyond the first 100 matches"
+  goes under what was not checked. The limit alone does not count against ready. If the scan
+  stops early, the search is incomplete (next bullet).
 - Every reply carries `hasNextPage`. While it is `true`, call `list_issues` again with the same
   arguments plus `cursor` set to that reply's `cursor`. A search is finished only when a reply says
   `hasNextPage: false`. If a page fails, call for it once more with the same cursor. A search

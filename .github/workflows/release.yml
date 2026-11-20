@@ -5,10 +5,10 @@ name: release
 # creates the tag `<plugin>--v<version>` at the pushed commit, publishes the
 # release with docs/release-notes/<plugin>--v<version>.md as its notes, and starts
 # `validate` on the tag (a tag made with GITHUB_TOKEN does not start workflows on
-# its own; workflow_dispatch is the exception). It never moves, deletes or
-# overwrites a tag or release, and it checks everything (notes file included)
-# before creating anything. A person bumps the version, writes the notes file and
-# merges; this does the rest.
+# its own; workflow_dispatch is the exception). It skips a version that already
+# has a release, publishes on an existing tag without moving it, and runs its
+# checks (notes file included) before creating anything. A person bumps the
+# version, writes the notes file and merges; this does the rest.
 #
 # On a pull request it runs the same script with --dry-run and a read-only token,
 # so a release PR whose notes file is missing fails before it merges.
@@ -25,6 +25,7 @@ jobs:
   dry-run:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       contents: read
     steps:
@@ -43,12 +44,14 @@ jobs:
   publish:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write # create the tag and the release
       actions: write # start validate on the new tag
-    # One group for every publish run. Runs never cancel each other, and
-    # `queue: max` keeps every pending run (default `single` would cancel a
-    # pending run when a newer one queues, skipping that push's release check).
+    # One group for all publish runs. With cancel-in-progress false a run isn't
+    # canceled by a newer one, and `queue: max` keeps pending runs (default
+    # `single` would cancel a pending run when a newer one queues, skipping that
+    # push's release check).
     # They run one at a time in push order, so two quick merges cannot race on a tag.
     concurrency:
       group: release-plugins

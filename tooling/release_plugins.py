@@ -18,15 +18,16 @@ Rules:
 
 - A version that already has a published release: nothing happens.
 - A tag with no release: the release is published on the existing tag
-  (`--verify-tag`); the tag is never moved, deleted or recreated.
+  (`--verify-tag`, no `--target`), so the tag stays where it is.
 - No tag and no release: the tag is created at the checked-out commit
   (`--target <sha>`).
-- Every check runs before anything is created. A missing or empty notes file,
-  a draft release on the tag, a malformed name or version, or a version lower
-  than the plugin's highest release without its own tag all exit 1, naming the
-  problem, with nothing tagged or released.
+- All checks run before anything is created. A plugin directory without a
+  readable plugin.json, a missing or empty notes file, a draft release on the
+  tag, a malformed name or version, or a version lower than the plugin's
+  highest release without its own tag all exit 1, naming the problem, with
+  nothing tagged or released.
 - "Latest" goes only to a version higher than every release the plugin already
-  has, so it always ends on the highest version. GitHub keeps one Latest per
+  has, so it ends on the plugin's highest version. GitHub keeps one Latest per
   repo, so with several plugins it ends on the last plugin to publish a new
   high; this repo has one plugin (`dv`).
 - If starting `validate` fails after a release is published, the run still
@@ -100,12 +101,25 @@ def parse_version(version: str) -> tuple[int, int, int] | None:
 
 
 def read_plugins(root: Path) -> list[Plugin]:
-    """Read and validate every plugins/*/.claude-plugin/plugin.json."""
+    """Read and validate the manifest of each directory under plugins/.
+
+    A plugin directory without `.claude-plugin/plugin.json`, or no plugin
+    directory at all, is a problem, so a missing manifest can't make the run
+    report "nothing to publish".
+    """
     plugins: list[Plugin] = []
     problems: list[str] = []
-    for manifest in sorted(root.glob("plugins/*/.claude-plugin/plugin.json")):
+    plugins_root = root / "plugins"
+    dirs = sorted(d for d in plugins_root.iterdir() if d.is_dir()) if plugins_root.is_dir() else []
+    if not dirs:
+        raise ReleaseError(["no plugin directories under plugins/"])
+    for plugin_dir in dirs:
+        dir_name = plugin_dir.name
+        manifest = plugin_dir / ".claude-plugin" / "plugin.json"
         rel = manifest.relative_to(root).as_posix()
-        dir_name = manifest.parent.parent.name
+        if not manifest.is_file():
+            problems.append(f"plugins/{dir_name}/ has no .claude-plugin/plugin.json")
+            continue
         try:
             data = json.loads(manifest.read_text(encoding="utf-8"))
         except (OSError, ValueError) as exc:

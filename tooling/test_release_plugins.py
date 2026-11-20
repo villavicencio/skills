@@ -155,6 +155,23 @@ class ReadPluginsTest(unittest.TestCase):
             with self.subTest(name=n), self.assertRaises(ReleaseError):
                 self.read("dv", {"name": n, "version": "1.0.0"})
 
+    def test_plugin_dir_without_manifest_is_a_problem(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.write(Path(tmp), "dv", {"name": "dv", "version": "1.0.0"})
+            (Path(tmp) / "plugins" / "other").mkdir()
+            with self.assertRaises(ReleaseError) as cm:
+                read_plugins(Path(tmp))
+            self.assertIn("plugins/other/ has no .claude-plugin/plugin.json", str(cm.exception))
+
+    def test_no_plugin_dirs_is_a_problem(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(ReleaseError):
+                read_plugins(Path(tmp))
+            (Path(tmp) / "plugins").mkdir()
+            (Path(tmp) / "plugins" / "README.md").write_text("not a plugin", encoding="utf-8")
+            with self.assertRaises(ReleaseError):
+                read_plugins(Path(tmp))
+
     def test_name_must_match_directory(self):
         with self.assertRaises(ReleaseError):
             self.read("dv", {"name": "other", "version": "1.0.0"})

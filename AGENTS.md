@@ -34,11 +34,13 @@ checkout.
   A person still does three things: bump the version (plugin.json and every skill's
   `metadata.version`), write that notes file, and merge. Don't tag or create a release by hand;
   that races the workflow. Logic and rules are in `tooling/release_plugins.py` (unit tests:
-  `python3 tooling/test_release_plugins.py`, which both jobs run first). It checks every plugin
-  before creating anything; any of these fails the run with nothing tagged or released: a
-  missing or empty notes file, a draft release on the tag, a malformed name or version, or a
-  version below the plugin's highest release that has no tag of its own. A tag with no release
-  gets its release on that tag; existing tags and releases are never moved or overwritten.
+  `python3 tooling/test_release_plugins.py`, which both jobs run first). Its checks run before
+  it creates anything; any of these fails the run with nothing tagged or released: a directory
+  under `plugins/` without a readable `.claude-plugin/plugin.json`, a missing or empty notes
+  file, a draft release on the tag, a malformed name or version, or a version below the
+  plugin's highest release that has no tag of its own. A tag with no release gets its release
+  on that tag (`--verify-tag`, no `--target`, so the tag stays put); a version that already has
+  a release is skipped.
   "Latest" goes only to a version above every earlier release of that plugin (with one plugin,
   that is the highest release). If starting `validate` fails, the run fails and its error gives
   the `gh workflow run` command to start it by hand; a re-run will not retry it, since the

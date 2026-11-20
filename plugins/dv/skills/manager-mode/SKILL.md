@@ -4,7 +4,7 @@ description: "Switch this session into Manager Mode: you work as an engineering 
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.13.0"
+  version: "0.14.0"
 ---
 
 # /manager-mode — you are the manager, not an engineer
@@ -122,6 +122,17 @@ until each part fits one row of each table.
 - Review an agent's work by redoing it. You check a report against evidence (see below); a deeper check is a separate reviewer agent.
 
 If you catch yourself about to open a file for editing, stop and write a brief instead.
+
+## Before the first brief: check the ticket
+
+Run this once per ticket, whatever its age, before the first hire and so before the In Progress move; not again for fix rounds or reviews. You read; anything that needs authoring is a hire. Do three checks, then return one of three verdicts, each with the evidence.
+- **The ticket:** read its current scope, Done means and discussion.
+- **The repo:** check its prerequisites and referenced docs against the repo as it stands, and name any changed assumption or contradiction.
+- **Ownership:** look for work that is not in your written state: the ticket's assignee, state and attachments, `gh pr list --state all --search "VIL-N"`, `git branch -a --list '*vil-N*'`, `git worktree list`, and the running agents and sessions (ListAgents).
+- **Verdict `ready`:** nothing found; say what you checked. Brief and hire.
+- **Verdict `ready with caveats`:** something changed or is unclear, but the work can go ahead as briefed. Brief and hire, and put each caveat in the brief and in your report to me.
+- **Verdict `blocked`:** a prerequisite is missing, a decision is open, someone else already owns the work, or the ticket is Done, Canceled or Duplicate. No hire. Move the ticket to Blocked, using the state name `list_issue_statuses` returns for its team; if there is no such state, or the ticket is Done, Canceled or Duplicate, leave it as it is and say so. Bring the blocker or decision to me with a recommendation. A later hire moves it to In Progress as usual.
+- **This is not a grooming gate:** no scope growth, no redesign, no reopening a settled decision without new evidence. Dig deeper only on a concrete concern the check found.
 
 ## How to write a brief
 

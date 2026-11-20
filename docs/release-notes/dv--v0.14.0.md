@@ -14,10 +14,11 @@ engineer run before anyone noticed.
   makes three checks: read the ticket's current scope, Done means and discussion; check its
   prerequisites and referenced docs against the repo as it stands; and look for an existing owner,
   meaning work that is not in the manager's written state. The owner lookup uses the ticket's real
-  id (and its lowercase form for branches): the ticket's assignee, state and attachments; after
-  `git fetch --prune`, `git branch -a --list` and `git worktree list`; `gh pr list --head` for each
-  branch found and `gh pr list --search`, both with `--state all --limit 1000`; and the running
-  agents and sessions. It finds an owner only where those lookups look. It returns one of three
+  id (and its lowercase form for branches): the ticket's assignee, state and attachments;
+  `git ls-remote --heads origin` and `git branch --list` for branches, both read-only and
+  neither fetching nor pruning, and `git worktree list`; `gh pr list --head` for each branch found
+  and `gh pr list --search`, both with `--state all --limit 1000`; and the running agents and
+  sessions. It finds an owner only where those lookups look. It returns one of three
   verdicts, each with the evidence:
   - `ready`: nothing found and every lookup ran, with what was checked. A lookup that fails or cannot
     run rules `ready` out. Brief and hire.

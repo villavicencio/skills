@@ -4,7 +4,7 @@ description: "Close out a finished worktree session and brief the parent session
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.12.0"
+  version: "0.13.0"
 ---
 
 # /closeout — close out a finished worktree session
@@ -284,6 +284,13 @@ Then complete the picture from the systems, not from memory:
   Read its state from the tracker now, with whatever access this session has (for Linear, the
   `get_issue` tool or a CLI). Read its acceptance checklist too and note each line that is not
   yet true. If the tracker can't be read, the ticket state is unverified: say so.
+- **The ticket beside its PRs.** Show the ticket's Linear state beside the state of its linked PRs.
+  Take the PRs from the ticket's Linear PR attachments (`get_issue`), and read each with
+  `gh pr view <url> --json state,isDraft,mergedAt`; this comparison uses no GitHub search. Flag a
+  mismatch, such as a ticket in Todo beside an open PR, in the reply's **Needs you:** and under
+  WAITING ON in the note, recommending the move the Linear rules give.
+  What to do about it is in the Linear rules in the global instructions (dotfiles `claude/CLAUDE.md`,
+  "Linear"); this skill moves nothing.
 - **Releases and tags** the session made, if any: `gh release view <tag>` or `git ls-remote --tags origin <tag>`.
 
 ### Step 2 — Decide whether the worktree is safe to delete

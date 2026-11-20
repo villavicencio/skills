@@ -16,12 +16,16 @@ VIL often runs past one page, and nothing in the report showed when a search had
     usually fit on one page; on 2026-11-20 a 98-result search on team VIL came back in one page.
     Candidates are read in full later with `get_issue`;
   - while a reply says `hasNextPage: true`, call again with the same arguments and its `cursor`. A
-    search is finished only at `hasNextPage: false`, and one that stops before that is reported as
-    incomplete;
+    failed page is asked for once more. A search is finished only at `hasNextPage: false`; one that
+    stops before that is reported as incomplete and rules nothing out;
   - keep a tally per search: its words, pages read and results.
-- **`dv:groom` step 5**: the spin-off duplicate search reads every page and keeps the same tally.
+- **`dv:groom` step 5**: the spin-off duplicate search reads every page and keeps the same tally. A
+  spin-off whose duplicate search did not finish is not filed until the search is run again and
+  finishes.
 - **`dv:groom` step 6**: the overlapping-work findings open with one tally per search, so a search
   that stopped early shows in the report.
+- **`dv:groom` step 8**: a ticket is not reported ready while an overlap search is incomplete, and
+  an unfinished search goes under Needs you with its words.
 
 Refs VIL-813.
 

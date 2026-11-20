@@ -149,8 +149,10 @@ session never does.
   branch" in the same file (`wt done` where the repo uses `wt`), which removes the worktree on
   the PR's branch. Run it only in one of two cases. First, that worktree's latest `dv:closeout`
   note says it is safe to delete, and its session has done nothing there since. Second, the
-  note listed losses, I said yes to those losses in so many words, and a fresh `dv:closeout`
-  recheck in that worktree after my yes shows nothing new. Otherwise leave the worktree and its
+  note listed losses, I said yes to those losses in so many words, a fresh `dv:closeout`
+  recheck in that worktree after my yes gives the same verdict with the same listed paths,
+  entry counts, reflog-only commit count and list id (the comparison in `dv:closeout` Step 5),
+  and its session has done nothing there since that recheck. Otherwise leave the worktree and its
   branch in place, ask that session for a fresh `dv:closeout`, and tell me. An Orca worktree
   with submodules is only detached; its removal is Force delete in Orca, which I do.
 - Re-check every ticket id the PR named. Reopen one only if it moved to Done and its work is not

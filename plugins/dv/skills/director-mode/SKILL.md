@@ -105,9 +105,10 @@ next. At each one:
 
 ### Recommend which worktree sessions to start next
 
-- **The candidates:** tickets that are unblocked, not `someday`, and not already owned. A ticket
-  is owned when a worktree, a branch or an open PR names its id (`git worktree list`,
-  `git ls-remote --heads origin`, `gh pr list --state open`), or a running session works it.
+- **The candidates:** tickets that are unblocked, not `someday`, and not already owned. To tell,
+  run the Ownership lookup in `dv:manager-mode`'s "Before the first brief: check the ticket".
+  If any of its lookups fails or cannot run, the ticket's owner is unknown: say so, and don't
+  recommend it as free.
 - **Which can run in parallel, judged by the files each ticket changes.** For each candidate,
   list the files it will change, from its Scope and notes and a look at the repo. Two tickets
   can run in parallel when those lists don't overlap, with each other or with a PR already
@@ -133,16 +134,24 @@ clipboard paste, or as a file under `<git-common-dir>/closeouts/`.
 A worktree session hands you a PR once MergeWren has passed it. You merge it; the worktree
 session never does.
 
+- Before a merge or a pull, check that the main checkout is on the repository's default branch
+  (`git branch --show-current` against `gh repo view --json defaultBranchRef`). If it is not,
+  stop and tell me.
 - Before merging, read "Merging on a MergeWren review" in dotfiles `docs/agents/code-review.md`
   (https://github.com/villavicencio/dotfiles/blob/master/docs/agents/code-review.md), and the
   merge rules in the global instructions. Merge only when they allow it. Otherwise don't merge:
   hand the PR back to its worktree session and say why.
 - Merge one PR at a time. If a PR needs a rebase after another merged, hand it back to its
   worktree session; you don't rebase it.
-- After the merge, follow "After the merge: delete the branch" in the same file, from the main
-  checkout (`wt done` where the repo uses `wt`), then pull the main checkout. An Orca worktree
-  with submodules is only detached; its removal is Force delete in Orca, which I do.
-- Re-check every ticket id the PR named, and reopen any that is not finished.
+- After the merge, pull the main checkout. Then clean up with "After the merge: delete the
+  branch" in the same file (`wt done` where the repo uses `wt`), which removes the worktree on
+  the PR's branch. Run it only when that worktree's latest `dv:closeout` note says it is safe to
+  delete, or says I accepted the losses it names, and its session has done nothing there since.
+  Otherwise leave the worktree and its branch in place, ask that session for a fresh
+  `dv:closeout`, and tell me. An Orca worktree with submodules is only detached; its removal is
+  Force delete in Orca, which I do.
+- Re-check every ticket id the PR named. Reopen one only if it moved to Done and its work is not
+  finished; leave the others' states to the rules below.
 - If you cannot read that file, say so and ask me; do not guess the rules.
 
 ### Keep ticket states true

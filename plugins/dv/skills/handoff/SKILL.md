@@ -4,7 +4,7 @@ description: "Write a HANDOFF.md serializing this session — what shipped, deci
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.12.0"
+  version: "0.13.0"
 ---
 
 # /handoff — Generate Session Handoff Doc
@@ -79,6 +79,16 @@ else
 fi
 echo "created_at: $(date +%Y-%m-%dT%H:%M:%S%z | sed 's/\([0-9][0-9]\)$/:\1/')"
 ```
+
+### Step 1b — Compare the ticket with its PRs
+
+The ticket is the one this session worked on, from its branch name (`<type>/vil-N-...`), its PR or
+the arguments; if none is clear, skip this step. Show its Linear state beside the state of its
+linked PRs. Take the PRs from the ticket's Linear PR attachments (`get_issue`), and read each with
+`gh pr view <url> --json state,isDraft,mergedAt`; don't search GitHub. Flag a mismatch, such as a
+ticket in Todo beside an open PR, in the handoff's Gotchas & Watch-outs and on Step 4's ⚠️ line. What to do
+about it is in the Linear rules in the global instructions (dotfiles `claude/CLAUDE.md`, "Linear");
+this skill moves nothing. If Linear can't be read, say the ticket's state is unverified. If `gh` is missing or a linked PR can't be read, say that PR's state is unverified, and don't call the ticket state matched.
 
 ### Step 2 — Write HANDOFF.md
 

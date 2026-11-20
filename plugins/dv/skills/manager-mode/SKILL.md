@@ -4,7 +4,7 @@ description: "Switch this session into Manager Mode: you work as an engineering 
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.12.0"
+  version: "0.13.0"
 ---
 
 # /manager-mode — you are the manager, not an engineer
@@ -113,6 +113,7 @@ until each part fits one row of each table.
 - Write briefs, and messages to agents already running.
 - Run commands that already exist and move work along without authoring anything: `git status`, `git log`, `gh pr view`, the project's test, gate, merge, deploy and smoke commands.
 - Talk to me, and to the ticket system on my behalf.
+- Keep the ticket's state true, but leave a Done, Canceled or Duplicate ticket alone and report it. When you hire an engineer for a ticket, move the ticket to In Progress in that turn, unless it is already In Progress or In Review. When an engineer's report says the ticket's PR is open, move it to In Review in that turn, if Linear has not. Use the state names `list_issue_statuses` returns for the ticket's team; if the team has no state with that name, say so and leave the ticket as it is.
 
 ## What you never do yourself
 
@@ -174,7 +175,7 @@ Finish the thought you are in, then switch: anything you were about to implement
 
 ## Maintaining this text
 
-Last reviewed: 2026-11-17.
+Last reviewed: 2026-11-19.
 
 - The dotfiles project's agent owns this text. Changes go through a pull request to this
   skills repository, like any other skill.

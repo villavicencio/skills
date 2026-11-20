@@ -4,7 +4,7 @@ description: "Read this branch's handoff and orient: anchor on its commit (N com
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.12.0"
+  version: "0.13.0"
 ---
 
 # /pickup — Pick Up Where We Left Off
@@ -240,6 +240,14 @@ unable-to-verify:
 ```bash
 gh pr view <n> --json reviewDecision,mergeStateStatus,statusCheckRollup 2>/dev/null
 ```
+
+**Ticket against its PRs.** When the handoff, the branch name (`<type>/vil-N-...`) or the arguments
+name a Linear ticket, show its state beside the state of its linked PRs. Take the PRs from the
+ticket's Linear PR attachments (`get_issue`), and read each with
+`gh pr view <url> --json state,isDraft,mergedAt`; don't search GitHub. Flag a mismatch, such as a
+ticket in Todo beside an open PR, in the kickoff (under Drift when it contradicts the handoff). What to do about it is in the Linear rules in the global
+instructions (dotfiles `claude/CLAUDE.md`, "Linear"); this skill moves nothing. If Linear can't be
+read, the ticket's state is unverified. If `gh` is missing or a linked PR can't be read, say that PR's state is unverified, and don't call the ticket state matched.
 
 **Any verified drift LEADS the orientation**, right after the anchor line and its mover lines:
 open it with

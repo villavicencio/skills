@@ -95,9 +95,10 @@ What it does, in order:
    (imports AGENTS.md, so the two stay in step), `README.md`, `.gitignore`,
    `docs/discovery.md`. No feature code. The commit carries `Bootstrapped-by: dv:new-project`,
    which is how a rerun knows the checkout is its own.
-2. **GitHub.** `gh repo create <owner>/<name> --private`, then `gh repo view` reads back the
-   repository's name, URL, visibility and default branch. Only after a `PRIVATE` read-back does
-   it add `origin` and push, and it pushes the bootstrap commit alone. An existing
+2. **GitHub.** `gh repo create <owner>/<name> --private`, then `gh repo view` checks that
+   GitHub answered with this repository (name and URL) and that it is `PRIVATE`. Only then does
+   it add `origin` and push, and it pushes the bootstrap commit alone. After the push it reads
+   back the default branch and checks that the repository holds the commit. An existing
    repository counts as this project's only when the checkout is this tool's, the repository is
    PRIVATE, and it is empty or holds the bootstrap commit. Anything else is a collision,
    including an existing repository that isn't private.
@@ -107,7 +108,10 @@ What it does, in order:
    checking that the vault is a real folder with `.obsidian/`. If it isn't, stop: setting up
    the vault is Scribe's work. There is no `.obsidian` step; the vault already has one.
 5. **Memory link.** Creates the harness project folder under `~/.claude/projects/` when it is
-   missing (it doesn't exist until a session has run in the new folder), then links its
+   missing (it doesn't exist until a session has run in the new folder). Names that differ only
+   in `-`, `_` or `.` share that folder's name, so an existing one is this project's only when
+   the checkout already existed and every session in it ran in this checkout; otherwise it is a
+   collision. Then it links its
    `memory` to the section's `memory/`. A real `memory/` folder replaces the section's empty
    `memory/` in one rename before the link is made; if the section's `memory/` holds anything,
    that is a collision.

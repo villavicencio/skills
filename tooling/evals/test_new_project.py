@@ -477,6 +477,8 @@ def test_github_check_errors() -> None:
         st = sb.read_state(); st["force_name"] = f"{LOGIN}/renamed"; sb.write_state(st)
         p, _, report = sb.run(NAME, "--section", SECTION)
         check("read-back names another repository: run fails", p.returncode == 1, f"exit {p.returncode}")
+        check("read-back names another repository: nothing pushed",
+              git_out(sb.remotes / LOGIN / f"{NAME}.git", "for-each-ref", "refs/heads").strip() == "")
         check("read-back names another repository: no Orca add",
               "orca" not in report.get("did", []), str(report.get("did")))
 
@@ -592,12 +594,16 @@ def test_collision_section() -> None:
 def test_section_scaffold_and_memory_move() -> None:
     sb, td = sandbox()
     with td:
-        # Empty memory/ and inbox/ from an earlier interrupted run are not a collision, and a
-        # real harness memory folder (a session already ran there) moves into the section.
+        # A run that stopped at Orca, then a session in the new checkout wrote memory: the
+        # empty section scaffold is not a collision, and the real memory folder moves in.
+        st = sb.read_state(); st["fail_orca_add"] = True; sb.write_state(st)
+        sb.run(NAME, "--section", SECTION)
+        st = sb.read_state(); st["fail_orca_add"] = False; sb.write_state(st)
         (sb.section / "memory").mkdir(parents=True)
         (sb.section / "inbox").mkdir()
         (sb.harness / "memory").mkdir(parents=True)
         (sb.harness / "memory" / "MEMORY.md").write_text("- a note\n")
+        (sb.harness / "s1.jsonl").write_text(json.dumps({"cwd": str(sb.checkout)}) + "\n")
         ok_run(sb, "scaffold section + real memory folder")
         m = sb.harness / "memory"
         check("memory folder: replaced by a link to the section",
@@ -606,11 +612,31 @@ def test_section_scaffold_and_memory_move() -> None:
               (sb.section / "memory" / "MEMORY.md").read_text() == "- a note\n")
     sb, td = sandbox()
     with td:
+        st = sb.read_state(); st["fail_orca_add"] = True; sb.write_state(st)
+        sb.run(NAME, "--section", SECTION)
+        st = sb.read_state(); st["fail_orca_add"] = False; sb.write_state(st)
         (sb.section / "memory").mkdir(parents=True)
         (sb.section / "memory" / "MEMORY.md").write_text("section's\n")
         (sb.harness / "memory").mkdir(parents=True)
         (sb.harness / "memory" / "MEMORY.md").write_text("harness's\n")
+        (sb.harness / "s1.jsonl").write_text(json.dumps({"cwd": str(sb.checkout)}) + "\n")
         expect_stop("collision: section memory already holds files, harness memory too", sb)
+
+
+def test_collision_shared_slug() -> None:
+    sb, td = sandbox()
+    with td:
+        # Names that differ only in '-', '_' or '.' share a slug. Another project's harness
+        # folder that exists before this checkout does is not this project's.
+        (sb.harness / "memory").mkdir(parents=True)
+        (sb.harness / "memory" / "MEMORY.md").write_text("another project's memory\n")
+        expect_stop("collision: harness folder exists before the checkout", sb)
+    sb, td = sandbox()
+    with td:
+        ok_run(sb, "setup for a shared slug")
+        (sb.harness / "s2.jsonl").write_text(
+            json.dumps({"cwd": str(sb.home / "Projects" / "demo_x")}) + "\n")
+        expect_stop("collision: harness folder holds another checkout's sessions", sb)
 
 
 def main() -> int:
@@ -621,7 +647,7 @@ def main() -> int:
               test_public_readback_fails, test_partial_orca_failure,
               test_partial_gh_died_after_create, test_partial_empty_remote_pushes_bootstrap_only,
               test_github_check_errors, test_collision_checkout, test_collision_github,
-              test_collision_orca, test_check_cannot_run, test_collision_section,
+              test_collision_orca, test_check_cannot_run, test_collision_section, test_collision_shared_slug,
               test_section_scaffold_and_memory_move):
         print(f"--- {t.__name__}")
         t()

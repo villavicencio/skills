@@ -8,11 +8,13 @@ Steps, in order:
   1. checkout  ~/Projects/<name>, one bootstrap commit (AGENTS.md, CLAUDE.md, README.md,
                .gitignore, docs/discovery.md). AGENTS.md has the `## Vault` section.
   2. github    <owner>/<name>, created with --private and read back; nothing is pushed until
-               visibility reads back PRIVATE, and only the bootstrap commit is pushed.
+               the read-back shows this repository (name, URL) as PRIVATE, and only the
+               bootstrap commit is pushed. The default branch and the commit are read after.
   3. orca      `orca repo add --path <checkout> --kind git --json`, read back with
                `orca repo list --json`.
   4. section   ~/Obsidian/scriptorium/<section>/memory and /inbox.
-  5. memory    ~/.claude/projects/<slug>/ (created when missing) and its `memory`, a symlink
+  5. memory    ~/.claude/projects/<slug>/ (created when missing; an existing one must hold only
+               sessions from this checkout) and its `memory`, a symlink
                to the section's memory/. A real memory/ folder moves into the section in one
                rename when the section's memory/ is empty; otherwise it is a collision.
 The Linear project and the MergeWren onboarding ticket are the agent's steps (SKILL.md); the
@@ -292,10 +294,36 @@ def check_section(c: Ctx) -> tuple[str, str]:
     return TODO, f"mkdir the missing memory/ or inbox/ in {c.sec}"
 
 
-def check_memory(c: Ctx) -> tuple[str, str]:
+def session_cwds(h: Path) -> set[str]:
+    """The `cwd` values recorded in the harness folder's session files (*.jsonl)."""
+    cwds: set[str] = set()
+    for f in sorted(h.glob("*.jsonl")):
+        with open(f, encoding="utf-8", errors="replace") as fh:
+            for line in fh:
+                if '"cwd"' not in line:
+                    continue
+                try:
+                    cwd = json.loads(line).get("cwd")
+                except (ValueError, AttributeError):
+                    continue
+                if isinstance(cwd, str):
+                    cwds.add(cwd)
+    return cwds
+
+
+def check_memory(c: Ctx, checkout_state: str) -> tuple[str, str]:
     h, m = c.harness, c.harness / "memory"
     if os.path.lexists(h) and (h.is_symlink() or not h.is_dir()):
         return STOP, f"{h} exists and is not a folder"
+    if h.is_dir():
+        # Different names can share a slug (foo-bar, foo_bar, foo.bar). The folder is this
+        # project's only if its sessions all ran in this checkout, and a folder that predates
+        # the checkout can't be.
+        if checkout_state != DONE:
+            return STOP, f"{h} exists before {c.checkout} does; another project uses this slug"
+        others = sorted(x for x in session_cwds(h) if os.path.realpath(x) != real(c.checkout))
+        if others:
+            return STOP, f"{h} holds sessions from {', '.join(others)}; another project uses this slug"
     if m.is_symlink():
         if memory_link_ok(c):
             return DONE, f"{m} -> {c.sec / 'memory'}"
@@ -400,6 +428,10 @@ def require_private(view: dict | None, c: Ctx) -> dict:
         raise Fail(f"read-back: github.com/{c.full} is {view.get('visibility')}, not PRIVATE. "
                    f"Make it private now (gh repo edit {c.full} --visibility private "
                    f"--accept-visibility-change-consequences) and tell David")
+    full = view.get("nameWithOwner") or ""
+    url = (view.get("url") or "").rstrip("/")
+    if full.lower() != c.full.lower() or url.lower() != f"https://github.com/{c.full}".lower():
+        raise Fail(f"read-back: asked for {c.full}, GitHub answered {full} at {url}")
     return view
 
 
@@ -425,14 +457,11 @@ def do_github(c: Ctx) -> None:
 def read_back_github(c: Ctx) -> None:
     view = require_private(gh_repo_view(c), c)
     full = view.get("nameWithOwner") or ""
-    url = (view.get("url") or "").rstrip("/")
     branch = (view.get("defaultBranchRef") or {}).get("name") or ""
     c.report["github"] = {
-        "owner": full.split("/")[0] if "/" in full else None, "repo": full, "url": url,
+        "owner": full.split("/")[0], "repo": full, "url": (view.get("url") or "").rstrip("/"),
         "visibility": view.get("visibility"), "default_branch": branch,
     }
-    if full.lower() != c.full.lower() or url.lower() != f"https://github.com/{c.full}".lower():
-        raise Fail(f"read-back: asked for {c.full}, GitHub answered {full} at {url}")
     if not branch:
         raise Fail(f"read-back: github.com/{c.full} has no default branch")
     if not remote_has_root(c):
@@ -514,7 +543,7 @@ def main(argv: list[str]) -> int:
         s_github = check_github(c, s_checkout[0])
         s_orca = check_orca(c, s_checkout[0])
         s_section = check_section(c)
-        s_memory = check_memory(c)
+        s_memory = check_memory(c, s_checkout[0])
     except (Blocked, Fail, OSError) as e:
         say(f"FAILED before any write: {e}")
         c.report["error"] = str(e)

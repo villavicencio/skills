@@ -26,7 +26,12 @@ Rules:
   than the plugin's highest release without its own tag all exit 1, naming the
   problem, with nothing tagged or released.
 - "Latest" goes only to a version higher than every release the plugin already
-  has, so it always ends on the highest version.
+  has, so it always ends on the highest version. GitHub keeps one Latest per
+  repo, so with several plugins it ends on the last plugin to publish a new
+  high; this repo has one plugin (`dv`).
+- If starting `validate` fails after a release is published, the run still
+  publishes the other due releases, then exits 1 naming the command to run by
+  hand (a re-run won't retry it: the release exists by then).
 
 `--dry-run` makes the same checks (it reads releases and tags from GitHub) and
 prints what it would publish; it creates nothing. Publishing for real only runs
@@ -315,16 +320,24 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     for r in releases:
-        where = f"on existing tag {r.tag}" if r.tag_exists else f"as new tag {r.tag} at {sha}"
+        if r.tag_exists:
+            where = f"on existing tag {r.tag}"
+        elif args.dry_run:
+            # On a pull request HEAD is GitHub's test merge, not the commit that will land.
+            where = f"as new tag {r.tag} at the commit pushed to main (HEAD here: {sha})"
+        else:
+            where = f"as new tag {r.tag} at {sha}"
         verb = "Would publish" if args.dry_run else "Publishing"
         print(f"{verb} {r.title} {where} (notes {r.notes}, latest={str(r.latest).lower()})")
     if args.dry_run:
         return 0
 
+    rc = 0
     for r in releases:
         try:
             print(run(create_command(r, repo, sha), cwd=root).strip())
         except subprocess.CalledProcessError as exc:
+            # Stop here: whatever is left is retried by the next push or a re-run.
             say_error(f"gh release create {r.tag} failed ({exc.returncode}): {exc.stderr.strip()}")
             return 1
         try:
@@ -335,8 +348,8 @@ def main(argv: list[str] | None = None) -> int:
                 f"{r.tag} is released, but starting validate on it failed: {exc.stderr.strip()}. "
                 f"Run: gh workflow run validate.yml --repo {repo} --ref {r.tag}"
             )
-            return 1
-    return 0
+            rc = 1
+    return rc
 
 
 if __name__ == "__main__":

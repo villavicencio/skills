@@ -4,7 +4,7 @@ description: "Groom one Linear ticket before anyone works it. Checks it against 
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.14.0"
+  version: "0.14.1"
 ---
 
 # /groom — groom a Linear ticket before work starts
@@ -71,8 +71,22 @@ many were skipped. Note each neighbor whose state contradicts what the ticket sa
 ticket that was canceled.
 
 **Overlapping work.** Run two or three `list_issues` searches across the team, completed tickets
-included, with the main words of the Scope steps (not the title alone), following each search's
-cursor through all its pages. Then read each candidate whose title matches a Scope step, at most 5,
+included, with the main words of the Scope steps (not the title alone). Read each search to its
+last page. Its first page is often not all of it, and a match on a later page counts as much as
+one on the first:
+
+- Ask for short rows and long pages: `limit: 250` and `fields: ["id", "title", "status"]`. A
+  candidate's full text comes later, from `get_issue`.
+- Every reply carries `hasNextPage`. While it is `true`, call `list_issues` again with the same
+  arguments plus `cursor` set to that reply's `cursor`. A search is finished only when a reply says
+  `hasNextPage: false`. If a page fails, call for it once more with the same cursor. A search
+  that still stops before `hasNextPage: false` is incomplete: it is reported as incomplete, never
+  as finished, and it rules nothing out. Overlap with it stays "not ruled out", and step 8 counts
+  that against ready.
+- Keep a tally for each search: its words, the pages read and the number of results. The tallies
+  go in the step 6 findings, so a search that stopped early shows there.
+
+Then read each candidate whose title matches a Scope step, at most 5,
 and classify it: already done (a Scope step is finished
 elsewhere), overlaps (the same work is planned elsewhere) or unrelated. An unlinked ticket that is
 already done or overlaps is a finding. This search is separate from the duplicate search for
@@ -227,7 +241,10 @@ command's output, a ticket id). Three kinds:
 - **Spin-offs:** work the ticket suggests but should not carry: a helper, a follow-up measurement,
   a neighbor with the same flaw. Each is one line: a title in the format, why, the Linear project
   it would go in (found live, as in `dv:ticket` File step 1), and its state and labels. Before offering one, run
-  File step 3's duplicate search for it and keep any match, with its id and state.
+  File step 3's duplicate search for it, reading every page and keeping a tally as step 1's
+  overlap search does, and keep any match, with its id and state. A spin-off whose duplicate
+  search is incomplete is offered with that said, and is not filed in step 7 until the search
+  is run again and finishes.
 - **Process observations:** something about how the work is set up that will trip whoever does it:
   a branch name that breaks the repo's rule (compare the ticket's `gitBranchName` with the
   branch-name rule), a rule the ticket's change contradicts, notes or memory files outside the
@@ -241,7 +258,10 @@ When there is nothing, say "Scouting: nothing found." in one line, and do not pa
 ## 6. Interview
 
 First, in your reply, list what you found, shortest first: gaps, stale facts, settled `[assumed]`
-markers, neighbors and overlapping work, the size, the split verdict and the scouting items. Show
+markers, neighbors and overlapping work, the size, the split verdict and the scouting items. The
+overlapping work opens with one tally per search, from step 1 and step 5: its words, pages read
+and results (for example, "`groom pagination`: 2 pages, 263 results"), with an incomplete search
+marked as such. Show
 the split proposal in full here (each child's title, Done means lines, order and blockers, and the
 parent's full replacement description when it stays as the parent), and each spin-off's title,
 reason, project and any duplicate match.
@@ -371,12 +391,14 @@ reply-format rules when the session's instructions give any:
 
 1. **Ready or not.** Name the ticket as a markdown link (the url from `get_issue`; the bare id if
    none came back). Ready means no gaps, Done means lines that can be proved, nothing it waits on,
-   and the team's backlog or ready-to-start state as `list_issue_statuses` names them. A started,
+   every overlap search finished (step 1), and the team's backlog or ready-to-start state as
+   `list_issue_statuses` names them. A started,
    finished or canceled ticket is not ready to start. After a split, name the child that is ready
    and the one that comes first, as links; do not call the parent ready when the work is in its
    children. When not ready, name what it lacks or waits on.
 2. **Needs you:** what only I can do or decide: a target proposed and not confirmed, an item I did
-   not approve that still matters, a repo the session could not read. Left out when empty.
+   not approve that still matters, a repo the session could not read, an overlap or duplicate
+   search that did not finish (with its words, so it can be run again). Left out when empty.
 3. One line each: size; split verdict; what changed in the ticket (or "nothing changed"); spin-offs
    and children filed, as links; what was not checked; the branch to work it on.
 

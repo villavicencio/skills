@@ -18,6 +18,8 @@ the approach.
 
 Optionally scope it: `/critique migrate from NVM to fnm` or `/critique redesign the lazy loader pattern`.
 
+Optionally set the model and effort of the three critique agents at the start of the arguments: `/critique model: opus effort: high migrate from NVM to fnm`. `model` takes `haiku`, `sonnet` or `opus`; `effort` takes `low`, `medium`, `high`, `xhigh` or `max`. Either may be left out. The defaults are today's behaviour (default: Sonnet, no effort set). A leading `model:` or `effort:` is a setting, not part of the change to critique.
+
 ## Steps
 
 ### Step 1 — Draft the initial plan
@@ -28,7 +30,7 @@ expected outcome is.
 
 ### Step 2 — Launch three critique agents in parallel
 
-Spin up three parallel Sonnet subagents, each with a different lens. Give each agent:
+Spin up three parallel subagents, each with a different lens. Run all three on the `model` given in the arguments (default: Sonnet). If the arguments set an `effort`, pass that same effort to each of the three agents; if they don't, set no effort. Give each agent:
 - The implementation plan from Step 1
 - The relevant CLAUDE.md and codebase context
 - Their specific critique perspective
@@ -77,7 +79,7 @@ Show the revised plan and ask: "Ready to implement, or want to adjust?"
 Do NOT implement anything until the user approves.
 
 ## Notes
-- Use Sonnet for the critique agents (cost-efficient, good enough for analysis)
+- The critique agents run on Sonnet by default (cost-efficient, good enough for analysis). A `model` or `effort` in the arguments overrides this for all three agents; with no `effort` given, none is set.
 - Each agent should read the relevant files, not just work from the plan text
 - If all three agents approve with no concerns, say so — don't invent problems
 - The goal is better decisions, not slower decisions

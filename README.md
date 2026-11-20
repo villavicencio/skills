@@ -123,6 +123,7 @@ claude plugin update dv@villavicencio-skills
 - The plugin carries its `version` in `.claude-plugin/plugin.json`, following [semantic versioning](https://semver.org/).
 - Every skill in the plugin shares that version via `metadata.version` in its `SKILL.md` frontmatter. CI enforces this — a skill version that drifts from the plugin's version fails the build. (One suite, one version: a fix to any skill bumps the whole plugin.)
 - Release tags use the form `<plugin-name>--v<semver>` (double-dash) per the Claude Code plugin convention. v0.1.0 of `dv` ships as `dv--v0.1.0`.
+- Releases publish themselves. To release, bump the version (in `plugin.json` and every skill's `metadata.version`), write the notes in `docs/release-notes/<plugin-name>--v<semver>.md`, and merge to `main`. The `release` workflow (`.github/workflows/release.yml`) then creates the tag at the merge commit, publishes the GitHub release with that file as its notes, and runs `validate` on the tag. It never moves or overwrites an existing tag or release, and a missing notes file fails the run with nothing tagged. On a pull request it runs `python3 tooling/release_plugins.py --dry-run`, which prints what merging would publish; run it locally for the same answer.
 
 ## Spec conformance
 

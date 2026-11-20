@@ -27,6 +27,21 @@ checkout.
 ## Workflow
 - Branch-first for substantive work; small doc/typo updates may commit directly to main
 - Each plugin release ideally lands as one PR
+- **Releases publish themselves (VIL-809).** `.github/workflows/release.yml` runs on every push
+  to `main`: for each plugin whose `plugin.json` version has no GitHub release yet, it creates
+  the tag `<plugin>--v<version>` at the pushed commit, publishes the release with
+  `docs/release-notes/<plugin>--v<version>.md` as its notes, and starts `validate` on the tag.
+  A person still does three things: bump the version (plugin.json and every skill's
+  `metadata.version`), write that notes file, and merge. Don't tag or create a release by hand;
+  that races the workflow. Logic and rules are in `tooling/release_plugins.py` (unit tests:
+  `python3 tooling/test_release_plugins.py`). It checks everything before creating anything: a
+  missing or empty notes file, a draft release on the tag, a malformed name or version, or a
+  version below the plugin's highest release that has no tag of its own fails the run with
+  nothing tagged. A tag with no
+  release gets its release on that tag; existing tags and releases are never moved or
+  overwritten. "Latest" goes only to a version above every earlier release of the plugin. On a
+  pull request the same workflow runs `release_plugins.py --dry-run`, so a release PR without
+  its notes file fails before it merges; run that locally to see what a merge would publish.
 - **PR review: MergeWren (review-stack) is the gate, since 2026-11-03.** It reviews every new
   head of a non-draft PR here on its own (onboarded with posting on, VIL-540); there is no
   trigger and no quota, so pushing a fix starts the next round. Wait for its verdict with

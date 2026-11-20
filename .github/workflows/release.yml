@@ -1,0 +1,68 @@
+name: release
+
+# Publishes plugin releases (VIL-809). On every push to main, for each plugin
+# whose plugin.json version has no GitHub release yet, tooling/release_plugins.py
+# creates the tag `<plugin>--v<version>` at the pushed commit, publishes the
+# release with docs/release-notes/<plugin>--v<version>.md as its notes, and starts
+# `validate` on the tag (a tag made with GITHUB_TOKEN does not start workflows on
+# its own; workflow_dispatch is the exception). It never moves, deletes or
+# overwrites a tag or release, and it checks everything (notes file included)
+# before creating anything. A person bumps the version, writes the notes file and
+# merges; this does the rest.
+#
+# On a pull request it runs the same script with --dry-run and a read-only token,
+# so a release PR whose notes file is missing fails before it merges.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Nothing by default; each job asks for what it needs.
+permissions: {}
+
+jobs:
+  dry-run:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Unit-test the release logic
+        run: python3 tooling/test_release_plugins.py
+
+      - name: What merging this would publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tooling/release_plugins.py --dry-run
+
+  publish:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the tag and the release
+      actions: write # start validate on the new tag
+    # One group for every publish run. Runs never cancel each other, and
+    # `queue: max` keeps every pending run (default `single` would cancel a
+    # pending run when a newer one queues, skipping that push's release check).
+    # They run one at a time in push order, so two quick merges cannot race on a tag.
+    concurrency:
+      group: release-plugins
+      cancel-in-progress: false
+      queue: max
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Unit-test the release logic
+        run: python3 tooling/test_release_plugins.py
+
+      - name: Publish any unreleased plugin version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tooling/release_plugins.py

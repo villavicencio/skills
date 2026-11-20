@@ -4,7 +4,7 @@ description: "Groom one Linear ticket before anyone works it. Checks it against 
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.14.1"
+  version: "0.14.2"
 ---
 
 # /groom — groom a Linear ticket before work starts
@@ -75,8 +75,15 @@ included, with the main words of the Scope steps (not the title alone). Read eac
 last page. Its first page is often not all of it, and a match on a later page counts as much as
 one on the first:
 
-- Ask for short rows and long pages: `limit: 250` and `fields: ["id", "title", "status"]`. A
-  candidate's full text comes later, from `get_issue`.
+- Ask for short rows: `limit: 100` and `fields: ["id", "title", "status"]`. A candidate's full
+  text comes later, from `get_issue`.
+- Linear's text search returns at most 100 matches in all, and at 100 it says
+  `hasNextPage: false` even though more matched. So a search whose pages add up to 100 has been
+  cut off. Narrow it until it returns fewer than 100: use more specific words, or split it with a
+  `state` filter, one search per state type (`backlog`, `unstarted`, `started`, `completed`,
+  `canceled`), or a `project` filter. Tally each
+  narrowed search on its own. A search still at 100 after two narrowings is reported as capped,
+  and counts as incomplete (next bullet).
 - Every reply carries `hasNextPage`. While it is `true`, call `list_issues` again with the same
   arguments plus `cursor` set to that reply's `cursor`. A search is finished only when a reply says
   `hasNextPage: false`. If a page fails, call for it once more with the same cursor. A search

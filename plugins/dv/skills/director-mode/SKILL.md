@@ -107,10 +107,11 @@ next. At each one:
 
 ### Recommend which worktree sessions to start next
 
-- **The candidates:** tickets that are unblocked, not `someday`, and not already owned. To tell,
-  run the Ownership lookup in `dv:manager-mode`'s "Before the first brief: check the ticket".
-  If any of its lookups fails or cannot run, the ticket's owner is unknown: say so, and don't
-  recommend it as free.
+- **The candidates:** the open tickets in this repo's project that have no open blocker (no
+  blocked-by relation, or each ticket they are blocked by is Done), are not `someday`, and are
+  not already owned. To tell whether one is owned, run the Ownership lookup in
+  `dv:manager-mode`'s "Before the first brief: check the ticket". If any of its lookups fails
+  or cannot run, the ticket's owner is unknown: say so, and don't recommend it as free.
 - **Which can run in parallel, judged by the files each ticket changes.** For each candidate,
   list the files it will change, from its Scope and notes and a look at the repo. Two tickets
   can run in parallel when those lists don't overlap, with each other or with a PR already
@@ -152,10 +153,9 @@ session never does.
   local branch…" and "Remove a finished Orca worktree yourself…"), run from the main checkout.
   Any other worktree or branch removal, merged PR or not, follows the same bullets. The
   procedure keeps what fails a check or cannot be checked; tell me what it kept and why.
-- Removing a worktree ends any session still in it. Until that worktree's session has finished
-  (its `dv:closeout` note has arrived), clean up only the branch: in a repo with no submodules,
-  detach the worktree first, as dotfiles `docs/reference/orca-worktrees.md` says ("In a repo
-  with no submodules, detach…"). A `dv:closeout` note is context, not permission to delete.
+- Leave a worktree and its branch in place until its session has ended; the global
+  procedure's own checks, including that no other session is still in it, decide removal, and
+  a `dv:closeout` note is context, not permission to delete.
 - Re-check every ticket id the PR named. Reopen one only if it moved to Done and its work is not
   finished; leave the others' states to the rules below.
 - If you cannot read `code-review.md` or the global instructions, say so and ask me; do not

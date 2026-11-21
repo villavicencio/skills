@@ -26,14 +26,15 @@ know it, and worktree sessions merged their own PRs.
   by the files each ticket changes. A file every change touches (a version number, a changelog)
   counts as overlap that costs a rebase, not as a block. The user starts the sessions.
 - **It takes `dv:closeout` notes**: checks their claims, does the cleanup they assign to it
-  (removing a worktree or a branch follows the global procedure below), brings decisions to the
-  user, offers to file what was noticed and not filed.
+  (removing a worktree or a branch follows the global worktree-removal procedure), brings
+  decisions to the user, offers to file what was noticed and not filed.
 - **It merges and cleans up from the main checkout** once MergeWren passes, following
   "Merging on a MergeWren review" in dotfiles `docs/agents/code-review.md` and the global
   worktree-removal procedure rather than a copy of them. A PR those rules don't let it merge,
-  or one that needs a rebase, goes back to its worktree session. Until a worktree's session has
-  finished, it cleans up only the branch. In a linked worktree, or with the main checkout off
-  the default branch, it advises but does no merge, pull or cleanup.
+  or one that needs a rebase, goes back to its worktree session. It leaves a worktree and its
+  branch in place until that worktree's session has ended; the procedure's own checks decide
+  removal. In a linked worktree, or with the main checkout off the default branch, it advises
+  but does no merge, pull or cleanup.
 - **It keeps ticket states true** at every seam, as the global Linear rules say.
 - **It does not hire engineers for a ticket's work**, and does not do that work itself: a
   ticket's work belongs to its worktree session. It may hire for other work, or when asked,

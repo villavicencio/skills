@@ -66,8 +66,8 @@ jobs:
     # canceled by a newer one, and `queue: max` keeps pending runs (default
     # `single` would cancel a pending run when a newer one queues, skipping that
     # push's release check). They run one at a time, in the order their validate
-    # runs finished; release_plugins.py handles an older commit arriving after a
-    # newer one has released.
+    # runs finished; release_plugins.py refuses an older commit's lower version
+    # that arrives after a newer one has released, printing the by-hand command.
     concurrency:
       group: release-plugins
       cancel-in-progress: false
@@ -82,7 +82,7 @@ jobs:
       - name: Require validate to have passed on this commit
         run: |
           if [ "$VALIDATE_CONCLUSION" != "success" ]; then
-            echo "::error::validate did not pass on $RELEASE_SHA (conclusion: $VALIDATE_CONCLUSION, $VALIDATE_URL); nothing was tagged or released. The next push to main whose validate passes publishes any version still unreleased."
+            echo "::error::validate did not pass on $RELEASE_SHA (conclusion: $VALIDATE_CONCLUSION, $VALIDATE_URL); nothing was tagged or released. A later run releases only the version in its own plugin.json. To release this version by hand at a commit that carries it and passed validate (if there is one), run: gh release create <plugin>--v<version> --repo $GITHUB_REPOSITORY --target <sha> --title \"<plugin> v<version>\" --notes-file docs/release-notes/<plugin>--v<version>.md --latest=false"
             exit 1
           fi
           echo "validate passed on $RELEASE_SHA ($VALIDATE_URL)"

@@ -67,25 +67,19 @@ class PlanTest(unittest.TestCase):
         self.assertTrue(r.tag_exists)
         self.assertFalse(r.latest)
 
-    def test_older_version_without_tag_is_refused(self):
-        p = Plugin("dv", "0.9.0", DV.manifest)
+    def test_older_version_without_tag_is_refused_with_by_hand_command(self):
+        # Covers a plugin.json revert and two merges whose validate runs
+        # finished out of order: both are refused, wherever the commit sits.
+        p = Plugin("dv", "0.14.0", DV.manifest)
         with self.assertRaises(ReleaseError) as cm:
-            plan([p], RELEASED, set(), set(), notes_ok)
-        self.assertIn("lower than the released dv 0.14.1", str(cm.exception))
-        self.assertIn("main's tip", str(cm.exception))
-
-    def test_older_version_off_tip_is_released_without_latest(self):
-        # Two merges whose validate runs finished out of order: 0.14.1 already
-        # released from the newer commit, this older commit carries 0.14.0.
-        p = Plugin("dv", "0.14.0", DV.manifest)
-        [r] = plan([p], {"dv--v0.14.1"}, set(), set(), notes_ok, is_tip=False)
-        self.assertFalse(r.tag_exists)
-        self.assertFalse(r.latest)
-
-    def test_older_version_on_tip_is_still_refused(self):
-        p = Plugin("dv", "0.14.0", DV.manifest)
-        with self.assertRaises(ReleaseError):
-            plan([p], {"dv--v0.14.1"}, set(), set(), notes_ok, is_tip=True)
+            plan([p], RELEASED, set(), set(), notes_ok, repo="o/r", sha=SHA)
+        msg = str(cm.exception)
+        self.assertIn("lower than the released dv 0.14.1", msg)
+        self.assertIn(
+            f'gh release create dv--v0.14.0 --repo o/r --target {SHA} '
+            '--title "dv v0.14.0" --notes-file docs/release-notes/dv--v0.14.0.md '
+            '--latest=false', msg)
+        self.assertNotIn("\n", msg)
 
     def test_missing_notes_names_the_path_and_plans_nothing(self):
         with self.assertRaises(ReleaseError) as cm:

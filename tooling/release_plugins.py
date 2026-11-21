@@ -22,15 +22,18 @@ Rules:
   (`--verify-tag`, no `--target`), so the tag stays where it is.
 - No tag and no release: the tag is created at the checked-out commit
   (`--target <sha>`).
-- A version lower than the plugin's highest release, with no tag of its own:
-  if the commit is no longer main's tip (two merges whose `validate` runs
-  finished out of order, so the newer version released first), it is released
-  at its own commit without Latest; if the commit is main's tip (say, a revert
-  of plugin.json), the run refuses and names it.
+- A version lower than the plugin's highest release, with no tag of its own,
+  is refused, wherever its commit sits on main (a revert of plugin.json, or two
+  merges whose `validate` runs finished out of order so the newer version
+  released first). The error prints the one-line `gh release create ...
+  --latest=false` command to release it by hand at its commit.
+- A later run releases only the version in its own checkout's plugin.json, so
+  a version that a later push replaces before a commit carrying it passes
+  `validate` gets no automatic release.
 - All checks run before anything is created. A plugin directory without a
   readable plugin.json, a missing or empty notes file, a draft release on the
-  tag, a malformed name or version, or a lower version on main's tip (above)
-  all exit 1, naming the problem, with nothing tagged or released.
+  tag, a malformed name or version, or an untagged lower version (above) all
+  exit 1, naming the problem, with nothing tagged or released.
 - "Latest" goes only to a version higher than every release the plugin already
   has, so it ends on the plugin's highest version. GitHub keeps one Latest per
   repo, so with several plugins it ends on the last plugin to publish a new
@@ -40,9 +43,9 @@ Rules:
   hand (a re-run won't retry it: the release exists by then).
 
 `--dry-run` makes the same checks (it reads releases and tags from GitHub) and
-prints what it would publish; it creates nothing; it treats the commit as the
-tip-to-be of main. Publishing for real only runs inside GitHub Actions on
-`refs/heads/main` with RELEASE_SHA set, so a local run cannot tag a branch.
+prints what it would publish; it creates nothing. Publishing for real only
+runs inside GitHub Actions on `refs/heads/main` with RELEASE_SHA set, so a local
+run cannot tag a branch.
 
 Stdlib only; needs `git` and an authenticated `gh` (GH_TOKEN in Actions).
 
@@ -170,7 +173,8 @@ def plan(
     draft_tags: set[str],
     existing_tags: set[str],
     notes_check: Callable[[str], str | None],
-    is_tip: bool = True,
+    repo: str = "OWNER/NAME",
+    sha: str = "SHA",
 ) -> list[Release]:
     """Decide what to publish. Pure: all GitHub state comes in as arguments.
 
@@ -178,7 +182,7 @@ def plan(
     draft_tags: tags named by draft releases.
     existing_tags: which of the candidate tags already exist on the remote.
     notes_check: notes path -> problem string, or None when the file is usable.
-    is_tip: whether the commit being released is main's current tip.
+    repo, sha: used only to print the by-hand command in a refusal.
 
     Raises ReleaseError listing every problem; returns [] when nothing is due.
     """
@@ -204,14 +208,16 @@ def plan(
         highest = max(released, default=None)
         mine = parse_version(p.version)
         tag_exists = tag in existing_tags
-        if highest is not None and mine is not None and mine < highest and not tag_exists and is_tip:
+        notes = f"{NOTES_DIR}/{tag}.md"
+        if highest is not None and mine is not None and mine < highest and not tag_exists:
             problems.append(
                 f"{where}, but it is lower than the released "
-                f"{p.name} {'.'.join(map(str, highest))}; refusing to tag main's "
-                "tip with an older version. Set plugin.json to a new version"
+                f"{p.name} {'.'.join(map(str, highest))}, so it is not released "
+                "automatically. If this commit should carry that release, run: "
+                f"gh release create {tag} --repo {repo} --target {sha} "
+                f'--title "{p.name} v{p.version}" --notes-file {notes} --latest=false'
             )
             continue
-        notes = f"{NOTES_DIR}/{tag}.md"
         problem = notes_check(notes)
         if problem:
             problems.append(f"{problem} ({where}). Write it and merge it to main")
@@ -281,10 +287,6 @@ def tag_exists(repo: str, tag: str) -> bool:
     return any(ref.get("ref") == f"refs/tags/{tag}" for ref in json.loads(out))
 
 
-def main_tip(repo: str) -> str:
-    return run(["gh", "api", f"repos/{repo}/git/ref/heads/main", "--jq", ".object.sha"]).strip()
-
-
 def detect_repo(root: Path) -> str:
     repo = os.environ.get("GITHUB_REPOSITORY") or run(
         ["gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"], cwd=root
@@ -332,9 +334,10 @@ def main(argv: list[str] | None = None) -> int:
         published, drafts = fetch_releases(repo)
         candidates = {tag_for(p.name, p.version) for p in plugins} - published
         existing = {t for t in candidates if tag_exists(repo, t)}
-        is_tip = args.dry_run or main_tip(repo) == sha
+        # On a pull request HEAD is GitHub's test merge, which never lands on main.
+        hint_sha = "<sha-on-main>" if os.environ.get("GITHUB_EVENT_NAME") == "pull_request" else sha
         releases = plan(plugins, published, drafts, existing,
-                        lambda n: notes_problem(root, n), is_tip=is_tip)
+                        lambda n: notes_problem(root, n), repo=repo, sha=hint_sha)
     except ReleaseError as exc:
         for problem in exc.problems:
             say_error(problem)

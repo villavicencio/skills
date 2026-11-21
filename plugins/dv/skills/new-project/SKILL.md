@@ -1,6 +1,6 @@
 ---
 name: new-project
-description: "Bootstrap a new project on David's personal Mac in one run: a local repo at ~/Projects/<name> with a minimal bootstrap commit, a private GitHub repository (visibility read back before anything is pushed; a PUBLIC read-back fails the run), the Orca registration, a scriptorium vault section with the harness memory linked into it, the project's Linear project, and a MergeWren onboarding ticket. Runs its checks before the first write, stops only on a collision with something that belongs to something else, does not pause for approval, and is safe to run again (it does only what is missing). --dry-run prints every action in order and writes nothing. Use when the user says \"new project\", \"bootstrap a project\", \"set up a new repo\" or runs dv:new-project <name> --section <section>. NOT for projects that live on hal, NOT for project-specific setup (toolchain, orca.yaml: that is dv:orca-setup, the first feature ticket)."
+description: "Bootstrap a new project on David's personal Mac in one run: a local repo at ~/Projects/<name> with a minimal bootstrap commit, a private GitHub repository (visibility read back before anything is pushed; a PUBLIC read-back fails the run), the Orca registration, a scriptorium vault section with the harness memory linked into it, the project's Linear project, and a MergeWren onboarding ticket. Runs its checks before the first write and stops there only on a collision (a target that belongs to something else, or that the checks can't show is this project's) or a check that can't run, does not pause for approval, and is safe to run again (it does only what is missing). --dry-run prints every action in order and writes nothing. Use when the user says \"new project\", \"bootstrap a project\", \"set up a new repo\" or runs dv:new-project <name> --section <section>. NOT for projects that live on hal, NOT for project-specific setup (toolchain, orca.yaml: that is dv:orca-setup, the first feature ticket)."
 license: Apache-2.0
 metadata:
   author: villavicencio
@@ -33,8 +33,9 @@ onboarding ticket. A project brief then needs only the product and the tracker l
 ## Rules
 
 - **Invoking the skill with a name is the approval.** Don't stop to ask. The run stops only on a
-  collision, or when a check can't run. A collision is anything at a target that this skill
-  didn't make or that belongs to another project.
+  collision, or when a check can't run. A collision is anything at a target that belongs to
+  another project, or that the checks can't show is this project's. Step 2 says what counts as
+  proof for each target.
 - **The checks run before the first write.** Step 1 checks Linear, and the script checks the
   rest before it writes anything. The one check that needs a write first is GitHub's
   visibility, which only exists once the repository does: see the next rule.
@@ -89,32 +90,45 @@ steps in order, then a report. Python 3.9 or later, stdlib only. Exit codes:
 
 What it does, in order:
 
-1. **Checkout.** `~/Projects/<name>`, which must not exist yet (an empty folder there is a
-   collision too), built in a temp folder beside it and moved into place,
+1. **Checkout.** `~/Projects/<name>`, which must not exist yet on a first run (an empty folder
+   there is a collision too), built in a temp folder beside it and moved into place,
    with one commit: `AGENTS.md` (with a `## Vault` section naming the section), `CLAUDE.md`
    (imports AGENTS.md, so the two stay in step), `README.md`, `.gitignore`,
-   `docs/discovery.md`. No feature code. The commit carries `Bootstrapped-by: dv:new-project`,
-   which is how a rerun knows the checkout is its own.
-2. **GitHub.** `gh repo create <owner>/<name> --private`, then `gh repo view` checks that
-   GitHub answered with this repository (name and URL) and that it is `PRIVATE`. Only then does
-   it add `origin` and push, and it pushes the bootstrap commit alone. After the push it reads
-   back the default branch and checks that the repository holds the commit. An existing
-   repository counts as this project's only when the checkout is this tool's, the repository is
-   PRIVATE, and it is empty or holds the bootstrap commit. Anything else is a collision,
-   including an existing repository that isn't private.
+   `docs/discovery.md`. No feature code. The commit carries the lines
+   `Bootstrapped-by: dv:new-project` and `Project: <name>`. A rerun takes an existing checkout
+   as its own only when its one root commit has both lines, and any section named in AGENTS.md
+   and any `origin` match this run.
+2. **GitHub.** It adds `origin` first, then runs `gh repo create <owner>/<name> --private`, then
+   `gh repo view` checks that GitHub answered with this repository (name and URL) and that it is
+   `PRIVATE`. Only then does it push, and it pushes the bootstrap commit alone. After the push
+   it reads back the default branch and checks that the repository holds the commit. An
+   existing repository counts as this project's only when the checkout is this tool's, the
+   repository is PRIVATE, and it holds the bootstrap commit, or is empty while the checkout's
+   `origin` already names it (set before the create, so it records an earlier run). Anything
+   else is a collision, including an existing repository that isn't private.
 3. **Orca.** `orca repo add --path <checkout> --kind git --json`, read back with
-   `orca repo list --json`. Name and icon are set in the Orca app, not the CLI.
+   `orca repo list --json`. The check before and the read-back after use one rule: exactly one
+   entry at the checkout path, of kind git, for this repository (or with no remote known yet),
+   and no entry for this repository at another path. The read-back also needs the id that
+   `repo add` returned. Name and icon are set in the Orca app, not the CLI.
 4. **Section.** `<section>/memory` and `<section>/inbox` in `~/Obsidian/scriptorium`, after
    checking that the vault is a real folder with `.obsidian/`. If it isn't, stop: setting up
-   the vault is Scribe's work. There is no `.obsidian` step; the vault already has one.
-5. **Memory link.** Creates the harness project folder under `~/.claude/projects/` when it is
-   missing (it doesn't exist until a session has run in the new folder). Names that differ only
-   in `-`, `_` or `.` share that folder's name, so another `~/Projects` folder with the same
-   name is a collision, and an existing one is this project's only when the checkout already
-   existed and every session in it ran in this checkout. Then it links its `memory` to the
-   section's `memory/`. A real `memory/` folder replaces the section's empty `memory/` in one
-   rename before the link is made, and only when a session file shows it came from this
-   checkout; otherwise, or if the section's `memory/` holds anything, that is a collision.
+   the vault is Scribe's work. There is no `.obsidian` step; the vault already has one. An
+   existing section is this project's when this project's memory already links to it, or when
+   it holds nothing but an empty `memory/` and an empty `inbox/`. Anything else in it, a Finder
+   `.DS_Store` included, is a collision, and so is a section another project's memory links to.
+5. **Memory link.** The harness project folder under `~/.claude/projects/` is named after the
+   checkout's path, with each character that isn't a letter or digit turned into `-`, so other
+   paths can share the name (`~/Projects/foo_bar` or `~/Projects/foo/bar` for `foo-bar`). An
+   existing folder that shares it is a collision. When the folder is missing (it doesn't exist
+   until a session has run in the new folder), the script creates it and links its `memory` to
+   the section's `memory/`, and removes the folder again if the link fails. An existing folder
+   is this project's only when the checkout already exists too, no session in it started
+   elsewhere, and either its `memory` already links to the section or it holds a session that
+   started in this checkout. A real `memory/` folder there replaces the section's empty
+   `memory/` in one rename before the link is made. If the link fails, the folder moves back
+   and the section gets its empty `memory/` again. If the section's `memory/` holds anything,
+   that is a collision.
 
 ## Step 3 — The Linear project
 

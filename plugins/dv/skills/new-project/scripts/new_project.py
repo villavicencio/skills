@@ -7,25 +7,39 @@
 Steps, in order:
   1. checkout  ~/Projects/<name>, one bootstrap commit (AGENTS.md, CLAUDE.md, README.md,
                .gitignore, docs/discovery.md). AGENTS.md has the `## Vault` section.
-  2. github    <owner>/<name>, created with --private and read back; nothing is pushed until
-               the read-back shows this repository (name, URL) as PRIVATE, and only the
-               bootstrap commit is pushed. The default branch and the commit are read after.
+  2. github    <owner>/<name>: `origin` is set first, then the repository is created with
+               --private and read back; nothing is pushed until the read-back shows this
+               repository (name, URL) as PRIVATE, and only the bootstrap commit is pushed. The
+               default branch and the commit are read after.
   3. orca      `orca repo add --path <checkout> --kind git --json`, read back with
-               `orca repo list --json`.
+               `orca repo list --json` by the same rule as the check.
   4. section   ~/Obsidian/scriptorium/<section>/memory and /inbox.
-  5. memory    ~/.claude/projects/<slug>/ (created when missing; an existing one must hold only
-               sessions from this checkout, and no other ~/Projects folder may share the slug)
-               and its `memory`, a symlink
-               to the section's memory/. A real memory/ folder moves into the section in one
-               rename when a session file shows it came from this checkout and the section's
-               memory/ is empty; otherwise it is a collision.
-The Linear project and the MergeWren onboarding ticket are the agent's steps (SKILL.md); the
-plan lists them last so a dry run shows the whole order.
+  5. memory    ~/.claude/projects/<slug>/ (created when missing) and its `memory`, a symlink to
+               the section's memory/. A real memory/ folder replaces the section's empty
+               memory/ in one rename.
 
-The checks run before the first write; the GitHub visibility read-back runs before the push. A step already done is skipped, so a second run
-after a full one writes nothing and a run after a partial one does only what is missing.
-Anything at a target that this tool did not make, or that belongs to another project, is a
-collision: the run stops before writing anything.
+What counts as this project's (one rule per target, used by the check and by the write):
+  checkout  a real folder whose only root commit carries the lines `Bootstrapped-by:
+            dv:new-project` and `Project: <name>`, with no other section in AGENTS.md and no
+            other origin.
+  github    PRIVATE, and holding that root commit, or empty while the checkout's origin
+            already names it (this tool sets origin before the create).
+  orca      exactly one entry at the checkout path, kind git, for this repository or with no
+            remote known yet, and no entry for this repository anywhere else.
+  section   no other project's memory links to it; absent, or linked from this project's
+            harness folder, or nothing but an empty memory/ and inbox/ (a Finder .DS_Store
+            counts as content).
+  harness   no other existing folder maps to the same folder name; absent, or a real folder
+            found when the checkout already exists, with no session that started elsewhere,
+            whose memory links to the section or that holds a session started in this
+            checkout.
+Anything else is a collision, and so is a target the checks can't place.
+
+The checks run before the first write; the GitHub visibility read-back runs before the push.
+A step already done is skipped, so a second run after a full one writes nothing and a run
+after a partial one does only what is missing. A collision stops the run before it writes
+anything. The Linear project and the MergeWren onboarding ticket are the agent's steps
+(SKILL.md); the plan lists them last so a dry run shows the whole order.
 
 Exit codes: 0 done (or dry run planned), 1 a check could not run (nothing written) or a step
 or a read-back failed, 2 usage error, 3 a collision found by the checks (nothing written).
@@ -147,12 +161,15 @@ def check_checkout(c: Ctx) -> tuple[str, str]:
     if not (p / ".git").exists():
         return STOP, f"{p} already exists and is not a git repository made by dv:new-project"
     roots = git(p, "rev-list", "--max-parents=0", "HEAD", check=False)
-    if roots.returncode != 0 or not roots.stdout.strip():
+    root_list = roots.stdout.split() if roots.returncode == 0 else []
+    if not root_list:
         return STOP, f"{p} is a git repository with no commits; dv:new-project did not make it"
-    root = roots.stdout.split()[-1]
-    msg = git(p, "log", "-1", "--format=%B", root).stdout
-    if MARKER not in msg or f"Project: {c.name}" not in msg:
-        return STOP, f"{p} is a git repository that dv:new-project did not make (root {root[:7]})"
+    if len(root_list) > 1:
+        return STOP, f"{p} has {len(root_list)} root commits; dv:new-project makes one"
+    root = root_list[0]
+    lines = {ln.strip() for ln in git(p, "log", "-1", "--format=%B", root).stdout.splitlines()}
+    if MARKER not in lines or f"Project: {c.name}" not in lines:
+        return STOP, f"{p} is a git repository that dv:new-project did not make for {c.name} (root {root[:7]})"
     agents = p / "AGENTS.md"
     m = re.search(r"section of the scriptorium vault is `([^`]+)`",
                   agents.read_text() if agents.is_file() else "")
@@ -202,12 +219,18 @@ def check_github(c: Ctx, checkout_state: str) -> tuple[str, str]:
     view = gh_repo_view(c)
     c.github_view = view
     if view is None:
-        return TODO, f"create {c.full} with --private, push, read back visibility"
+        return TODO, (f"set origin, create {c.full} with --private, read back name, URL and PRIVATE, "
+                      f"then push the bootstrap commit")
     if checkout_state != DONE:
         return STOP, f"github.com/{c.full} already exists and this run did not make it"
     if view.get("visibility") != "PRIVATE":
         return STOP, f"github.com/{c.full} exists and is {view.get('visibility')}, not PRIVATE"
     if view.get("isEmpty"):
+        # An empty repository holds nothing to prove whose it is. This tool sets origin before
+        # it creates the repository, so origin naming it is the record of an earlier run.
+        if not has_origin(c):
+            return STOP, (f"github.com/{c.full} exists and is empty, and {c.checkout} has no origin "
+                          f"naming it, so nothing shows this tool made it")
         return TODO, f"push the bootstrap commit to the existing, empty github.com/{c.full}"
     if not remote_has_root(c):
         return STOP, (f"github.com/{c.full} has history without this checkout's bootstrap "
@@ -232,42 +255,62 @@ def same_path(a: str, b: Path) -> bool:
     return os.path.normpath(os.path.realpath(a)) == os.path.normpath(real(b))
 
 
-def check_orca(c: Ctx, checkout_state: str) -> tuple[str, str]:
+def orca_match(c: Ctx, repos: list[dict]) -> tuple[str, str, dict | None]:
+    """Is Orca's registration this checkout's? One rule, used before the add and after it:
+    no entry for this repository at another path, and exactly one entry at the checkout path,
+    of kind git, whose remote is this repository or not known yet."""
     want_key = f"github.com/{c.full}".lower()
 
     def key(r: dict) -> str:
         return ((r.get("gitRemoteIdentity") or {}).get("canonicalKey") or "").lower()
 
-    repos = orca_repos()
-    here = [r for r in repos if same_path(r.get("path") or "", c.checkout)]
-    elsewhere = [r for r in repos if r not in here and key(r) == want_key]
+    here, elsewhere = [], []
+    for r in repos:
+        if r.get("path") and same_path(r["path"], c.checkout):
+            here.append(r)
+        elif key(r) == want_key:
+            elsewhere.append(r)
     if elsewhere:
         r = elsewhere[0]
-        return STOP, f"Orca already has github.com/{c.full} at another path: {r.get('path')} (id {r.get('id')})"
+        return STOP, f"Orca already has github.com/{c.full} at another path: {r.get('path')} (id {r.get('id')})", None
     if not here:
-        return TODO, f"orca repo add --path {c.checkout} --kind git --json, read back with orca repo list"
+        return TODO, f"Orca has no project at {c.checkout}", None
+    if len(here) > 1:
+        ids = ", ".join(str(r.get("id")) for r in here)
+        return STOP, f"Orca has {len(here)} projects at {c.checkout} (ids {ids}); expected one", None
     r = here[0]
-    if checkout_state != DONE:
-        return STOP, f"Orca already has a project at {r.get('path')} (id {r.get('id')}), before this run made it"
-    if r.get("kind", "git") != "git":
-        return STOP, f"Orca has {r.get('path')} registered as kind {r.get('kind')}, not git"
+    if r.get("kind") != "git":
+        return STOP, f"Orca has {r.get('path')} registered as kind {r.get('kind')}, not git", None
     if key(r) and key(r) != want_key:
-        return STOP, f"Orca's project at {r.get('path')} is for {key(r)}, not github.com/{c.full}"
-    c.report["orca_id"] = r.get("id")
-    return DONE, f"Orca has {r.get('path')} (id {r.get('id')})"
+        return STOP, f"Orca's project at {r.get('path')} is for {key(r)}, not github.com/{c.full}", None
+    return DONE, f"Orca has {r.get('path')} (id {r.get('id')})", r
 
 
-def section_is_scaffold(sec: Path) -> bool:
-    """True when the section holds nothing but empty memory/ and inbox/ folders."""
-    for e in os.listdir(sec):
-        if e == ".DS_Store":
-            continue
-        q = sec / e
-        if e not in ("memory", "inbox") or q.is_symlink() or not q.is_dir():
-            return False
-        if [x for x in os.listdir(q) if x != ".DS_Store"]:
-            return False
-    return True
+def check_orca(c: Ctx, checkout_state: str) -> tuple[str, str]:
+    state, detail, r = orca_match(c, orca_repos())
+    if state == TODO:
+        return TODO, f"orca repo add --path {c.checkout} --kind git --json, read back with orca repo list"
+    if state == DONE and checkout_state != DONE:
+        return STOP, f"Orca already has a project at {c.checkout} (id {r.get('id')}), before this run made it"
+    if state == DONE:
+        c.report["orca_id"] = r.get("id")
+    return state, detail
+
+
+def empty_dir(p: Path) -> bool:
+    """A real folder with nothing in it. A Finder .DS_Store counts as something: the memory
+    move replaces the section's memory/ with one rename, and the OS refuses a folder that
+    holds anything, so the checks use the same rule."""
+    return p.is_dir() and not p.is_symlink() and not os.listdir(p)
+
+
+def section_extra(sec: Path) -> str | None:
+    """The first entry that makes the section more than this tool's scaffolding (an empty
+    memory/ and an empty inbox/, either one possibly still missing), or None."""
+    for e in sorted(os.listdir(sec)):
+        if e not in ("memory", "inbox") or not empty_dir(sec / e):
+            return e
+    return None
 
 
 def memory_link_ok(c: Ctx) -> bool:
@@ -289,16 +332,45 @@ def check_section(c: Ctx) -> tuple[str, str]:
         return TODO, f"mkdir {c.sec}/memory {c.sec}/inbox"
     if c.sec.is_symlink() or not c.sec.is_dir():
         return STOP, f"{c.sec} exists and is not a folder"
-    if not memory_link_ok(c) and not section_is_scaffold(c.sec):
-        return STOP, f"section {c.sec} already has content and isn't this project's"
+    if not memory_link_ok(c):
+        extra = section_extra(c.sec)
+        if extra is not None:
+            return STOP, (f"section {c.sec} holds `{extra}`, which isn't this tool's empty scaffolding, "
+                          f"and this project's memory doesn't link to it")
     if (c.sec / "memory").is_dir() and (c.sec / "inbox").is_dir():
         return DONE, f"{c.sec} has memory/ and inbox/"
     return TODO, f"mkdir the missing memory/ or inbox/ in {c.sec}"
 
 
-def session_cwds(h: Path) -> set[str]:
-    """The `cwd` values recorded in the harness folder's session files (*.jsonl)."""
-    cwds: set[str] = set()
+def slug_twins(c: Ctx) -> list[str]:
+    """Existing paths, other than the checkout, that Claude Code would give the same project
+    folder: it turns every character that isn't a letter or digit into '-', so ~/Projects/foo_bar,
+    ~/Projects/foo/bar and ~/Projects-foo/bar all share foo-bar's folder. The walk starts at /
+    and opens only folders whose own name so far matches the start of the slug, so it stays
+    small. A folder on that path that can't be listed means the check can't run."""
+    mine, found, todo = real(c.checkout), [], ["/"]
+    while todo:
+        d = todo.pop()
+        try:
+            names = os.listdir(d)
+        except OSError as e:
+            raise Blocked(f"can't list {d} to look for paths sharing the harness folder name: {e}")
+        for n in names:
+            p = os.path.join(d, n)
+            s = slug_for(p)
+            if s == c.slug:
+                if os.path.isdir(p) and os.path.realpath(p) != mine:  # only a folder hosts a session
+                    found.append(p)
+            elif c.slug.startswith(s + "-") and os.path.isdir(p):
+                todo.append(p)
+    return sorted(found)
+
+
+def session_starts(h: Path) -> set[str]:
+    """Where each session in the harness folder started: the first `cwd` in each *.jsonl,
+    resolved. Later lines can show a subfolder the session moved into, so only the first one
+    names the folder the session belongs to."""
+    starts: set[str] = set()
     for f in sorted(h.glob("*.jsonl")):
         with open(f, encoding="utf-8", errors="replace") as fh:
             for line in fh:
@@ -309,45 +381,42 @@ def session_cwds(h: Path) -> set[str]:
                 except (ValueError, AttributeError):
                     continue
                 if isinstance(cwd, str):
-                    cwds.add(cwd)
-    return cwds
+                    starts.add(os.path.realpath(cwd))
+                    break
+    return starts
 
 
 def check_memory(c: Ctx, checkout_state: str) -> tuple[str, str]:
-    h, m = c.harness, c.harness / "memory"
+    h, m, sec_mem = c.harness, c.harness / "memory", c.sec / "memory"
     if os.path.lexists(h) and (h.is_symlink() or not h.is_dir()):
         return STOP, f"{h} exists and is not a folder"
-    if c.projects.is_dir():
-        # Different names can share a slug (foo-bar, foo_bar, foo.bar). Another folder in
-        # ~/Projects with this slug would share this project's harness folder and memory.
-        parent = real(c.projects)
-        clash = sorted(e for e in os.listdir(c.projects)
-                       if e != c.name and slug_for(os.path.join(parent, e)) == c.slug)
-        if clash:
-            return STOP, (f"~/Projects/{clash[0]} maps to the same harness folder ({c.slug}) "
-                          f"as {c.name}; pick another name")
+    twins = slug_twins(c)
+    if twins:
+        return STOP, (f"{twins[0]} maps to the same harness folder ({c.slug}) as {c.checkout}, "
+                      f"so the two would share memory; pick another name")
     if h.is_dir():
-        # Different names can share a slug (foo-bar, foo_bar, foo.bar). The folder is this
-        # project's only if its sessions all ran in this checkout, and a folder that predates
-        # the checkout can't be.
+        # The folder is this project's only with proof: this tool's link to the section, or
+        # sessions that all started in this checkout. A folder older than the checkout, one
+        # holding another checkout's sessions, or one with neither proof is a collision.
         if checkout_state != DONE:
-            return STOP, f"{h} exists before {c.checkout} does; another project uses this slug"
-        others = sorted(x for x in session_cwds(h) if os.path.realpath(x) != real(c.checkout))
+            return STOP, f"{h} exists before {c.checkout} does; another project uses this folder name"
+        starts = session_starts(h)
+        others = sorted(s for s in starts if s != real(c.checkout))
         if others:
-            return STOP, f"{h} holds sessions from {', '.join(others)}; another project uses this slug"
+            return STOP, f"{h} holds sessions started in {', '.join(others)}; another project uses this folder name"
+        if not memory_link_ok(c) and real(c.checkout) not in starts:
+            return STOP, (f"{h} exists and nothing in it shows it is this project's (no memory link to "
+                          f"the section, no session started in {c.checkout})")
     if m.is_symlink():
         if memory_link_ok(c):
-            return DONE, f"{m} -> {c.sec / 'memory'}"
+            return DONE, f"{m} -> {sec_mem}"
         return STOP, f"{m} already links to {os.readlink(m)}"
     if not os.path.lexists(m):
         made = "" if h.is_dir() else f"mkdir {h}; "
-        return TODO, f"{made}ln -s {c.sec / 'memory'} {m}"
+        return TODO, f"{made}ln -s {sec_mem} {m}"
     if not m.is_dir():
         return STOP, f"{m} exists and is not a folder or a link"
-    if not any(os.path.realpath(x) == real(c.checkout) for x in session_cwds(h)):
-        return STOP, f"{m} is a real folder and no session file shows it came from {c.checkout}"
-    sec_mem = c.sec / "memory"
-    if sec_mem.is_dir() and os.listdir(sec_mem):
+    if os.path.lexists(sec_mem) and not empty_dir(sec_mem):
         return STOP, f"{m} and {sec_mem} both hold files; merge them by hand"
     return TODO, f"move {m} to {sec_mem} (one rename), then link it"
 
@@ -449,16 +518,19 @@ def require_private(view: dict | None, c: Ctx) -> dict:
 
 
 def do_github(c: Ctx) -> None:
+    if not has_origin(c):
+        # Before the create: origin is the record that this checkout's run made the
+        # repository, which is how a rerun after a create that died tells an empty
+        # repository of its own from someone else's.
+        proto = run(["gh", "config", "get", "git_protocol", "--host", "github.com"],
+                    check=False).stdout.strip()
+        url = f"git@github.com:{c.full}.git" if proto == "ssh" else f"https://github.com/{c.full}.git"
+        git(c.checkout, "remote", "add", "origin", url)
     if c.github_view is None:
         desc = ["--description", c.description] if c.description else []
         run(["gh", "repo", "create", c.full, "--private", *desc])
     # Nothing is pushed until the repository reads back PRIVATE.
     view = require_private(gh_repo_view(c), c)
-    if not has_origin(c):
-        proto = run(["gh", "config", "get", "git_protocol", "--host", "github.com"],
-                    check=False).stdout.strip()
-        url = f"git@github.com:{c.full}.git" if proto == "ssh" else f"https://github.com/{c.full}.git"
-        git(c.checkout, "remote", "add", "origin", url)
     if view.get("isEmpty"):
         # Push the bootstrap commit only: later local commits are the user's to push.
         root = c.report["root_commit"]
@@ -484,15 +556,16 @@ def read_back_github(c: Ctx) -> None:
 def do_orca(c: Ctx) -> None:
     p = run(["orca", "repo", "add", "--path", str(c.checkout), "--kind", "git", "--json"])
     try:
-        added = json.loads(p.stdout)["result"]["repo"].get("id")
-    except (ValueError, KeyError, TypeError, AttributeError):
+        added = json.loads(p.stdout)["result"]["repo"]["id"]
+    except (ValueError, KeyError, TypeError):
         added = None
-    found = [r for r in orca_repos() if same_path(r.get("path") or "", c.checkout)]
-    if not found:
-        raise Fail(f"read-back: `orca repo list --json` has no project at {c.checkout}")
-    c.report["orca_id"] = found[0].get("id")
-    if added and added != c.report["orca_id"]:
-        raise Fail(f"read-back: orca repo add returned id {added}, the list has {c.report['orca_id']}")
+    # The same rule as the check, so a registration the check would stop on fails here.
+    state, detail, r = orca_match(c, orca_repos())
+    if state != DONE:
+        raise Fail(f"read-back after orca repo add: {detail}")
+    c.report["orca_id"] = r.get("id")
+    if not added or added != r.get("id"):
+        raise Fail(f"read-back: orca repo add returned id {added}, the list has {r.get('id')}")
 
 
 def do_section(c: Ctx) -> None:
@@ -502,20 +575,25 @@ def do_section(c: Ctx) -> None:
 
 def do_memory(c: Ctx) -> None:
     m, sec_mem = c.harness / "memory", c.sec / "memory"
-    c.harness.mkdir(parents=True, exist_ok=True)
-    moved = False
-    if m.is_dir() and not m.is_symlink():
-        # One rename, so an interrupted run never leaves the files split between the two.
-        if sec_mem.is_dir():
-            sec_mem.rmdir()  # refuses a folder that holds anything, so nothing is deleted
+    if not os.path.lexists(c.harness):
+        c.harness.mkdir(parents=True)  # fails if it appeared after the checks
+        try:
+            os.symlink(str(sec_mem), str(m))
+        except BaseException:
+            c.harness.rmdir()  # the empty folder this run just made
+            raise
+    elif m.is_dir() and not m.is_symlink():
+        # One rename moves the folder and replaces the section's empty memory/ with it; the OS
+        # refuses a non-empty target, and a failed rename changes nothing.
         os.rename(m, sec_mem)
-        moved = True
-    try:
+        try:
+            os.symlink(str(sec_mem), str(m))
+        except BaseException:
+            os.rename(sec_mem, m)  # put the folder back, and the section's empty memory/
+            sec_mem.mkdir()
+            raise
+    else:
         os.symlink(str(sec_mem), str(m))
-    except OSError:
-        if moved:
-            os.rename(sec_mem, m)  # put the folder back, so a rerun sees the same state
-        raise
     if not memory_link_ok(c):
         raise Fail(f"read-back: {m} does not resolve to {sec_mem}")
 

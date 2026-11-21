@@ -21,11 +21,17 @@ Checked (the ticket's Done means, plus the partial-run and memory-folder cases):
     missing steps
   - a collision at the checkout, the GitHub repository, the Orca registration or the section
     exits non-zero with nothing written and no create call
-  - a ~/Projects folder sharing the harness slug, or a real memory/ folder with no session
-    from this checkout, stops the run with nothing written
-  - a check that can't run (`orca repo list` or `gh api` failing) exits 1 with nothing written
+  - for each target, the ownership rule's cases: absent, this project's, another project's,
+    and ambiguous (empty, partly made, more than one match), each with nothing written when
+    the answer isn't "this project's" or "absent"
+  - a path sharing the harness folder name (~/Projects/foo_bar, ~/Projects/foo/bar), or a
+    harness folder with no proof that it is this project's, stops the run with nothing written
+  - a check that can't run (`orca repo list`, `gh repo view` or `gh api` failing) exits 1
+    with nothing written
   - nothing is pushed before visibility reads back PRIVATE, only the bootstrap commit is pushed,
     and a read-back naming another repository fails the run
+  - a write that fails halfway (the bootstrap commit, the Orca read-back, the memory rename or
+    link, made to fail through a wrapper) leaves a state the next run finishes
 
 Stdlib only, no network. Needs git.
 
@@ -94,6 +100,8 @@ if argv[:2] == ["config", "get"] and argv[2] == "git_protocol":
     print("https"); sys.exit(0)
 if argv[:2] == ["repo", "view"]:
     full = argv[2]
+    if st.get("fail_repo_view"):
+        sys.stderr.write("HTTP 502: Bad Gateway (stubbed)\n"); sys.exit(1)
     if full not in st["repos"]:
         missing(full)
     b = bare(full)
@@ -152,14 +160,30 @@ if argv[:2] == ["repo", "add"] and "--json" in argv:
     url = subprocess.run(["git", "-C", path, "config", "--get", "remote.origin.url"],
                          capture_output=True, text=True).stdout.strip()
     key = re.sub(r"\.git$", "", re.sub(r"^https://", "", url)).lower() if url else None
+    key = st.get("orca_add_key") or key
     entry = {"id": str(uuid.uuid4()), "path": path, "displayName": os.path.basename(path),
              "kind": "git", "gitRemoteIdentity": {"canonicalKey": key, "remoteName": "origin",
                                                   "remoteUrl": url} if key else None}
     st["orca"].append(entry)
     json.dump(st, open(state_path, "w"), indent=1)
-    print(json.dumps({"id": str(uuid.uuid4()), "ok": True, "result": {"repo": entry}}, indent=2))
+    shown = {k: v for k, v in entry.items() if k != "id"} if st.get("orca_add_no_id") else entry
+    print(json.dumps({"id": str(uuid.uuid4()), "ok": True, "result": {"repo": shown}}, indent=2))
     sys.exit(0)
 sys.stderr.write("stub orca: unsupported call " + json.dumps(argv) + "\n"); sys.exit(99)
+'''
+
+
+FAIL_WRAPPER = r'''
+import os, runpy, sys
+script, call, target = sys.argv[1], sys.argv[2], sys.argv[3]
+real_call = getattr(os, call)
+def failing(src, dst, *a, **k):
+    if str(dst) == target:
+        raise OSError(5, "stubbed " + call + " failure")
+    return real_call(src, dst, *a, **k)
+setattr(os, call, failing)
+sys.argv = [script] + sys.argv[4:]
+runpy.run_path(script, run_name="__main__")
 '''
 
 
@@ -219,6 +243,23 @@ class Sandbox:
         except ValueError:
             report = {}
         return p, self.calls()[before:], report
+
+    def run_failing(self, call: str, target: Path, *args: str) -> tuple[subprocess.CompletedProcess, dict]:
+        """Run the script with os.<call> raising when its destination is `target`, to make one
+        write fail halfway (a rename or a symlink the stubs can't reach)."""
+        wrapper = self.root / "fail_wrapper.py"
+        wrapper.write_text(FAIL_WRAPPER)
+        p = subprocess.run([sys.executable, str(wrapper), str(SCRIPT), call, str(target), *args, "--json"],
+                           env=self.env(), capture_output=True, text=True, timeout=120)
+        try:
+            report = json.loads(p.stdout) if p.stdout.strip() else {}
+        except ValueError:
+            report = {}
+        return p, report
+
+    def git(self, repo: Path, *args: str) -> None:
+        subprocess.run(["git", "-C", str(repo), *args], env=self.env(), check=True,
+                       capture_output=True, text=True)
 
     def calls(self) -> list[list[str]]:
         return [json.loads(l) for l in self.log.read_text().splitlines() if l.strip()]
@@ -393,6 +434,15 @@ def test_full_then_idempotent() -> None:
         check("rerun after later local commits: nothing pushed",
               git_out(bare, "rev-parse", "main") == remote_before)
 
+        # The section fills up with use; this project's memory link still makes it its own.
+        (sb.section / "plan.md").write_text("a note\n")
+        (sb.section / "memory" / "MEMORY.md").write_text("- a memory\n")
+        before = sb.snapshot()
+        p, calls, report = sb.run(NAME, "--section", SECTION)
+        check("rerun after the section has notes: exit 0, nothing done, nothing changed",
+              p.returncode == 0 and report.get("did") == [] and not creates(calls)
+              and sb.snapshot() == before, p.stderr[-1500:])
+
 
 def test_public_readback_fails() -> None:
     sb, td = sandbox()
@@ -439,8 +489,9 @@ def test_partial_gh_died_after_create() -> None:
         st = sb.read_state(); st["fail_create_after"] = True; sb.write_state(st)
         p, _, _ = sb.run(NAME, "--section", SECTION)
         check("partial (gh died after create): run fails", p.returncode == 1, f"exit {p.returncode}")
-        check("partial (gh died after create): no origin yet",
-              git_out(sb.checkout, "remote").strip() == "")
+        check("partial (gh died after create): origin was set before the create, nothing pushed",
+              git_out(sb.checkout, "remote").strip() == "origin"
+              and git_out(sb.remotes / LOGIN / f"{NAME}.git", "for-each-ref", "refs/heads").strip() == "")
         p, calls, report = sb.run(NAME, "--section", SECTION)
         check("partial (gh died after create) rerun: exit 0", p.returncode == 0, p.stderr[-1500:])
         check("partial (gh died after create) rerun: no second create",
@@ -664,6 +715,251 @@ def test_memory_guard() -> None:
               and not (sb.section / "memory" / "MEMORY.md").exists())
 
 
+def stopped_at_orca(sb: Sandbox) -> None:
+    """A first run that made the checkout and the repository, then failed at Orca: the
+    checkout is this tool's, and the section and the harness folder are not made yet."""
+    st = sb.read_state(); st["fail_orca_add"] = True; sb.write_state(st)
+    p, _, _ = sb.run(NAME, "--section", SECTION)
+    check("setup: a run that fails at Orca exits 1", p.returncode == 1, f"exit {p.returncode}")
+    st = sb.read_state(); st["fail_orca_add"] = False; sb.write_state(st)
+
+
+def write_session(sb: Sandbox, name: str, *cwds: Path) -> None:
+    sb.harness.mkdir(parents=True, exist_ok=True)
+    (sb.harness / name).write_text("".join(json.dumps({"type": "user", "cwd": str(c)}) + "\n" for c in cwds))
+
+
+def test_checkout_ownership() -> None:
+    sb, td = sandbox()
+    with td:
+        sb.checkout.parent.mkdir(parents=True, exist_ok=True)
+        sb.checkout.write_text("a file, not a folder\n")
+        expect_stop("checkout: a file at the path", sb)
+    sb, td = sandbox()
+    with td:
+        sb.checkout.mkdir(parents=True)
+        sb.git(sb.checkout, "init", "-q")
+        expect_stop("checkout: a git repository with no commits", sb)
+    sb, td = sandbox()
+    with td:
+        # Another dv:new-project bootstrap moved to this path: `Project: demo-x` is not `demo`.
+        sb.checkout.mkdir(parents=True)
+        sb.git(sb.checkout, "init", "-q", "-b", "main")
+        (sb.checkout / "AGENTS.md").write_text("# demo-x\n")
+        sb.git(sb.checkout, "add", "AGENTS.md")
+        sb.git(sb.checkout, "commit", "-qm",
+               "chore: bootstrap demo-x\n\nBootstrapped-by: dv:new-project\nProject: demo-x\n")
+        expect_stop("checkout: another project's bootstrap commit (Project: demo-x)", sb)
+    sb, td = sandbox()
+    with td:
+        ok_run(sb, "setup for a second root commit")
+        sb.git(sb.checkout, "checkout", "-q", "--orphan", "other")
+        sb.git(sb.checkout, "rm", "-rqf", ".")
+        (sb.checkout / "o.txt").write_text("other history\n")
+        sb.git(sb.checkout, "add", "o.txt")
+        sb.git(sb.checkout, "commit", "-qm", "other history")
+        sb.git(sb.checkout, "checkout", "-q", "main")
+        sb.git(sb.checkout, "merge", "-q", "--allow-unrelated-histories", "-m", "merge", "other")
+        expect_stop("checkout: more than one root commit", sb)
+    sb, td = sandbox()
+    with td:
+        # Before the harness link exists, only AGENTS.md records the section the checkout was
+        # made for: a rerun with another --section stops on it.
+        stopped_at_orca(sb)
+        expect_stop("checkout: AGENTS.md names another section, before the memory link", sb,
+                    NAME, "--section", "other-notes")
+    sb, td = sandbox()
+    with td:
+        ok_run(sb, "setup for a foreign origin")
+        sb.git(sb.checkout, "remote", "set-url", "origin", f"https://github.com/{LOGIN}/other.git")
+        expect_stop("checkout: origin names another repository", sb)
+    sb, td = sandbox()
+    with td:
+        # The commit fails after the files and `git init` are in the temp folder: nothing is
+        # left in ~/Projects, and the next run starts clean.
+        hooks = sb.root / "hooks"
+        hooks.mkdir()
+        (hooks / "pre-commit").write_text("#!/bin/sh\nexit 1\n")
+        (hooks / "pre-commit").chmod(0o755)
+        plain = sb.gitconfig.read_text()
+        sb.gitconfig.write_text(plain + f"[core]\n\thooksPath = {hooks}\n")
+        p, calls, _ = sb.run(NAME, "--section", SECTION)
+        sb.gitconfig.write_text(plain)
+        check("checkout: a failed commit exits 1", p.returncode == 1, f"exit {p.returncode}\n{p.stderr[-800:]}")
+        check("checkout: a failed commit leaves nothing in ~/Projects",
+              os.listdir(sb.home / "Projects") == [], str(os.listdir(sb.home / "Projects")))
+        check("checkout: a failed commit makes no create call", not creates(calls), str(creates(calls)))
+        ok_run(sb, "checkout: rerun after a failed commit")
+
+
+def test_github_ownership() -> None:
+    sb, td = sandbox()
+    with td:
+        # The checkout is ours but has no origin, and an empty repository of that name exists:
+        # nothing shows this tool made it, so nothing is pushed into it.
+        st = sb.read_state(); st["fail_create_before"] = True; sb.write_state(st)
+        sb.run(NAME, "--section", SECTION)
+        st = sb.read_state(); st["fail_create_before"] = False; sb.write_state(st)
+        subprocess.run(["git", "-C", str(sb.checkout), "remote", "remove", "origin"],
+                       env=sb.env(), capture_output=True)
+        bare = sb.remotes / LOGIN / f"{NAME}.git"
+        bare.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run(["git", "init", "-q", "--bare", "-b", "main", str(bare)], env=sb.env(), check=True)
+        st = sb.read_state(); st["repos"][f"{LOGIN}/{NAME}"] = {"visibility": "PRIVATE"}; sb.write_state(st)
+        expect_stop("github: an empty repository with no origin naming it", sb)
+        check("github: the empty repository is still empty",
+              git_out(bare, "for-each-ref", "refs/heads").strip() == "")
+    sb, td = sandbox()
+    with td:
+        st = sb.read_state(); st["fail_repo_view"] = True; sb.write_state(st)
+        expect_stop("github: gh repo view fails with a 502 (a check that can't run)", sb, code=1)
+
+
+def test_orca_ownership() -> None:
+    sb, td = sandbox()
+    with td:
+        ok_run(sb, "setup for two Orca entries at the path")
+        st = sb.read_state()
+        st["orca"].append(dict(st["orca"][0], id="o-dup"))
+        sb.write_state(st)
+        expect_stop("orca: two entries at the checkout path", sb)
+    sb, td = sandbox()
+    with td:
+        # Orca hasn't read the remote yet: the one git entry at our checkout path is still ours.
+        ok_run(sb, "setup for an Orca entry with no remote known")
+        st = sb.read_state(); st["orca"][0]["gitRemoteIdentity"] = None; sb.write_state(st)
+        p, calls, report = sb.run(NAME, "--section", SECTION)
+        check("orca: an entry at the path with no remote known is this project's",
+              p.returncode == 0 and report.get("did") == [] and not creates(calls), p.stderr[-800:])
+    sb, td = sandbox()
+    with td:
+        ok_run(sb, "setup for an Orca folder entry")
+        st = sb.read_state(); st["orca"][0]["kind"] = "folder"; sb.write_state(st)
+        expect_stop("orca: the entry at the path is kind folder", sb)
+    sb, td = sandbox()
+    with td:
+        st = sb.read_state(); st["orca_add_key"] = "github.com/someone/else"; sb.write_state(st)
+        p, _, report = sb.run(NAME, "--section", SECTION)
+        check("orca: read-back after the add finds another repository: exit 1",
+              p.returncode == 1 and "read-back" in report.get("error", ""), str(report.get("error")))
+        check("orca: read-back failure stops before the section", not sb.section.exists())
+    sb, td = sandbox()
+    with td:
+        st = sb.read_state(); st["orca_add_no_id"] = True; sb.write_state(st)
+        p, _, report = sb.run(NAME, "--section", SECTION)
+        check("orca: the add's output has no id: exit 1",
+              p.returncode == 1 and "returned id" in report.get("error", ""), str(report.get("error")))
+        st = sb.read_state(); st["orca_add_no_id"] = False; sb.write_state(st)
+        p, calls, report = sb.run(NAME, "--section", SECTION)
+        check("orca: rerun takes the registration as done and does the rest",
+              p.returncode == 0 and report.get("did") == ["section", "memory"]
+              and not any(c[:3] == ["orca", "repo", "add"] for c in calls), str(report.get("did")))
+
+
+def test_section_ownership() -> None:
+    sb, td = sandbox()
+    with td:
+        other = sb.root / "other-section"
+        other.mkdir()
+        sb.section.parent.mkdir(parents=True, exist_ok=True)
+        os.symlink(other, sb.section)
+        expect_stop("section: a symlink", sb)
+    sb, td = sandbox()
+    with td:
+        (sb.section / "memory").mkdir(parents=True)
+        (sb.section / "memory" / ".DS_Store").write_bytes(b"\0")
+        expect_stop("section: memory/ holds a .DS_Store (not empty scaffolding)", sb)
+    sb, td = sandbox()
+    with td:
+        # A run that made memory/ but not inbox/: the rest of the scaffolding is made.
+        (sb.section / "memory").mkdir(parents=True)
+        ok_run(sb, "section: only memory/ there")
+        check("section: inbox/ made after a partial section", (sb.section / "inbox").is_dir())
+
+
+def test_harness_ownership() -> None:
+    sb, td = sandbox()
+    with td:
+        stopped_at_orca(sb)
+        sb.harness.mkdir(parents=True)
+        expect_stop("harness: exists with no session and no link", sb)
+    sb, td = sandbox()
+    with td:
+        # A session that started in the checkout and moved into a subfolder is still this
+        # checkout's: only the first cwd names the folder a session belongs to.
+        stopped_at_orca(sb)
+        write_session(sb, "s1.jsonl", sb.checkout, sb.checkout / "docs")
+        ok_run(sb, "harness: our session moved into a subfolder")
+        check("harness: link made in the folder our session started",
+              os.path.realpath(sb.harness / "memory") == os.path.realpath(sb.section / "memory"))
+    sb, td = sandbox()
+    with td:
+        (sb.home / "Projects" / "foo" / "bar").mkdir(parents=True)
+        expect_stop("harness: ~/Projects/foo/bar shares foo-bar's folder name", sb,
+                    "foo-bar", "--section", SECTION)
+    sb, td = sandbox()
+    with td:
+        other = sb.root / "elsewhere"
+        other.mkdir()
+        os.symlink(other, sb.harness)
+        expect_stop("harness: a symlink", sb)
+    sb, td = sandbox()
+    with td:
+        ok_run(sb, "setup for a repointed memory link")
+        (sb.harness / "memory").unlink()
+        (sb.root / "elsewhere").mkdir()
+        os.symlink(sb.root / "elsewhere", sb.harness / "memory")
+        expect_stop("memory link: points somewhere else", sb)
+    sb, td = sandbox()
+    with td:
+        stopped_at_orca(sb)
+        write_session(sb, "s1.jsonl", sb.checkout)
+        (sb.harness / "memory").write_text("a file\n")
+        expect_stop("memory link: a file where the link goes", sb)
+    sb, td = sandbox()
+    with td:
+        # The link fails right after the harness folder is made: the folder is removed again,
+        # so the next run doesn't find an empty folder with no proof of whose it is.
+        p, _ = sb.run_failing("symlink", sb.harness / "memory", NAME, "--section", SECTION)
+        check("harness: a failed link exits 1", p.returncode == 1, f"exit {p.returncode}\n{p.stderr[-800:]}")
+        check("harness: a failed link leaves no harness folder", not os.path.lexists(sb.harness))
+        ok_run(sb, "harness: rerun after a failed link")
+
+
+def test_memory_move_failures() -> None:
+    def setup(sb: Sandbox) -> None:
+        stopped_at_orca(sb)
+        (sb.section / "memory").mkdir(parents=True)
+        (sb.section / "inbox").mkdir()
+        write_session(sb, "s1.jsonl", sb.checkout)
+        (sb.harness / "memory").mkdir()
+        (sb.harness / "memory" / "MEMORY.md").write_text("- a note\n")
+
+    def unchanged(label: str, sb: Sandbox) -> None:
+        m = sb.harness / "memory"
+        check(f"{label}: the memory folder is back where it was, with its file",
+              m.is_dir() and not m.is_symlink() and (m / "MEMORY.md").read_text() == "- a note\n")
+        check(f"{label}: the section's memory/ is there and empty",
+              (sb.section / "memory").is_dir() and os.listdir(sb.section / "memory") == [])
+
+    for call, label in (("rename", "move: the rename fails"), ("symlink", "move: the link fails after the rename")):
+        sb, td = sandbox()
+        with td:
+            setup(sb)
+            target = sb.section / "memory" if call == "rename" else sb.harness / "memory"
+            p, _ = sb.run_failing(call, target, NAME, "--section", SECTION)
+            check(f"{label}: exit 1", p.returncode == 1, f"exit {p.returncode}\n{p.stderr[-800:]}")
+            unchanged(label, sb)
+            ok_run(sb, f"{label}: rerun")
+            check(f"{label}: rerun moved the file into the section",
+                  (sb.section / "memory" / "MEMORY.md").read_text() == "- a note\n")
+    sb, td = sandbox()
+    with td:
+        setup(sb)
+        (sb.section / "memory" / ".DS_Store").write_bytes(b"\0")
+        expect_stop("move: the section's memory/ holds a .DS_Store", sb)
+
+
 def main() -> int:
     if not SCRIPT.is_file():
         print(f"FAILED: {SCRIPT} not found")
@@ -673,7 +969,9 @@ def main() -> int:
               test_partial_gh_died_after_create, test_partial_empty_remote_pushes_bootstrap_only,
               test_github_check_errors, test_collision_checkout, test_collision_github,
               test_collision_orca, test_check_cannot_run, test_collision_section, test_collision_shared_slug, test_memory_guard,
-              test_section_scaffold_and_memory_move):
+              test_section_scaffold_and_memory_move, test_checkout_ownership, test_github_ownership,
+              test_orca_ownership, test_section_ownership, test_harness_ownership,
+              test_memory_move_failures):
         print(f"--- {t.__name__}")
         t()
     if failures:

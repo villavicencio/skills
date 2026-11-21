@@ -27,6 +27,35 @@ checkout.
 ## Workflow
 - Branch-first for substantive work; small doc/typo updates may commit directly to main
 - Each plugin release ideally lands as one PR
+- **Releases publish themselves (VIL-809).** `.github/workflows/release.yml` runs after
+  `validate` passes on a push to `main`: for each plugin whose `plugin.json` version has no
+  GitHub release yet, it creates the tag `<plugin>--v<version>` at that push's commit, publishes
+  the release with `docs/release-notes/<plugin>--v<version>.md` as its notes, and starts
+  `validate` on the tag. If `validate` didn't pass, the run fails naming the commit and the
+  `validate` run, and nothing is released. A person still does three things: bump the version
+  (plugin.json and every skill's `metadata.version`), write that notes file, and merge. Don't
+  tag or create a release by hand for a version the workflow will release; that races it.
+  Logic and rules are in `tooling/release_plugins.py` (unit tests:
+  `python3 tooling/test_release_plugins.py`, which both jobs run first). Its checks run before
+  it creates anything; any of these fails the run with nothing tagged or released: a directory
+  under `plugins/` without a readable `.claude-plugin/plugin.json`, a missing or empty notes
+  file, a draft release on the tag, a malformed name or version, or a version below the
+  plugin's highest release with no tag of its own. A tag with no release gets its release on
+  that tag (`--verify-tag`, no `--target`, so the tag stays put); a version that already has a
+  release is skipped. "Latest" goes only to a version above every earlier release of that
+  plugin (with one plugin, that is the highest release).
+  A run releases only the version in its own checkout's `plugin.json`, so a version gets no
+  automatic release when it is replaced before a commit carrying it passes `validate`, or when
+  two quick merges finish `validate` out of order and the newer version releases first (the
+  older one is then refused as lower). To release such a version by hand, at a commit that
+  carries it and passed `validate` (if none did, leave it unreleased), run from a checkout
+  that has its notes file:
+  `gh release create <plugin>--v<version> --repo villavicencio/skills --target <sha> --title "<plugin> v<version>" --notes-file docs/release-notes/<plugin>--v<version>.md --latest=false`
+  If starting `validate` on the tag fails, the run fails and its error gives the
+  `gh workflow run` command to start it by hand; a re-run will not retry it, since the release
+  then exists. On a pull request the same workflow runs `release_plugins.py --dry-run` with a
+  read-only token, so a release PR without its notes file fails before it merges; run that
+  locally to see what a merge would publish.
 - **PR review: MergeWren (review-stack) is the gate, since 2026-11-03.** It reviews every new
   head of a non-draft PR here on its own (onboarded with posting on, VIL-540); there is no
   trigger and no quota, so pushing a fix starts the next round. Wait for its verdict with

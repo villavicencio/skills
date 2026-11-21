@@ -16,19 +16,24 @@ know it, and worktree sessions merged their own PRs.
   off, and one line in a project's `CLAUDE.md` or `AGENTS.md` makes it standing. The skill gives
   that line for a project whose main checkout runs Director Mode and whose worktrees run Manager
   Mode, and the `git rev-parse` comparison that tells the two apart. The on and off replies are
-  fixed lines: `Director Mode on: <model> at <effort> effort.` and `Director Mode off.`
+  fixed lines: `Director Mode on: <model> at <effort> effort.` and `Director Mode off.`, each
+  followed by more lines only when needed (warning lines when on; `Still running: <agents>.`
+  when off).
 - **At each seam and each closeout** the Director names tickets newly unblocked (every ticket
   they are blocked by is Done; `someday` tickets skipped, Backlog ones only when their pull
   condition holds). At session start it reads the open tickets that have blockers.
 - **It recommends which worktree sessions to start next** and which can run in parallel, judged
   by the files each ticket changes. A file every change touches (a version number, a changelog)
   counts as overlap that costs a rebase, not as a block. The user starts the sessions.
-- **It takes `dv:closeout` notes**: checks their claims, does the cleanup they assign to it,
-  brings decisions to the user, offers to file what was noticed and not filed.
+- **It takes `dv:closeout` notes**: checks their claims, does the cleanup they assign to it
+  (removing a worktree or a branch follows the global procedure below), brings decisions to the
+  user, offers to file what was noticed and not filed.
 - **It merges and cleans up from the main checkout** once MergeWren passes, following
-  "Merging on a MergeWren review" and "After the merge: delete the branch" in dotfiles
-  `docs/agents/code-review.md` rather than a copy of them. A PR those rules don't let it merge,
-  or one that needs a rebase, goes back to its worktree session.
+  "Merging on a MergeWren review" in dotfiles `docs/agents/code-review.md` and the global
+  worktree-removal procedure rather than a copy of them. A PR those rules don't let it merge,
+  or one that needs a rebase, goes back to its worktree session. Until a worktree's session has
+  finished, it cleans up only the branch. In a linked worktree, or with the main checkout off
+  the default branch, it advises but does no merge, pull or cleanup.
 - **It keeps ticket states true** at every seam, as the global Linear rules say.
 - **It does not hire engineers for a ticket's work**, and does not do that work itself: a
   ticket's work belongs to its worktree session. It may hire for other work, or when asked,

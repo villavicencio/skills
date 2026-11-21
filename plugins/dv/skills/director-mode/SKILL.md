@@ -35,10 +35,10 @@ A project makes the mode standing with one line in its `CLAUDE.md` or `AGENTS.md
 worktree sessions run `dv:manager-mode`, the line names both, such as:
 "At the start of every session, invoke `dv:director-mode` if this is the main checkout and `dv:manager-mode` if it is a linked worktree. Do it before your first reply, whatever the first message asks; don't ask first."
 A session is in the main checkout when `git rev-parse --absolute-git-dir` and
-`git rev-parse --path-format=absolute --git-common-dir` print the same path. The Director also
-needs the main checkout on the default branch: the check under "Merge and clean up" stops a
-merge or a pull when it is not. The text lives here, in one copy; do not paste it into a
-project.
+`git rev-parse --path-format=absolute --git-common-dir` print the same path. A merge, a pull
+or a cleanup also needs this session to be that main checkout, on the default branch: the
+first check under "Merge and clean up" stops the work otherwise. The text lives here, in one
+copy; do not paste it into a project.
 
 ## Expected setting: Opus at high effort
 
@@ -66,7 +66,7 @@ The session's effort when this skill loaded: `${CLAUDE_EFFORT}`
 
 If the mode turns on in a linked worktree (the two paths above differ), add one more line:
 `Warning: this session is in a linked worktree; Director Mode belongs in the main checkout.`
-Then carry on.
+Then carry on: from a linked worktree the Director advises but does no merge, pull or cleanup.
 
 ## The roles
 
@@ -126,9 +126,10 @@ clipboard paste, or as a file under `<git-common-dir>/closeouts/`.
 
 - Check its claims cheaply before you act on them: the PR's state, the ticket's state, the
   worktree's verdict.
-- Do the cleanup it says you own. Bring each decision under "WAITING ON" to me with your
-  recommendation. Offer to file each item under "NOTICED, NOT FILED" (`dv:ticket`). If it asks
-  for a reply, send one.
+- Do the cleanup it says you own, except that removing a worktree or a branch follows the
+  global procedure named under "Merge and clean up"; the note is context, not permission.
+  Bring each decision under "WAITING ON" to me with your recommendation. Offer to file each
+  item under "NOTICED, NOT FILED" (`dv:ticket`). If it asks for a reply, send one.
 - Then run the seam check above.
 
 ### Merge and clean up, from the main checkout
@@ -136,28 +137,29 @@ clipboard paste, or as a file under `<git-common-dir>/closeouts/`.
 A worktree session hands you a PR once MergeWren has passed it. You merge it; the worktree
 session never does.
 
-- Before a merge or a pull, check that the main checkout is on the repository's default branch
-  (`git branch --show-current` against `gh repo view --json defaultBranchRef`). If it is not,
-  stop and tell me.
+- Before a merge, a pull or a cleanup, check two things: this session is in the main checkout
+  (the `git rev-parse` test under "On, off, and standing"), and it is on the repository's
+  default branch (`git branch --show-current` against `gh repo view --json defaultBranchRef`).
+  If either fails, stop that work and tell me; you may keep advising.
 - Before merging, read "Merging on a MergeWren review" in dotfiles `docs/agents/code-review.md`
   (https://github.com/villavicencio/dotfiles/blob/master/docs/agents/code-review.md), and the
   merge rules in the global instructions. Merge only when they allow it. Otherwise don't merge:
   hand the PR back to its worktree session and say why.
 - Merge one PR at a time. If a PR needs a rebase after another merged, hand it back to its
   worktree session; you don't rebase it.
-- After the merge, pull the main checkout. Then clean up with "After the merge: delete the
-  branch" in the same file (`wt done` where the repo uses `wt`), which removes the worktree on
-  the PR's branch. Run it only in one of two cases. First, that worktree's latest `dv:closeout`
-  note says it is safe to delete, and its session has done nothing there since. Second, the
-  note listed losses, I said yes to those losses in so many words, a fresh `dv:closeout`
-  recheck in that worktree after my yes gives the same verdict with the same listed paths,
-  entry counts, reflog-only commit count and list id (the comparison in `dv:closeout` Step 5),
-  and its session has done nothing there since that recheck. Otherwise leave the worktree and its
-  branch in place, ask that session for a fresh `dv:closeout`, and tell me. An Orca worktree
-  with submodules is only detached; its removal is Force delete in Orca, which I do.
+- After the merge, pull the main checkout. Then clean up the merged PR's branch and worktree by
+  the global procedure for removing them (the Git bullets "After a PR merges…", "A leftover
+  local branch…" and "Remove a finished Orca worktree yourself…"), run from the main checkout.
+  Any other worktree or branch removal, merged PR or not, follows the same bullets. The
+  procedure keeps what fails a check or cannot be checked; tell me what it kept and why.
+- Removing a worktree ends any session still in it. Until that worktree's session has finished
+  (its `dv:closeout` note has arrived), clean up only the branch: in a repo with no submodules,
+  detach the worktree first, as dotfiles `docs/reference/orca-worktrees.md` says ("In a repo
+  with no submodules, detach…"). A `dv:closeout` note is context, not permission to delete.
 - Re-check every ticket id the PR named. Reopen one only if it moved to Done and its work is not
   finished; leave the others' states to the rules below.
-- If you cannot read that file, say so and ask me; do not guess the rules.
+- If you cannot read `code-review.md` or the global instructions, say so and ask me; do not
+  guess the rules.
 
 ### Keep ticket states true
 

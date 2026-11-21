@@ -13,7 +13,7 @@ relations back.
 
 ## Changed
 
-- **Shared rules (`ticket/references/ticket-format.md`)**: a new section, "Ticket ids in text".
+- **Shared rules (`plugins/dv/skills/ticket/references/ticket-format.md`)**: a new section, "Ticket ids in text".
   Writing an id is writing a relation. Before saving text, name each id it adds that the ticket is
   not yet related to. When a relation is not wanted, write the PR, repo, file or title instead of
   the id. After saving, read the relations back. `dv:ticket` and `dv:groom` both read this file.

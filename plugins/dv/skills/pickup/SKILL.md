@@ -161,6 +161,49 @@ with the words typed after the skill command, everywhere in this file, code bloc
 `get` takes its key from `key=`, not from an argument, and awk reads the whole line as `$(0)`.
 CI fails any skill that contains `$` followed by a digit (`tooling/check_skill_placeholders.py`).
 
+### Step 1c — Background work still running
+
+A session can leave shells and agents running from earlier work: a command that never returned,
+a wait loop with no bound. The only other sign may be `/restart` refusing with "Can't restart
+while work is running in the background". This step lists them.
+
+Shells the harness started are child processes of the Claude Code process whose command sources
+a file under `shell-snapshots`; the block below reads them with `ps -o pid,lstart,etime,command`,
+showing start time and elapsed time, and skips its own shell. If the session-process line is not
+the Claude Code process, the shell list is unverified, and the kickoff says so.
+If the block prints `(shell list unverified: ps failed)`, the list is unverified too: don't
+report it as empty.
+```bash
+# This shell is one the harness started, so its parent is the Claude Code process.
+ME=$$; CC=$PPID
+echo "=== Session process: $(ps -o pid=,command= -p "$CC" 2>/dev/null | cut -c1-120) ==="
+echo "=== Shells still running under it (flag, pid, ppid, elapsed, start time, command) ==="
+if ! PS_OUT=$(ps -A -o pid=,ppid=,etime=,lstart=,command= 2>/dev/null) || [ -z "$PS_OUT" ]; then
+  echo "(shell list unverified: ps failed)"
+elif ! printf '%s\n' "$PS_OUT" | awk -v me="$ME" -v cc="$CC" '
+  $(2) == cc && $(1) != me && index($(0), "shell-snapshots") {
+    n = split($(3), t, /[-:]/); s = 0
+    if (n == 4) s = t[1]*86400 + t[2]*3600 + t[3]*60 + t[4]
+    else if (n == 3) s = t[1]*3600 + t[2]*60 + t[3]
+    else s = t[1]*60 + t[2]
+    flag = (s >= 1800) ? "OVER 30 MIN  " : "             "
+    print flag $(0); found = 1
+  }
+  END { if (!found) print "(none)" }'; then
+  echo "(shell list unverified: ps failed)"
+fi
+```
+
+Agents: call ListAgents if the session has it, or else read the harness's task list. For each
+agent still running, note what it is and how long ago it started.
+
+Anything running longer than about 30 minutes is reported in the kickoff (Step 3): what it is,
+how long it has run, and whether it waits on something that has already finished — for example a
+loop polling a PID, file, PR or job that is done. Check that with one cheap command when you can.
+
+This skill stops nothing. It reports, and the session decides: TaskStop for a task the session
+owns, and nothing for a task it doesn't own.
+
 ### Step 2 — Load supporting context
 ```bash
 if ! git rev-parse --git-dir >/dev/null 2>&1; then
@@ -276,19 +319,22 @@ in the handoff, which they can ask for.
    frontmatter: "This handoff is from X days ago (by mtime) — things may have moved."
 2. **Drift:** what the handoff claimed vs. what's true now, then each load-bearing claim you
    could not verify and why ("`gh` unavailable, so the open-PR claim is unverified"). Only if any.
-3. **Next up:** one line — the single most important thing to tackle first. If `resume_focus` is
+3. **Background work:** one line per shell or agent running over 30 minutes, from Step 1c: what it
+   is, how long it has run, and whether it waits on something that has finished. Only if any.
+4. **Next up:** one line — the single most important thing to tackle first. If `resume_focus` is
    set it is the default, unless the handoff body contradicts it — then say which won and why.
    Otherwise take it from "What's Next" in the handoff.
-4. **Needs you:** blockers or decisions waiting on the user. Omit if none.
-5. **Other sessions:** live ones only, one line each: branch, worktree, how far it has moved since
+5. **Needs you:** blockers or decisions waiting on the user. Omit if none.
+6. **Other sessions:** live ones only, one line each: branch, worktree, how far it has moved since
    its handoff. Leave out stale and archived entries. If one's branch or focus points at the area
    this session is about to change, say so: it may conflict.
-6. **Gotchas** that affect the next step. The rest go behind "details?".
+7. **Gotchas** that affect the next step. The rest go behind "details?".
 
 Movers, other sessions and CE artifacts: a list longer than 3 shows its first 3 and then
 "+N more". Sessions whose branch or focus points at the area of the next step are listed first. Drift
-(unverified claims included), Needs you and the gotchas that affect the next step are never cut or truncated,
-even when that runs past 10 lines: they are what the user must act on or stay safe from.
+(unverified claims included), Needs you, background work running over 30 minutes, and the gotchas that
+affect the next step are never cut or truncated, even when that runs past 10 lines: they are what the
+user must act on or stay safe from.
 Mention CE artifacts only when they bear on the next step. End with one line offering the next
 step ("Say go and I'll start on X."). That offer is the only question: never stop to ask about
 drift or anything else first.

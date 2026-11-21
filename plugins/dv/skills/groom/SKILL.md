@@ -71,8 +71,34 @@ many were skipped. Note each neighbor whose state contradicts what the ticket sa
 ticket that was canceled.
 
 **Overlapping work.** Run two or three `list_issues` searches across the team, completed tickets
-included, with the main words of the Scope steps (not the title alone), following each search's
-cursor through all its pages. Then read each candidate whose title matches a Scope step, at most 5,
+included, with the main words of the Scope steps (not the title alone). Read each search to its
+last page. Its first page is often not all of it, and a match on a later page counts as much as
+one on the first:
+
+- Ask for short rows: `limit: 100` and `fields: ["id", "title", "status"]`. A candidate's full
+  text comes later, from `get_issue`.
+- Linear's text search returns only its first 100 matches, and at 100 it says
+  `hasNextPage: false` even though more matched. A `state` or `project` filter does not help: it
+  filters those 100, not every match. So a search that returns 100 is cut off, and only a title
+  scan finishes it. List the team's issues with no `query` (`limit: 250`,
+  `fields: ["id", "title", "status"]`, every page, as the next bullet says), and pick out yourself
+  each title that holds the search's words. Do the scan once per run and reuse it for every
+  capped search. This has a known limit: a ticket past the first 100 matches whose words appear
+  only in its description is not found, and reading every description costs too much. So a
+  capped search whose scan finished counts as finished with that limit stated: its tally says
+  "capped at 100; titles scanned: <N> issues", and "descriptions beyond the first 100 matches"
+  goes under what was not checked. The limit alone does not count against ready. If the scan
+  stops early, the search is incomplete (next bullet).
+- Every reply carries `hasNextPage`. While it is `true`, call `list_issues` again with the same
+  arguments plus `cursor` set to that reply's `cursor`. A search is finished only when a reply says
+  `hasNextPage: false`. If a page fails, call for it once more with the same cursor. A search
+  that still stops before `hasNextPage: false` is incomplete: it is reported as incomplete, never
+  as finished, and it rules nothing out. Overlap with it stays "not ruled out", and step 8 counts
+  that against ready.
+- Keep a tally for each search: its words, the pages read and the number of results. The tallies
+  go in the step 6 findings, so a search that stopped early shows there.
+
+Then read each candidate whose title matches a Scope step, at most 5,
 and classify it: already done (a Scope step is finished
 elsewhere), overlaps (the same work is planned elsewhere) or unrelated. An unlinked ticket that is
 already done or overlaps is a finding. This search is separate from the duplicate search for
@@ -227,7 +253,10 @@ command's output, a ticket id). Three kinds:
 - **Spin-offs:** work the ticket suggests but should not carry: a helper, a follow-up measurement,
   a neighbor with the same flaw. Each is one line: a title in the format, why, the Linear project
   it would go in (found live, as in `dv:ticket` File step 1), and its state and labels. Before offering one, run
-  File step 3's duplicate search for it and keep any match, with its id and state.
+  File step 3's duplicate search for it, reading every page and keeping a tally as step 1's
+  overlap search does, and keep any match, with its id and state. A spin-off whose duplicate
+  search is incomplete is offered with that said, and is not filed in step 7 until the search
+  is run again and finishes.
 - **Process observations:** something about how the work is set up that will trip whoever does it:
   a branch name that breaks the repo's rule (compare the ticket's `gitBranchName` with the
   branch-name rule), a rule the ticket's change contradicts, notes or memory files outside the
@@ -241,7 +270,10 @@ When there is nothing, say "Scouting: nothing found." in one line, and do not pa
 ## 6. Interview
 
 First, in your reply, list what you found, shortest first: gaps, stale facts, settled `[assumed]`
-markers, neighbors and overlapping work, the size, the split verdict and the scouting items. Show
+markers, neighbors and overlapping work, the size, the split verdict and the scouting items. The
+overlapping work opens with one tally per search, from step 1 and step 5: its words, pages read
+and results (for example, "`groom pagination`: 2 pages, 263 results"), with an incomplete search
+marked as such. Show
 the split proposal in full here (each child's title, Done means lines, order and blockers, and the
 parent's full replacement description when it stays as the parent), and each spin-off's title,
 reason, project and any duplicate match.
@@ -280,6 +312,9 @@ removes existing text. It covers:
 - new Scope steps and Done means lines from step 3, and in-ticket improvements from step 5;
 - removed conditional steps and whatever hung on them;
 - relations to add (`blockedBy`, `relatedTo`) and to remove (`removeBlockedBy`), with the evidence;
+- relations the text itself creates: an item whose text names a ticket id the ticket is not yet
+  related to says so ("and relates VIL-N"), since Linear relates any id written in a description
+  (shared rules, "Ticket ids in text");
 - Size, the Decisions lines from the interview, and the no-split line;
 - links to comments that hold evidence a Scope step depends on;
 - for a split, the children to file and the parent's change, exactly as approved;
@@ -290,6 +325,9 @@ removes existing text. It covers:
   and "After the merge" (follow-ups that are not the worker's: notes to update, a ticket to comment
   on, a re-measurement). When Agent notes already exist, the grooming line goes before their first
   line, and the lists go after their last line.
+
+If I decline a relation to a ticket, in the edit list or in the interview, no text you save may
+name that ticket's id: name its PR, repo or title instead, and say so in the report.
 
 Propose a rewrite of an activity line only when the result is clear from the ticket. Do not fill
 in a who or a date by guessing. Mark anything you add that you could not check with `[assumed]`.
@@ -366,17 +404,21 @@ replaces the whole set.
 ## 8. Report
 
 Run this step whatever the answer to the edit list was. Judge the ticket as it now stands; read it
-again with `get_issue` if anything was written. Keep it short and in this order, following my own
+again with `get_issue`, relations included, if anything was written. Report relations as they now
+stand, not as the edit list planned them, and name any that Linear added because the text names
+an id. Keep it short and in this order, following my own
 reply-format rules when the session's instructions give any:
 
 1. **Ready or not.** Name the ticket as a markdown link (the url from `get_issue`; the bare id if
    none came back). Ready means no gaps, Done means lines that can be proved, nothing it waits on,
-   and the team's backlog or ready-to-start state as `list_issue_statuses` names them. A started,
+   every overlap search finished (step 1), and the team's backlog or ready-to-start state as
+   `list_issue_statuses` names them. A started,
    finished or canceled ticket is not ready to start. After a split, name the child that is ready
    and the one that comes first, as links; do not call the parent ready when the work is in its
    children. When not ready, name what it lacks or waits on.
 2. **Needs you:** what only I can do or decide: a target proposed and not confirmed, an item I did
-   not approve that still matters, a repo the session could not read. Left out when empty.
+   not approve that still matters, a repo the session could not read, an overlap or duplicate
+   search that did not finish (with its words, so it can be run again). Left out when empty.
 3. One line each: size; split verdict; what changed in the ticket (or "nothing changed"); spin-offs
    and children filed, as links; what was not checked; the branch to work it on.
 

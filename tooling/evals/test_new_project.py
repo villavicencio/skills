@@ -30,6 +30,10 @@ Checked (the ticket's Done means, plus the partial-run and memory-folder cases):
     with nothing written
   - nothing is pushed before visibility reads back PRIVATE, only the bootstrap commit is pushed,
     and a read-back naming another repository fails the run
+  - an empty GitHub repository counts as this project's only with the receipt written after
+    this tool's create succeeded; an origin naming it is not enough
+  - the one-root rule reads every ref but the stash and notes (an unmerged orphan branch stops
+    the run; `git stash -u` and `git notes` don't)
   - a write that fails halfway (the bootstrap commit, the Orca read-back, the memory rename or
     link, made to fail through a wrapper) leaves a state the next run finishes
 
@@ -123,6 +127,11 @@ if argv[:2] == ["repo", "create"]:
         sys.stderr.write("stub: no visibility flag\n"); sys.exit(1)
     os.makedirs(os.path.dirname(bare(full)), exist_ok=True)
     git("init", "-q", "--bare", "-b", "main", bare(full))
+    if st.get("reject_push"):
+        hook = os.path.join(bare(full), "hooks", "pre-receive")
+        with open(hook, "w") as h:
+            h.write("#!/bin/sh\necho 'stub: push rejected' >&2\nexit 1\n")
+        os.chmod(hook, 0o755)
     st["repos"][full] = {"visibility": vis}
     save()
     if st.pop("fail_create_after", False):
@@ -313,12 +322,21 @@ def ok_run(sb: Sandbox, label: str, *extra: str) -> dict:
     return report
 
 
-def expect_stop(label: str, sb: Sandbox, *args: str, code: int = 3) -> None:
+def expect_stop(label: str, sb: Sandbox, *args: str, code: int = 3, step: str = "",
+                says: str = "") -> None:
+    """The run exits `code` with nothing written and no create call; with `step`, that step is
+    among the ones that stopped, and with `says`, its STOP line contains that text."""
     before = sb.snapshot()
     p, calls, report = sb.run(*(args or (NAME, "--section", SECTION)))
     check(f"{label}: exits {code}", p.returncode == code, f"exit {p.returncode}\n{p.stderr[-1500:]}")
     check(f"{label}: nothing written", sb.snapshot() == before)
     check(f"{label}: no create call", not creates(calls), str(creates(calls)))
+    if step:
+        hit = [s for s in report.get("stopped", []) if s.get("step") == step]
+        check(f"{label}: the {step} step is the one that stops", bool(hit), str(report.get("stopped")))
+        if says:
+            check(f"{label}: the {step} STOP line says {says!r}",
+                  any(says in s.get("detail", "") for s in hit), str(hit))
 
 
 # ---------------------------------------------------------------- cases
@@ -483,39 +501,58 @@ def test_partial_orca_failure() -> None:
               report.get("did") == ["orca", "section", "memory"], str(report.get("did")))
 
 
+def receipt(sb: Sandbox) -> str:
+    return git_out(sb.checkout, "config", "--local", "--get", "dv-new-project.created").strip()
+
+
 def test_partial_gh_died_after_create() -> None:
     sb, td = sandbox()
     with td:
+        # gh made the repository but exited non-zero, so no receipt was written. The empty
+        # repository can't be told from someone else's: the rerun stops, and writing the
+        # receipt by hand (as the stop message says) lets the next run finish.
         st = sb.read_state(); st["fail_create_after"] = True; sb.write_state(st)
         p, _, _ = sb.run(NAME, "--section", SECTION)
-        check("partial (gh died after create): run fails", p.returncode == 1, f"exit {p.returncode}")
-        check("partial (gh died after create): origin was set before the create, nothing pushed",
-              git_out(sb.checkout, "remote").strip() == "origin"
-              and git_out(sb.remotes / LOGIN / f"{NAME}.git", "for-each-ref", "refs/heads").strip() == "")
-        p, calls, report = sb.run(NAME, "--section", SECTION)
-        check("partial (gh died after create) rerun: exit 0", p.returncode == 0, p.stderr[-1500:])
-        check("partial (gh died after create) rerun: no second create",
-              not any(c[:3] == ["gh", "repo", "create"] for c in calls), str(calls))
         bare = sb.remotes / LOGIN / f"{NAME}.git"
-        check("partial (gh died after create) rerun: pushed to the existing repository",
+        check("partial (gh died after create): run fails", p.returncode == 1, f"exit {p.returncode}")
+        check("partial (gh died after create): no receipt, no origin, nothing pushed",
+              receipt(sb) == "" and git_out(sb.checkout, "remote").strip() == ""
+              and git_out(bare, "for-each-ref", "refs/heads").strip() == "")
+        expect_stop("partial (gh died after create) rerun: an empty repository without the receipt", sb,
+                    step="github", says=f"config dv-new-project.created {LOGIN}/{NAME}")
+        sb.git(sb.checkout, "config", "--local", "dv-new-project.created", f"{LOGIN}/{NAME}")
+        p, calls, report = sb.run(NAME, "--section", SECTION)
+        check("partial (gh died after create), receipt written by hand: exit 0", p.returncode == 0,
+              p.stderr[-1500:])
+        check("partial (gh died after create), receipt written by hand: no second create",
+              not any(c[:3] == ["gh", "repo", "create"] for c in calls), str(calls))
+        check("partial (gh died after create), receipt written by hand: pushed",
               git_out(bare, "rev-parse", "main").strip() == git_out(sb.checkout, "rev-parse", "HEAD").strip())
-        check("partial (gh died after create) rerun: did github onwards",
+        check("partial (gh died after create), receipt written by hand: did github onwards",
               report.get("did") == ["github", "orca", "section", "memory"], str(report.get("did")))
 
 
 def test_partial_empty_remote_pushes_bootstrap_only() -> None:
     sb, td = sandbox()
     with td:
-        st = sb.read_state(); st["fail_create_after"] = True; sb.write_state(st)
-        sb.run(NAME, "--section", SECTION)
+        # The create succeeded (receipt written) and the push failed: the rerun takes the empty
+        # repository as this project's and pushes the bootstrap commit alone, not later work.
+        st = sb.read_state(); st["reject_push"] = True; sb.write_state(st)
+        p, _, _ = sb.run(NAME, "--section", SECTION)
+        check("push failed after the create: run fails", p.returncode == 1, f"exit {p.returncode}")
+        check("push failed after the create: the receipt names the repository",
+              receipt(sb) == f"{LOGIN}/{NAME}", receipt(sb))
+        bare = sb.remotes / LOGIN / f"{NAME}.git"
+        (bare / "hooks" / "pre-receive").unlink()
         root = git_out(sb.checkout, "rev-parse", "HEAD").strip()
         (sb.checkout / "later.txt").write_text("work in progress\n")
         subprocess.run(["git", "-C", str(sb.checkout), "add", "later.txt"], env=sb.env(), check=True)
         subprocess.run(["git", "-C", str(sb.checkout), "commit", "-qm", "later"], env=sb.env(), check=True)
-        p, _, _ = sb.run(NAME, "--section", SECTION)
-        bare = sb.remotes / LOGIN / f"{NAME}.git"
-        check("empty remote + later local commit: rerun exit 0", p.returncode == 0, p.stderr[-1500:])
-        check("empty remote + later local commit: only the bootstrap commit is pushed",
+        p, calls, report = sb.run(NAME, "--section", SECTION)
+        check("empty remote + receipt + later local commit: rerun exit 0", p.returncode == 0, p.stderr[-1500:])
+        check("empty remote + receipt + later local commit: no second create",
+              not any(c[:3] == ["gh", "repo", "create"] for c in calls), str(calls))
+        check("empty remote + receipt + later local commit: only the bootstrap commit is pushed",
               git_out(bare, "rev-parse", "main").strip() == root)
 
 
@@ -763,6 +800,35 @@ def test_checkout_ownership() -> None:
         expect_stop("checkout: more than one root commit", sb)
     sb, td = sandbox()
     with td:
+        ok_run(sb, "setup for an unmerged orphan branch")
+        sb.git(sb.checkout, "checkout", "-q", "--orphan", "other")
+        sb.git(sb.checkout, "rm", "-rqf", ".")
+        (sb.checkout / "o.txt").write_text("other history\n")
+        sb.git(sb.checkout, "add", "o.txt")
+        sb.git(sb.checkout, "commit", "-qm", "other history")
+        sb.git(sb.checkout, "checkout", "-q", "main")
+        expect_stop("checkout: a second root on an unmerged branch", sb, step="checkout",
+                    says="root commits")
+    sb, td = sandbox()
+    with td:
+        # `git stash -u` keeps untracked files in a commit with no parent; it isn't a root of
+        # the project's history, so the checkout is still this project's.
+        ok_run(sb, "setup for a stash with untracked files")
+        (sb.checkout / "scratch.txt").write_text("not committed\n")
+        sb.git(sb.checkout, "stash", "push", "-q", "-u", "-m", "wip")
+        p, calls, report = sb.run(NAME, "--section", SECTION)
+        check("checkout: a stash with untracked files still counts as this project's",
+              p.returncode == 0 and report.get("did") == [] and not creates(calls), p.stderr[-800:])
+    sb, td = sandbox()
+    with td:
+        # `git notes` keeps its own history with its own root; it isn't the project's either.
+        ok_run(sb, "setup for git notes")
+        sb.git(sb.checkout, "notes", "add", "-m", "a note", "HEAD")
+        p, calls, report = sb.run(NAME, "--section", SECTION)
+        check("checkout: git notes still count as this project's",
+              p.returncode == 0 and report.get("did") == [] and not creates(calls), p.stderr[-800:])
+    sb, td = sandbox()
+    with td:
         # Before the harness link exists, only AGENTS.md records the section the checkout was
         # made for: a rerun with another --section stops on it.
         stopped_at_orca(sb)
@@ -795,18 +861,21 @@ def test_checkout_ownership() -> None:
 def test_github_ownership() -> None:
     sb, td = sandbox()
     with td:
-        # The checkout is ours but has no origin, and an empty repository of that name exists:
-        # nothing shows this tool made it, so nothing is pushed into it.
+        # The create failed before making anything, then someone else made an empty private
+        # repository of that name. An origin naming it is not proof (it can be set without a
+        # create); only the receipt of a successful create is, so nothing is pushed into it.
         st = sb.read_state(); st["fail_create_before"] = True; sb.write_state(st)
-        sb.run(NAME, "--section", SECTION)
+        p, _, _ = sb.run(NAME, "--section", SECTION)
+        check("github setup: a create that fails before making anything exits 1, no receipt",
+              p.returncode == 1 and receipt(sb) == "", f"exit {p.returncode}, receipt {receipt(sb)!r}")
         st = sb.read_state(); st["fail_create_before"] = False; sb.write_state(st)
-        subprocess.run(["git", "-C", str(sb.checkout), "remote", "remove", "origin"],
-                       env=sb.env(), capture_output=True)
+        subprocess.run(["git", "-C", str(sb.checkout), "remote", "add", "origin",
+                        f"https://github.com/{LOGIN}/{NAME}.git"], env=sb.env(), capture_output=True)
         bare = sb.remotes / LOGIN / f"{NAME}.git"
         bare.parent.mkdir(parents=True, exist_ok=True)
         subprocess.run(["git", "init", "-q", "--bare", "-b", "main", str(bare)], env=sb.env(), check=True)
         st = sb.read_state(); st["repos"][f"{LOGIN}/{NAME}"] = {"visibility": "PRIVATE"}; sb.write_state(st)
-        expect_stop("github: an empty repository with no origin naming it", sb)
+        expect_stop("github: an empty repository with origin naming it but no receipt", sb, step="github")
         check("github: the empty repository is still empty",
               git_out(bare, "for-each-ref", "refs/heads").strip() == "")
     sb, td = sandbox()

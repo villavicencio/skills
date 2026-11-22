@@ -7,10 +7,10 @@
 Steps, in order:
   1. checkout  ~/Projects/<name>, one bootstrap commit (AGENTS.md, CLAUDE.md, README.md,
                .gitignore, docs/discovery.md). AGENTS.md has the `## Vault` section.
-  2. github    <owner>/<name>: `origin` is set first, then the repository is created with
-               --private and read back; nothing is pushed until the read-back shows this
-               repository (name, URL) as PRIVATE, and only the bootstrap commit is pushed. The
-               default branch and the commit are read after.
+  2. github    <owner>/<name>, created with --private; once the create succeeds, a receipt
+               goes into the checkout's git config. Nothing is pushed until the read-back shows
+               this repository (name, URL) as PRIVATE, and only the bootstrap commit is pushed.
+               The default branch and the commit are read after.
   3. orca      `orca repo add --path <checkout> --kind git --json`, read back with
                `orca repo list --json` by the same rule as the check.
   4. section   ~/Obsidian/scriptorium/<section>/memory and /inbox.
@@ -19,11 +19,11 @@ Steps, in order:
                memory/ in one rename.
 
 What counts as this project's (one rule per target, used by the check and by the write):
-  checkout  a real folder whose only root commit carries the lines `Bootstrapped-by:
-            dv:new-project` and `Project: <name>`, with no other section in AGENTS.md and no
-            other origin.
-  github    PRIVATE, and holding that root commit, or empty while the checkout's origin
-            already names it (this tool sets origin before the create).
+  checkout  a real folder whose refs, except the stash and notes, reach one root commit,
+            carrying the lines `Bootstrapped-by: dv:new-project` and `Project: <name>`, with
+            no other section in AGENTS.md and no other origin.
+  github    PRIVATE, and holding that root commit, or empty while the checkout holds the
+            receipt that this tool's create of <owner>/<name> succeeded.
   orca      exactly one entry at the checkout path, kind git, for this repository or with no
             remote known yet, and no entry for this repository anywhere else.
   section   no other project's memory links to it; absent, or linked from this project's
@@ -37,7 +37,9 @@ Anything else is a collision, and so is a target the checks can't place.
 
 The checks run before the first write; the GitHub visibility read-back runs before the push.
 A step already done is skipped, so a second run after a full one writes nothing and a run
-after a partial one does only what is missing. A collision stops the run before it writes
+after a partial one does only what is missing, or stops on what it can't place: after a
+`gh repo create` that exited non-zero once the repository existed, there is no receipt, and
+the stop message gives the command that records it. A collision stops the run before it writes
 anything. The Linear project and the MergeWren onboarding ticket are the agent's steps
 (SKILL.md); the plan lists them last so a dry run shows the whole order.
 
@@ -160,7 +162,11 @@ def check_checkout(c: Ctx) -> tuple[str, str]:
         return STOP, f"{p} exists and is not a folder this tool made"
     if not (p / ".git").exists():
         return STOP, f"{p} already exists and is not a git repository made by dv:new-project"
-    roots = git(p, "rev-list", "--max-parents=0", "HEAD", check=False)
+    # Every ref, not only HEAD, so an unmerged branch or a tag with its own history counts.
+    # The stash and notes are left out: `git stash -u` keeps untracked files in a commit with
+    # no parent, and `git notes` keeps its own history; neither is the project's.
+    roots = git(p, "rev-list", "--max-parents=0", "--exclude=refs/stash", "--exclude=refs/notes/*",
+                "--all", check=False)
     root_list = roots.stdout.split() if roots.returncode == 0 else []
     if not root_list:
         return STOP, f"{p} is a git repository with no commits; dv:new-project did not make it"
@@ -215,23 +221,35 @@ def remote_has_root(c: Ctx) -> bool:
     raise Blocked(f"`gh api repos/{c.full}/commits/{root[:7]}` failed: {err.strip()}")
 
 
+RECEIPT_KEY = "dv-new-project.created"
+
+
+def has_receipt(c: Ctx) -> bool:
+    """True when the checkout records that this tool's `gh repo create` of this repository
+    succeeded. It is written only after the create returns success, so it is the proof that
+    an empty repository of this name is this project's."""
+    got = git(c.checkout, "config", "--local", "--get", RECEIPT_KEY, check=False)
+    return got.returncode == 0 and got.stdout.strip().lower() == c.full.lower()
+
+
 def check_github(c: Ctx, checkout_state: str) -> tuple[str, str]:
     view = gh_repo_view(c)
     c.github_view = view
     if view is None:
-        return TODO, (f"set origin, create {c.full} with --private, read back name, URL and PRIVATE, "
-                      f"then push the bootstrap commit")
+        return TODO, (f"create {c.full} with --private, record the receipt, read back name, URL "
+                      f"and PRIVATE, set origin if missing, then push the bootstrap commit")
     if checkout_state != DONE:
         return STOP, f"github.com/{c.full} already exists and this run did not make it"
     if view.get("visibility") != "PRIVATE":
         return STOP, f"github.com/{c.full} exists and is {view.get('visibility')}, not PRIVATE"
     if view.get("isEmpty"):
-        # An empty repository holds nothing to prove whose it is. This tool sets origin before
-        # it creates the repository, so origin naming it is the record of an earlier run.
-        if not has_origin(c):
-            return STOP, (f"github.com/{c.full} exists and is empty, and {c.checkout} has no origin "
-                          f"naming it, so nothing shows this tool made it")
-        return TODO, f"push the bootstrap commit to the existing, empty github.com/{c.full}"
+        # An empty repository holds nothing to prove whose it is; the receipt, written only
+        # after this tool's create succeeded, is the proof.
+        if not has_receipt(c):
+            return STOP, (f"github.com/{c.full} exists and is empty, and {c.checkout} has no receipt "
+                          f"showing this tool created it. If it is this project's, run `git -C "
+                          f"{c.checkout} config {RECEIPT_KEY} {c.full}` and run again")
+        return TODO, f"set origin if missing, then push the bootstrap commit to the existing, empty github.com/{c.full}"
     if not remote_has_root(c):
         return STOP, (f"github.com/{c.full} has history without this checkout's bootstrap "
                       f"commit {c.report.get('root_commit', '')[:7]}; it belongs to something else")
@@ -500,7 +518,7 @@ def do_checkout(c: Ctx) -> None:
     except BaseException:
         shutil.rmtree(tmp, ignore_errors=True)
         raise
-    c.report["root_commit"] = git(c.checkout, "rev-list", "--max-parents=0", "HEAD").stdout.split()[-1]
+    c.report["root_commit"] = git(c.checkout, "rev-list", "--max-parents=0", "HEAD").stdout.split()[0]
 
 
 def require_private(view: dict | None, c: Ctx) -> dict:
@@ -518,19 +536,19 @@ def require_private(view: dict | None, c: Ctx) -> dict:
 
 
 def do_github(c: Ctx) -> None:
+    if c.github_view is None:
+        desc = ["--description", c.description] if c.description else []
+        run(["gh", "repo", "create", c.full, "--private", *desc])
+        # The receipt, written only once the create has returned success, is what lets a
+        # rerun take an empty repository of this name as this project's.
+        git(c.checkout, "config", "--local", RECEIPT_KEY, c.full)
+    # Nothing is pushed until the repository reads back PRIVATE.
+    view = require_private(gh_repo_view(c), c)
     if not has_origin(c):
-        # Before the create: origin is the record that this checkout's run made the
-        # repository, which is how a rerun after a create that died tells an empty
-        # repository of its own from someone else's.
         proto = run(["gh", "config", "get", "git_protocol", "--host", "github.com"],
                     check=False).stdout.strip()
         url = f"git@github.com:{c.full}.git" if proto == "ssh" else f"https://github.com/{c.full}.git"
         git(c.checkout, "remote", "add", "origin", url)
-    if c.github_view is None:
-        desc = ["--description", c.description] if c.description else []
-        run(["gh", "repo", "create", c.full, "--private", *desc])
-    # Nothing is pushed until the repository reads back PRIVATE.
-    view = require_private(gh_repo_view(c), c)
     if view.get("isEmpty"):
         # Push the bootstrap commit only: later local commits are the user's to push.
         root = c.report["root_commit"]
@@ -691,7 +709,8 @@ def main(argv: list[str]) -> int:
     except (Fail, Blocked, OSError) as e:
         say(f"FAILED at {name}: {e}")
         say(f"Done before the failure: {', '.join(c.report['did']) or 'nothing'}. "
-            "Fix the cause and run the same command again; it does only what is missing.")
+            "Fix the cause and run the same command again; it does only what is missing, "
+            "or stops and says why.")
         c.report["error"] = f"{name}: {e}"
         if JSON_MODE:
             print(json.dumps(c.report, indent=2))

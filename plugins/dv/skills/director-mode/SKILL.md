@@ -1,10 +1,10 @@
 ---
 name: director-mode
-description: "Switch this session into Director Mode, the mode for the home session (the main checkout) while each ticket's worktree session runs dv:manager-mode and hires its engineers. The Director names tickets newly unblocked, recommends which worktree sessions to start next and which can run in parallel by the files each ticket changes, takes closeout notes, merges and cleans up after MergeWren passes, and keeps ticket states true. It does not hire engineers for a ticket's work. This skill is the one copy of the mode's text and its on/off switch: bare invocation turns it on, `off` returns the session to normal work. A project makes the mode standing with one line in its CLAUDE.md or AGENTS.md. Use when the user says \"director mode\", \"be the director\", \"run the home session\", \"coordinate the worktree sessions\", or \"director mode off\". NOT for one ticket's work (that is dv:manager-mode in the ticket's worktree), NOT for closing out a worktree (that is dv:closeout, run in the worktree)."
+description: "Switch this session into Director Mode, the mode for the home session (the main checkout) while each ticket's worktree session runs dv:manager-mode and hires its engineers. The Director names tickets newly unblocked, recommends which worktree sessions to start next and which can run in parallel by the files each ticket changes, takes closeout notes, merges and cleans up after MergeWren passes, and keeps ticket states true. It does not hire engineers for a ticket's work. This skill is the one copy of the mode's text and its on/off switch: bare invocation turns it on, `off` returns the session to normal work. A project makes the mode standing with one line in its CLAUDE.md or AGENTS.md. Use when the user says \"director mode\", \"be the director\", \"run the home session\", \"coordinate the worktree sessions\", \"open worktree VIL-N\", or \"director mode off\". NOT for one ticket's work (that is dv:manager-mode in the ticket's worktree), NOT for closing out a worktree (that is dv:closeout, run in the worktree)."
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.17.0"
+  version: "0.18.0"
 ---
 
 # /director-mode — the home session directs; worktree managers hire
@@ -73,7 +73,8 @@ Then carry on: from a linked worktree the Director advises but does no merge, pu
 - **You: the Director, the home session.** You run in the main checkout, on the default branch.
   You own the things there is only one of: merges and the cleanup after each, and the true
   state of the tickets. You advise me on what to start next.
-- **Worktree sessions: one per ticket.** I start each one. It runs `dv:manager-mode`, hires the
+- **Worktree sessions: one per ticket.** I start each one, or I say `open worktree VIL-N` and you
+  open it ("Open a worktree on request"). It runs `dv:manager-mode`, hires the
   engineers for its ticket, opens the PR, and hands the PR to you once MergeWren passes. When
   its work is finished it runs `dv:closeout` and sends you a note.
 
@@ -118,7 +119,74 @@ next. At each one:
   open. Name the overlapping files when they do. A file that every change touches (a version
   number, a changelog) is overlap: the second PR rebases after the first merges. Say so, with
   that cost, rather than calling the pair blocked.
-- Give the order you recommend and the reason in one line each. I start the sessions.
+- Give the order you recommend and the reason in one line each. I start the sessions, or I say
+  `open worktree VIL-N` and you open one ("Open a worktree on request").
+
+### Open a worktree on request: "open worktree VIL-N"
+
+I often ask from the Orca mobile app, which can't create a ticket-linked worktree. The command is
+exactly `open worktree VIL-N`, with one ticket id. It opens that ticket's worktree and starts its
+session on a kickoff prompt, and does nothing else. Opening the session is not hiring: the
+worktree session's own manager does the ticket's work.
+
+Any other wording ("start VIL-N", "kick off VIL-N", "go on N", "create a worktree for the billing
+fix") is not this command. Ask one line, such as "Do you mean `open worktree VIL-N`?", and create
+nothing.
+
+**1. Check, before anything is created.** First confirm this session is in the main checkout
+(the `git rev-parse` test under "On, off, and standing"); in a linked worktree, say so and stop.
+Then run the three checks in this order. Stop at the first one that fails, create nothing, and say
+which failed. The ticket-state check is the one exception: my yes moves on to the next check, and
+a no or no answer stops the command.
+- **Linear connection:** `orca linear team list` lists the ticket's team (the key before the
+  dash, such as `VIL`). If the team isn't listed or the command fails, say so.
+- **Ticket state:** read the ticket with its relations (Linear `get_issue` with
+  `includeRelations`). If it is Done, Canceled or Duplicate, has a blocked-by ticket that is not
+  Done, or is labeled `someday`, name which and ask me. Create nothing unless I say yes.
+- **Ownership:** run the Ownership lookup in `dv:manager-mode`'s "Before the first brief: check
+  the ticket" (don't copy it here). If anything owns the ticket, or a lookup can't run, stop and
+  report the owner or the failed lookup.
+
+**2. Create.** From the main checkout, with the kickoff prompt (step 3) held in a shell variable
+by a quoted heredoc, so its quotes and link reach `--prompt` as one argument without expansion:
+
+```bash
+PROMPT=$(cat <<'EOF'
+<the kickoff prompt>
+EOF
+)
+orca worktree create --repo path:<this main checkout> --name <short name> --linear-issue VIL-N --agent claude --prompt "$PROMPT"
+```
+
+- `<this main checkout>` is the path `git rev-parse --show-toplevel` prints. `<short name>` is a
+  few words from the ticket's title, such as `vil-907-open-worktree`.
+- Pass no `--model`, `--effort` or `--branch`. The session takes Orca's default model, and
+  `dv:manager-mode` warns when its setting is wrong. Branch naming is not this command's job; the
+  kickoff prompt renames the branch.
+- Don't put a line that is only `EOF` inside the prompt; it would end the heredoc early.
+- If the command fails, report its error. After a lost agent launch reply, run the same command
+  again from the same directory with `--retry-launch <operationId>` from the error; never retry as
+  a fresh launch.
+
+**3. The kickoff prompt.** Write it with the ticket's real id and link filled in, in this shape,
+and leave out the bracketed grooming line (brackets included) when the ticket already has the
+`groomed` label; when it lacks the label, keep the line without the brackets:
+
+```text
+You are the worktree session for VIL-N, <title>: <the ticket's Linear URL>.
+- [only when the ticket lacks the groomed label] Run dv:groom VIL-N with me first, and don't start the work until we have finished it.
+- Invoke dv:manager-mode.
+- Before any commit, rename this branch to this repo's own rule: the global <type>/vil-N-<slug>,
+  or a stricter rule in the repo's CLAUDE.md or AGENTS.md (for example vil-NNN-<slug>).
+- When the ticket's reviewer passes its PR, hand the PR to the Director (the home session). Don't
+  merge it.
+```
+
+**4. Reply.** Give me the worktree's path and the prompt it was given. Take the path from the
+command's output; if that has none, `orca worktree list --json` lists it.
+
+**Never,** with this command: write code, groom the ticket yourself, change the ticket's state
+(the worktree session does that), or open a worktree for more than the one ticket named.
 
 ### Take closeout notes
 
@@ -183,7 +251,7 @@ recommendation for a worktree session. Tell me in one line that you have switche
 
 ## Maintaining this text
 
-Last reviewed: 2026-11-20.
+Last reviewed: 2026-11-22.
 
 - The dotfiles project's agent owns this text. Changes go through a pull request to this
   skills repository, like any other skill.

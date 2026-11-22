@@ -134,15 +134,18 @@ fix") is not this command. Ask one line, such as "Do you mean `open worktree VIL
 nothing.
 
 **1. Check, before anything is created.** First confirm this session is in the main checkout
-(the `git rev-parse` test under "On, off, and standing"); in a linked worktree, say so and stop.
+(the `git rev-parse` test under "On, off, and standing") and on the repository's default branch
+(the `git branch --show-current` check under "Merge and clean up"); if either fails, say so and stop.
 Then run the three checks in this order. Stop at the first one that fails, create nothing, and say
 which failed. The ticket-state check is the one exception: my yes moves on to the next check, and
 a no or no answer stops the command.
 - **Linear connection:** `orca linear team list` lists the ticket's team (the key before the
   dash, such as `VIL`). If the team isn't listed or the command fails, say so.
 - **Ticket state:** read the ticket with its relations (Linear `get_issue` with
-  `includeRelations`). If it is Done, Canceled or Duplicate, has a blocked-by ticket that is not
-  Done, or is labeled `someday`, name which and ask me. Create nothing unless I say yes.
+  `includeRelations`). If it is Done, Canceled, Duplicate or in the Blocked state, has a blocked-by
+  ticket that is not Done, is labeled `someday`, or is not in this repo's project (the project
+  "Recommend which worktree sessions to start next" uses) or its project can't be told, name which
+  (for the project, name the ticket's) and ask me. Create nothing unless I say yes.
 - **Ownership:** run the Ownership lookup in `dv:manager-mode`'s "Before the first brief: check
   the ticket" (don't copy it here). If anything owns the ticket, or a lookup can't run, stop and
   report the owner or the failed lookup.

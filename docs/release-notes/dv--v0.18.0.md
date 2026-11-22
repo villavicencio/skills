@@ -16,8 +16,9 @@ home session loads, removes the guesswork in every project (VIL-907).
 - **`dv:director-mode`: a new section, "Open a worktree on request".** The command is exactly
   `open worktree VIL-N`. It means only this:
   - **Checks first; the first failure stops it and nothing is created.** After confirming this session
-    is the main checkout: `orca linear team list` lists the ticket's team; the ticket is not Done, Canceled,
-    Duplicate, blocked or `someday` (otherwise it asks, and David's yes proceeds); and the Ownership
+    is the main checkout and on the default branch: `orca linear team list` lists the ticket's team; the
+    ticket is not Done, Canceled, Duplicate or in the Blocked state, has no open blocked-by ticket, is not
+    `someday`, and is in this repo's project (otherwise it asks, and David's yes proceeds); and the Ownership
     lookup in `dv:manager-mode`'s "Before the first brief: check the ticket" finds no owner and every
     lookup ran.
   - **Create:** one `orca worktree create` call with `--repo`, `--name`, `--linear-issue VIL-N`,

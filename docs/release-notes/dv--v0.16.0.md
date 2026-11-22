@@ -1,10 +1,9 @@
 # dv — v0.16.0
 
-Minor release. It adds one skill, `dv:new-project`. The other fourteen skills have no behaviour
+Minor release. It adds one skill, `dv:new-project`. The other fifteen skills have no behaviour
 changes; their version moves to `0.16.0` only because the suite is released as one plugin.
 
-Numbering: 0.15.0 is claimed by another open PR (`dv:director-mode`). If that PR has not merged
-when this one does, the home session may renumber this release.
+Numbering: 0.16.0 follows 0.15.0, which added `dv:director-mode`.
 
 ## Added
 

@@ -84,7 +84,11 @@ Before drafting, call `list_issues` for the project with the main words of the r
 more across the team without the project, to catch a duplicate filed elsewhere. Include completed
 tickets (set the state filter if the default leaves them out). Follow the cursor through all the
 pages of each search, and run each search a second time with different words (a synonym, or the
-title you would give the ticket). A match is the same problem, not the same words. If one matches,
+title you would give the ticket). Linear's text search returns only its first 100 matches and
+then says `hasNextPage: false`, and a state or project filter only filters those 100. So a search
+that returns 100 was cut off: finish it by listing the team's issues with no `query` (every page)
+and reading the titles for the same problem. A ticket past the first 100 matches whose words are
+only in its description is not found this way; say so in the draft when a search was capped. A match is the same problem, not the same words. If one matches,
 say so, with its id and state, and ask what to do: use that ticket (groom it with `dv:groom`), file
 anyway, or stop. Do not draft past a match without my answer. A related ticket that is not the same
 problem is listed in the draft, with its id, and needs no question. Run both searches again just

@@ -75,8 +75,20 @@ included, with the main words of the Scope steps (not the title alone). Read eac
 last page. Its first page is often not all of it, and a match on a later page counts as much as
 one on the first:
 
-- Ask for short rows and long pages: `limit: 250` and `fields: ["id", "title", "status"]`. A
-  candidate's full text comes later, from `get_issue`.
+- Ask for short rows: `limit: 100` and `fields: ["id", "title", "status"]`. A candidate's full
+  text comes later, from `get_issue`.
+- Linear's text search returns only its first 100 matches, and at 100 it says
+  `hasNextPage: false` even though more matched. A `state` or `project` filter does not help: it
+  filters those 100, not every match. So a search that returns 100 is cut off, and only a title
+  scan finishes it. List the team's issues with no `query` (`limit: 250`,
+  `fields: ["id", "title", "status"]`, every page, as the next bullet says), and pick out yourself
+  each title that holds the search's words. Do the scan once per run and reuse it for every
+  capped search. This has a known limit: a ticket past the first 100 matches whose words appear
+  only in its description is not found, and reading every description costs too much. So a
+  capped search whose scan finished counts as finished with that limit stated: its tally says
+  "capped at 100; titles scanned: <N> issues", and "descriptions beyond the first 100 matches"
+  goes under what was not checked. The limit alone does not count against ready. If the scan
+  stops early, the search is incomplete (next bullet).
 - Every reply carries `hasNextPage`. While it is `true`, call `list_issues` again with the same
   arguments plus `cursor` set to that reply's `cursor`. A search is finished only when a reply says
   `hasNextPage: false`. If a page fails, call for it once more with the same cursor. A search
@@ -300,6 +312,9 @@ removes existing text. It covers:
 - new Scope steps and Done means lines from step 3, and in-ticket improvements from step 5;
 - removed conditional steps and whatever hung on them;
 - relations to add (`blockedBy`, `relatedTo`) and to remove (`removeBlockedBy`), with the evidence;
+- relations the text itself creates: an item whose text names a ticket id the ticket is not yet
+  related to says so ("and relates VIL-N"), since Linear relates any id written in a description
+  (shared rules, "Ticket ids in text");
 - Size, the Decisions lines from the interview, and the no-split line;
 - links to comments that hold evidence a Scope step depends on;
 - for a split, the children to file and the parent's change, exactly as approved;
@@ -310,6 +325,9 @@ removes existing text. It covers:
   and "After the merge" (follow-ups that are not the worker's: notes to update, a ticket to comment
   on, a re-measurement). When Agent notes already exist, the grooming line goes before their first
   line, and the lists go after their last line.
+
+If I decline a relation to a ticket, in the edit list or in the interview, no text you save may
+name that ticket's id: name its PR, repo or title instead, and say so in the report.
 
 Propose a rewrite of an activity line only when the result is clear from the ticket. Do not fill
 in a who or a date by guessing. Mark anything you add that you could not check with `[assumed]`.
@@ -386,7 +404,9 @@ replaces the whole set.
 ## 8. Report
 
 Run this step whatever the answer to the edit list was. Judge the ticket as it now stands; read it
-again with `get_issue` if anything was written. Keep it short and in this order, following my own
+again with `get_issue`, relations included, if anything was written. Report relations as they now
+stand, not as the edit list planned them, and name any that Linear added because the text names
+an id. Keep it short and in this order, following my own
 reply-format rules when the session's instructions give any:
 
 1. **Ready or not.** Name the ticket as a markdown link (the url from `get_issue`; the bare id if

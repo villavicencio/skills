@@ -1,8 +1,10 @@
 # dv — v0.17.0
 
 Minor release. `dv:manager-mode` can now be followed from a Codex session: each hire runs on a named
-Codex model and reasoning effort instead of inheriting the manager's. The other fourteen skills have no
+Codex model and reasoning effort instead of inheriting the manager's. The other fifteen skills have no
 behaviour changes; their version moves to `0.17.0` only because the suite is released as one plugin.
+
+Numbering: 0.17.0 follows 0.16.0, which added `dv:new-project`.
 
 Why: the tier table named only Haiku, Sonnet and Opus, and the expected-setting warning relied on
 `${CLAUDE_EFFORT}` and `/model opus`. Codex's `spawn_agent` takes GPT models, Codex reads `SKILL.md`

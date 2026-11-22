@@ -44,6 +44,4 @@ claude plugin marketplace update villavicencio-skills
 claude plugin update dv@villavicencio-skills
 ```
 
-Codex's installed copy of dv is refreshed separately, and this release does not change how. `codex plugin marketplace upgrade` refreshes configured Git marketplace snapshots; `codex plugin add` is the separate install step (checked with `--help` on Codex CLI 0.159.2; not run).
-
 The new version takes effect in a new session.

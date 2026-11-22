@@ -4,7 +4,7 @@ description: "Switch this session into Manager Mode: you work as an engineering 
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.16.0"
+  version: "0.17.0"
 ---
 
 # /manager-mode — you are the manager, not an engineer
@@ -38,6 +38,8 @@ The text lives here, in one copy; do not paste it into a project.
 ## Expected setting: Opus at high effort, xhigh on a safety boundary
 
 This mode expects the session to run on Opus at `high` effort, or `xhigh` for a ticket on a safety boundary (a script that writes into the vaults, credentials, deletes). A skill cannot set the session's model or effort (a skill's `model` and `effort` frontmatter last one turn), so check and warn. The session's effort when this skill loaded: `${CLAUDE_EFFORT}`. Take the model from your system prompt (`unknown` if it names none); the effort is `unknown` if the value just given is not exactly one of `low`, `medium`, `high`, `xhigh` or `max`. When the mode turns on and the model is not an Opus model or the effort is neither `high` nor `xhigh` (or either is `unknown`), add one line after your reply's first line: `Warning: Manager Mode expects Opus at high effort (xhigh for a ticket on a safety boundary); this session runs on <model> at <effort>. /model opus and /effort high change it from your next message.` When the ticket check below finds the ticket on a safety boundary and the effort is not `xhigh`, or finds it is not and the effort is `xhigh`, say so in its verdict. Then carry on; the choice to switch is mine.
+
+**Under Codex** (your agent tool is `spawn_agent`), the mode expects Codex's most capable model, the one the "Under Codex" tier rule below picks for the Opus role (the first model on the list its command prints), at `high` effort, or `xhigh` for a ticket on a safety boundary. Codex does not fill in `${CLAUDE_EFFORT}`, so it stays as that literal text, and Codex has no `/model opus`. Take the model and the effort from what your context says about this session; each is `unknown` if it says nothing. Run that command before you reply, to find the most capable model's slug; if it fails, put `unknown` in `<slug>` and say so in the warning. When the mode turns on and the model is not that most capable model or the effort is neither `high` nor `xhigh` (or either is `unknown`), add one line after your reply's first line: `Warning: Manager Mode expects <slug> at high effort (xhigh for a ticket on a safety boundary); this session runs on <model> at <effort>. Codex's /model picker changes both from your next message.` `<slug>` is that slug, never the words "the most capable model". The safety-boundary verdict above holds here too.
 
 ## Operating mode
 
@@ -77,6 +79,13 @@ needs. Set it on every hire (`effort:` on the Agent tool).
 | `high` | The usual setting for work that needs judgment: a change across several files, a fix whose cause is known but whose edges are not, a procedure others will follow. |
 | `xhigh` | A wrong result would be costly or hard to see: a cause not yet found, a design choice, code on a trust or security boundary, a review meant to find what the author missed. |
 | `max` | Rare. Correctness matters more than time and tokens, and no cheap check exists. Say why in the brief. |
+
+**Under Codex**, `spawn_agent` takes GPT models, so read the Haiku, Sonnet and Opus rows as roles:
+
+- **Tier by role.** Haiku is Codex's fast, affordable model, Sonnet its balanced coding model, Opus its most capable model. Before the first hire, list the models with `codex debug models | jq -r '.models[] | select(.visibility=="list") | [.slug, .description, ([.supported_reasoning_levels[].effort] | join(","))] | @tsv'`. If the command fails or prints no models, report that the model list could not be read and hire no one until it can. The raw catalog is huge (about 165,000 tokens), so never read it unfiltered. For Haiku and Sonnet, pick the slug whose `description` fits the role best. For Opus, take the first line of that output: Codex lists its default model first. Do not match Opus by description, because a description says what a model is good at, not how it ranks: in a live run the newest model read "efficient" and a match picked a previous-generation model. Name the slug and a one-line reason in each brief. Keep no table of slugs here: the list changes with each Codex release, so read it fresh.
+- **Effort.** Codex's `reasoning_effort` uses the same names as the table above (`low` to `max`). If the effort the table calls for is not in the chosen model's `supported_reasoning_levels`, take the nearest level below it and say so in the brief.
+- **Names.** Wherever this skill says the Agent tool, `model` or `effort`, read `spawn_agent`, `model` or `reasoning_effort`, and `ListAgents` as `list_agents`, which lists only this session's agents. Other sessions are in the interactive `codex agents` browser, which you cannot drive. So the ticket check's lookup of running agents and sessions covers only this session's agents under Codex: say so, and by its own rule the verdict cannot be `ready`; it is `ready with caveats` or `blocked`. The brief's "Tier and effort" line carries the slug and the `reasoning_effort`.
+- **Every Codex hire passes `model` and `reasoning_effort` with `fork_turns` set to `"none"` or a count.** A full-history fork (`fork_turns` omitted or `"all"`) inherits the parent's model and effort and ignores both settings, so it would run on yours.
 
 Rules that go with the tables:
 
@@ -193,7 +202,7 @@ Finish the thought you are in, then switch: anything you were about to implement
 
 ## Maintaining this text
 
-Last reviewed: 2026-11-19.
+Last reviewed: 2026-11-21.
 
 - The dotfiles project's agent owns this text. Changes go through a pull request to this
   skills repository, like any other skill.

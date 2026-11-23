@@ -310,14 +310,14 @@ the table with one sentence on what drives them, its order, what blocks what, an
 project, state and labels.
 It also says what happens to the parent: it becomes the first child, or it stays as the parent with
 the children under it (`parentId`). When it stays as the parent, write its full replacement
-description: Why, a Scope that names the children, Done means, Decisions, and Size (its size and
-points before the split, and that the points now sit on the children). The rest of its text
+description: Why, a Scope that names the children, Done means, Decisions, and Size ("Split: the
+points sit on the children", with its size and points before the split as history). The rest of its text
 moves into the children or is dropped, and the replacement shows which. The parent's estimate
 follows: the first child's points when it becomes the first child; none when it stays as the
 parent (`estimate: null`), so its children's points are not counted twice.
 
 A 13 is never left or filed unsplit without my explicit yes: a ticket pointed 13 always gets a
-proposed split, its split question says that "no split" keeps it at 13, and no child is proposed
+proposed split (a parent whose points sit on its children is not pointed), its split question says that "no split" keeps it at 13, and no child is proposed
 at 13 unless the question names it.
 
 The split is an interview question, never automatic. The proposal is preliminary: the interview
@@ -436,7 +436,9 @@ removes existing text. It covers:
   `save_issue` returns, for this ticket and for each child, with its points. When they differ,
   clear that estimate (`estimate: null`) so the wrong number is not counted, keep the points in
   the Size section, and say so under Needs you with both numbers: that ticket is not ready until
-  its points are stored, by a change to the team's scale (mine) or a split;
+  its points are stored, by a change to the team's scale (mine) or a split. For a child just
+  filed, clear it with one more `save_issue` on that child and read the reply; if the clear
+  fails, stop before changing the parent, as for a failed filing ("Order of writes", item 2);
 - links to comments that hold evidence a Scope step depends on;
 - for a split, the children to file and the parent's change (its estimate included), exactly as
   approved;
@@ -573,13 +575,14 @@ were none, "Decided without asking: none."
 - Nothing is created or edited in Linear before I approve it. **Forks-only mode** is the exception:
   step 7 applies its edit list without an approval question, and a routine call to file a
   spin-off counts as my approval of it.
-- Edit only the groomed ticket. Create only the children and spin-offs I approved. Do not edit or
+- Edit only the groomed ticket, and a child this run filed only to clear an estimate Linear
+  stored wrong (step 7). Create only the children and spin-offs I approved. Do not edit or
   comment on any other ticket; a follow-up on a neighbor goes under "After the merge" or becomes a
   spin-off.
 - No file edits, branches or commits: grooming reads repos and writes only to Linear.
 - Do not put secrets or credentials in a ticket.
 - A ticket with nothing stale, open or missing, that already has its Size with points and an
-  estimate that matches them (a parent whose children carry the points has none), and is not
-  pointed 13 without a recorded yes to keeping it unsplit, stays as it is: propose
+  estimate that matches them (a parent whose points sit on its children has none, and is not
+  pointed), and is not pointed 13 without a recorded yes to keeping it unsplit, stays as it is: propose
   no edits, say so in one line, and go to step 8. The no-split line and the grooming line in Agent
   notes are added only alongside other edits.

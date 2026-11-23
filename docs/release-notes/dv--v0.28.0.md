@@ -31,6 +31,8 @@ words only, and its edit step forbade setting the estimate.
   team's scale as a different one with no error (team VIL stored 13 as 8 on 2026-11-23, since its
   scale stops at 8). On a difference it clears that estimate, keeps the points in the Size
   section, reports it under Needs you, and the ticket is not ready until its points are stored.
+  A child just filed is cleared with one more `save_issue` (the one edit allowed on a ticket other
+  than the groomed one); if that fails, grooming stops before changing the parent.
 - **Step 8 "Report".** The size line shows the points and the estimate as Linear now holds it;
   each filed child is listed with its estimate.
 - **Forks-only mode.** Setting or changing points is a routine call, like Size. A split stays a
@@ -38,8 +40,9 @@ words only, and its edit step forbade setting the estimate.
 - **Format check and the "stays as it is" rule.** Step 2 flags a Size with no points as a gap. A
   ticket that already has its Size but no points, or an estimate that doesn't match them, or that
   is pointed 13 with no recorded yes to keeping it unsplit, is no longer left unchanged.
-- **Split parent.** A parent that stays as the parent keeps a Size section (its size and points
-  before the split, and that the points sit on the children).
+- **Split parent.** A parent that stays as the parent keeps a Size section saying the points sit
+  on the children, with its size and points before the split as history; it is not pointed, so
+  the 13 rule does not split it again.
 - **Step 6 "Interview".** The split proposal shows each child's size and points and the parent's
   estimate, and for a ticket pointed 13 the split question says that "no split" keeps it at 13. In
   forks-only mode that "no split" is David's answer to a fork, recorded in the fork form.

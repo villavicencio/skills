@@ -63,7 +63,8 @@ tickets filed that way on 2026-11-18 had to be corrected by hand (VIL-824).
   already met, an ambiguous wait that is asked first, and a Canceled prerequisite that is asked.
 
 The format doc's "Pull condition" section in dotfiles (`docs/agents/tickets.md`) gets the same
-rule for tickets filed by hand, in its own PR.
+rule for tickets filed by hand, in its own PR (villavicencio/dotfiles PR 299). The format doc wins on
+any difference, so until that PR merges it does not yet say this.
 
 ## Not tested
 

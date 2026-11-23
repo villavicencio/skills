@@ -30,9 +30,10 @@ main repo and a linked worktree made here:
 Step 1 also calls gh and git fetch. A gh shim that always fails keeps the run off the network
 (the block then lists "gh missing" among the checks that did not run, which these checks
 ignore), and the scratch repo has no origin. Every repo is made in a temp dir created and
-removed here. The block runs under every shell present (bash, zsh) and every awk present: the
-system awk, plus gawk and mawk through a PATH shim when installed. On the ubuntu CI runner the
-system tools are GNU, so CI covers GNU and a Mac covers BSD.
+removed here. The block runs under bash, and under zsh when it is installed, each with the
+system awk, plus gawk and mawk through a PATH shim when they are installed and are not the
+system awk. On a Mac the system awk is BSD awk; the ubuntu CI runner has no zsh and runs the
+system awk plus mawk.
 
 Stdlib only, no network.
 

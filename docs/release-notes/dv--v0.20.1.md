@@ -1,11 +1,11 @@
-# dv — v0.19.1
+# dv — v0.20.1
 
-Patch release. `dv:closeout` accepts build output at the top level or nested, including files that differ from
-the main checkout's copies. The other fifteen skills have no behaviour changes; their version moves
-to `0.19.1` only because the suite is released as one plugin.
+Patch release. `dv:closeout` accepts build output at the top level or nested, including files
+that differ from the main checkout's copies. The other fifteen skills have no behaviour changes;
+their version moves to `0.20.1` only because the suite is released as one plugin.
 
-Numbering: 0.19.1 follows 0.19.0, which made `dv:manager-mode` hand ticket work in the main
-checkout to a worktree session.
+Numbering: 0.20.1 follows 0.20.0, which let a worktree session running `dv:manager-mode` handle
+routine PR work without asking and send the Director short highlights.
 
 Why: closeout called a finished worktree "NOT safe to delete" only because Python caches differed
 from the main checkout's copies. It grouped ignored entries by top-level path, so a cache below the
@@ -58,12 +58,13 @@ verdict too. On 2026-11-22 a review-stack closeout was blocked by 495 differing 
 ## Tests
 
 - **New `tooling/evals/test_closeout_build_output.py`** runs closeout's own Step 1 block from
-  `SKILL.md` against a scratch main repo and a linked worktree, under bash and zsh and every awk
-  present. It covers differing files in a nested `__pycache__/`, a top-level `.venv/`, a
+  `SKILL.md` against a scratch main repo and a linked worktree. It runs under bash, and under zsh
+  when zsh is installed, with the system awk plus gawk and mawk when they are installed and differ
+  from it. It covers differing files in a nested `__pycache__/`, a top-level `.venv/`, a
   differing ignored file outside build output, near-miss names, an entry under two names,
   nested git repos inside and outside build output and in an untracked folder with no ignore
   rule, which block "safe", repos git cannot open, a top-level initialized submodule, which is
-  not listed, and names with a space or a non-ASCII character. Pointed at the 0.19.0
+  not listed, and names with a space or a non-ASCII character. Pointed at the 0.20.0 closeout
   `SKILL.md`, it fails. CI runs it with the other `tooling/evals/test_*.py` files.
 
 ## Documentation fixes

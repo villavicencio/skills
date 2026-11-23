@@ -4,7 +4,7 @@ description: "Enable, health-check, and maintain the Mnemosyne memory provider o
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.19.1"
+  version: "0.20.1"
 ---
 
 # /mnemosyne-ops — Mnemosyne on Hermes, operated safely

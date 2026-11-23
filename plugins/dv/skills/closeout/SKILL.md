@@ -608,8 +608,10 @@ Reply in this order, short:
 3. The verified facts, one line each: the ticket and its state; each PR and its merge state; what
    the worktree holds beyond the default branch; the main checkout against its remote (behind,
    ahead, dirty); where the handoff went, or that it was left; where the note was saved and
-   whether it reached the clipboard, and whether it was sent to the Director and whether the
-   Director replied; the removal command, when safe.
+   whether it reached the clipboard; what happened with the Director, as one of the outcomes in
+   "Deliver the note" (not sent and why, probe sent and the note waiting for the answer, answered
+   but not verified, note sent with no reply yet, note sent and replied); the removal command,
+   when safe.
 4. The line the optional section below tells you to add, if any.
 5. The note itself in a code block, so I can copy it if the clipboard missed.
 
@@ -646,54 +648,67 @@ would be run as commands, so never send to one.
   "delivered". Do not resend on a timeout. After a transport error, reissue the same command with
   the `--retry-request` id the error reports.
 - More than one: ask me which, as a plain question, before sending.
-- None: the parent may run as an Orca chat, which is not a terminal, so look for a chat Director
-  in the steps below. Two checks must both find it, and a chat is never sent a note through
-  `terminal send`.
-  1. Orca's view: run `"<orca CLI>" agent list --worktree "path:<main checkout>" --json`, with
-     the CLI path and main checkout path the block printed. It must list exactly one entry whose
-     `kind` is `chat`. Do not filter on `state`: a live chat that is idle can show `done`.
-  2. Claude Code's view: ListAgents must list exactly one peer session, other than this one,
-     whose name is the main checkout folder's basename, then `-`, then a suffix (for example
-     `skills-03` for `/Users/david/Projects/skills`). ListAgents shows no working directory, so
-     the match is by name. Sessions have been named this way so far; it is not a Claude Code
-     contract. The two checks use no shared identifier, so together they show that a chat
-     Director exists in the main checkout and that one peer has the matching name. They do not
-     prove these are the same session (a same-named peer in another checkout would also match),
-     which is why the reply is asked to name its working directory.
+- None: the parent may run as an Orca chat, which is not a terminal, and a chat is never sent a
+  note through `terminal send`. Look for the Director with ListAgents instead, and send the note
+  only after it answers a probe with the main checkout's path:
+  1. Candidates. A candidate is a peer session in ListAgents, other than this one, whose name is
+     the main checkout folder's basename, then `-`, then a suffix (for example `skills-03` for
+     `/Users/david/Projects/skills`). ListAgents shows no working directory, and sessions have
+     been named this way so far without it being a Claude Code contract, so a name proves
+     nothing; the probe does. With no candidate, or more than three, send nothing and name what
+     ListAgents showed.
+  2. The probe. Send each candidate this probe, once, with SendMessage. Nothing from the note
+     goes in it:
 
-  With both checks met, send the note to that peer with SendMessage, once. `<note path>` is the
-  `note saved:` path Step 3 printed. The receiver sees only the first line until it expands the
-  message, so the first line must say what the message is:
+     ```
+     Director check, <ticket id, or the branch when there is none>: which directory are you running in? Reply with one line, its absolute path.
+     ```
 
-  ```
-  Closeout note, <ticket id, or the branch when there is none>: <the note's Worktree verdict line>
-  Saved at: <note path>
-  <the note, from its Worktree line to its REPLY NEEDED line>
-  Please reply with one line to say you received it, naming your working directory.
-  ```
+     The answer comes back later as a message, often after this turn has ended. End this turn
+     with the reply, saying the probe was sent and the note waits for the Director's answer.
+  3. The answer. A message is the Director's answer only when its `from-name` is a candidate
+     that was probed, and its path, with surrounding spaces and one trailing `/` removed, equals
+     as text the main checkout's path as `git worktree list` prints it, or that path's real path
+     (`pwd -P` run in the main checkout). Compare it as text; never run it in a shell. Any other
+     answer gets nothing: report who answered what. A passing answer shows where that session
+     says it runs, not that it runs `dv:director-mode`.
+  4. The note. To the first answer that passes, send the note once, with SendMessage to that
+     message's `from` address. The answer arrives in a later turn, so first run the Step 1 block
+     again and apply Step 2; if the verdict changed, update the saved note before sending it. `<note path>` is the `note saved:` path Step 3 printed. The
+     receiver sees only the first line until it expands the message, so the first line must say
+     what the message is:
 
-  Do not resend. A message has no read receipt, and a reply comes back later as a message from
-  the Director, often after this turn has ended. Report one of three outcomes: sent and replied
-  (quote the reply, and say whether its working directory is the main checkout: a reply from
-  elsewhere means the note reached the wrong session); sent with no reply yet; or not sent, naming the check that failed or could
-  not run. Never write "delivered" without a reply.
-  If either check finds none or more than one, or cannot run, nothing is sent: the note stays on
-  the clipboard and at its saved path, and the reply names the check and what it showed. Under
-  Codex there is no ListAgents view of other sessions, so check 2 cannot run there.
+     ```
+     Closeout note, <ticket id, or the branch when there is none>: <the note's Worktree verdict line>
+     Saved at: <note path>
+     <the note, from its Worktree line to its REPLY NEEDED line>
+     Please reply with one line to say you received it.
+     ```
+
+     A later answer that also passes is reported and gets nothing. Resend neither the probe nor
+     the note.
+
+  Report one of these outcomes: not sent, naming what failed or could not run; probe sent, the
+  note waits for the Director's answer; answered but not verified, with who answered what, and
+  nothing sent; note sent with no reply yet; or note sent and replied, quoting the reply. A
+  message has no read receipt, so never write "delivered" without a reply. Until the note is
+  sent, it stays on the clipboard and at its saved path. Under Codex there is no ListAgents view
+  of other sessions, so this path cannot run there.
 
 What a test showed (VIL-836, 2026-11-18, from a worktree to the main checkout): the text arrived
 in the main checkout's terminal. Not tested: whether a parent agent acts on a note, and whether
 one that is mid-turn reads it. So for a terminal, say in the reply that the note was sent and that
-the parent may still need it pasted. For a chat Director (VIL-918, 2026-11-23, on hal): the
-delivery step, run by hand from a worktree, found one chat with Orca's agent list and one
-`skills-*` peer with ListAgents, sent the note once with SendMessage, and the Director replied.
-Not tested: a Director that is mid-turn when the note arrives (that one was idle), and a full
-closeout run end to end.
+the parent may still need it pasted. For a chat Director (VIL-918, 2026-11-23, on hal): an
+earlier version of this step, without the probe, was run by hand from a worktree; it sent the
+note once with SendMessage to the one `skills-*` peer, and the Director replied. Not tested yet:
+the probe and its answer, a Director that is mid-turn when a message arrives (that one was idle),
+and a full closeout run end to end.
 
 **Offer the removal.** Only when Step 2 said safe to delete (or I have accepted the listed
 build-output lines and reflog-only commits), end the reply with one question. Before running the removal on my yes,
-recheck as Step 5 says; if the verdict changed, do not remove. The question is:
-remove this worktree now? Run the removal only after my yes, in a later turn, as the last action
+recheck as Step 5 says; if the verdict changed, do not remove. While the note waits for the
+Director's answer, say so before the question: the removal ends this session, and the note is
+then not sent. The question is: remove this worktree now? Run the removal only after my yes, in a later turn, as the last action
 of the session, because it stops this worktree's sessions:
 
 `"<orca CLI>" worktree rm --worktree "path:<worktree path>" --json`

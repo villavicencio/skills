@@ -37,10 +37,13 @@ rest runs on its own while the home chat keeps him up to date (VIL-917).
   covered by a standing yes); an idle notice from SendMessage `notify_when_idle` arrives after
   the note (same machine only); the worktree's branch, HEAD, `git status` and stash list match the
   note and the session's transcript has no message from David after it; and ListAgents and `ps`
-  show exactly that one session in the worktree. The stop is one SIGTERM to the session's Orca
+  show exactly that one session in the worktree. The checks run once the idle notice has
+  arrived, and the global removal procedure's own checks (all but the one about other sessions)
+  run before anything is stopped. The stop is one SIGTERM to the session's Orca
   wrapper (`orca-provider-exec … session stdin-end-and-sigterm`), matched by its `--session-id=`
   or `--resume=` value and by being the parent of the session's `claude` process; the second
-  `orca-provider-exec` process with the same value, a child of `claude`, is left alone. No
+  `orca-provider-exec` process with the same value, a child of `claude`, is left alone. The
+  one-session and nothing-changed checks run again, and the wrapper's command line is read again, right before the signal. No
   SIGKILL. If any check fails or can't run, the worktree stays and David is told why. David
   approved this rule on 2026-11-22.
 - **"Merge and clean up".** "Hand it back to its worktree session; you don't update it" is
@@ -58,8 +61,12 @@ rest runs on its own while the home chat keeps him up to date (VIL-917).
 
 - `notify_when_idle` reaches only a session on the same machine, so a Director on another host
   never ends a session itself; the worktree stays and David is told.
-- `lsof` cannot read another OS user's process, so the one-session check covers this user's
-  `claude` processes and names the others as not inspected.
+- `lsof` cannot read another OS user's process. Such a process makes the one-session check
+  unable to run, unless that user can't reach the worktree (not root, and a directory on the
+  worktree's path that this user owns is `drwx------` with no ACL).
+- A message David typed into the worktree session counts against the transcript check when it
+  is a `user` record or a queued-command attachment not marked as from a peer or a task
+  notification. Record kinds Claude Code adds later are not known to this check.
 - The transcript check finds the transcript by the session id and the worktree path; when the
   file is missing or has nothing newer than the note, the check can't run and nothing is stopped.
 

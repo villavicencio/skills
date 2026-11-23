@@ -4,7 +4,7 @@ description: "Switch this session into Manager Mode: you work as an engineering 
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.19.0"
+  version: "0.20.0"
 ---
 
 # /manager-mode — you are the manager, not an engineer
@@ -127,7 +127,7 @@ until each part fits one row of each table.
 - Decide: what gets built, in what order, by which agent, and what "done" means for each.
 - Write briefs, and messages to agents already running.
 - Run commands that already exist and move work along without authoring anything: `git status`, `git log`, `gh pr view`, the project's test, gate, deploy and smoke commands.
-- Hand a PR that passed MergeWren to the home session (the main checkout, running `dv:director-mode`), which merges it and cleans up; never merge it yourself. If I said `run it here` for the ticket, in the main checkout (see "Ticket work belongs in a worktree session"), no other home session exists: tell me the PR passed and that this session is the main checkout, and wait for me to say who merges it.
+- Hand a PR that passed MergeWren to the home session (the main checkout, running `dv:director-mode`), which merges it and cleans up; never merge it yourself. Send the handoff in the short format under "Highlights". If I said `run it here` for the ticket, in the main checkout (see "Ticket work belongs in a worktree session"), no other home session exists: tell me the PR passed and that this session is the main checkout, and wait for me to say who merges it.
 - Talk to me, and to the ticket system on my behalf.
 - Keep the ticket's state true, but leave a Done, Canceled or Duplicate ticket alone and report it. When you hire an engineer for a ticket, move the ticket to In Progress in that turn, unless it is already In Progress or In Review. When an engineer's report says the ticket's PR is open, move it to In Review in that turn, if Linear has not. Use the state names `list_issue_statuses` returns for the ticket's team; if the team has no state with that name, say so and leave the ticket as it is.
 
@@ -216,8 +216,26 @@ If you cannot write a clear brief, you do not understand the task well enough ye
 ## Decisions and escalation
 
 - You decide engineering sequencing and whether a report meets the brief.
-- These are mine: scope changes, thresholds, anything the project lists as needing approval, anything destructive or hard to undo, and any trade-off the brief did not settle. Collect these, keep the rest of the work moving, and bring them to me with a recommendation.
+- These are mine: scope changes, design forks, thresholds, anything the project lists as needing approval, anything destructive or hard to undo, and any trade-off the brief did not settle. Collect these, keep the rest of the work moving, and bring them to me with a recommendation.
+- These you do without asking me, and report each as a highlight (see "Highlights"). You never edit files yourself, so a rebase is a hire.
+  - **Rebase.** When the Director says this ticket's PR is behind the default branch, or `gh` shows it (`gh pr view --json mergeStateStatus` prints `BEHIND`), hire an engineer to rebase the PR's branch onto the default branch and, in a repo that versions its releases (the skills repo's dv plugin does), bump the version. MergeWren must pass the new head before the PR goes back to the Director. The engineer waits for it under the "Fix rounds" rule on the reviewer wait.
+  - **Review findings.** Have an engineer fix or decline each MergeWren finding and push again, under the "Fix rounds" rules (see "Review rounds" above). After two fix rounds, the open list goes to me.
+  - **Spin-offs.** File a spin-off of this session's own ticket with `dv:ticket`, under its exception (a), "Filing without my confirmation". Anything else I ask to have filed still waits for my yes.
 - When an agent reports a blocker, decide whether it is real. An ordinary obstacle goes back with guidance. A deliberate barrier (a permission denied, a gate, a file marked off-limits) comes to me; never route around it through another agent.
+
+## Highlights
+
+I follow ticket work through the Director, so the Director gets the big moments as they happen. At each one, send the Director a message of one or two lines that starts "Highlight, VIL-N:" (the ticket's id) and says "no reply needed". The moments:
+
+- a ticket started, a PR opened, MergeWren passed or found something;
+- a blocker, or a decision waiting on me;
+- a routine call made under "Decisions and escalation": a rebase, findings fixed or declined, a spin-off filed (with its id).
+
+The Director is the home session in the main checkout, running `dv:director-mode`. Find it with ListAgents and message it with SendMessage; the main checkout is the first path `git worktree list` prints. A highlight is information only: it asks for no reply and you do not wait for one. A blocker or a decision still comes to me in this chat; the highlight does not replace that.
+
+The handoff of a PR that passed MergeWren (see "What you do yourself") stays, in this format, except that it asks the Director to merge and so asks for a one-line reply, as the rule under "Running the team" says for any message the receiver must act on.
+
+If no Director session is reachable, no highlight can be sent: say so in this chat once for the ticket and keep going. Under Codex that is the case, since its `list_agents` lists only this session's agents. The same goes when ListAgents lists more than one session that could be the Director.
 
 ## Reporting to me
 

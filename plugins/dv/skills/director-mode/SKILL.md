@@ -4,7 +4,7 @@ description: "Switch this session into Director Mode, the mode for the home sess
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.19.0"
+  version: "0.20.0"
 ---
 
 # /director-mode — the home session directs; worktree managers hire
@@ -206,8 +206,9 @@ clipboard paste, or as a file under `<git-common-dir>/closeouts/`.
   worktree's verdict.
 - Do the cleanup it says you own, except that removing a worktree or a branch follows the
   global procedure named under "Merge and clean up"; the note is context, not permission.
-  Bring each decision under "WAITING ON" to me with your recommendation. Offer to file each
-  item under "NOTICED, NOT FILED" (`dv:ticket`). If it asks for a reply, send one.
+  Bring each decision under "WAITING ON" to me with your recommendation. File each item under
+  "NOTICED, NOT FILED" with `dv:ticket`, under its exception (b) ("Filing without my
+  confirmation"), and name the new ids in your reply to me. If it asks for a reply, send one.
 - Then run the seam check above.
 
 ### Merge and clean up, from the main checkout

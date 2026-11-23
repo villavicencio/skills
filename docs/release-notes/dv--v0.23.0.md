@@ -23,8 +23,9 @@ rest runs on its own while the home chat keeps him up to date (VIL-917).
     that isn't groomed) comes after that and runs `dv:groom VIL-N forks-only` right away, before
     the first hire; the work starts once its forks are settled. Each fork is asked in the
     worktree chat. Once a Director is verified, each fork is also sent to it as a decision
-    highlight; before that, manager-mode's "Highlights" rule holds them. Nothing waits on the
-    Director's probe answer.
+    highlight; before that, manager-mode's "Highlights" rule decides (held while the probe is
+    pending, never sent if no Director can be verified). Nothing waits on the Director's probe
+    answer.
   - The kickoff prompt adds `After the Director reports the PR merged, run dv:closeout.`
 - **New: "Relay highlights to me".** Each `Highlight, VIL-N:` message a worktree session sends is
   relayed to David in the home chat as one or two lines under the ticket id as a link. The
@@ -43,37 +44,43 @@ rest runs on its own while the home chat keeps him up to date (VIL-917).
   exactly that one session in the worktree; and nothing changed since the note. For the last, the
   Director writes no inventory of its own: it reruns `dv:closeout`'s Step 1 block in the worktree,
   decides the verdict by closeout's Step 2 the way closeout's own recheck does, and needs `safe to
-  delete` (or the note's same accepted-loss verdict), the note's branch, HEAD unmoved since the
-  note and no stash on that branch. The session's transcript must also hold no message from David
-  after the note. The recheck has closeout's own limits: it compares counts, not contents, and
-  shares the root gap of an open ticket about closeout and nested git repositories. The checks run
-  once the idle notice has arrived, and the global removal procedure's own checks (all but the one
-  about other sessions) run before anything is stopped. The stop is one SIGTERM to the session's
-  Orca wrapper (`orca-provider-exec … session stdin-end-and-sigterm`), matched by its
-  `--session-id=` or `--resume=` value and by being the parent of the session's `claude` process;
-  the second `orca-provider-exec` process with the same value, a child of `claude`, is left alone.
-  The one-session and nothing-changed checks run again, and the wrapper's command line is read
-  again, right before the signal. No SIGKILL. If any check fails or can't run, the worktree stays
-  and David is told why. David approved this rule on 2026-11-22.
+  delete` (or the note's same accepted-loss verdict, word for word), the note's branch, HEAD
+  unmoved since the saved note's time stamp and no stash on that branch. It runs in a subshell, so
+  the Director stays in the main checkout, and it never edits the worktree's note. The session's
+  transcript must also hold no message from David after the note. The recheck has closeout's own
+  limits: it compares counts, not contents, and shares the root gap of an open ticket about
+  closeout and nested git repositories. The checks run once the idle notice has arrived, and the
+  global removal procedure's own checks (all but the one about other sessions) run before anything
+  is stopped. The stop is one SIGTERM to the session's Orca wrapper (`orca-provider-exec … session
+  stdin-end-and-sigterm`), matched by its `--session-id=` or `--resume=` value and by being the
+  parent of the session's `claude` process; the second `orca-provider-exec` process with the same
+  value, a child of `claude`, is left alone. The one-session and nothing-changed checks run again,
+  and the wrapper's command line is read again, right before the signal. No SIGKILL. If any check
+  fails or can't run, the worktree stays and David is told why. David approved this rule on
+  2026-11-22.
 - **"Merge and clean up".** "Hand it back to its worktree session; you don't update it" is
   replaced. When a PR falls behind after another merge, its live worktree session updates it by
   merge. With no live session (a pilot PR counts as having none until the pilot runner updates its
   own PRs, VIL-879), the Director hires one engineer under `dv:manager-mode`'s tier and effort
   rules to merge the default branch in, push normally (no rebase, no force push) and bump the
-  version, and reports it as a highlight. When the PR's branch is still checked out in a worktree,
-  Git won't check it out twice, so the engineer works there, but only after the Director finds no
-  session in it and the same closeout recheck passes against the latest closeout note saved for
-  that branch; with no such note, or a failed check, the worktree is kept and David is told. The
-  engineer leaves that worktree in place. With no worktree on the branch, it makes one of its own
-  and removes it when done. A pilot PR counts only once its pilot run has ended; when that can't
-  be told, David is asked. The Director still never merges a PR MergeWren hasn't passed on its new
-  head. After a merge it tells a live session that the PR merged, so the session runs
-  `dv:closeout`, and the branch and worktree wait for the note.
+  version, and reports it as a highlight. When the PR's branch is still checked out in a leftover
+  worktree, Git won't check it out twice. That worktree could be reused only on a passing closeout
+  recheck, which an unmerged branch never gets, so it is kept and David is told. Otherwise the
+  engineer makes a worktree of its own and removes it when done. A pilot PR counts only once its
+  pilot run has ended; when that can't be told, David is asked. The Director still never merges a
+  PR MergeWren hasn't passed on its new head. After a merge it tells a live session that the PR
+  merged, so the session runs `dv:closeout`, and the branch and worktree wait for the note.
 - **"Hiring"** names the one exception (the stale-PR update), and the frontmatter description
   and the README entry describe the new behaviour.
 
 ## Known limits
 
+- The closeout recheck is only as good as `dv:closeout`'s inventory: it compares counts, not
+  contents, and shares the root gap of an open ticket about closeout and nested git
+  repositories.
+- A stale PR whose branch is still checked out in a leftover worktree can't be updated by the
+  Director's engineer: closeout never calls an unmerged branch safe, so the worktree is kept and
+  David is told.
 - `notify_when_idle` reaches only a session on the same machine, so a Director on another host
   never ends a session itself; the worktree stays and David is told.
 - `lsof` cannot read another OS user's process. Such a process makes the one-session check

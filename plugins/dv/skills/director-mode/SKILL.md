@@ -265,8 +265,11 @@ the notice. When it arrives, run checks 1, 3 and 4, then the removal checks, the
 session.
 
 The note's header is its first line, `CLOSEOUT NOTE from <branch> at <worktree path>, <date and
-time with zone>`; that time is the note's timestamp. A note sent by SendMessage leaves the
-header out, so read it from the saved copy named on the message's `Saved at:` line.
+time with zone>`. A note sent by SendMessage leaves the header out, so read it from the saved
+copy named on the message's `Saved at:` line. The note's timestamp is the UTC time in that saved
+copy's file name, which closeout's "Step 3 — Write the parent note and copy it" writes as
+`<branch slug>.<YYYYMMDDTHHMMSSZ>.txt` (with `-<n>` before `.txt` on a clash). A note with no
+saved copy fails check 4.
 
 1. **The note.** Its closeout note reached you, and the header names this worktree's path. Its
    Worktree verdict is `safe to delete`, or `safe once you accept losing: …` with every
@@ -301,18 +304,22 @@ header out, so read it from the saved copy named on the message's `Saved at:` li
    every other such record counts as mine. If the file is missing, or has no record from after
    the note's timestamp (so it may not be the live transcript), this check can't run.
 
-**The closeout recheck.** Don't write your own inventory of the worktree; rerun closeout's. In
-one shell call that starts with `cd <worktree path>`, run the block in `dv:closeout`'s "Step 1 —
-Verify the worktree, its PRs and the main checkout", and decide its verdict by "Step 2 — Decide
-whether the worktree is safe to delete", the way closeout's own "Recheck in every later turn"
-(under "Step 5 — Reply, and leave the removal to me") does. It passes only when all of these
-hold:
+**The closeout recheck.** Don't write your own inventory of the worktree; rerun closeout's. Run
+the block in `dv:closeout`'s "Step 1 — Verify the worktree, its PRs and the main checkout" inside
+a subshell that starts in the worktree, `( cd <worktree path> || exit 1` then the block then
+`)`, so this session's own directory stays the main checkout. Its `worktree:` line must be the
+worktree's path. Decide its verdict by "Step 2 — Decide whether the worktree is safe to delete".
+From closeout's "Recheck in every later turn" (under "Step 5 — Reply, and leave the removal to
+me") take only the comparison; never edit or resave the worktree's note. It passes only when all
+of these hold:
 
 - The verdict is `safe to delete`. A note whose verdict was `safe once you accept losing: …`
-  under check 1 needs that same verdict again, matched as that recheck rule says.
+  under check 1 needs that same verdict again: the verdict line Step 2 gives reads word for
+  word as the note's Worktree line.
 - The branch is the one the note's header names.
 - HEAD is unchanged since the note: `git -C <worktree path> log -g -1 --date=iso-strict
-  --format=%gd HEAD` shows that HEAD last moved before the note's timestamp.
+  --format=%gd HEAD` shows that HEAD last moved before the note's timestamp. No output, or a
+  move at or after the timestamp, fails it.
 - Step 1 lists no stash made on that branch.
 
 If the block can't run, or anything differs, keep the worktree, stop nothing, and tell me. The
@@ -364,14 +371,11 @@ session never does.
     pilot run has ended as having no live session, unless the test above finds one; when you
     can't tell whether its run has ended, ask me. The engineer never works in the main checkout.
     When `git worktree list` shows the PR's branch checked out in a worktree, Git won't check it
-    out in a second one, so the engineer works in that worktree, but only after you have checked
-    it: check 3 under "End a finished worktree session" finds no session in it, and the closeout
-    recheck passes against the latest closeout note saved for that branch in
-    `<git-common-dir>/closeouts/`. With no such note, or if either check fails or can't run, the
-    worktree is kept as it is: hire no one, and tell me. The engineer adds only the merge commit
-    and the version bump there, and leaves that worktree in place: it never removes a worktree
-    it did not make. With no worktree on the branch, it makes one of its own and removes it when
-    done by the global procedure below. It merges the default branch into the PR's branch and
+    out in a second one, and that worktree may be reused only when the closeout recheck passes
+    against the latest closeout note saved for that branch. It can't pass there: the branch is
+    not merged, so closeout's verdict is never `safe to delete`. Hire no one; keep the worktree
+    and tell me. With no worktree on the branch, the engineer makes one of its own and removes
+    it when done by the global procedure below. It merges the default branch into the PR's branch and
     pushes normally: no rebase and no force push. In a repo that versions its releases, it bumps
     the version. It waits for MergeWren's verdict on the new head (the reviewer wait in "Fix
     rounds", in the same `code-review.md`) and reports it. Report the update to me as a

@@ -37,11 +37,12 @@ calls and ask only the forks (VIL-915).
     no headings is left alone, with the sections it would add shown in the report.
   - **Recorded so it can be overruled.** Each routine call is a Decisions line, "<decision>.
     Decided by dv:groom (forks-only), <date>"; forks keep "<decision>. <name>, <date>". The "no
-    split" line takes the same form. A ticket that needs no edits gets no Decisions lines; its
-    routine calls are only listed in the report. A routine call that settles a Decisions line
+    split" line takes the same form. A ticket that needs no edits gets no Decisions lines, and
+    neither does one whose description has text but no headings (left alone); in both, the routine
+    calls are listed in the report. A routine call that settles a Decisions line
     marked open replaces that line. The Rules line "Nothing is created or edited in Linear before I
     approve it" names the exception.
-  - **The report** lists each edit as written and ends with a "Decided without asking" list, one
+  - **The report** lists each edit that landed, and any that did not, and ends with a "Decided without asking" list, one
     line per routine call.
 - **Description, README and manifest** name the mode.
 

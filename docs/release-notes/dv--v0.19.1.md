@@ -35,8 +35,9 @@ verdict too. On 2026-11-22 a review-stack closeout was blocked by 495 differing 
     `.git` directory without `HEAD`) is listed file by file by git, so each entry is also checked
     for a `.git` in the directories above it, and the repo is listed once, by path. One that holds
     only its `.git` folder is not listed by git at all, so a `find` also looks for every `.git`
-    below the worktree's top and lists each one inside an ignored folder. Top-level lines gain a
-    nested git repos count.
+    file or folder below the worktree's top and lists each one, ignored or not, except an
+    initialized submodule's. Top-level lines gain a nested git repos count, and the section
+    heading now reads "Ignored entries and nested git repos".
   - **Names git quotes are read as they are.** The ignored entries now come from a second
     `git status --porcelain -z` call, so a name with a space or a non-ASCII character is compared
     and matched unquoted. Before, such a name was not found on disk, was listed as "not examined"
@@ -44,8 +45,8 @@ verdict too. On 2026-11-22 a review-stack closeout was blocked by 495 differing 
 - **`dv:closeout` Step 2, "Safe once you accept losing".** Every ignored entry under a build-output
   name counts as accepted build output, whatever its kind: only here, different or not examined.
   Entries outside those names keep the old rules: anything different or not examined, or only here,
-  makes the worktree not safe to delete. A nested git repository, anywhere, also makes it not safe
-  to delete, because it can hold unpushed commits, and the verdict names it by path (David's
+  makes the worktree not safe to delete. A nested git repository (a `.git` below the worktree's top
+  that is not an initialized submodule's) also makes it not safe to delete, because it can hold unpushed commits, and the verdict names it by path (David's
   decision, 2026-11-22).
 - **The verdict and the closing question** name each build-output line by its name, entry count
   and directory count. **The recheck** acts on a yes only if every build-output line is the same
@@ -60,8 +61,9 @@ verdict too. On 2026-11-22 a review-stack closeout was blocked by 495 differing 
   `SKILL.md` against a scratch main repo and a linked worktree, under bash and zsh and every awk
   present. It covers differing files in a nested `__pycache__/`, a top-level `.venv/`, a
   differing ignored file outside build output, near-miss names, an entry under two names,
-  nested git repos inside and outside build output, which block "safe", and names with a space
-  or a non-ASCII character. Pointed at the 0.19.0
+  nested git repos inside and outside build output and in an untracked folder with no ignore
+  rule, which block "safe", repos git cannot open, a top-level initialized submodule, which is
+  not listed, and names with a space or a non-ASCII character. Pointed at the 0.19.0
   `SKILL.md`, it fails. CI runs it with the other `tooling/evals/test_*.py` files.
 
 ## Documentation fixes

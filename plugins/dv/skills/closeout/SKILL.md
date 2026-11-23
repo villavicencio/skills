@@ -82,7 +82,7 @@ else
     DIRTY=$(printf '%s\n' "$STATUS" | grep -v '^!! ' | grep -v '^.. HANDOFF\.md$' | grep .)
     if [ -n "$DIRTY" ]; then printf '%s\n' "$DIRTY"; else echo "(none)"; fi
 
-    echo "=== Ignored entries (removing the worktree deletes them), by build-output name, then by top-level path ==="
+    echo "=== Ignored entries and nested git repos (removing the worktree deletes them), by build-output name, then by top-level path ==="
     # A second status call with -z, read from a temp file: its paths arrive unquoted and
     # NUL-terminated, so a name with a space, tab, quote or non-ASCII character is compared and
     # matched as it is (the call above quotes such names). A newline in a name is shown as "?".
@@ -103,14 +103,19 @@ else
       # A repo git cannot open (a .git file pointing nowhere, a .git directory without HEAD) is
       # walked into and its files listed one by one, so every entry is also checked for a .git
       # in each directory above it, up to the worktree; the repo is then listed once, by path.
-      # Git lists nothing at all for a repo it cannot open that holds only its .git folder, so a
-      # find also looks for every .git below the worktree's top; one in an ignored folder is
-      # listed as a nested repo too (a submodule's folder is not ignored, so it is not listed).
+      # Git lists nothing at all for a repo it cannot open that holds only its .git folder,
+      # ignored or not, so a find also looks for every .git (file or folder) below the worktree's
+      # top. Each one is listed as a nested repo, except an initialized submodule's (those have
+      # their own checks below); one git already listed is listed once.
       # The case patterns open with "(" so bash 3.2 parses them inside the command substitution.
-      NRF=""
+      NRF=""; SUBP=""
       if [ "$TOP" != "$MAIN" ]; then
         if NRF=$(mktemp 2>/dev/null) && find "$TOP" -mindepth 2 -name .git -prune -print0 > "$NRF"; then :
         else FAILS="$FAILS- finding .git folders below the worktree failed: a nested repo git does not list may be missed$NL"; fi
+        if [ -f "$TOP/.gitmodules" ]; then
+          SUBP=$(git -C "$TOP" submodule foreach --quiet --recursive 'printf "%s\n" "$displaypath"') \
+            || FAILS="$FAILS- listing submodule paths failed: a submodule may be listed as a nested repo$NL"
+        fi
       fi
       if IGNOUT=$( { while IFS= read -r -d '' r; do
         case "$r" in ('!! '*) ;; (*) continue ;; esac
@@ -137,7 +142,7 @@ else
       done < "$IGNF"
       [ -n "$NRF" ] && while IFS= read -r -d '' g; do
         p=${g#"$TOP"/}; p=${p%/.git}
-        git -C "$TOP" check-ignore -q -- "$p" || continue
+        case "$p" in (*"$NL"*) ;; (*) [ -n "$SUBP" ] && printf '%s\n' "$SUBP" | grep -q -x -F -e "$p" && continue ;; esac
         case "$p" in (*"$NL"*) p=$(printf '%s' "$p" | tr '\n' '?') ;; esac
         printf 'nested-repo\t%s/\n' "$p"
       done < "$NRF"; } | awk '
@@ -392,11 +397,13 @@ an entry inside a directory named `.venv/`, `venv/`, `node_modules/`, `__pycache
 `.pytest_cache/`, `.mypy_cache/` or `.ruff_cache/`, at any depth (a setup step or the next run
 recreates it), and Step 1 lists it on that name's `<name>/ (any depth)` line, never on a
 top-level line. A top-level line named after a build-output directory (`.venv/  1 entries: …`)
-is not build output: it holds what Step 1 kept off the build-output line, such as a nested repo. The name must be a whole directory name: `myvenv/`, `venv_notes/` and a file
-named `venv` are not build output. An entry under two such names (`node_modules/pkg/__pycache__/x.pyc`)
-counts once, under the outermost. A nested git repository (kind `nested-repo`: a directory with a
-`.git` file or directory, such as a `pip install -e git+…` clone in `.venv/src/<pkg>/`) is never
-build output, even under a build-output name: it can hold unpushed commits, Step 1 lists it on its
+is not build output: it holds what Step 1 kept off the build-output line, such as a nested repo.
+The name must be a whole directory name: `myvenv/`, `venv_notes/` and a file named `venv` are not
+build output. An entry under two such names (`node_modules/pkg/__pycache__/x.pyc`)
+counts once, under the outermost. A nested git repository (kind `nested-repo`: a folder below the
+worktree's top holding a `.git` file or folder, ignored or not, such as a `pip install -e git+…`
+clone in `.venv/src/<pkg>/`; an initialized submodule is not one) is never build output, even
+under a build-output name: it can hold unpushed commits, Step 1 lists it on its
 top-level line and by path, and any one of them rules this verdict out. And commits listed as
 reachable only from this worktree's HEAD reflog or ORIG_HEAD (usually commits amended or reset away; removal ends their recovery path).
 The verdict names every build-output line Step 1 printed, with its name, entry count and

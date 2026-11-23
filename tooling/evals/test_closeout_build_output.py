@@ -23,6 +23,9 @@ main repo and a linked worktree made here:
   h. a nested repo git cannot open (.git without HEAD, a .git file pointing nowhere, and one
      holding only its .git folder, which git does not list at all) inside .venv/ is listed
      once, by path, as nested-repo, not as build output
+  i. nested repos in an untracked folder that is not ignored (one git cannot open, holding only
+     .git, which git status does not list at all; one valid) are listed by path as nested-repo
+  j. an initialized submodule is not a nested repo
 
 Step 1 also calls gh and git fetch. A gh shim that always fails keeps the run off the network
 (the block then lists "gh missing" among the checks that did not run, which these checks
@@ -112,7 +115,8 @@ def ignored_section(stdout: str) -> list[str] | None:
 
 def run_case(shell: str, path_env: str, block: str, main_files: dict[str, str],
              wt_files: dict[str, str], wt_repos: tuple[str, ...] = (),
-             wt_broken: tuple[str, ...] = ()) -> tuple[list[str] | None, str]:
+             wt_broken: tuple[str, ...] = (), wt_bare_git: tuple[str, ...] = (),
+             submodule: bool = False) -> tuple[list[str] | None, str]:
     with tempfile.TemporaryDirectory(prefix="vil869-") as work:
         root = Path(work).resolve()
         home = root / "home"
@@ -128,8 +132,20 @@ def run_case(shell: str, path_env: str, block: str, main_files: dict[str, str],
         write(main, "README", "scratch\n")
         git(env, main, "add", ".gitignore", "README")
         git(env, main, "commit", "-q", "-m", "init")
+        if submodule:  # an initialized submodule is not a nested repo
+            src = root / "subsrc"
+            src.mkdir()
+            write(src, "lib.txt", "lib\n")
+            git(env, src, "init", "-q")
+            git(env, src, "add", "lib.txt")
+            git(env, src, "commit", "-q", "-m", "lib")
+            git(env, main, "-c", "protocol.file.allow=always", "submodule", "add", "-q", str(src),
+                "libs/sub")
+            git(env, main, "commit", "-q", "-m", "add submodule")
         wt = root / "wt"
         git(env, main, "worktree", "add", "-q", "-b", "feature", str(wt))
+        if submodule:
+            git(env, wt, "-c", "protocol.file.allow=always", "submodule", "update", "--init", "-q")
         for rel, content in main_files.items():
             write(main, rel, content)
         for rel, content in wt_files.items():
@@ -148,6 +164,11 @@ def run_case(shell: str, path_env: str, block: str, main_files: dict[str, str],
             git(env, wt / rel / "c", "init", "-q")
             git(env, wt / rel / "c", "commit", "-q", "--allow-empty", "-m", "unpushed")
             (wt / rel / "c" / ".git" / "HEAD").unlink()
+        for rel in wt_bare_git:  # an unopenable repo holding only .git, in any folder
+            (wt / rel).mkdir(parents=True, exist_ok=True)
+            git(env, wt / rel, "init", "-q")
+            git(env, wt / rel, "commit", "-q", "--allow-empty", "-m", "unpushed")
+            (wt / rel / ".git" / "HEAD").unlink()
         p = subprocess.run([shell, "-c", block], cwd=wt, env=env, capture_output=True,
                            text=True, timeout=120)
         return ignored_section(p.stdout), f"rc={p.returncode} stdout={p.stdout!r} stderr={p.stderr!r}"
@@ -162,8 +183,10 @@ def scenario(shell: str, awk_label: str, path_env: str, block: str) -> None:
     tag = f"[{shell}, {awk_label} awk]"
 
     def section(name: str, main_files: dict[str, str], wt_files: dict[str, str],
-                wt_repos: tuple[str, ...] = (), wt_broken: tuple[str, ...] = ()):
-        sec, detail = run_case(shell, path_env, block, main_files, wt_files, wt_repos, wt_broken)
+                wt_repos: tuple[str, ...] = (), wt_broken: tuple[str, ...] = (),
+                wt_bare_git: tuple[str, ...] = (), submodule: bool = False):
+        sec, detail = run_case(shell, path_env, block, main_files, wt_files, wt_repos, wt_broken,
+                               wt_bare_git, submodule)
         if sec is None:
             failures.append(f"{tag} {name}: no 'Ignored entries' section in the output\n     {detail}")
         return sec, detail
@@ -278,6 +301,25 @@ def scenario(shell: str, awk_label: str, path_env: str, block: str) -> None:
               examples == [("nested-repo", ".venv/src/a/"), ("nested-repo", ".venv/src/b/"),
                            ("nested-repo", ".venv/src/c/")],
               detail)
+
+    # i. Nested repos in an untracked folder with no ignore rule still block.
+    sec, detail = section("i", {}, {}, ("scratch/valid",), (), ("scratch/old",))
+    if sec is not None:
+        examples = sorted(EXAMPLE.match(l).groups() for l in sec if EXAMPLE.match(l))
+        check(f"{tag} i. both repos in an unignored untracked folder are listed as nested-repo",
+              examples == [("nested-repo", "scratch/old/"), ("nested-repo", "scratch/valid/")],
+              detail)
+        check(f"{tag} i. they are counted on the scratch/ top-level line",
+              "  scratch/  2 entries: 0 same as the main checkout, 0 only here, 0 different, "
+              "0 not examined, 2 nested git repos" in sec, detail)
+
+    # j. An initialized submodule is not a nested repo.
+    sec, detail = section("j", {}, {"x.local": "x\n"}, submodule=True)
+    if sec is not None:
+        check(f"{tag} j. the submodule is not listed as a nested repo",
+              not any("nested-repo" in l or "libs" in l for l in sec), detail)
+        check(f"{tag} j. the listing still ran (the ignored file is there)",
+              any(l.startswith("  x.local  1 entries:") for l in sec), detail)
 
 
 def main() -> int:

@@ -528,12 +528,18 @@ Patches stay the default; three changed sections allow the offer and do not deci
    the children exist and the parent still carries their work. Then apply the rest of the approved
    items.
 5. **The `groomed` label goes on last,** after every other approved item has landed, so a ticket
-   whose grooming stopped part way is not marked groomed: on the groomed ticket, and for a split on
-   each child it filed, with `addLabels` (File step 2 allows it), when the child's team has an
-   active `groomed` label. If step 7 stopped for any reason (items 1, 2 including a failed estimate
-   clear, or 4, or a patch that could not be placed), or an approved item did not land because it
-   was left for me to edit in Linear (a description with no headings), leave the label off every
-   ticket and say so in the report.
+   whose grooming stopped before this item is not marked groomed: on the groomed ticket, and for a
+   split on each child it filed, with `addLabels` (File step 2 allows it), when the child's team has
+   an active `groomed` label. If step 7 stopped before this item for any reason (items 1, 2
+   including a failed estimate clear, or 4, or a patch that could not be placed), or an approved
+   item did not land because it was left for me to edit in Linear (a description with no headings),
+   leave the label off every ticket and say so in the report. The label writes are separate calls,
+   so they can themselves stop part way, and a call can land even when it returns an error. So after
+   the label writes, or after an error during them, read back with `get_issue` the groomed ticket
+   and every child this run filed, and report each one's labels as read (step 8). If the reads show
+   that a ticket this item was to label lacks `groomed` while another has it, name each ticket this
+   item was to label, with whether it has the label, under Needs you: `dv:director-mode` skips
+   grooming a ticket that has the label.
 
 **Patches.** Edit with `patch` operations on `save_issue` (`replace`, `insert_before`,
 `insert_after`, `replace_range`, and `append` for an empty description), not by sending the whole
@@ -579,14 +585,16 @@ reply-format rules when the session's instructions give any:
    what it lacks or waits on.
 2. **Needs you:** what only I can do or decide: a target proposed and not confirmed, an item I did
    not approve that still matters, a repo the session could not read, an overlap or duplicate
-   search that did not finish (with its words, so it can be run again). Left out when empty.
+   search that did not finish (with its words, so it can be run again), a split left partly
+   labelled (step 7, "Order of writes" item 5). Left out when empty.
 3. One line each: size and points, with the estimate `get_issue` now shows; split verdict; what
    changed in the ticket ("text unchanged" when only the label landed, "nothing changed" when
-   nothing did); the `groomed` label: added, already there, or not added and why (not approved, the
-   team has no active `groomed` label, step 7 stopped before it, an approved item did not land, or
-   the write failed); spin-offs and children filed, as links, each child with the estimate its
-   `save_issue` returned and whether it got the `groomed` label (if not: no active label, step 7
-   stopped before it, or the write failed); what was not checked; the branch to work it on.
+   nothing did); the `groomed` label as read back: added, already there, or not added and why (not
+   approved, the team has no active `groomed` label, step 7 stopped before it, an approved item did
+   not land, or the write failed); spin-offs and children filed, as links, each child with the
+   estimate its `save_issue` returned and its labels as read back after item 5, or "not labelled:
+   step 7 stopped before it" when item 5 did not run (if it lacks `groomed` otherwise: no active
+   label, or the write failed); what was not checked; the branch to work it on.
 
 Do not ask whether to start the work and do not start it: starting is a separate request from me.
 

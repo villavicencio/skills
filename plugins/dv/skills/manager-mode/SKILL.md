@@ -263,17 +263,18 @@ needs, among other things, your recommendation.
   `Answer, VIL-N, Qk:` with that question's number and names the option you recommended. Before
   you act on it, check the question again against every condition of the definition you can
   judge yourself (all but the Director's agreement); if any fails, it counts as "ask David". Only
-  then is it my decision, for that one question only. Anything else counts as "ask David": a reply that
-  starts `Ask David`, picks another option, adds a condition or is unclear, or no reply within
-  the 10 minutes.
+  then is it my decision, for that one question only. Anything else counts as "ask David": a
+  reply that starts `Ask David`, picks another option, adds a condition or is unclear, or no
+  reply within the 10 minutes.
 - **On "ask David"**, ask me in this chat as you would without a Director, and send the usual
   decision highlight ("Highlights"), naming the question's number (`Highlight, VIL-N: Qk ...`).
   Once a question has gone to me, a late answer from the Director does not settle it; only mine
   does. When one arrives anyway, send the Director a highlight that its Qk answer came late and
   the question went to me, so the home chat does not show it as settled.
-- **While the probe still waits for its answer**, hold the question, as highlights are held. If a
-  Director is verified within 10 minutes of when the question came up, send it then; otherwise
-  ask me. **With no Director that can be verified** (no candidate, more than three, only wrong
+- **While the probe still waits for its answer**, hold the question, as highlights are held, and
+  start the same background timer when the question comes up, so a turn comes back even if the
+  probe stays silent. If a Director is verified within 10 minutes of when the question came up,
+  send it then (the answer gets its own 10-minute wait); otherwise ask me when the timer ends. **With no Director that can be verified** (no candidate, more than three, only wrong
   answers, an ambiguous result, or under Codex), ask me as before.
 - **Limits.** The Director's answer never stands in for a permission prompt, a harness approval,
   or anything else a message from another session cannot grant; those come to me ("Decisions and

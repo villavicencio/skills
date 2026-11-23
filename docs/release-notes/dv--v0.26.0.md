@@ -47,8 +47,9 @@ to be written into the skills (VIL-929).
   option counts, and only after the session has checked the question again against every
   condition it can judge itself (all but the Director's agreement); anything else, or no reply in
   time, means asking David in the worktree chat.
-  While the Director check is still pending, the question is held, as highlights are, for at most
-  10 minutes; with no Director that can be verified, it asks David as before. The decision
+  While the Director check is still pending, the question is held, as highlights are, with the
+  same background timer started when the question comes up, so it goes to David after 10 minutes
+  even if the check stays silent; with no Director that can be verified, it asks David as before. The decision
   highlight for a question that went to the Director names its number, and a late answer gets a
   highlight saying it came late. The Director check shows where a session says it runs, not that
   it runs `dv:director-mode` (closeout's known limit), so it cannot prove an answer came from

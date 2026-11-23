@@ -97,7 +97,7 @@ a wait loop with no bound. The only other sign may be `/restart` refusing with "
 while work is running in the background". This step lists them.
 
 Shells the harness started are child processes of the Claude Code process whose command sources
-a file under `shell-snapshots`; the block below reads them with `ps -A -o pid=,ppid=,etime=,lstart=,command=`,
+a file under `shell-snapshots`; the block below reads them with `ps -ww -A -o pid=,ppid=,etime=,lstart=,command=`,
 showing parent pid, elapsed time and start time, and skips its own shell. If the session-process line is not
 the Claude Code process, the shell list is unverified, and the handoff says so.
 If the block prints `(shell list unverified: ps failed)` or `(shell list unverified: awk failed)`,
@@ -107,7 +107,7 @@ the list is unverified too: don't report it as empty.
 ME=$$; CC=$PPID
 echo "=== Session process: $(ps -o pid=,command= -p "$CC" 2>/dev/null | cut -c1-120) ==="
 echo "=== Shells still running under it (flag, pid, ppid, elapsed, start time, command) ==="
-if ! PS_OUT=$(ps -A -o pid=,ppid=,etime=,lstart=,command= 2>/dev/null) || [ -z "$PS_OUT" ]; then
+if ! PS_OUT=$(ps -ww -A -o pid=,ppid=,etime=,lstart=,command= 2>/dev/null) || [ -z "$PS_OUT" ]; then
   echo "(shell list unverified: ps failed)"
 elif ! printf '%s\n' "$PS_OUT" | awk -v me="$ME" -v cc="$CC" '
   $(2) == cc && $(1) != me && index($(0), "shell-snapshots") {

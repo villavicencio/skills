@@ -354,8 +354,9 @@ Each answer to a fork is recorded in the default form. Each routine call is reco
 "Decided by dv:groom (forks-only)" form (see "Forks-only mode" above). Your call to file or fold a
 spin-off stands as the approval to create it with what the proposal showed, subject to step 5's
 rule that a spin-off with an incomplete duplicate search is not filed. A spin-off whose duplicate
-search found a match is not filed: the routine call is to drop it, with the match's id and state
-named in the report, and in its Decisions line when the ticket is edited. A split stays a question: my
+search found a match that is open, or Done, and covers the work is not filed: the routine call is
+to drop it, with the match's id and state named in the report, and in its Decisions line when the
+ticket is edited. With any other match, filing it is the routine call, under the rule above. A split stays a question: my
 answer approves the children and the parent's change together, as above.
 
 ## 7. Edit
@@ -396,7 +397,10 @@ approves only the items that add.
 **Forks-only mode:** do not ask this question. Show the numbered edit list, then apply every item
 under "Order of writes" and "Patches" below, which still hold in full; my answers to the fork
 questions, including a split approval, were the approval for what they decided. Do not offer the
-whole-description replacement, which needs its own question; use patches.
+whole-description replacement, which needs its own question; use patches. For a description that
+has text but no headings, do what "Patches" says: leave it, show the sections you would add as
+text in the report, say I will edit it in Linear, and list that item as not landed. Other items
+still apply.
 
 **Whole-description replacement.** When the interview answers change three or more sections, you
 may offer this instead of patches: show the complete new description, say that the old one stays

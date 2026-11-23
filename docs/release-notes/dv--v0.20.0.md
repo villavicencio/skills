@@ -27,12 +27,14 @@ calls and ask only the forks (VIL-915).
     folding or dropping a spin-off, settling a verified `[assumed]` marker, a clearly mapped
     relation, a conditional step closed (removed or made unconditional), and a Done means line
     reworded or added that proves the existing scope. It takes the option it would have marked
-    "(Recommended)". A spin-off whose duplicate search found a match is dropped, not filed, and the
-    match is named. With no forks, it asks nothing.
+    "(Recommended)". A spin-off whose duplicate search found an open or Done match that covers the
+    work is dropped, not filed, and the match is named; any other match, it files. With no forks,
+    it asks nothing.
   - **No approval question in step 7.** It shows the numbered edit list and applies it. The order
     of writes, the re-reads before a split and the patch rules still hold. A split stays a question,
     and its approval covers the children and the parent's change. The whole-description
-    replacement is not offered, since it needs its own question.
+    replacement is not offered, since it needs its own question, and a description with text but
+    no headings is left alone, with the sections it would add shown in the report.
   - **Recorded so it can be overruled.** Each routine call is a Decisions line, "<decision>.
     Decided by dv:groom (forks-only), <date>"; forks keep "<decision>. <name>, <date>". The "no
     split" line takes the same form. A ticket that needs no edits gets no Decisions lines; its

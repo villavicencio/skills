@@ -1,10 +1,10 @@
 ---
 name: closeout
-description: "Close out a finished worktree session and brief the parent session in the main checkout. Verifies from git, gh and the tracker (not from memory) the ticket, the session's PRs, what the worktree holds that is uncommitted, only here or not on the default branch, and the main checkout against its upstream; a check that cannot run makes the verdict 'not confirmed safe'. Writes a plain-text note for the parent (what shipped, tickets filed or changed, things noticed and not filed, decisions waiting, cleanup the parent owns, whether a reply is needed) and copies it to the clipboard, says whether the worktree is safe to delete and what would be lost if not, and when it is safe archives the session's handoff. Never removes the worktree without a yes. Use when the user says \"close out this worktree\", \"is this worktree safe to delete\" or \"wrap up this worktree\". NOT for work that continues in a later session (that is dv:handoff), NOT for merging a PR or deleting a merged branch."
+description: "Close out a finished worktree session and brief the parent session in the main checkout. Verifies from git, gh and the tracker (not from memory) the ticket, the session's PRs, what the worktree holds that is uncommitted, only here or not on the default branch, and the main checkout against its upstream; a check that cannot run makes the verdict 'not confirmed safe'. Writes a plain-text note for the parent (what shipped, tickets filed or changed, things noticed and not filed, decisions waiting, cleanup, whether to reply), copies it to the clipboard and sends it to the parent once it can reach and verify it, says whether the worktree is safe to delete and what would be lost if not, and when it is safe archives the session's handoff. Never removes the worktree without a yes. Use when the user says \"close out this worktree\", \"is this worktree safe to delete\" or \"wrap up this worktree\". NOT for work that continues in a later session (that is dv:handoff), NOT for merging a PR or deleting a merged branch."
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.21.0"
+  version: "0.22.0"
 ---
 
 # /closeout — close out a finished worktree session
@@ -572,7 +572,10 @@ after this session has ended. Do not run it.
   `wt done <topic>`.
 - Otherwise: `git -C <main checkout> worktree remove <worktree path>`. It keeps the branch;
   deleting a merged branch is a separate procedure and not this skill's.
-- If the optional section below applies, it replaces this command with its own offer.
+- If the worktree lives in Orca and its CLI resolved (section below), the Orca removal offer
+  replaces this command; otherwise keep the command above.
+- While the note waits for the probe answers ("Deliver the note", below), say that removing the
+  worktree ends this session, and the note is then not sent.
 - **Initialized submodules.** If Step 1 printed "initialized submodules" above 0, `wt done`,
   `git worktree remove` and a plain `orca worktree rm` all refuse this worktree. Say so, and point
   to the guarded procedure instead of a plain command: `dv:orca-setup` Step 5 (`orca worktree rm
@@ -608,14 +611,20 @@ Reply in this order, short:
 3. The verified facts, one line each: the ticket and its state; each PR and its merge state; what
    the worktree holds beyond the default branch; the main checkout against its remote (behind,
    ahead, dirty); where the handoff went, or that it was left; where the note was saved and
-   whether it reached the clipboard; the removal command, when safe.
+   whether it reached the clipboard; what happened with the Director, as one of the outcomes in
+   "Deliver the note" (not sent and why, probe sent and the note waiting for the answers,
+   answered but not verified (a wrong path, or ambiguous), note sent with no reply yet, note sent
+   and replied); the removal command, when safe.
 4. The line the optional section below tells you to add, if any.
 5. The note itself in a code block, so I can copy it if the clipboard missed.
 
 ## Optional: Orca delivery and removal
 
-Use this section only when the worktree lives in Orca and its CLI is on PATH. Everything above
-works without it. Resolve the CLI and look for the parent's agent terminal:
+The terminal send and the removal offer in this section need the worktree to live in Orca and
+its CLI to be on PATH. The worktree lives in Orca when `"<orca CLI>" worktree list --json` lists
+its path. The chat path in "Deliver the note" (the "None" case) needs only
+ListAgents, so it runs without Orca too. Everything above works without either. Resolve the CLI
+and look for the parent's agent terminal:
 
 ```bash
 C="${ORCA_CLI_COMMAND:-}"
@@ -625,12 +634,14 @@ if ! command -v "$C" >/dev/null 2>&1; then
 elif git rev-parse --git-dir >/dev/null 2>&1; then
   MAIN=$(git worktree list --porcelain | sed -n 's/^worktree //p' | head -1)
   echo "Orca CLI: $C"
+  echo "Main checkout: $MAIN"
   "$C" terminal list --worktree "path:$MAIN" --json
 fi
 ```
 
 If the block printed "Orca steps skipped", add the line "Orca steps skipped: no Orca CLI on PATH"
-to the reply and do nothing else in this section. (On Linux a bare `orca` is usually the GNOME
+to the reply, skip the terminal send and the removal offer, and go to the chat path in "Deliver
+the note" (the "None" case, steps 1 to 5). (On Linux a bare `orca` is usually the GNOME
 screen reader, which is why the block does not try it there.)
 
 **Deliver the note.** A parent terminal qualifies only when its entry has an `agentIdentity`
@@ -644,19 +655,80 @@ would be run as commands, so never send to one.
   "delivered". Do not resend on a timeout. After a transport error, reissue the same command with
   the `--retry-request` id the error reports.
 - More than one: ask me which, as a plain question, before sending.
-- None: say the parent has no agent terminal open, and that the note is on the clipboard and at
-  its saved path. A parent that runs as an Orca chat is not a terminal and cannot be reached this
-  way.
+- None, or the Orca steps were skipped: the parent may run as an Orca chat, which is not a
+  terminal, or outside Orca, and a chat is never sent a note through `terminal send`. Look for
+  the Director with ListAgents instead, and send the note only after it answers a probe with the
+  main checkout's path:
+  1. Candidates. A candidate is a peer session in ListAgents, other than this one, whose name is
+     the main checkout folder's basename, then `-`, then a suffix (for example `skills-03` for
+     `/Users/david/Projects/skills`). ListAgents shows no working directory, and sessions have
+     been named this way so far without it being a Claude Code contract, so a name proves
+     nothing; the probe does. With no candidate, or more than three, send nothing and name what
+     ListAgents showed.
+  2. The probe. Send each candidate this probe, once, with SendMessage. Nothing from the note
+     goes in it:
+
+     ```
+     Director check, <ticket id, or the branch when there is none>: which directory are you running in? Reply with one line, its absolute path.
+     ```
+
+     Answers come back later as messages, often after this turn has ended. End this turn with
+     the reply, saying the probe was sent and the note waits for the answers.
+  3. The answers. A probed candidate's answer passes when its `from-name` is that candidate and
+     its path, with surrounding spaces and one trailing `/` removed, equals as text the main
+     checkout's path as `git worktree list` prints it, or that path's real path (`pwd -P` run in
+     the main checkout). Compare it as text; never run it in a shell. A passing answer shows
+     where that session says it runs, not that it runs `dv:director-mode`.
+  4. The Director. With one candidate, its passing answer makes it the Director. With two or
+     three, the Director is the one whose answer passed, and only once every other probed
+     candidate has answered with a different path. While a probed candidate is silent, wait: the
+     note stays where it is, and silence never counts as a different path. If two or more
+     answers pass, it is ambiguous: send nothing. In every case where no Director is found,
+     report who answered what.
+
+     Known limit: the answer is the session's own claim. A session that misstates its directory,
+     or a non-Director session in the main checkout that is the only one to answer with its path,
+     is taken for the Director. I accepted this on 2026-11-23: every session is one of my own
+     agents on one machine, and the note holds nothing secret.
+  5. The note. Send the note once, with SendMessage to the Director's answer's `from` address.
+     The answer arrives in a later turn, so first run the Step 1 block
+     again, apply Step 2, and write the note again from those facts with Step 3, which saves a new
+     copy and copies it to the clipboard. Send that copy; `<note path>` is the `note saved:` path
+     Step 3 printed in this turn. The receiver sees only the first line until it expands the
+     message, so the first line must say what the message is:
+
+     ```
+     Closeout note, <ticket id, or the branch when there is none>: <the note's Worktree verdict line>
+     Saved at: <note path>
+     <the note, from its Worktree line to its REPLY NEEDED line>
+     Please reply with one line to say you received it.
+     ```
+
+     Resend neither the probe nor the note.
+
+  Report one of these outcomes: not sent, naming what failed or could not run; probe sent, the
+  note waits for the answers; answered but not verified (a wrong path, or ambiguous), with who
+  answered what, and nothing sent; note sent with no reply yet; or note sent and replied, quoting the reply. A
+  message has no read receipt, so never write "delivered" without a reply. Until the note is
+  sent, it stays on the clipboard and at its saved path. Under Codex there is no ListAgents view
+  of other sessions, so this path cannot run there.
 
 What a test showed (VIL-836, 2026-11-18, from a worktree to the main checkout): the text arrived
 in the main checkout's terminal. Not tested: whether a parent agent acts on a note, and whether
-one that is mid-turn reads it. So say in the reply that the note was sent and that the parent may
-still need it pasted.
+one that is mid-turn reads it. So for a terminal, say in the reply that the note was sent and that
+the parent may still need it pasted. For a chat Director (VIL-918, 2026-11-23, on hal): this
+step, run by hand from a worktree, found one candidate, `skills-03`. It answered the probe with
+one line, the main checkout's absolute path, under that same `from-name`; SendMessage accepted
+the answer's `from` address for the note, and the Director replied. Not tested: a Director that
+is mid-turn when a message arrives (that one was idle), a wrong or ambiguous answer, several
+candidates, and a full closeout run end to end.
 
-**Offer the removal.** Only when Step 2 said safe to delete (or I have accepted the listed
+**Offer the removal.** Only when the worktree lives in Orca, the block printed an Orca CLI, and
+Step 2 said safe to delete (or I have accepted the listed
 build-output lines and reflog-only commits), end the reply with one question. Before running the removal on my yes,
-recheck as Step 5 says; if the verdict changed, do not remove. The question is:
-remove this worktree now? Run the removal only after my yes, in a later turn, as the last action
+recheck as Step 5 says; if the verdict changed, do not remove. While the note waits for the
+probe answers, say so before the question: the removal ends this session, and the note is
+then not sent. The question is: remove this worktree now? Run the removal only after my yes, in a later turn, as the last action
 of the session, because it stops this worktree's sessions:
 
 `"<orca CLI>" worktree rm --worktree "path:<worktree path>" --json`

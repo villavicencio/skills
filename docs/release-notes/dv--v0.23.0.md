@@ -38,9 +38,10 @@ rest runs on its own while the home chat keeps him up to date (VIL-917).
   sender's closeout note or highlights.
 - **"Take closeout notes".** The Director runs the cleanup the note names as soon as it arrives,
   still through the global removal procedure and its checks, and reports it as a highlight.
-  While the worktree's session is still running, that procedure keeps the worktree: the Director
-  tells David, as a highlight, that the session is ready to close in Orca, and removes the
-  worktree by the same procedure after the session has ended. It never signals or stops a
+  Anything that doesn't touch the worktree or its branch is done at once. While the worktree's
+  session is still running, the worktree and its branch stay in place: the Director tells David,
+  as a highlight, that the session is ready to close in Orca, and removes them by the global
+  procedure after the session has ended. It never signals or stops a
   session's process. Ending a finished session automatically moved to a follow-up ticket.
 - **"Merge and clean up".** "Hand it back to its worktree session; you don't update it" is
   replaced. When a PR falls behind after another merge, its live worktree session updates it by

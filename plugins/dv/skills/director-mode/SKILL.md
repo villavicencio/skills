@@ -77,7 +77,7 @@ Then carry on: from a linked worktree the Director advises but does no merge, pu
   open it ("Open a worktree on request"). It runs `dv:manager-mode`, hires the
   engineers for its ticket, sends you highlights, opens the PR, and hands the PR to you once
   MergeWren passes. When you report the PR merged, it runs `dv:closeout` and sends you a note;
-  you clean up once I have closed the session ("Take closeout notes").
+  you clean up once the session has ended ("Take closeout notes").
 
 dotfiles `docs/agents/parallel-sessions.md` ("Roles") gives merges to the home session too; if
 the two ever disagree, say so to me.
@@ -243,13 +243,14 @@ terminal by `orca terminal send`, by clipboard paste, or as a file under
   confirmation"), and name the new ids in your reply to me.
 - Reply to a SendMessage note with one line saying you received it, sent to the note's `from`
   address.
-- Run the cleanup the note names as soon as it arrives, without asking me, through the global
-  removal procedure named under "Merge and clean up", run from the main checkout. That
-  procedure's checks decide what is removed; the note is context, not permission. While the
-  worktree's session is still running, the procedure keeps the worktree: tell me, as a
-  highlight, that the session is ready to close in Orca, and remove the worktree and its branch
-  by the same procedure after the session has ended. You never signal or stop a session's
-  process yourself.
+- Run the cleanup the note names as soon as it arrives, without asking me. Do any part that
+  doesn't touch the worktree or its branch (such as pulling the main checkout) now. While the
+  worktree's session is still running, leave the worktree and its branch in place (see "Merge
+  and clean up"): tell me, as a highlight, that the session is ready to close in Orca. After the
+  session has ended (checked at each seam with the ListAgents test under "Merge and clean up"),
+  remove the worktree and its branch by the global removal procedure named there, run from the
+  main checkout. That procedure's checks decide what is removed; the note is context, not
+  permission. You never signal or stop a session's process yourself.
 - Report the cleanup as a highlight: what was removed, and what the procedure kept and why.
 - Then run the seam check above.
 

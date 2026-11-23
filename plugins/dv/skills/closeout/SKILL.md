@@ -609,9 +609,9 @@ Reply in this order, short:
    the worktree holds beyond the default branch; the main checkout against its remote (behind,
    ahead, dirty); where the handoff went, or that it was left; where the note was saved and
    whether it reached the clipboard; what happened with the Director, as one of the outcomes in
-   "Deliver the note" (not sent and why, probe sent and the note waiting for the answer, answered
-   but not verified, note sent with no reply yet, note sent and replied); the removal command,
-   when safe.
+   "Deliver the note" (not sent and why, probe sent and the note waiting for the answers,
+   answered but not verified (a wrong path, or ambiguous), note sent with no reply yet, note sent
+   and replied); the removal command, when safe.
 4. The line the optional section below tells you to add, if any.
 5. The note itself in a code block, so I can copy it if the clipboard missed.
 
@@ -664,16 +664,26 @@ would be run as commands, so never send to one.
      Director check, <ticket id, or the branch when there is none>: which directory are you running in? Reply with one line, its absolute path.
      ```
 
-     The answer comes back later as a message, often after this turn has ended. End this turn
-     with the reply, saying the probe was sent and the note waits for the Director's answer.
-  3. The answer. A message is the Director's answer only when its `from-name` is a candidate
-     that was probed, and its path, with surrounding spaces and one trailing `/` removed, equals
-     as text the main checkout's path as `git worktree list` prints it, or that path's real path
-     (`pwd -P` run in the main checkout). Compare it as text; never run it in a shell. Any other
-     answer gets nothing: report who answered what. A passing answer shows where that session
-     says it runs, not that it runs `dv:director-mode`.
-  4. The note. To the first answer that passes, send the note once, with SendMessage to that
-     message's `from` address. The answer arrives in a later turn, so first run the Step 1 block
+     Answers come back later as messages, often after this turn has ended. End this turn with
+     the reply, saying the probe was sent and the note waits for the answers.
+  3. The answers. A probed candidate's answer passes when its `from-name` is that candidate and
+     its path, with surrounding spaces and one trailing `/` removed, equals as text the main
+     checkout's path as `git worktree list` prints it, or that path's real path (`pwd -P` run in
+     the main checkout). Compare it as text; never run it in a shell. A passing answer shows
+     where that session says it runs, not that it runs `dv:director-mode`.
+  4. The Director. With one candidate, its passing answer makes it the Director. With two or
+     three, the Director is the one whose answer passed, and only once every other probed
+     candidate has answered with a different path. While a probed candidate is silent, wait: the
+     note stays where it is, and silence never counts as a different path. If two or more
+     answers pass, it is ambiguous: send nothing. In every case where no Director is found,
+     report who answered what.
+
+     Known limit: the answer is the session's own claim. A session that misstates its directory,
+     or a non-Director session in the main checkout that is the only one to answer with its path,
+     is taken for the Director. I accepted this on 2026-11-23: every session is one of my own
+     agents on one machine, and the note holds nothing secret.
+  5. The note. Send the note once, with SendMessage to the Director's answer's `from` address.
+     The answer arrives in a later turn, so first run the Step 1 block
      again, apply Step 2, and write the note again from those facts with Step 3, which saves a new
      copy and copies it to the clipboard. Send that copy; `<note path>` is the `note saved:` path
      Step 3 printed in this turn. The receiver sees only the first line until it expands the
@@ -686,12 +696,11 @@ would be run as commands, so never send to one.
      Please reply with one line to say you received it.
      ```
 
-     A later answer that also passes is reported and gets nothing. Resend neither the probe nor
-     the note.
+     Resend neither the probe nor the note.
 
   Report one of these outcomes: not sent, naming what failed or could not run; probe sent, the
-  note waits for the Director's answer; answered but not verified, with who answered what, and
-  nothing sent; note sent with no reply yet; or note sent and replied, quoting the reply. A
+  note waits for the answers; answered but not verified (a wrong path, or ambiguous), with who
+  answered what, and nothing sent; note sent with no reply yet; or note sent and replied, quoting the reply. A
   message has no read receipt, so never write "delivered" without a reply. Until the note is
   sent, it stays on the clipboard and at its saved path. Under Codex there is no ListAgents view
   of other sessions, so this path cannot run there.
@@ -703,13 +712,13 @@ the parent may still need it pasted. For a chat Director (VIL-918, 2026-11-23, o
 step, run by hand from a worktree, found one candidate, `skills-03`. It answered the probe with
 one line, the main checkout's absolute path, under that same `from-name`; SendMessage accepted
 the answer's `from` address for the note, and the Director replied. Not tested: a Director that
-is mid-turn when a message arrives (that one was idle), a wrong answer, and a full closeout run
-end to end.
+is mid-turn when a message arrives (that one was idle), a wrong or ambiguous answer, several
+candidates, and a full closeout run end to end.
 
 **Offer the removal.** Only when Step 2 said safe to delete (or I have accepted the listed
 build-output lines and reflog-only commits), end the reply with one question. Before running the removal on my yes,
 recheck as Step 5 says; if the verdict changed, do not remove. While the note waits for the
-Director's answer, say so before the question: the removal ends this session, and the note is
+probe answers, say so before the question: the removal ends this session, and the note is
 then not sent. The question is: remove this worktree now? Run the removal only after my yes, in a later turn, as the last action
 of the session, because it stops this worktree's sessions:
 

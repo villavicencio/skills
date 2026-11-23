@@ -16,13 +16,13 @@ unless I asked (VIL-916).
 ## Changed
 
 - **`dv:manager-mode`, "Decisions and escalation": routine calls the session makes without
-  asking me.** Each is reported as a highlight. The manager never edits files, so a rebase is
-  a hire.
-  - **Rebase.** When the Director says the ticket's PR is behind the default branch, or `gh` shows
-    it, the manager hires an engineer to rebase it and, in a repo that versions its releases, bump
-    the version. The engineer reads the PR branch's remote head first, pushes with
-    `--force-with-lease` against that head, and stops and reports if the head changed or ownership
-    of the branch is unclear. MergeWren must pass the new head before the PR goes back to the Director.
+  asking me.** Each is reported as a highlight. The manager never edits files, so an update is a
+  hire.
+  - **Update a stale PR.** When the Director says the ticket's PR is behind the default branch, or
+    `gh` shows `BEHIND`, the manager hires an engineer to merge the default branch into the PR
+    branch and push normally, with no rebase and no force push, so nothing on the remote can be
+    overwritten. In a repo that versions its releases, the engineer bumps the version. MergeWren
+    must pass the new head before the PR goes back to the Director.
   - **Review findings.** An engineer fixes or declines each MergeWren finding and pushes again,
     under the "Fix rounds" rules in dotfiles `docs/agents/code-review.md`. After two fix rounds the
     open list goes to me.
@@ -35,11 +35,12 @@ unless I asked (VIL-916).
   passed or found something, a blocker or a decision waiting on me, and each routine call above.
   The Director is the home session in the main checkout, found with ListAgents and messaged with
   SendMessage.
-  - **The handoff of a passed PR stays,** in the same short format. It asks the Director to merge,
-    so it asks for a one-line reply, as the existing rule for messages the receiver must act on
-    says.
-  - **No reachable Director.** The session says so in its own chat and keeps going. That is
-    the case under Codex, since its `list_agents` lists only that session's own agents.
+  - **The handoff of a passed PR stays as it was** (its "What you do yourself" bullet is unchanged).
+    The Highlights section says it goes in the same short format, and asks for a one-line reply
+    because the Director must act on it.
+  - **No reachable Director.** The session says so in its own chat and keeps going; for a PR that
+    passed MergeWren it tells me the PR passed, with its link, and waits for my word on who merges
+    it. Under Codex that is the case, since its `list_agents` lists only that session's own agents.
   - Highlights are information only. A blocker or a decision still comes to me in the session's
     own chat.
 - **`dv:ticket`: filing without my confirmation, in two cases only.** A new section, "Filing
@@ -74,7 +75,7 @@ unless I asked (VIL-916).
 
 ## Not changed
 
-- How the Director shows highlights to me, and the Director rebasing a PR that has no live session.
+- How the Director shows highlights to me, and the Director updating a PR that has no live session.
 - `dv:groom`. Its spin-offs still follow its own interview, where my answer stands in for the draft.
 
 ## Upgrade

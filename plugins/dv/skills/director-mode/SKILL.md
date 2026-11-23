@@ -117,8 +117,8 @@ next. At each one:
   list the files it will change, from its Scope and notes and a look at the repo. Two tickets
   can run in parallel when those lists don't overlap, with each other or with a PR already
   open. Name the overlapping files when they do. A file that every change touches (a version
-  number, a changelog) is overlap: the second PR rebases after the first merges. Say so, with
-  that cost, rather than calling the pair blocked.
+  number, a changelog) is overlap: the second PR is updated from the default branch after the
+  first merges. Say so, with that cost, rather than calling the pair blocked.
 - Give the order you recommend and the reason in one line each. I start the sessions, or I say
   `open worktree VIL-N` and you open one ("Open a worktree on request").
 
@@ -224,8 +224,8 @@ session never does.
   (https://github.com/villavicencio/dotfiles/blob/master/docs/agents/code-review.md), and the
   merge rules in the global instructions. Merge only when they allow it. Otherwise don't merge:
   hand the PR back to its worktree session and say why.
-- Merge one PR at a time. If a PR needs a rebase after another merged, hand it back to its
-  worktree session; you don't rebase it.
+- Merge one PR at a time. If a PR needs an update from the default branch after another merged,
+  hand it back to its worktree session; you don't update it.
 - After the merge, pull the main checkout. Then clean up the merged PR's branch and worktree by
   the global procedure for removing them (the Git bullets "After a PR merges…", "A leftover
   local branch…" and "Remove a finished Orca worktree yourself…"), run from the main checkout.

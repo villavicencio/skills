@@ -84,6 +84,12 @@ checkout.
   if it exists there and this repo ignores it, so list each file literally and ignore it in
   `.gitignore`. Keep anything that changes state other checkouts depend on out of the script
   (uv's shared cache is fine); `dv:orca-setup` covers how to change it.
+- Live-checking a skill change before merge (VIL-908, 2026-11-22): in a throwaway clone of
+  this repo, run `claude -p --plugin-dir <worktree>/plugins/dv --allowed-tools "Bash(git rev-parse:*)" "<prompt>"`.
+  The branch's copy loads as `dv@inline` over the installed dv. The headless session needs
+  every command the skill runs allowed with `--allowed-tools` (that check needed
+  `git rev-parse`). Use a throwaway clone, not the main checkout, when the skill's behavior
+  depends on which checkout it runs in.
 - CI gates (`.github/workflows/validate.yml`):
   - `agentskills validate plugins/*/skills/*` — spec conformance per skill
   - `tooling/check_skill_placeholders.py` — no `$` followed by a digit in any SKILL.md: Claude Code replaces `$0`, `$1`, ... with the words typed after the skill command, code blocks included (VIL-517). Write awk's `$0` as `$(0)`, don't use shell `$1`, write prices as `USD 350`

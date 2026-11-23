@@ -4,7 +4,7 @@ description: "Groom one Linear ticket before anyone works it. Checks it against 
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.29.0"
+  version: "0.30.0"
 ---
 
 # /groom — groom a Linear ticket before work starts

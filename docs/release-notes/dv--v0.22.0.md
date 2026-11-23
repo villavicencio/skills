@@ -1,10 +1,11 @@
 # dv — v0.22.0
 
 Minor release. `dv:closeout` can deliver its note to a Director that runs as an Orca chat, and
-`dv:manager-mode` finds the Director for its highlights the same way. In both, the recipient
-must answer a probe with the main checkout's path before it gets anything. The other
-fourteen skills have no behaviour changes; their version moves to `0.22.0` only because the
-suite is released as one plugin.
+`dv:manager-mode` finds the Director for its highlights the same way. Closeout's chat path and
+manager-mode's highlights both send only to a session that has answered a probe with the main
+checkout's path; closeout's agent-terminal path is unchanged. The other fourteen skills have no
+behaviour changes; their version moves to `0.22.0` only because the suite is released as one
+plugin.
 
 Numbering: 0.22.0 follows 0.21.0, which gave `dv:groom` a forks-only mode (VIL-915).
 
@@ -32,8 +33,8 @@ hand (VIL-918).
     note's text, and asks for a one-line reply. Neither the probe nor the note is resent.
   - **Timing:** the answer comes in a later turn, so closeout's reply first says the probe was
     sent and the note waits for the answer. Before sending the note, closeout runs its checks
-    again and updates the saved note if the verdict changed. Until it is sent, the note stays on the clipboard and
-    at its saved path. A removal while the note waits ends the session, so the removal question
+    again and writes the note again from the current facts, saved and copied to the clipboard.
+    Until it is sent, the note stays on the clipboard and at its saved path. A removal while the note waits ends the session, so the removal question
     says so.
   - **Outcomes reported:** not sent (naming what failed or could not run); probe sent, the note
     waiting for the answer; answered but not verified (who answered what); note sent with no reply

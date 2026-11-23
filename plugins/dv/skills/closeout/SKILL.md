@@ -674,9 +674,10 @@ would be run as commands, so never send to one.
      says it runs, not that it runs `dv:director-mode`.
   4. The note. To the first answer that passes, send the note once, with SendMessage to that
      message's `from` address. The answer arrives in a later turn, so first run the Step 1 block
-     again and apply Step 2; if the verdict changed, update the saved note before sending it. `<note path>` is the `note saved:` path Step 3 printed. The
-     receiver sees only the first line until it expands the message, so the first line must say
-     what the message is:
+     again, apply Step 2, and write the note again from those facts with Step 3, which saves a new
+     copy and copies it to the clipboard. Send that copy; `<note path>` is the `note saved:` path
+     Step 3 printed in this turn. The receiver sees only the first line until it expands the
+     message, so the first line must say what the message is:
 
      ```
      Closeout note, <ticket id, or the branch when there is none>: <the note's Worktree verdict line>

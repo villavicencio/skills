@@ -1,6 +1,6 @@
 ---
 name: director-mode
-description: "Switch this session into Director Mode, the mode for the home session (the main checkout) while each ticket's worktree session runs dv:manager-mode and hires its engineers. The Director opens a ticket's worktree on request, relays the sessions' highlights, names tickets newly unblocked, recommends which sessions to start next and which can run in parallel, takes closeout notes, merges after MergeWren passes, ends a finished session and cleans up, and keeps ticket states true. It hires for a ticket's work only to update a stale PR with no live session. Bare invocation turns it on, `off` turns it off; one line in a project's CLAUDE.md or AGENTS.md makes it standing. Use when the user says \"director mode\", \"be the director\", \"run the home session\", \"coordinate the worktree sessions\", \"open worktree VIL-N\", or \"director mode off\". NOT for one ticket's work (that is dv:manager-mode in the ticket's worktree), NOT for closing out a worktree (that is dv:closeout, run in the worktree)."
+description: "Switch this session into Director Mode, the mode for the home session (the main checkout) while each ticket's worktree session runs dv:manager-mode and hires its engineers. The Director opens a ticket's worktree on request, relays the sessions' highlights, names tickets newly unblocked, recommends which sessions to start next and which can run in parallel, takes closeout notes, merges after MergeWren passes, cleans up once a finished session is closed, and keeps ticket states true. It hires for a ticket's work only to update a stale PR with no live session. Bare invocation turns it on, `off` turns it off; one line in a project's CLAUDE.md or AGENTS.md makes it standing. Use when the user says \"director mode\", \"be the director\", \"run the home session\", \"coordinate the worktree sessions\", \"open worktree VIL-N\", or \"director mode off\". NOT for one ticket's work (that is dv:manager-mode in the ticket's worktree), NOT for closing out a worktree (that is dv:closeout, run in the worktree)."
 license: Apache-2.0
 metadata:
   author: villavicencio
@@ -77,7 +77,7 @@ Then carry on: from a linked worktree the Director advises but does no merge, pu
   open it ("Open a worktree on request"). It runs `dv:manager-mode`, hires the
   engineers for its ticket, sends you highlights, opens the PR, and hands the PR to you once
   MergeWren passes. When you report the PR merged, it runs `dv:closeout` and sends you a note;
-  you then end the session and clean up ("Take closeout notes").
+  you clean up once I have closed the session ("Take closeout notes").
 
 dotfiles `docs/agents/parallel-sessions.md` ("Roles") gives merges to the home session too; if
 the two ever disagree, say so to me.
@@ -242,107 +242,16 @@ terminal by `orca terminal send`, by clipboard paste, or as a file under
   "NOTICED, NOT FILED" with `dv:ticket`, under its exception (b) ("Filing without my
   confirmation"), and name the new ids in your reply to me.
 - Reply to a SendMessage note with one line saying you received it, sent to the note's `from`
-  address with `notify_when_idle: true` (check 2 below relies on it).
-- Start the cleanup the note names as soon as it arrives, without asking me. Do any part that
-  doesn't touch the worktree (such as pulling the main checkout) now. The worktree waits for its
-  session to end ("End a finished worktree session" below); then remove it and its branch by the
-  global procedure named under "Merge and clean up", run from the main checkout. That
-  procedure's checks still decide what is removed; the note is context, not permission. If the
-  session can't be ended, leave the worktree and tell me why.
+  address.
+- Run the cleanup the note names as soon as it arrives, without asking me, through the global
+  removal procedure named under "Merge and clean up", run from the main checkout. That
+  procedure's checks decide what is removed; the note is context, not permission. While the
+  worktree's session is still running, the procedure keeps the worktree: tell me, as a
+  highlight, that the session is ready to close in Orca, and remove the worktree and its branch
+  by the same procedure after the session has ended. You never signal or stop a session's
+  process yourself.
 - Report the cleanup as a highlight: what was removed, and what the procedure kept and why.
 - Then run the seam check above.
-
-#### End a finished worktree session
-
-A session that has run `dv:closeout` stays open until something closes it, and Orca has no CLI
-command to close a chat. The global removal procedure keeps a worktree while a session is in it.
-So you treat a finished worktree session as ended, and stop it, only when all four checks below
-hold. I approved this rule on 2026-11-22. If any check fails or can't run, stop nothing and
-remove nothing: leave the worktree and tell me which check and why.
-
-The idle notice comes in a later turn than the note. So after your reply to the note, wait for
-the notice. When it arrives, run checks 1, 3 and 4, then the removal checks, then stop the
-session.
-
-The note's header is its first line, `CLOSEOUT NOTE from <branch> at <worktree path>, <date and
-time with zone>`. A note sent by SendMessage leaves the header out, so read it from the saved
-copy named on the message's `Saved at:` line. The note's timestamp is the UTC time in that saved
-copy's file name, which closeout's "Step 3 — Write the parent note and copy it" writes as
-`<branch slug>.<YYYYMMDDTHHMMSSZ>.txt` (with `-<n>` before `.txt` on a clash). A note with no
-saved copy fails check 4.
-
-1. **The note.** Its closeout note reached you, and the header names this worktree's path. Its
-   Worktree verdict is `safe to delete`, or `safe once you accept losing: …` with every
-   listed loss covered by a standing yes of mine (in the global instructions, this project's
-   instructions or memory). `NOT safe to delete` and `not confirmed safe` fail the check.
-2. **Idle after the note.** Your reply to the note went with `notify_when_idle: true`, so the
-   session takes a turn to read it and the notice comes when that turn ends. The check holds
-   when a `[Cross-session idle notice]` for that session arrives after the note's timestamp. A
-   notice that the subscription expired fails it. `notify_when_idle` works only for a session
-   on this machine, so a session on another host fails this check, and so does a note with no
-   `from` address.
-3. **One session.** ListAgents lists the note's sender, and no other peer whose name is the
-   worktree folder's basename, then `-`, then a suffix with no `-` in it. In `ps -axo
-   pid,ppid,user,comm`, exactly one `claude` process (`comm` is `claude` or ends in `/claude`)
-   has the worktree as its working directory. Read each one's directory with
-   `lsof -a -p <pid> -d cwd -Fn` (the line that starts with `n`). A process whose directory
-   `lsof` can't read makes this check unable to run, unless that process's user can't reach the
-   worktree: the user is neither root nor this user, and a directory on the worktree's path that
-   this user owns has mode `drwx------` and no ACL (`/bin/ls -led <dir>` prints no numbered ACL
-   line). One of this user's processes whose directory can't be read always makes this check
-   unable to run. The one process's command line (`ps -o command= -p <pid>`) gives the session id, its
-   `--session-id=<id>` or `--resume=<id>` value. When the note's `from` address names a process
-   (a `uds:` socket path ending in `/<pid>.sock`), it must be this one.
-4. **Nothing changed since the note.** The closeout recheck (below) passes against this note.
-   The session's transcript also has no message from me after the note's timestamp. The transcript is the
-   file `<session id>.jsonl` (the id from check 3) in
-   `~/.claude/projects/<the worktree path, with each character other than a letter or digit replaced by ->/`.
-   A message from me is a record with `"type":"user"` whose content is text, not a tool result,
-   or a record with `"type":"attachment"` whose attachment has `"type":"queued_command"` (a
-   message typed while the session was busy). Leave out a record marked `"isMeta":true` and one
-   whose `origin.kind`, on the record or on its attachment, is `peer` or `task-notification`;
-   every other such record counts as mine. If the file is missing, or has no record from after
-   the note's timestamp (so it may not be the live transcript), this check can't run.
-
-**The closeout recheck.** Don't write your own inventory of the worktree; rerun closeout's. Run
-the block in `dv:closeout`'s "Step 1 — Verify the worktree, its PRs and the main checkout" inside
-a subshell that starts in the worktree, `( cd "<worktree path>" || exit 1` then the block then
-`)`, so this session's own directory stays the main checkout. Its `worktree:` line must be the
-worktree's path. Decide its verdict by "Step 2 — Decide whether the worktree is safe to delete".
-From closeout's "Recheck in every later turn" (under "Step 5 — Reply, and leave the removal to
-me") take only the comparison; never edit or resave the worktree's note. It passes only when all
-of these hold:
-
-- The verdict is `safe to delete`. A note whose verdict was `safe once you accept losing: …`
-  under check 1 needs that same verdict again: the verdict line Step 2 gives reads word for
-  word as the note's Worktree line.
-- The branch is the one the note's header names.
-- HEAD is unchanged since the note: `git -C "<worktree path>" log -g -1 --date=iso-strict
-  --format=%gd HEAD` shows that HEAD last moved before the note's timestamp. No output, or a
-  move at or after the timestamp, fails it.
-- Step 1 lists no stash made on that branch.
-
-If the block can't run, or anything differs, keep the worktree, stop nothing, and tell me. The
-recheck is only as good as closeout's inventory: it compares counts, not contents, and it has the
-same root gap as an open ticket about closeout and nested git repositories.
-
-**The removal checks.** Before stopping anything, also run the global removal procedure's own
-checks (the Git bullet "Remove a finished Orca worktree yourself…", step 2), all but the one about
-other sessions. If one fails or can't run, stop nothing and leave the worktree.
-
-**Stopping it.** The session's Orca wrapper is the `orca-provider-exec … session
-stdin-end-and-sigterm -- … claude …` process that carries the same `--session-id=<id>` or
-`--resume=<id>` value in its command line and is the parent of the `claude` process check 3
-found. A second `orca-provider-exec` process with the same value runs as a child of that
-`claude` process; it is not the wrapper, so leave it alone. If not exactly one process is the
-wrapper, stop nothing. Right before the signal, run checks 3 and 4 again, confirm the session's
-ListAgents row says it is idle, and read the wrapper's command line again
-(`ps -o command= -p <pid>`) to confirm the pid still carries that id. Then send that one process
-SIGTERM, once: `kill -TERM <pid>`. Never SIGKILL, never `pkill` or `killall`, and never a process
-check 3 did not tie to the worktree. Then confirm with `ps -p <wrapper pid>,<claude pid>` that
-both processes are gone. If either is still running when you look again a minute later (with
-Monitor or in a later turn, not a foreground sleep), remove nothing and tell me. Then remove the
-worktree as above, and report it as a highlight.
 
 ### Merge and clean up, from the main checkout
 
@@ -357,10 +266,9 @@ session never does.
   (https://github.com/villavicencio/dotfiles/blob/master/docs/agents/code-review.md), and the
   merge rules in the global instructions. Merge only when they allow it. Otherwise don't merge:
   hand the PR back to its worktree session and say why, or, when no session is live, tell me why.
-- A PR's worktree session is live when ListAgents lists it (the session that handed you the PR,
+- A PR's worktree session is live when ListAgents lists it: the session that handed you the PR,
   or a peer whose name is the PR's worktree folder's basename, then `-`, then a suffix with no
-  `-` in it), or when check 3 under "End a finished worktree session" finds a `claude` process
-  in the PR's worktree. When either can't be told, treat the session as live and ask me.
+  `-` in it. When that can't be told, treat the session as live and ask me.
 - Merge one PR at a time. When a PR falls behind the default branch after another merged:
   - **Its worktree session is live:** tell that session in one line that its PR is behind. The
     session updates the PR by merge itself (`dv:manager-mode`, "Decisions and escalation") and
@@ -396,10 +304,9 @@ session never does.
   from the main checkout. Any other worktree or branch removal, merged PR or not, follows the
   same bullets, the stale-PR engineer's temporary worktree included. The procedure keeps what
   fails a check or cannot be checked; tell me what it kept and why.
-- Leave a worktree and its branch in place until its session has ended, by itself or under "End
-  a finished worktree session"; the global procedure's own checks, including that no other
-  session is still in it, decide removal, and a `dv:closeout` note is context, not permission to
-  delete.
+- Leave a worktree and its branch in place until its session has ended; the global procedure's
+  own checks, including that no other session is still in it, decide removal, and a
+  `dv:closeout` note is context, not permission to delete.
 - Re-check every ticket id the PR named. Reopen one only if it moved to Done and its work is not
   finished; leave the others' states to the rules below.
 - If you cannot read `code-review.md` or the global instructions, say so and ask me; do not

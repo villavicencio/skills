@@ -698,11 +698,12 @@ would be run as commands, so never send to one.
 What a test showed (VIL-836, 2026-11-18, from a worktree to the main checkout): the text arrived
 in the main checkout's terminal. Not tested: whether a parent agent acts on a note, and whether
 one that is mid-turn reads it. So for a terminal, say in the reply that the note was sent and that
-the parent may still need it pasted. For a chat Director (VIL-918, 2026-11-23, on hal): an
-earlier version of this step, without the probe, was run by hand from a worktree; it sent the
-note once with SendMessage to the one `skills-*` peer, and the Director replied. Not tested yet:
-the probe and its answer, a Director that is mid-turn when a message arrives (that one was idle),
-and a full closeout run end to end.
+the parent may still need it pasted. For a chat Director (VIL-918, 2026-11-23, on hal): this
+step, run by hand from a worktree, found one candidate, `skills-03`. It answered the probe with
+one line, the main checkout's absolute path, under that same `from-name`; SendMessage accepted
+the answer's `from` address for the note, and the Director replied. Not tested: a Director that
+is mid-turn when a message arrives (that one was idle), a wrong answer, and a full closeout run
+end to end.
 
 **Offer the removal.** Only when Step 2 said safe to delete (or I have accepted the listed
 build-output lines and reflog-only commits), end the reply with one question. Before running the removal on my yes,

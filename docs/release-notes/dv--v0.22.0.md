@@ -55,12 +55,13 @@ hand (VIL-918).
 
 ## Not tested
 
-Tested on 2026-11-23, on hal: an earlier version of the chat path, without the probe, run by hand
-from a worktree. It found one `skills-*` peer in ListAgents, sent the note once with SendMessage,
-and the Director replied.
+Tested on 2026-11-23, on hal: the chat path with the probe, run by hand from a worktree. The one
+candidate, `skills-03`, answered the probe with one line, the main checkout's absolute path; the
+answer's `from-name` matched the ListAgents name; SendMessage accepted the answer's `from`
+address for the note, and the Director replied.
 
-Not tested: the probe and its answer, a Director that is mid-turn when a message arrives (this one
-was idle), and a full `dv:closeout` run end to end.
+Not tested: a Director that is mid-turn when a message arrives (this one was idle), a wrong
+answer, a full `dv:closeout` run end to end, and manager-mode's once-per-session verification.
 
 ## Upgrade
 

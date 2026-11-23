@@ -1,6 +1,6 @@
 ---
 name: closeout
-description: "Close out a finished worktree session and brief the parent session in the main checkout. Verifies from git, gh and the tracker (not from memory) the ticket, the session's PRs, what the worktree holds that is uncommitted, only here or not on the default branch, and the main checkout against its upstream; a check that cannot run makes the verdict 'not confirmed safe'. Writes a plain-text note for the parent (what shipped, tickets filed or changed, things noticed and not filed, decisions waiting, cleanup, whether a reply is needed), copies it to the clipboard and sends it to the parent when Orca can find it, says whether the worktree is safe to delete and what would be lost if not, and when it is safe archives the session's handoff. Never removes the worktree without a yes. Use when the user says \"close out this worktree\", \"is this worktree safe to delete\" or \"wrap up this worktree\". NOT for work that continues in a later session (that is dv:handoff), NOT for merging a PR or deleting a merged branch."
+description: "Close out a finished worktree session and brief the parent session in the main checkout. Verifies from git, gh and the tracker (not from memory) the ticket, the session's PRs, what the worktree holds that is uncommitted, only here or not on the default branch, and the main checkout against its upstream; a check that cannot run makes the verdict 'not confirmed safe'. Writes a plain-text note for the parent (what shipped, tickets filed or changed, things noticed and not filed, decisions waiting, cleanup, whether to reply), copies it to the clipboard and sends it to the parent once it can reach and verify it, says whether the worktree is safe to delete and what would be lost if not, and when it is safe archives the session's handoff. Never removes the worktree without a yes. Use when the user says \"close out this worktree\", \"is this worktree safe to delete\" or \"wrap up this worktree\". NOT for work that continues in a later session (that is dv:handoff), NOT for merging a PR or deleting a merged branch."
 license: Apache-2.0
 metadata:
   author: villavicencio
@@ -572,7 +572,9 @@ after this session has ended. Do not run it.
   `wt done <topic>`.
 - Otherwise: `git -C <main checkout> worktree remove <worktree path>`. It keeps the branch;
   deleting a merged branch is a separate procedure and not this skill's.
-- If the optional section below applies, it replaces this command with its own offer.
+- If the Orca CLI resolved (section below), its removal offer replaces this command.
+- While the note waits for the probe answers ("Deliver the note", below), say that removing the
+  worktree ends this session, and the note is then not sent.
 - **Initialized submodules.** If Step 1 printed "initialized submodules" above 0, `wt done`,
   `git worktree remove` and a plain `orca worktree rm` all refuse this worktree. Say so, and point
   to the guarded procedure instead of a plain command: `dv:orca-setup` Step 5 (`orca worktree rm
@@ -617,8 +619,10 @@ Reply in this order, short:
 
 ## Optional: Orca delivery and removal
 
-Use this section only when the worktree lives in Orca and its CLI is on PATH. Everything above
-works without it. Resolve the CLI and look for the parent's agent terminal:
+The terminal send and the removal offer in this section need the worktree to live in Orca and
+its CLI to be on PATH. The chat path in "Deliver the note" (the "None" case) needs only
+ListAgents, so it runs without Orca too. Everything above works without either. Resolve the CLI
+and look for the parent's agent terminal:
 
 ```bash
 C="${ORCA_CLI_COMMAND:-}"
@@ -634,7 +638,8 @@ fi
 ```
 
 If the block printed "Orca steps skipped", add the line "Orca steps skipped: no Orca CLI on PATH"
-to the reply and do nothing else in this section. (On Linux a bare `orca` is usually the GNOME
+to the reply, skip the terminal send and the removal offer, and go to the chat path in "Deliver
+the note" (the "None" case, steps 1 to 5). (On Linux a bare `orca` is usually the GNOME
 screen reader, which is why the block does not try it there.)
 
 **Deliver the note.** A parent terminal qualifies only when its entry has an `agentIdentity`
@@ -648,9 +653,10 @@ would be run as commands, so never send to one.
   "delivered". Do not resend on a timeout. After a transport error, reissue the same command with
   the `--retry-request` id the error reports.
 - More than one: ask me which, as a plain question, before sending.
-- None: the parent may run as an Orca chat, which is not a terminal, and a chat is never sent a
-  note through `terminal send`. Look for the Director with ListAgents instead, and send the note
-  only after it answers a probe with the main checkout's path:
+- None, or the Orca steps were skipped: the parent may run as an Orca chat, which is not a
+  terminal, or outside Orca, and a chat is never sent a note through `terminal send`. Look for
+  the Director with ListAgents instead, and send the note only after it answers a probe with the
+  main checkout's path:
   1. Candidates. A candidate is a peer session in ListAgents, other than this one, whose name is
      the main checkout folder's basename, then `-`, then a suffix (for example `skills-03` for
      `/Users/david/Projects/skills`). ListAgents shows no working directory, and sessions have
@@ -715,7 +721,7 @@ the answer's `from` address for the note, and the Director replied. Not tested: 
 is mid-turn when a message arrives (that one was idle), a wrong or ambiguous answer, several
 candidates, and a full closeout run end to end.
 
-**Offer the removal.** Only when Step 2 said safe to delete (or I have accepted the listed
+**Offer the removal.** Only when the block printed an Orca CLI, and Step 2 said safe to delete (or I have accepted the listed
 build-output lines and reflog-only commits), end the reply with one question. Before running the removal on my yes,
 recheck as Step 5 says; if the verdict changed, do not remove. While the note waits for the
 probe answers, say so before the question: the removal ends this session, and the note is

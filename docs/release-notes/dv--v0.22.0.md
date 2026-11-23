@@ -16,8 +16,9 @@ hand (VIL-918).
 ## Changed
 
 - **`dv:closeout`, "Deliver the note".** The terminal path is unchanged and still comes first.
-  When no agent terminal qualifies, closeout looks for the Director with ListAgents and sends the
-  note only after the Director has answered a probe:
+  When no agent terminal qualifies, or there is no Orca CLI on PATH, closeout looks for the
+  Director with ListAgents and sends the note only after the Director has answered a probe. This
+  path needs no Orca; without the CLI only the terminal send and the removal offer are skipped:
   - **Candidates:** peer sessions in ListAgents (not this one) whose name is the main checkout
     folder's basename, then `-`, then a suffix, for example `skills-03`. A name proves nothing,
     since ListAgents shows no working directory. With none, or more than three, nothing is sent.

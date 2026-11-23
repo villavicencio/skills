@@ -1,8 +1,10 @@
 # dv — v0.25.0
 
-Minor release. A worktree session sends a decision to the Director (the home session) before it
-asks David, and the Director may answer a clear-cut one for him under his standing grant of
-2026-11-23. Three skills change: `dv:manager-mode`, `dv:director-mode` and `dv:groom`. The other
+Minor release. When a worktree session has verified the Director (the home session), it sends
+each decision that could be clear-cut to the Director before asking David, and the Director may
+answer a clear-cut one for him under his standing grant of 2026-11-23. A decision that plainly
+can't be clear-cut, or one raised with no Director that can be verified, still goes straight to
+David. Three skills change: `dv:manager-mode`, `dv:director-mode` and `dv:groom`. The other
 thirteen skills have no behaviour changes; their version moves to `0.25.0` only because the suite
 is released as one plugin.
 
@@ -42,7 +44,9 @@ to be written into the skills (VIL-929).
   definition plainly fails. It waits up to 10 minutes, starting a background timer when nothing
   else would bring a turn back and stopping it when the answer arrives. Only an
   `Answer, VIL-N, Qk:` reply from the verified Director's address that names the recommended
-  option counts; anything else, or no reply in time, means asking David in the worktree chat.
+  option counts, and only after the session has checked the question again against every
+  condition it can judge itself (all but the Director's agreement); anything else, or no reply in
+  time, means asking David in the worktree chat.
   While the Director check is still pending, the question is held, as highlights are, for at most
   10 minutes; with no Director that can be verified, it asks David as before. The decision
   highlight for a question that went to the Director names its number, and a late answer gets a

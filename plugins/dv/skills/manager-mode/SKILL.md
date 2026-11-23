@@ -260,8 +260,10 @@ needs, among other things, your recommendation.
   timer (a background shell command such as `sleep 600`) so one does, and stop it once the
   answer arrives.
 - **What counts as the answer:** a reply from the verified Director's `from` address that starts
-  `Answer, VIL-N, Qk:` with that question's number and names the option you recommended. It is
-  my decision for that one question only. Anything else counts as "ask David": a reply that
+  `Answer, VIL-N, Qk:` with that question's number and names the option you recommended. Before
+  you act on it, check the question again against every condition of the definition you can
+  judge yourself (all but the Director's agreement); if any fails, it counts as "ask David". Only
+  then is it my decision, for that one question only. Anything else counts as "ask David": a reply that
   starts `Ask David`, picks another option, adds a condition or is unclear, or no reply within
   the 10 minutes.
 - **On "ask David"**, ask me in this chat as you would without a Director, and send the usual

@@ -4,7 +4,7 @@ description: "File a Linear ticket in the agreed format. Filing turns a rough re
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.19.0"
+  version: "0.20.0"
 ---
 
 # /ticket — file a Linear ticket
@@ -167,9 +167,10 @@ Then reply with:
 ## Groom
 
 Grooming is the `dv:groom` skill; this entry point only hands over to it. Invoke `dv:groom` with
-the Skill tool, passing the ticket id or link (or nothing, if none was given), and follow it from
-there. If the Skill tool cannot load it, read `../groom/SKILL.md` from this skill's directory and
-follow that file. Do not groom from this skill.
+the Skill tool, passing the rest of the arguments as given (the ticket id or link and any mode word
+such as `forks-only`, or nothing, if none was given), and follow it from there. If the Skill tool
+cannot load it, read `../groom/SKILL.md` from this skill's directory and follow that file. Do not
+groom from this skill.
 
 ## Rules
 

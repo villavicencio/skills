@@ -53,8 +53,8 @@ overrule it.
 - a split, with the parent's replacement description when it stays as the parent;
 - a prerequisite that step 3 cannot map clearly to one issue (no relation is set on a guess).
 
-**Routine calls:** every other open decision, such as wording, ordering, Size, Done means
-phrasing, filing or dropping a spin-off, settling an `[assumed]` marker you verified,
+**Routine calls:** every other open decision, such as wording, ordering, Size and points, Done
+means phrasing, filing or dropping a spin-off, settling an `[assumed]` marker you verified,
 adding or removing a relation that step 3 maps clearly, closing a conditional step by removing it or
 making it unconditional (step 3), and rewording or adding a Done means line that proves the
 existing scope. Decide each one yourself: take the option you would have marked
@@ -64,8 +64,9 @@ ask.
 **Recording.** Each routine call becomes an add item under Decisions, in this form, with today's
 date: "<decision>. Decided by dv:groom (forks-only), <date>". A fork keeps the default form:
 "<decision>. <my name>, <date>". A fork the Director answered for me (below) names both:
-"<decision>. Director (<its ListAgents name>) for <my name>, <date>". Size counts as a routine
-call when it is set or changed, and so does the no-split verdict (step 4). A routine call that settles a Decisions line marked open
+"<decision>. Director (<its ListAgents name>) for <my name>, <date>". Size and its points count
+as a routine call when they are set or changed, and so does the no-split verdict (step 4), except
+for a ticket pointed 13. A routine call that settles a Decisions line marked open
 replaces that line, as step 6 says for an answer.
 
 **From a worktree session: clear-cut forks go to the Director first.** When this runs in a
@@ -188,7 +189,7 @@ Compare the ticket with the format and list each gap:
 - A Backlog ticket has no pull condition, or its condition names no event or decision someone can
   observe. A ticket with the `someday` label does not need one.
 - The title does not start with a verb or does not name an outcome.
-- A multi-step ticket has no Scope, or Size is missing.
+- A multi-step ticket has no Scope, or Size is missing or has no points (step 4).
 - A required section exists under another name (such as Acceptance for Done means).
 - A decision is written without who or when.
 
@@ -274,6 +275,25 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
 drives it. If a conditional step is still open, give the range ("small; medium if step 5 finds
 something"). Size is proposed in the edit list, not asked.
 
+**Points.** Beside the size word, propose story points: one of 1, 2, 3, 5, 8 or 13 (Fibonacci),
+with one sentence on what drives them. Points measure the effort for whoever works the ticket, not
+its importance. Take them from this table, so they stay comparable across sessions and repos:
+
+| Points | Typical change |
+|---|---|
+| 1 | a one-line docs or config change |
+| 2 | a small change with one test |
+| 3 | a change across a few files, with tests |
+| 5 | a feature-sized change in one repo |
+| 8 | a change that touches several modules or two repos |
+| 13 | too big to run as one ticket |
+
+As a guide and not a rule, small is typically 1 to 3 points, medium 5, large 8 to 13. With a
+range for size, give the points for each end ("small, 2; medium, 5, if step 5 finds something"),
+and the estimate takes the higher number; when that is 13, the 13 rule below applies. Points go in
+the edit list beside Size, not asked: they are written into the Size section and set in Linear's
+estimate field (step 7).
+
 **Split verdict.** Say "no split" with the reason, or propose a split. Propose one when any of
 these holds:
 
@@ -281,23 +301,34 @@ these holds:
 - it mixes a mechanical change with a design choice;
 - part of it is blocked and part is not;
 - it is large;
+- it is pointed above 8 (13);
 - one part is risky and the rest is not.
 
 Do not split when the parts must land together to be correct. A proposed split names each child:
-a title in the format, its Done means lines taken from the parent, its Size with its reason, its
-order, what blocks what, and one line with its project, state and labels (`groomed` added once the
-split is complete when that team has an active `groomed` label; step 7).
+a title in the format, its Done means lines taken from the parent, its size word and points from the
+table with one sentence on what drives them, its order, what blocks what, and one line with its
+project, state and labels (`groomed` added once the split is complete when that team has an active
+`groomed` label; step 7).
 It also says what happens to the parent: it becomes the first child, or it stays as the parent with
 the children under it (`parentId`). When it stays as the parent, write its full replacement
-description: Why, a Scope that names the children, Done means and Decisions. The rest of its text
-moves into the children or is dropped, and the replacement shows which.
+description: Why, a Scope that names the children, Done means, Decisions, and Size ("Split: the
+points sit on the children", with its size and points before the split as history). The rest of its text
+moves into the children or is dropped, and the replacement shows which. The parent's estimate
+follows: the first child's points when it becomes the first child; none when it stays as the
+parent (`estimate: null`), so its children's points are not counted twice.
+
+A 13 is never left or filed unsplit without my explicit yes: a ticket pointed 13 always gets a
+proposed split (a parent whose points sit on its children is not pointed), its split question says that "no split" keeps it at 13, and no child is proposed
+at 13 unless the question names it.
 
 The split is an interview question, never automatic. The proposal is preliminary: the interview
 answers may change it, and step 6 settles it. A "no split" verdict becomes an add item under
 Decisions: "No split: <reason>. Groomed, <date>."
 
-**Forks-only mode:** a proposed split is a fork and is asked. The "no split" line reads "No split:
-<reason>. Decided by dv:groom (forks-only), <date>."
+**Forks-only mode:** a proposed split is a fork and is asked, so a ticket pointed 13 always comes
+to me. The "no split" line reads "No split: <reason>. Decided by dv:groom (forks-only), <date>."
+For a ticket pointed 13, "no split" is my answer to that fork, not a routine call, and is recorded
+in the fork form.
 
 ## 5. Scout
 
@@ -330,20 +361,21 @@ When there is nothing, say "Scouting: nothing found." in one line, and do not pa
 ## 6. Interview
 
 First, in your reply, list what you found, shortest first: gaps, stale facts, settled `[assumed]`
-markers, neighbors and overlapping work, the size, the split verdict and the scouting items. The
-overlapping work opens with one tally per search, from step 1 and step 5: its words, pages read
+markers, neighbors and overlapping work, the size and points, the split verdict and the scouting
+items. The overlapping work opens with one tally per search, from step 1 and step 5: its words, pages read
 and results (for example, "`groom pagination`: 2 pages, 263 results"), with an incomplete search
 marked as such. Show
-the split proposal in full here (each child's title, Done means lines, Size, labels, order and
-blockers, and the parent's full replacement description when it stays as the parent), and each
-spin-off's title, reason, project and any duplicate match.
+the split proposal in full here (each child's title, Done means lines, size and points, labels,
+order and blockers, the parent's estimate, and the parent's full replacement description when it
+stays as the parent), and each spin-off's title, reason, project and any duplicate match.
 
 Then ask every open decision, in rounds of at most 4 questions:
 
 - each open decision from step 3, with what happens today as one option where it applies;
 - the split: approve it as shown, change it, or no split. When the parent stays as the parent, the
   question says that approving covers both the split and the parent's replacement description
-  shown above. Approving a split alone never authorizes removing parent text;
+  shown above. Approving a split alone never authorizes removing parent text. For a ticket pointed
+  13, the question says that "no split" keeps it at 13 (step 4);
 - each spin-off: file a separate ticket, fold it into this ticket, or drop it. A duplicate match is
   named in the question with its id and state;
 - each target that only I can set (step 3).
@@ -397,10 +429,21 @@ removes existing text. It covers:
 - relations the text itself creates: an item whose text names a ticket id the ticket is not yet
   related to says so ("and relates VIL-N"), since Linear relates any id written in a description
   (shared rules, "Ticket ids in text");
-- Size (for a parent that becomes the first child, that child's Size from the split), the
-  Decisions lines from the interview, and the no-split line;
+- Size with its points (step 4; for a parent that becomes the first child, that child's size and
+  points from the split), written in the Size section and set as the estimate with `save_issue`'s
+  `estimate` field (a number), the Decisions lines from the interview, and the no-split line.
+  Setting an estimate where there was none is an add item; changing one is a replace item. Linear
+  can store a different number from the one sent, with no error: a team whose scale stops at 8
+  stores 13 as 8 (team VIL, 2026-11-23). So compare the estimate each `save_issue` returns, for this
+  ticket and for each child, with its points. When they differ, clear that estimate
+  (`estimate: null`) so the wrong number is not counted, keep the points in the Size section, and
+  say so under Needs you with both numbers: that ticket is not ready until its points are stored, by
+  a change to the team's scale (mine) or a split. For a child just filed, clear it with one more `save_issue` on
+  that child and read the reply; if the clear fails, stop before changing the parent, as for a
+  failed filing ("Order of writes", item 2);
 - links to comments that hold evidence a Scope step depends on;
-- for a split, the children to file and the parent's change, exactly as approved;
+- for a split, the children to file and the parent's change (its estimate included), exactly as
+  approved;
 - Agent notes, which opens with the grooming line ("Groomed <date> <time> <zone> against
   <repo> `<commit>`") and may hold three short lists, each only when it has something in it:
   "Checked and current" (each fact with how it was checked), "For the engineer" (the repo rules
@@ -457,15 +500,17 @@ Patches stay the default; three changed sections allow the offer and do not deci
    from this skill's directory), section "File", and create each with its rules: project found live
    (a child takes the parent's project), labels from the team, the format, facts checked or marked
    `[assumed]`, Backlog with a pull condition unless it can start now, the re-run of the duplicate
-   searches just before creating, and `save_issue`. A split's child also carries the Size the split
-   gave it (File step 4 leaves Size for grooming, and this is its grooming). Do not put `groomed` on
+   searches just before creating, and `save_issue`. My interview answer stands in for File step 6's
+   draft and question. Set each one's relations in the `save_issue` call that creates it: `parentId`
+   for a child under a parent that stays, `blockedBy` for a child that waits on another child or for
+   any ticket whose pull condition names an open ticket (unless File mode already sets it), and
+   `relatedTo` the groomed ticket for a spin-off. Set each child's approved points with `estimate`
+   in that same call, and write its size and points in its Size section (File step 4 leaves Size for
+   grooming, and this is its grooming); this overrides File's rule against setting an estimate
+   unasked. A spin-off gets no estimate: it is pointed when it is groomed. Do not put `groomed` on
    any filing here: a split's child gets it in item 5, and a spin-off never does, since it is
-   drafted, not groomed, and `dv:director-mode` skips grooming a ticket that has the label. My
-   interview answer stands in for File step 6's draft and question. Set each one's relations in the
-   `save_issue` call that creates it: `parentId` for a child under a parent that stays, `blockedBy`
-   for a child that waits on another child or for any ticket whose pull condition names an open
-   ticket (unless File mode already sets it), and `relatedTo` the groomed ticket for a spin-off. If
-   a filing fails or returns an error, stop: leave the parent as it is (it still holds all the work)
+   drafted, not groomed, and `dv:director-mode` skips grooming a ticket that has the label. If a
+   filing fails or returns an error, stop: leave the parent as it is (it still holds all the work)
    and do not adopt any ticket id you did not get back from `save_issue`. The create may have
    landed, so search the project for the title and list what you find beside the tickets that exist
    and the draft of each that may not, under Needs you, for me to settle. Delete nothing.
@@ -474,8 +519,8 @@ Patches stay the default; three changed sections allow the offer and do not deci
    groomed ticket only after the `save_issue` call that created it, using the id it returned.
 4. **Then change the groomed ticket.** For a split, the parent's approved change (the reduced
    description with Scope naming the children by id, or its reduction to the first child's scope)
-   goes in one `save_issue` call with all its patches, which Linear applies all or none; this is
-   the one exception to applying patches one at a time. Just before building it, read the ticket
+   goes in one `save_issue` call with all its patches and its estimate (step 4), which Linear
+   applies all or none; this is the one exception to applying patches one at a time. Just before building it, read the ticket
    again and compare its description with the one the split was approved on: if it changed, do not
    save and change nothing more. Say what changed, and list the tickets already filed with their
    ids and relations under Needs you. Any change to them, or a revised split, is a new request. If the call returns an error, read the ticket before
@@ -507,11 +552,13 @@ show me the sections you would add as text, and say I will edit it in Linear (or
 whole-description replacement). Other approved edits, such as the title, still apply.
 
 Relations go on `save_issue` with `blockedBy`, `relatedTo` and `removeBlockedBy`. Do not change
-the state, labels, project, priority, assignee or estimate unless I ask, or unless I chose that
-change in an interview answer. The one exception is the `groomed` label, added as its edit-list
-item and approved with the others (in forks-only mode, applied with them); every other label change
-still needs my request or an interview answer. Change labels with
-`addLabels` and `removeLabels`, since `labels` replaces the whole set.
+the state, labels, project, priority or assignee unless I ask, or unless I chose that change in an
+interview answer. The one exception among labels is `groomed`: on the groomed ticket as its
+edit-list item, approved with the others (in forks-only mode, applied with them), and on a split's
+children as "Order of writes" item 5 says; every other label change still needs my request or an
+interview answer. Set the estimate only to the points in the edit list (step 4) or as the approved
+split sets it, and clear it only when Linear stored a different number (the edit list). Change
+labels with `addLabels` and `removeLabels`, since `labels` replaces the whole set.
 
 ## 8. Report
 
@@ -527,16 +574,18 @@ reply-format rules when the session's instructions give any:
    `list_issue_statuses` names them. A started,
    finished or canceled ticket is not ready to start. After a split, name the child that is ready
    and the one that comes first, as links; do not call the parent ready when the work is in its
-   children. When not ready, name what it lacks or waits on.
+   children. A ticket whose points Linear did not store (step 7) is not ready. When not ready, name
+   what it lacks or waits on.
 2. **Needs you:** what only I can do or decide: a target proposed and not confirmed, an item I did
    not approve that still matters, a repo the session could not read, an overlap or duplicate
    search that did not finish (with its words, so it can be run again). Left out when empty.
-3. One line each: size; split verdict; what changed in the ticket ("text unchanged" when only the
-   label landed, "nothing changed" when nothing did); the `groomed` label: added, already there,
-   or not added and why (not approved, the team has no active `groomed` label, step 7 stopped
-   before it, or the write failed), and for each child filed, whether it got the label (if not:
-   no active label, step 7 stopped before it, or the write failed); spin-offs and children filed,
-   as links; what was not checked; the branch to work it on.
+3. One line each: size and points, with the estimate `get_issue` now shows; split verdict; what
+   changed in the ticket ("text unchanged" when only the label landed, "nothing changed" when
+   nothing did); the `groomed` label: added, already there, or not added and why (not approved, the
+   team has no active `groomed` label, step 7 stopped before it, or the write failed); spin-offs and
+   children filed, as links, each child with the estimate its `save_issue` returned and whether it
+   got the `groomed` label (if not: no active label, step 7 stopped before it, or the write failed);
+   what was not checked; the branch to work it on.
 
 Do not ask whether to start the work and do not start it: starting is a separate request from me.
 
@@ -552,13 +601,16 @@ were none, "Decided without asking: none."
 - Nothing is created or edited in Linear before I approve it. **Forks-only mode** is the exception:
   step 7 applies its edit list without an approval question, and a routine call to file a
   spin-off counts as my approval of it.
-- Edit only the groomed ticket, apart from the `groomed` label that step 7 adds to the split's
-  children it filed. Create only the children and spin-offs I approved. Do not edit or
+- Edit only the groomed ticket, and a child this run filed only to clear an estimate Linear stored
+  wrong (step 7) or to add its `groomed` label ("Order of writes" item 5). Create only the children
+  and spin-offs I approved. Do not edit or
   comment on any other ticket; a follow-up on a neighbor goes under "After the merge" or becomes a
   spin-off.
 - No file edits, branches or commits: grooming reads repos and writes only to Linear.
 - Do not put secrets or credentials in a ticket.
-- A ticket with nothing stale, open or missing, that already has its Size, keeps its text as it
+- A ticket with nothing stale, open or missing, that already has its Size with points and an
+  estimate that matches them (a parent whose points sit on its children has none, and is not
+  pointed), and is not pointed 13 without a recorded yes to keeping it unsplit, keeps its text as it
   is: say in one line that its text needs no edits, and propose an edit list that holds only the
   `groomed` label item (step 7), asked and applied as step 7 says (in forks-only mode, applied
   without the question). When that item is left out (the ticket has the label, or the team has

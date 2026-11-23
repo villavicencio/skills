@@ -1,45 +1,58 @@
 # dv — v0.28.0
 
-Minor release. `dv:groom` adds the `groomed` label when it applies a ticket's grooming, and
-`dv:ticket` allows that label on the children of a split that `dv:groom` files. The other fourteen
-skills have no behaviour changes; their version moves to `0.28.0` only because the suite is
-released as one plugin.
+Minor release. `dv:groom` points every ticket it grooms in Fibonacci story points (1, 2, 3, 5, 8
+or 13) and sets them in Linear's estimate field. The other fifteen skills have no behaviour
+changes; their version moves to `0.28.0` only because the suite is released as one plugin.
 
-Numbering: 0.28.0 follows 0.27.0, which made `dv:pickup` and `dv:handoff` list long-running
-background work.
+Numbering: 0.28.0 follows 0.27.0, which made `dv:pickup` and `dv:handoff` list the shells and
+agents a session left running for a long time.
 
-Why: the board should show which tickets have been groomed. `dv:groom` wrote a dated grooming line
-into Agent notes but never set a label, since step 7 forbade label changes, so the `groomed` label
-was applied by hand and drifted (VIL-853).
+Why: hal's overnight runner is to measure its velocity per worker model and fill each night to
+match, and that needs every groomed ticket to carry points (VIL-837). Grooming sized tickets in
+words only, and its edit step forbade setting the estimate.
 
 ## Changed
 
-- **`dv:groom` step 7, new edit-list item.** The `groomed` label is its own numbered item, added
-  with `addLabels` so the ticket's other labels stay, and applied with the other approved edits,
-  last, so a grooming that stops part way leaves the label off. It is left out when the ticket
-  already has the label, and left out (with the reason in the report) when the team has no active
-  `groomed` label; the skill never creates the label.
-- **Forks-only mode.** The label item is applied with the rest of the edit list, without the
-  approval question, including when it is the only item.
-- **Label rule.** "Do not change the state, labels, …" keeps every other label forbidden and names
-  `groomed` as the one exception.
-- **A ticket that needs no other edits.** The last Rules bullet no longer leaves it untouched: its
-  text stays as it is, and the edit list holds only the label item (asked as usual, or applied
-  without the question in forks-only mode). The grooming line and the no-split line still go in
-  only alongside edits to the text. Forks-only's "Decided without asking" list refers to the
-  ticket's text being unchanged in that case.
-- **Split children, not spin-offs.** The split proposal gives each child its own Size, and the
-  child is filed with it. Once the whole split has landed (children filed, parent changed),
-  `dv:groom` adds `groomed` to each child, when its team has the label, in the same last step as
-  the groomed ticket's label. A split that stops part way leaves every label off, so
-  `dv:director-mode`'s kickoff, which skips grooming for a ticket that has the label, still grooms
-  those children. A spin-off never gets the label: it is drafted, not groomed.
-- **Step 8 report.** Says whether the label was added, already there, or not added and why (not
-  approved, no active label, step 7 stopped before it, or the write failed), for the ticket and
-  each child filed. When only the label landed, the report says the text is unchanged.
-- **`dv:ticket` File step 2.** The rule that leaves off workflow-state labels gains one exception:
-  `dv:groom` adds `groomed` to a split's child it filed once the split is complete; a spin-off
-  never gets it.
+- **`dv:groom`, step 4 "Size and split".** Beside the size word, grooming proposes points with
+  one sentence on what drives them, taken from an anchor table (1 = a one-line docs or config
+  change, up to 13 = too big to run as one ticket). As a guide and not a rule, small is typically
+  1 to 3 points, medium 5, large 8 to 13. Points are proposed in the edit list, not asked, like
+  Size.
+- **Splits above 8 points.** A ticket pointed above 8 gets a proposed split, and each proposed
+  child carries its own points. A 13 is never left or filed unsplit without David's explicit yes.
+  A parent that stays as the parent carries no estimate of its own, so its children's points are
+  not counted twice; a parent that becomes the first child takes that child's points.
+- **Step 7 "Edit".** The points are written in the Size section and set with `save_issue`'s
+  `estimate` field. `estimate` is out of the list of fields grooming must not change (only for
+  the points it proposed), and each approved child gets its estimate in the `save_issue` call that
+  creates it, overriding `dv:ticket` File's rule against setting an estimate unasked. Spin-offs
+  get no estimate until they are groomed. Grooming compares the estimate each `save_issue` returns
+  (the groomed ticket's and each child's) with the points: Linear stores a number outside the
+  team's scale as a different one with no error (team VIL stored 13 as 8 on 2026-11-23, since its
+  scale stops at 8). On a difference it clears that estimate, keeps the points in the Size
+  section, reports it under Needs you, and the ticket is not ready until its points are stored.
+  A child just filed is cleared with one more `save_issue` (the one edit allowed on a ticket other
+  than the groomed one); if that fails, grooming stops before changing the parent.
+- **Step 8 "Report".** The size line shows the points and the estimate as Linear now holds it;
+  each filed child is listed with its estimate.
+- **Forks-only mode.** Setting or changing points is a routine call, like Size. A split stays a
+  fork, so a ticket pointed 13 always comes to David.
+- **Format check and the "stays as it is" rule.** Step 2 flags a Size with no points as a gap. A
+  ticket that already has its Size but no points, or an estimate that doesn't match them, or that
+  is pointed 13 with no recorded yes to keeping it unsplit, is no longer left unchanged.
+- **Split parent.** A parent that stays as the parent keeps a Size section saying the points sit
+  on the children, with its size and points before the split as history; it is not pointed, so
+  the 13 rule does not split it again.
+- **Step 6 "Interview".** The split proposal shows each child's size and points and the parent's
+  estimate, and for a ticket pointed 13 the split question says that "no split" keeps it at 13. In
+  forks-only mode that "no split" is David's answer to a fork, recorded in the fork form.
+
+## Not tested
+
+Tested on scratch tickets in Linear by following this branch's text by hand in forks-only mode
+(the installed plugin was still 0.27.0); see the PR. The default mode's interview and approval
+question, and a run through the installed skill, are proved the first time the released skill
+grooms a ticket.
 
 ## Upgrade
 

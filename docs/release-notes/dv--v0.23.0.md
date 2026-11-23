@@ -26,7 +26,7 @@ rest runs on its own while the home chat keeps him up to date (VIL-917).
     highlight; before that, manager-mode's "Highlights" rule decides (held while the probe is
     pending, never sent if no Director can be verified). Nothing waits on the Director's probe
     answer. If grooming leaves the ticket not ready or splits it, the session stops, asks David
-    in the worktree chat and sends the Director a decision highlight.
+    in the worktree chat and, under the same rule, sends the Director a decision highlight.
   - The kickoff prompt adds `After the Director reports the PR merged, run dv:closeout.`
 - **New: "Relay highlights to me".** Each `Highlight, VIL-N:` message a worktree session sends is
   relayed to David in the home chat as one or two lines under the ticket id as a link. The
@@ -65,13 +65,14 @@ rest runs on its own while the home chat keeps him up to date (VIL-917).
   own PRs, VIL-879), the Director hires one engineer under `dv:manager-mode`'s tier and effort
   rules to update the PR, and reports it as a highlight. The engineer never touches an existing
   worktree, the PR's old one included: it makes a temporary detached worktree at
-  `origin/<branch>`, merges the default branch in, bumps the version, pushes with `git push origin
-  HEAD:<branch>` (fast-forward only; if the push is rejected it stops and reports, never forces)
-  and then removes only that temporary worktree. This also fits pilot PRs, which have no local
-  worktree. A pilot PR counts only once its pilot run has ended; when that can't be told, David is
-  asked. The Director still never merges a PR MergeWren hasn't passed on its new head. After a
-  merge it tells a live session that the PR merged, so the session runs `dv:closeout`, and the
-  branch and worktree wait for the note.
+  `origin/<branch>`, merges `origin/<default branch>` in, bumps the version and pushes with `git
+  push origin HEAD:<branch>`, which only fast-forwards. If the push is rejected it stops and
+  reports, never forces, and the temporary worktree comes to David as a leftover; after a push it
+  removes only that temporary worktree, the one exception to the global removal bullets. This also
+  fits pilot PRs, which have no local worktree. A pilot PR counts only once its pilot run has
+  ended; when that can't be told, David is asked. The Director still never merges a PR MergeWren
+  hasn't passed on its new head. After a merge it tells a live session that the PR merged, so the
+  session runs `dv:closeout`, and the branch and worktree wait for the note.
 - **"Hiring"** names the one exception (the stale-PR update), and the frontmatter description
   and the README entry describe the new behaviour.
 

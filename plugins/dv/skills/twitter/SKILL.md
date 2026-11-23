@@ -4,7 +4,7 @@ description: Fetch and summarize an X/Twitter post (and any long-form Article co
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.19.0"
+  version: "0.19.1"
 ---
 
 # /twitter — Fetch X/Twitter Post and Replies

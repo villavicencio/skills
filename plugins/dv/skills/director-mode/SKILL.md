@@ -287,10 +287,10 @@ session never does.
     -C "<main checkout>" fetch origin` and `git -C "<main checkout>" worktree add --detach
     "<temporary path>" "origin/<branch>"`, with the temporary path outside the main checkout;
     these change only the shared repository, not the main checkout's files or HEAD. In the
-    temporary worktree it merges `origin/<default branch>` in and, in a repo that versions its
-    releases, bumps the version, committing the merge and the bump. It pushes with `git push
-    origin HEAD:<branch>`, which only fast-forwards: if the push is rejected, it stops and
-    reports, never forces, and the temporary worktree, with its unpushed merge, comes to me as a
+    temporary worktree it merges `origin/<default branch>` in, bumps the version in a repo that
+    versions its releases, and commits the merge and any bump. It pushes with `git push origin
+    HEAD:<branch>`, which only fast-forwards: if the push is rejected, it stops and reports,
+    never forces, and the temporary worktree, with its unpushed merge, comes to me as a
     leftover. When it has finished, it removes that temporary worktree by the global removal
     procedure named below (the same Git bullets your own removals use); if that procedure keeps
     the worktree, it reports it to me as a leftover. This also fits a pilot PR, which has no

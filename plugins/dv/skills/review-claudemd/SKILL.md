@@ -4,7 +4,7 @@ description: "Mine recent conversation history to improve CLAUDE.md — surface 
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.20.0"
+  version: "0.20.1"
 ---
 
 # /review-claudemd — Improve CLAUDE.md from Conversation History

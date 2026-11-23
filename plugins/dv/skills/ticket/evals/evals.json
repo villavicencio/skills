@@ -1,0 +1,118 @@
+{
+  "skill": "ticket",
+  "description": "Output-quality evals for dv:ticket File mode's prerequisite rules (VIL-824). Each case runs twice — WITH the skill body injected as system context, and WITHOUT (baseline) — so we can see whether the skill changes behavior in the right direction. Assertions are code-checkable (regex), per the cheat-sheet rule: never 'is it good'.",
+  "model": "claude-sonnet-5",
+  "notes": [
+    "Cases run with NO tools. Each prompt therefore states that the setup steps are done and gives the results of the reads the skill would make (get_issue, gh pr view), so the case tests the decision the skill governs: blocked-by, related, met, or ask. Without that preamble the with-skill model correctly stops at 'Before anything else' for want of Linear tools, which tests nothing.",
+    "The ticket ids (VIL-9101 and up) and PR numbers are invented. They exist only in these prompts.",
+    "Every case except the ambiguous one asks for the state and relations only, not the full ticket, so the answer fits the runner's 500-token cap and the same instruction reaches the baseline. The ambiguous case asks for 'what you would show me next', because the behavior under test is asking before drafting at all.",
+    "must_match_any is a DISJUNCTION, so a case that needs several facts at once uses ONE compound pattern anchored with \\A and built from lookaheads; do not split it into alternatives.",
+    "Negative 'Blocked by VIL-N' patterns match the relation as a label at the start of a line (a list item, bold label or table cell: '- **Blocked by:** VIL-9104'), which is how a draft shows its relations. A sentence that offers the other reading as an option ('if you want it to wait, I would file it blocked by VIL-9104') is not a relation the draft sets, so it does not fail the case. The gap between 'by' and the id allows only non-word characters, so 'Blocked by: none (VIL-9104 is related)' does not match. The 'blocked by PR 140' pattern is mid-sentence, with fixed-width lookbehinds for 'not ', 'no ' and \"n't \".",
+    "The two ask-first cases (ambiguous, canceled) treat a drafted ticket as a failure: a Done means checklist line ('- [ ]') or a Description or Acceptance criteria label at the start of a line. A one-line preview of the coming draft (its title or project) is allowed, because the skill may say what it will show after the answer.",
+    "Where the discriminator is: already-met (a baseline tends to keep a 'Blocked by' line for the merged PR's ticket), ambiguous-asks-first (a baseline drafts the ticket instead of asking which issue), canceled-prerequisite-is-unclear (a baseline keeps the canceled ticket as the blocker), worked-example-is-related (a baseline files it in Backlog). ticket-prerequisite-open and pr-prerequisite-maps-to-ticket are regression guards for VIL-812 and VIL-813: given the read results in the prompt, a baseline may pass them too. Measured on 2026-11-23 with a no-tools claude -p proxy for the runner (Sonnet, no CLAUDE.md), one sample per case."
+  ],
+  "cases": [
+    {
+      "id": "ticket-prerequisite-open",
+      "prompt": "File a ticket: add a --json flag to the context-size command. Pull when VIL-9101 merges.\n\nThis run has no tools. Treat 'Before anything else' and File steps 1 to 3 as done: the Linear tools are loaded, the format is read, the project is 'Argus — Skills & Agent Infrastructure' (team VIL), no label fits, and both duplicate searches found nothing. Team states: Backlog, Todo, In Progress, In Review, Done, Canceled, Duplicate. The reads you would make returned:\n- get_issue VIL-9101: title 'Add a command that prints the context size in tokens', state In Progress, no attachments.\n\nReply with only the state you would file it in, its pull-condition line, and the relations the draft would show, each with its evidence. Not the full ticket.",
+      "intent": "regression of VIL-812: a prerequisite ticket that is open becomes 'Blocked by', the ticket waits in Backlog, and the pull-condition line stays",
+      "baseline_expectation": "May name VIL-9101 as a dependency; often omits the Backlog state or the pull-condition line.",
+      "assertions": {
+        "with_skill": {
+          "must_match_any": [
+            "(?is)\\A(?=.*blocked[ _-]?by\\W{0,12}VIL-9101)(?=.*\\bBacklog\\b)(?=.*pull when[^\\n]*VIL-9101)"
+          ],
+          "must_not_match_any": [
+            "(?i)\\bblocks\\W{0,12}VIL-9101"
+          ]
+        }
+      }
+    },
+    {
+      "id": "pr-prerequisite-maps-to-ticket",
+      "prompt": "File a ticket: teach dv:director-mode to name tickets unblocked by a merge. Wait for villavicencio/skills PR 140 to merge first.\n\nThis run has no tools. Treat 'Before anything else' and File steps 1 to 3 as done: the Linear tools are loaded, the format is read, the project is 'Argus — Skills & Agent Infrastructure' (team VIL), no label fits, and both duplicate searches found nothing. Team states: Backlog, Todo, In Progress, In Review, Done, Canceled, Duplicate. The reads you would make returned:\n- gh pr view 140 -R villavicencio/skills --json state,mergedAt,headRefName,body: {\"state\": \"OPEN\", \"mergedAt\": null, \"headRefName\": \"feat/vil-9102-director-unblocked\", \"body\": \"Adds the unblocked-tickets list.\\n\\nRefs VIL-9102\"}\n- get_issue VIL-9102: title 'List newly unblocked tickets in Director Mode', state In Review, attachments: villavicencio/skills PR 140.\n\nReply with only the state you would file it in and the relations the draft would show, each with its evidence. Not the full ticket.",
+      "intent": "regression of VIL-813 and skills PR 66: a PR prerequisite maps to the ticket it is attached to, with the PR's merge state as evidence",
+      "baseline_expectation": "Tends to record the wait as 'blocked by PR 140' without mapping the PR to VIL-9102.",
+      "assertions": {
+        "with_skill": {
+          "must_match_any": [
+            "(?is)\\A(?=.*blocked[ _-]?by\\W{0,12}VIL-9102)(?=.*\\bOPEN\\b|.*\\bnot (yet )?merged\\b|.*\\bunmerged\\b|.*\\bstill open\\b)"
+          ],
+          "must_not_match_any": [
+            "(?i)(?<!not )(?<!no )(?<!n't )blocked[ _-]?by\\W{0,12}(PR|#)\\s*#?140"
+          ]
+        }
+      }
+    },
+    {
+      "id": "worked-example-is-related",
+      "prompt": "File a ticket: add an eval file for dv:pickup, the way VIL-9104 did it for dv:cite.\n\nThis run has no tools. Treat 'Before anything else' and File steps 1 to 3 as done: the Linear tools are loaded, the format is read, the project is 'Argus — Skills & Agent Infrastructure' (team VIL), no label fits, and both duplicate searches found nothing. Team states: Backlog, Todo, In Progress, In Review, Done, Canceled, Duplicate. The reads you would make returned:\n- get_issue VIL-9104: title 'Add output evals for dv:cite', state In Progress.\n\nReply with only the state you would file it in and the relations the draft would show, each with its evidence. Not the full ticket.",
+      "intent": "regression of VIL-813 and VIL-810: a ticket named only as a worked example is related, not a blocker, and does not hold the ticket in Backlog",
+      "baseline_expectation": "Tends to file it in Backlog as if it waited on something, or to treat the open example ticket as a dependency.",
+      "assertions": {
+        "with_skill": {
+          "must_match_any": [
+            "(?is)\\A(?=.*relat\\w*\\W[^\\n]{0,80}VIL-9104|.*VIL-9104[^\\n]{0,80}\\brelat)"
+          ],
+          "must_not_match_any": [
+            "(?im)^[\\s>*_|-]*blocked[ _-]?by\\W{0,12}VIL-9104",
+            "(?im)^[\\s>*_|-]*(state\\W{0,12})?Backlog\\b"
+          ]
+        }
+      }
+    },
+    {
+      "id": "already-met",
+      "prompt": "File a ticket: make dv:groom read the ticket format from the shared rules file. Do it after villavicencio/skills PR 66 merges.\n\nThis run has no tools. Treat 'Before anything else' and File steps 1 to 3 as done: the Linear tools are loaded, the format is read, the project is 'Argus — Skills & Agent Infrastructure' (team VIL), no label fits, and both duplicate searches found nothing. Team states: Backlog, Todo, In Progress, In Review, Done, Canceled, Duplicate. The reads you would make returned:\n- gh pr view 66 -R villavicencio/skills --json state,mergedAt,headRefName,body: {\"state\": \"MERGED\", \"mergedAt\": \"2026-11-18T16:19:00Z\", \"headRefName\": \"feat/vil-9105-ticket-format\", \"body\": \"Refs VIL-9105\"}\n- get_issue VIL-9105: title 'Adopt one ticket format', state Done.\n\nReply with only the state you would file it in and the relations the draft would show, each with its evidence. Not the full ticket.",
+      "intent": "a prerequisite already met sets no blocked-by, is reported as met, and the ticket is proposed in the ready-to-start state",
+      "baseline_expectation": "Often keeps a dependency note and leaves the state unstated or in Backlog.",
+      "assertions": {
+        "with_skill": {
+          "must_match_any": [
+            "(?is)\\A(?=.*\\b(met|merged)\\b)(?=.*\\bTodo\\b)"
+          ],
+          "must_not_match_any": [
+            "(?im)^[\\s>*_|-]*blocked[ _-]?by\\W{0,12}(VIL-9105|PR|#)",
+            "(?i)\\bstate\\W{0,12}Backlog\\b"
+          ]
+        }
+      }
+    },
+    {
+      "id": "ambiguous-asks-first",
+      "prompt": "File a ticket: switch the statusline to read token counts from the new session store, after the migration lands.\n\nThis run has no tools. Treat 'Before anything else' and File steps 1 to 3 as done: the Linear tools are loaded, the format is read, the project is 'Argus — Skills & Agent Infrastructure' (team VIL), no label fits, and both duplicate searches found nothing. Team states: Backlog, Todo, In Progress, In Review, Done, Canceled, Duplicate. Nothing in the request or the project names a ticket or PR for 'the migration'.\n\nShow me what you would show me next.",
+      "intent": "an unclear prerequisite is asked as a question before any draft; no relation is set on a guess",
+      "baseline_expectation": "Drafts the ticket with the migration as an unnamed dependency.",
+      "assertions": {
+        "with_skill": {
+          "must_match_any": [
+            "(?i)\\b(which|what)\\b[^\\n?]{0,120}\\b(issue|ticket|PR|pull request|migration)\\b[^\\n]*\\?"
+          ],
+          "must_not_match_any": [
+            "(?im)^[\\s>*_|-]*blocked[ _-]?by\\W{0,12}VIL-\\d",
+            "(?m)^\\s*[-*] \\[ \\]",
+            "(?im)^[\\s>*_|-]*(Description|Acceptance criteria)\\b"
+          ]
+        }
+      }
+    },
+    {
+      "id": "canceled-prerequisite-is-unclear",
+      "prompt": "File a ticket: move the hand-off cue into the statusline's ticket segment. Pull when VIL-9106 merges.\n\nThis run has no tools. Treat 'Before anything else' and File steps 1 to 3 as done: the Linear tools are loaded, the format is read, the project is 'Argus — Skills & Agent Infrastructure' (team VIL), no label fits, and both duplicate searches found nothing. Team states: Backlog, Todo, In Progress, In Review, Done, Canceled, Duplicate. The reads you would make returned:\n- get_issue VIL-9106: title 'Add a ticket segment to the statusline', state Canceled.\n\nShow me what you would show me next.",
+      "intent": "a prerequisite ticket that is Canceled gets no blocked-by and counts as unclear, so it is asked (Director decision 2026-11-23)",
+      "baseline_expectation": "Tends to keep VIL-9106 as the blocker, perhaps with a note that it was canceled.",
+      "assertions": {
+        "with_skill": {
+          "must_match_any": [
+            "(?is)\\A(?=.*cancel)(?=.*\\?)"
+          ],
+          "must_not_match_any": [
+            "(?im)^[\\s>*_|-]*blocked[ _-]?by\\W{0,12}VIL-9106",
+            "(?m)^\\s*[-*] \\[ \\]",
+            "(?im)^[\\s>*_|-]*(Description|Acceptance criteria)\\b"
+          ]
+        }
+      }
+    }
+  ]
+}

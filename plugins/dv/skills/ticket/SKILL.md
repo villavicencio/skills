@@ -4,7 +4,7 @@ description: "File a Linear ticket in the agreed format. Filing turns a rough re
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.27.0"
+  version: "0.28.0"
 ---
 
 # /ticket — file a Linear ticket
@@ -113,11 +113,40 @@ what you can read; do not make me answer questions you can look up.
 - **Done means.** A checklist of `- [ ]` lines. Each is a result a command or an observation can
   prove. Write the command or the observation into the line. If you cannot write one, the ticket is
   not ready: say what is missing and ask me.
+- **Prerequisites.** `dv:groom` step 3, "Prerequisites", applies the same rules to an existing
+  ticket; keep the two worded alike.
+  - **Find them.** Mark each place the request, or a ticket or PR it names, makes this ticket wait
+    on something: "pull when", "wait for", "after X merges", "requires X", "blocked by", "once X
+    lands".
+  - **Check each one.** Read its current state: `get_issue` for a ticket. When the condition is a
+    PR merging, read that PR's merge state with
+    `gh pr view <N> -R <owner>/<repo> --json state,mergedAt,headRefName,body`, not only the state
+    of the ticket it belongs to. The repo is the one the request names, or else the current one.
+    A prerequisite that is already met (the PR has merged, the ticket is Done) is not a blocker:
+    say so in the draft. A prerequisite ticket that is Canceled or a Duplicate gets no blocked-by
+    either: its condition can never be met as written, so it counts as unclear ("Ask" below). So
+    does a prerequisite whose state you cannot read.
+  - **Prerequisite or reference.** A ticket named as a worked example, as background or as related
+    work is not a blocker, and a reference alone never implies one. The test: could this ticket's
+    work start and finish correctly if the other were never done? If yes, it is related, not
+    blocking: the draft lists it as related. If I decline that link, drop it, and the text does
+    not name the ticket's id either (shared rules, "Ticket ids in text").
+  - **Map it.** A prerequisite that is not met and maps clearly to one Linear issue goes in the
+    draft as "Blocked by VIL-N", in the right direction (this ticket, the waiting one, is blocked
+    by the prerequisite). A PR maps to the ticket it is attached to (the ticket's attachments, or
+    the `VIL-N` id in the PR's branch name or description). A PR that is still open while the
+    ticket it maps to is Done, Canceled or a Duplicate counts as unclear. The pull-condition line
+    at the end of Why stays; the relation does not replace it.
+  - **Ask.** When the dependency is unclear, or the PR or condition maps to no issue or to more
+    than one, ask me as an interview question before showing the draft. Set no relation on a
+    guess. This holds under "Filing without my confirmation" too. If my answer names no issue
+    (the wait is on a decision, or on a PR no ticket tracks), the ticket waits in Backlog on its
+    pull-condition line with no relation.
 - **State.** Use the team's state for ready to start (an unstarted state, such as Todo) when it can
-  be started now, and its backlog state when it waits for something; check the names with
-  `list_issue_statuses`. For a Backlog ticket add the pull condition as one line at the end of Why,
-  stating the exact event or decision. If you cannot write that line, say so and ask what it waits
-  for; do not add `someday` yourself.
+  be started now: it has no prerequisite, or every prerequisite is met. Use its backlog state when
+  it waits for something; check the names with `list_issue_statuses`. For a Backlog ticket add the
+  pull condition as one line at the end of Why, stating the exact event or decision. If you cannot
+  write that line, say so and ask what it waits for; do not add `someday` yourself.
 - **Agent notes.** Paths, findings, what was checked and what was not, in a collapsed section,
   with the markers the shared rules give.
 - **Length.** Cut what the reader does not need to start and to know when to stop.
@@ -140,9 +169,13 @@ Show, in this order:
 
 - The project, team, state, labels and type, each with where it came from (named in the request,
   the repo's instructions, asked).
+- The relations: each "Blocked by" with its evidence (the ticket's state, or the PR's merge state
+  from `gh pr view`), each prerequisite found already met, and each related ticket. For each, say
+  where it came from (named in the request, found in a ticket or PR it names, found in step 3,
+  asked).
 - The title and the full description as it will be filed.
 - The assumptions, as a short list.
-- Any near-match or related tickets found in step 3.
+- Any near-match found in step 3.
 
 Any interview question comes before the draft. Then end the draft with one plain question: file
 this? Create nothing in Linear before I say yes. The two exceptions are a spin-off and a "NOTICED,
@@ -154,14 +187,25 @@ new fact, and show the draft again.
 
 Run both searches from step 3 again first. If a new match has appeared, go back to step 3.
 
-Call `save_issue` with the team, project, title, description, labels and state. Use real newlines
-in the description, not `\n` escapes. Do not set an assignee, priority or estimate unless I asked.
+Then check each prerequisite again, with the same reads and mapping as step 4, "Prerequisites",
+including the state of each issue a PR maps to. If a read fails, save nothing and tell me which
+one and why. If a state or a mapping changed, rebuild the draft under step 4 (its state, the
+pull-condition line and its relations), show it again as in step 6, and save nothing until I
+answer. Under "Filing without my confirmation", where no draft is shown, file the rebuilt draft
+instead, unless it now raises a question for me.
+
+Call `save_issue` with the team, project, title, description, labels and state of the draft as
+last shown or rebuilt, and its relations: `blockedBy` with the id of each "Blocked by" issue, and
+`relatedTo` with the id of each related ticket. Use real newlines in the description, not `\n`
+escapes. Do not set an assignee, priority or estimate unless I asked.
 
 Then reply with:
 
 - The id as a markdown link, using the url `save_issue` returned (the bare id if none came back),
   and the title.
 - The labels and the state.
+- The relations, read back with `get_issue` (relations included). Name any you did not expect,
+  such as one Linear added from an id in the text (shared rules, "Ticket ids in text").
 - The branch to work it on, under the branch-name rule in the shared rules.
 - For a ticket that needs more than one PR, a pointer to the "Linking a PR to a ticket without
   closing it" section of the format doc.
@@ -186,7 +230,7 @@ For both:
 - **Project and link.** The source ticket is the one the session is working for (a), or the one
   the closeout note is about (b). If it cannot be read, or the note names none, this is not one of
   the two cases: file as usual and wait for my yes. Otherwise the ticket goes in the source
-  ticket's project, and its `save_issue` call sets `relatedTo` to the source ticket. This
+  ticket's project, and its `save_issue` call adds the source ticket to `relatedTo`. This
   overrides step 1 of "File": read the source ticket first, and use its project even when the item
   or the request names another. If that project cannot be used (step 1 skips a canceled project,
   and asks when the project does not settle the team), file nothing and bring it to me as a
@@ -219,7 +263,7 @@ groom from this skill.
 - Nothing is created or edited in Linear without my confirmation, except a spin-off or a
   "NOTICED, NOT FILED" item filed under "Filing without my confirmation". A ticket I ask for by
   hand still waits for my yes.
-- Do not edit or comment on tickets other than the one being filed, apart from the related link
-  a filing under "Filing without my confirmation" adds to its source ticket.
+- Do not edit or comment on tickets other than the one being filed. The relations the filing's
+  `save_issue` call sets (step 7) also show on the other ticket; that is the only change to it.
 - Do not put secrets or credentials in a ticket.
 - A ticket that already meets the format stays as it is.

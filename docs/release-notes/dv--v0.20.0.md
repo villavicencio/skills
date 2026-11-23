@@ -77,3 +77,6 @@ claude plugin update dv@villavicencio-skills
 ```
 
 The new version takes effect in a new session.
+
+A marketplace added from a local checkout needs `git -C <checkout> pull` first; the README's
+"Linux Claude Code instances" section has the three commands.

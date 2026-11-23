@@ -4,7 +4,7 @@ description: "Groom one Linear ticket before anyone works it. Checks it against 
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.24.0"
+  version: "0.25.0"
 ---
 
 # /groom — groom a Linear ticket before work starts
@@ -63,9 +63,22 @@ ask.
 
 **Recording.** Each routine call becomes an add item under Decisions, in this form, with today's
 date: "<decision>. Decided by dv:groom (forks-only), <date>". A fork keeps the default form:
-"<decision>. <my name>, <date>". Size counts as a routine call when it is set or changed, and so
-does the no-split verdict (step 4). A routine call that settles a Decisions line marked open
+"<decision>. <my name>, <date>". A fork the Director answered for me (below) names both:
+"<decision>. Director (<its ListAgents name>) for <my name>, <date>". Size counts as a routine
+call when it is set or changed, and so does the no-split verdict (step 4). A routine call that settles a Decisions line marked open
 replaces that line, as step 6 says for an answer.
+
+**From a worktree session: clear-cut forks go to the Director first.** When this runs in a
+worktree session with `dv:manager-mode` on, send each fork to the Director that manager-mode
+verifies (its "Highlights") before asking me, as manager-mode's "Clear-cut questions go to the
+Director first" says: its skip rule, its message format, one fork per message, its 10-minute
+wait, what counts as an answer, its hold while the Director check is pending, and its fall-back
+to me. The Director answers only a clear-cut fork (`dv:director-mode`, "Answer a clear-cut
+question"); cutting scope never is, and a split, a target or a pull condition only I can set
+comes straight to me. Run no Director probe of your own; if manager-mode has not sent its probe
+yet, it sends it before the first fork goes out. With no Director that can be verified, or for
+each fork whose answer doesn't count, ask me as step 6 says. Grooming goes on in the turn the
+last answer arrives.
 
 ## Before anything else
 
@@ -349,8 +362,11 @@ the two are one unit, filed and edited in step 7 without a second approval.
 
 **Forks-only mode.** Give the findings list as above, and mark each routine call in it with the
 option you took. Then ask only the forks, in rounds of at most 4 questions, each starting with its
-finding in one sentence. If there are no forks, say so in one line, ask nothing and go to step 7.
-Each answer to a fork is recorded in the default form. Each routine call is recorded in the
+finding in one sentence; from a worktree session, each fork goes to the Director first ("From a
+worktree session: clear-cut forks go to the Director first", under "Forks-only mode"), and only
+those it does not answer are asked here. If there are no forks, say so in one line, ask nothing
+and go to step 7. Each answer to a fork is recorded in the default form, or in the Director form
+when the Director answered it. Each routine call is recorded in the
 "Decided by dv:groom (forks-only)" form (see "Forks-only mode" above). Your call to file a
 spin-off stands as the approval to create it with what the proposal showed (folding one in is a
 fork and is asked), subject to step 5's

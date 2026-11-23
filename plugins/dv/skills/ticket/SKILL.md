@@ -4,7 +4,7 @@ description: "File a Linear ticket in the agreed format. Filing turns a rough re
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.27.0"
+  version: "0.28.0"
 ---
 
 # /ticket — file a Linear ticket
@@ -76,7 +76,8 @@ label that fits the ticket's type, going by its description, and an area label o
 description matches the work and it names this project's area. Do not create labels.
 If a label that would help does not exist, say so in the draft. Leave off labels whose
 description marks workflow state, such as `someday`, unless I asked for them: adding or removing
-those is my call.
+those is my call. The one exception: a child or spin-off that `dv:groom` files gets `groomed`
+(its step 7 says when).
 
 ### 3. Existing tickets
 

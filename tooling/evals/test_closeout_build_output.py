@@ -14,8 +14,15 @@ main repo and a linked worktree made here:
   c. a differing ignored file outside the build-output names is still listed as "different"
   d. near-miss names (myvenv/, venv_notes/, a file named venv) are not build output
   e. an entry under two names (node_modules/pkg/__pycache__/x) counts once, under the outermost
-  f. a "not examined" entry (a nested git repo) is build output inside .venv/ and is still
-     listed as "not examined" outside build output
+  f. a nested git repo is never build output: inside .venv/ and outside build output alike it
+     is on its top-level line and listed by path as nested-repo, so it blocks "safe"; a
+     differing file beside it in .venv/ stays build output
+  g. names git quotes in plain porcelain (a space, a non-ASCII letter) are matched and compared
+     as they are: build output with a space in its path stays build output, and a nested repo
+     with a space in its name under a nested .venv/ still blocks "safe"
+  h. a nested repo git cannot open (.git without HEAD, a .git file pointing nowhere, and one
+     holding only its .git folder, which git does not list at all) inside .venv/ is listed
+     once, by path, as nested-repo, not as build output
 
 Step 1 also calls gh and git fetch. A gh shim that always fails keeps the run off the network
 (the block then lists "gh missing" among the checks that did not run, which these checks
@@ -104,8 +111,8 @@ def ignored_section(stdout: str) -> list[str] | None:
 
 
 def run_case(shell: str, path_env: str, block: str, main_files: dict[str, str],
-             wt_files: dict[str, str], wt_repos: tuple[str, ...] = ()
-             ) -> tuple[list[str] | None, str]:
+             wt_files: dict[str, str], wt_repos: tuple[str, ...] = (),
+             wt_broken: tuple[str, ...] = ()) -> tuple[list[str] | None, str]:
     with tempfile.TemporaryDirectory(prefix="vil869-") as work:
         root = Path(work).resolve()
         home = root / "home"
@@ -130,6 +137,17 @@ def run_case(shell: str, path_env: str, block: str, main_files: dict[str, str],
         for rel in wt_repos:  # a nested repo: git lists it as one entry, "not examined"
             (wt / rel).mkdir(parents=True, exist_ok=True)
             git(env, wt / rel, "init", "-q")
+        for rel in wt_broken:  # repos git cannot open: it lists their files one by one
+            (wt / rel / "a").mkdir(parents=True, exist_ok=True)
+            write(wt / rel / "a", "work.txt", "unpushed work\n")
+            git(env, wt / rel / "a", "init", "-q")
+            (wt / rel / "a" / ".git" / "HEAD").unlink()
+            write(wt / rel / "b", "work.txt", "unpushed work\n")
+            write(wt / rel / "b", ".git", "gitdir: /nonexistent/vil869\n")
+            (wt / rel / "c").mkdir(parents=True, exist_ok=True)  # only .git: git lists nothing
+            git(env, wt / rel / "c", "init", "-q")
+            git(env, wt / rel / "c", "commit", "-q", "--allow-empty", "-m", "unpushed")
+            (wt / rel / "c" / ".git" / "HEAD").unlink()
         p = subprocess.run([shell, "-c", block], cwd=wt, env=env, capture_output=True,
                            text=True, timeout=120)
         return ignored_section(p.stdout), f"rc={p.returncode} stdout={p.stdout!r} stderr={p.stderr!r}"
@@ -137,15 +155,15 @@ def run_case(shell: str, path_env: str, block: str, main_files: dict[str, str],
 
 BUILD_LINE = re.compile(r"^  (\S+/) \(any depth\): ")
 TOP_LINE = re.compile(r"^  (\S+)  \d+ entries: ")
-EXAMPLE = re.compile(r"^    (different|not-examined): (.*)$")
+EXAMPLE = re.compile(r"^    (different|not-examined|nested-repo): (.*)$")
 
 
 def scenario(shell: str, awk_label: str, path_env: str, block: str) -> None:
     tag = f"[{shell}, {awk_label} awk]"
 
     def section(name: str, main_files: dict[str, str], wt_files: dict[str, str],
-                wt_repos: tuple[str, ...] = ()):
-        sec, detail = run_case(shell, path_env, block, main_files, wt_files, wt_repos)
+                wt_repos: tuple[str, ...] = (), wt_broken: tuple[str, ...] = ()):
+        sec, detail = run_case(shell, path_env, block, main_files, wt_files, wt_repos, wt_broken)
         if sec is None:
             failures.append(f"{tag} {name}: no 'Ignored entries' section in the output\n     {detail}")
         return sec, detail
@@ -184,7 +202,7 @@ def scenario(shell: str, awk_label: str, path_env: str, block: str) -> None:
     if sec is not None:
         check(f"{tag} c. the outside file is on a top-level line as different",
               "  config.local  1 entries: 0 same as the main checkout, 0 only here, 1 different, "
-              "0 not examined" in sec, detail)
+              "0 not examined, 0 nested git repos" in sec, detail)
         examples = [EXAMPLE.match(l).groups() for l in sec if EXAMPLE.match(l)]
         check(f"{tag} c. the outside file is the one 'different' example",
               examples == [("different", "config.local")], detail)
@@ -216,15 +234,50 @@ def scenario(shell: str, awk_label: str, path_env: str, block: str) -> None:
         check(f"{tag} e. no separate __pycache__/ line",
               not any(l.startswith("  __pycache__/") for l in sec), detail)
 
-    # f. "Not examined" entries: accepted inside build output, still flagged outside it.
-    sec, detail = section("f", {}, {}, (".venv/src/dep", "vendor.local"))
+    # f. Nested git repos block "safe" wherever they are; other build output stays accepted.
+    sec, detail = section("f", {".venv/lib/a.py": "main\n"}, {".venv/lib/a.py": "wt\n"},
+                          (".venv/src/dep", "vendor.local"))
     if sec is not None:
-        check(f"{tag} f. a nested repo inside .venv/ is build output, not examined",
+        check(f"{tag} f. the .venv/ line holds only the non-repo entry",
               "  .venv/ (any depth): 1 entry in 1 directory: 0 same as the main checkout, "
-              "0 only here, 0 different, 1 not examined" in sec, detail)
-        examples = [EXAMPLE.match(l).groups() for l in sec if EXAMPLE.match(l)]
-        check(f"{tag} f. a nested repo outside build output is the one 'not examined' example",
-              examples == [("not-examined", "vendor.local/")], detail)
+              "0 only here, 1 different, 0 not examined" in sec, detail)
+        check(f"{tag} f. the repo inside .venv/ is on the .venv/ top-level line as a nested repo",
+              "  .venv/  1 entries: 0 same as the main checkout, 0 only here, 0 different, "
+              "0 not examined, 1 nested git repos" in sec, detail)
+        examples = sorted(EXAMPLE.match(l).groups() for l in sec if EXAMPLE.match(l))
+        check(f"{tag} f. both nested repos are listed by path as nested-repo",
+              examples == [("nested-repo", ".venv/src/dep/"), ("nested-repo", "vendor.local/")],
+              detail)
+
+    # g. Paths git quotes in plain porcelain output are matched and compared as they are.
+    sec, detail = section("g", {"a/.venv/my pkg/x y.py": "main\n"},
+                          {"a/.venv/my pkg/x y.py": "wt\n", ".venv/caf\u00e9.py": "only here\n",
+                           "sub dir/__pycache__/m.pyc": "only here\n"},
+                          ("a/.venv/src/my repo",))
+    if sec is not None:
+        check(f"{tag} g. files with a space or a non-ASCII letter in .venv/ paths are build output",
+              "  .venv/ (any depth): 2 entries in 2 directories: 0 same as the main checkout, "
+              "1 only here, 1 different, 0 not examined" in sec, detail)
+        check(f"{tag} g. a cache under a top-level dir with a space is build output",
+              "  __pycache__/ (any depth): 1 entry in 1 directory: 0 same as the main checkout, "
+              "1 only here, 0 different, 0 not examined" in sec, detail)
+        check(f"{tag} g. a nested repo with a space in its name blocks, named by path",
+              "    nested-repo: a/.venv/src/my repo/" in sec
+              and "  a/  1 entries: 0 same as the main checkout, 0 only here, 0 different, "
+              "0 not examined, 1 nested git repos" in sec, detail)
+        check(f"{tag} g. no quoted path is left over", not any('"' in l for l in sec), detail)
+
+    # h. Repos git cannot open are walked into by git; they must still block, named once.
+    sec, detail = section("h", {}, {".venv/lib/ok.py": "x\n"}, (), (".venv/src",))
+    if sec is not None:
+        check(f"{tag} h. only the plain file is on the .venv/ build-output line",
+              "  .venv/ (any depth): 1 entry in 1 directory: 0 same as the main checkout, "
+              "1 only here, 0 different, 0 not examined" in sec, detail)
+        examples = sorted(EXAMPLE.match(l).groups() for l in sec if EXAMPLE.match(l))
+        check(f"{tag} h. each unopenable repo is listed once, by path, as nested-repo",
+              examples == [("nested-repo", ".venv/src/a/"), ("nested-repo", ".venv/src/b/"),
+                           ("nested-repo", ".venv/src/c/")],
+              detail)
 
 
 def main() -> int:

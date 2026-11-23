@@ -89,7 +89,11 @@ checkout.
   The branch's copy loads as `dv@inline` over the installed dv. The headless session needs
   every command the skill runs allowed with `--allowed-tools` (that check needed
   `git rev-parse`). Use a throwaway clone, not the main checkout, when the skill's behavior
-  depends on which checkout it runs in.
+  depends on which checkout it runs in. A skill whose fenced bash block is one compound command
+  (`dv:closeout`'s Step 1 is one) is refused by the headless permission checker under a narrow
+  `--allowed-tools` list (`Contains brace with quote character (expansion obfuscation)`;
+  VIL-869, 2026-11-22): allow `Bash` in the throwaway clone and say in the prompt which steps to
+  skip. `--allowed-tools` takes every argument after it, so put the prompt after `--`.
 - CI gates (`.github/workflows/validate.yml`):
   - `agentskills validate plugins/*/skills/*` — spec conformance per skill
   - `tooling/check_skill_placeholders.py` — no `$` followed by a digit in any SKILL.md: Claude Code replaces `$0`, `$1`, ... with the words typed after the skill command, code blocks included (VIL-517). Write awk's `$0` as `$(0)`, don't use shell `$1`, write prices as `USD 350`

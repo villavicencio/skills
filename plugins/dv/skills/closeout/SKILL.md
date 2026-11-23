@@ -656,7 +656,10 @@ would be run as commands, so never send to one.
      whose name is the main checkout folder's basename, then `-`, then a suffix (for example
      `skills-03` for `/Users/david/Projects/skills`). ListAgents shows no working directory, so
      the match is by name. Sessions have been named this way so far; it is not a Claude Code
-     contract, which is why check 1 must agree.
+     contract. The two checks use no shared identifier, so together they show that a chat
+     Director exists in the main checkout and that one peer has the matching name. They do not
+     prove these are the same session (a same-named peer in another checkout would also match),
+     which is why the reply is asked to name its working directory.
 
   With both checks met, send the note to that peer with SendMessage, once. `<note path>` is the
   `note saved:` path Step 3 printed. The receiver sees only the first line until it expands the
@@ -666,12 +669,13 @@ would be run as commands, so never send to one.
   Closeout note, <ticket id, or the branch when there is none>: <the note's Worktree verdict line>
   Saved at: <note path>
   <the note, from its Worktree line to its REPLY NEEDED line>
-  Please reply with one line to say you received it.
+  Please reply with one line to say you received it, naming your working directory.
   ```
 
   Do not resend. A message has no read receipt, and a reply comes back later as a message from
   the Director, often after this turn has ended. Report one of three outcomes: sent and replied
-  (quote the reply); sent with no reply yet; or not sent, naming the check that failed or could
+  (quote the reply, and say whether its working directory is the main checkout: a reply from
+  elsewhere means the note reached the wrong session); sent with no reply yet; or not sent, naming the check that failed or could
   not run. Never write "delivered" without a reply.
   If either check finds none or more than one, or cannot run, nothing is sent: the note stays on
   the clipboard and at its saved path, and the reply names the check and what it showed. Under

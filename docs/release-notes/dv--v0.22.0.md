@@ -15,13 +15,15 @@ hand (VIL-918).
 
 - **`dv:closeout`, "Deliver the note".** The terminal path is unchanged and still comes first.
   When no agent terminal qualifies, closeout looks for a chat Director with two checks that must
-  both agree:
+  each find exactly one candidate:
   - `orca agent list --worktree "path:<main checkout>" --json` lists exactly one entry whose
     `kind` is `chat`. The `state` is not used: a live, idle chat can show `done`.
   - ListAgents lists exactly one peer session (not this one) whose name is the main checkout
     folder's basename, then `-`, then a suffix, for example `skills-03`. This is matched by name
     only, because ListAgents shows no working directory.
-  When both find one session, closeout sends the note to it once with SendMessage. The first
+  The checks share no identifier, so they do not prove the two are the same session; the reply is
+  asked to name its working directory, and a reply from elsewhere is reported as a wrong delivery.
+  When both find one candidate, closeout sends the note to it once with SendMessage. The first
   line reads `Closeout note, <ticket id>: <verdict line>`, so the receiver can tell what it is
   before expanding it. The message then gives the note's saved path and the note's text, and
   asks for a one-line reply. It is not resent.
@@ -42,7 +44,7 @@ hand (VIL-918).
 ## Not tested
 
 Tested on 2026-11-23, on hal: the chat path's delivery step, run by hand from a worktree. Both
-checks found one Director (one `kind: chat` entry in Orca's agent list, one `skills-*` peer in
+checks found one candidate (one `kind: chat` entry in Orca's agent list, one `skills-*` peer in
 ListAgents), the note was sent once with SendMessage, and the Director replied.
 
 Not tested: a Director that is mid-turn when the note arrives (this one was idle), and a full

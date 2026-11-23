@@ -25,7 +25,8 @@ rest runs on its own while the home chat keeps him up to date (VIL-917).
     worktree chat. Once a Director is verified, each fork is also sent to it as a decision
     highlight; before that, manager-mode's "Highlights" rule decides (held while the probe is
     pending, never sent if no Director can be verified). Nothing waits on the Director's probe
-    answer.
+    answer. If grooming leaves the ticket not ready or splits it, the session stops, asks David
+    in the worktree chat and sends the Director a decision highlight.
   - The kickoff prompt adds `After the Director reports the PR merged, run dv:closeout.`
 - **New: "Relay highlights to me".** Each `Highlight, VIL-N:` message a worktree session sends is
   relayed to David in the home chat as one or two lines under the ticket id as a link. The
@@ -62,14 +63,15 @@ rest runs on its own while the home chat keeps him up to date (VIL-917).
   replaced. When a PR falls behind after another merge, its live worktree session updates it by
   merge. With no live session (a pilot PR counts as having none until the pilot runner updates its
   own PRs, VIL-879), the Director hires one engineer under `dv:manager-mode`'s tier and effort
-  rules to merge the default branch in, push normally (no rebase, no force push) and bump the
-  version, and reports it as a highlight. When the PR's branch is still checked out in a leftover
-  worktree, Git won't check it out twice. That worktree could be reused only on a passing closeout
-  recheck, which an unmerged branch never gets, so it is kept and David is told. Otherwise the
-  engineer makes a worktree of its own and removes it when done. A pilot PR counts only once its
-  pilot run has ended; when that can't be told, David is asked. The Director still never merges a
-  PR MergeWren hasn't passed on its new head. After a merge it tells a live session that the PR
-  merged, so the session runs `dv:closeout`, and the branch and worktree wait for the note.
+  rules to update the PR, and reports it as a highlight. The engineer never touches an existing
+  worktree, the PR's old one included: it makes a temporary detached worktree at
+  `origin/<branch>`, merges the default branch in, bumps the version, pushes with `git push origin
+  HEAD:<branch>` (fast-forward only; if the push is rejected it stops and reports, never forces)
+  and then removes only that temporary worktree. This also fits pilot PRs, which have no local
+  worktree. A pilot PR counts only once its pilot run has ended; when that can't be told, David is
+  asked. The Director still never merges a PR MergeWren hasn't passed on its new head. After a
+  merge it tells a live session that the PR merged, so the session runs `dv:closeout`, and the
+  branch and worktree wait for the note.
 - **"Hiring"** names the one exception (the stale-PR update), and the frontmatter description
   and the README entry describe the new behaviour.
 
@@ -78,9 +80,6 @@ rest runs on its own while the home chat keeps him up to date (VIL-917).
 - The closeout recheck is only as good as `dv:closeout`'s inventory: it compares counts, not
   contents, and shares the root gap of an open ticket about closeout and nested git
   repositories.
-- A stale PR whose branch is still checked out in a leftover worktree can't be updated by the
-  Director's engineer: closeout never calls an unmerged branch safe, so the worktree is kept and
-  David is told.
 - `notify_when_idle` reaches only a session on the same machine, so a Director on another host
   never ends a session itself; the worktree stays and David is told.
 - `lsof` cannot read another OS user's process. Such a process makes the one-session check

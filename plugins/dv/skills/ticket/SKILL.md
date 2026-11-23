@@ -193,6 +193,9 @@ For both:
   decision.
 - **A near-match stops the filing.** If step 3's search finds a ticket that is the same problem,
   file nothing and bring the match to me as a decision, with its id and state.
+- **A capped or unfinished duplicate search stops the filing.** If a search in step 3 returns 100
+  results (the cap step 3 describes) or does not finish, file nothing and bring it to me as a
+  decision, with step 3's warning that a ticket matching only in its description may be missed.
 - **If `save_issue` errors or its reply is lost, stop.** The create may have landed. Do not retry
   and do not adopt an id you did not get back. Search the project for the title, and tell me
   what you find, with the draft of the ticket you tried to file, as a possible creation for me to

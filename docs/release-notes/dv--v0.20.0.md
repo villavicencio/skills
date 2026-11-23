@@ -52,6 +52,8 @@ unless I asked (VIL-916).
   - A near-match from the duplicate search stops the filing and goes to me as a decision.
   - The source ticket's project overrides step 1 of "File"; a project that cannot be used stops the
     filing and goes to me as a decision.
+  - A duplicate search that is capped at 100 results or does not finish stops the filing and goes to
+    me as a decision.
   - If `save_issue` errors or its reply is lost, the session stops and reports a possible creation
     instead of retrying, as `dv:groom` does.
   - The session reports the new id: a manager-mode session as a highlight, a director-mode session

@@ -242,7 +242,9 @@ terminal by `orca terminal send`, by clipboard paste, or as a file under
   "NOTICED, NOT FILED" with `dv:ticket`, under its exception (b) ("Filing without my
   confirmation"), and name the new ids in your reply to me.
 - Reply to a SendMessage note with one line saying you received it, sent to the note's `from`
-  address. If the note asks for a reply (its `REPLY NEEDED` line), send one: answer its question.
+  address.
+- If any note asks for a reply (its `REPLY NEEDED` line), answer its question: to the note's
+  `from` address when it has one, otherwise to me in this chat.
 - Run the cleanup the note names as soon as it arrives, without asking me. Do any part that
   doesn't touch the worktree or its branch (such as pulling the main checkout) now. While the
   worktree's session is still running, leave the worktree and its branch in place (see "Merge

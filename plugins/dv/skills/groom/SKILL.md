@@ -356,7 +356,8 @@ spin-off stands as the approval to create it with what the proposal showed, subj
 rule that a spin-off with an incomplete duplicate search is not filed. A spin-off whose duplicate
 search found a match that is open, or Done, and covers the work is not filed: the routine call is
 to drop it, with the match's id and state named in the report, and in its Decisions line when the
-ticket is edited. With any other match, filing it is the routine call, under the rule above. A split stays a question: my
+ticket is edited. With a Canceled match, whether to file it is a fork and is asked. With any
+other match, filing it is the routine call, under the rule above. A split stays a question: my
 answer approves the children and the parent's change together, as above.
 
 ## 7. Edit

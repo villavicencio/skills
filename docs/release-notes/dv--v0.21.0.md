@@ -28,7 +28,8 @@ calls and ask only the forks (VIL-915).
     relation, a conditional step closed (removed or made unconditional), and a Done means line
     reworded or added that proves the existing scope. It takes the option it would have marked
     "(Recommended)". A spin-off whose duplicate search found an open or Done match that covers the
-    work is dropped, not filed, and the match is named; any other match, it files. With no forks, it asks nothing.
+    work is dropped, not filed, and the match is named; a Canceled match makes filing a fork, which
+    it asks; any other match, it files. With no forks, it asks nothing.
   - **No approval question in step 7.** It shows the numbered edit list and applies it. The order
     of writes, the re-reads before a split and the patch rules still hold. A split stays a question,
     and its approval covers the children and the parent's change. The whole-description

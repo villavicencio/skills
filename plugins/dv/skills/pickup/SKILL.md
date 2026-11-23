@@ -168,11 +168,11 @@ a wait loop with no bound. The only other sign may be `/restart` refusing with "
 while work is running in the background". This step lists them.
 
 Shells the harness started are child processes of the Claude Code process whose command sources
-a file under `shell-snapshots`; the block below reads them with `ps -o pid,lstart,etime,command`,
-showing start time and elapsed time, and skips its own shell. If the session-process line is not
+a file under `shell-snapshots`; the block below reads them with `ps -A -o pid=,ppid=,etime=,lstart=,command=`,
+showing parent pid, elapsed time and start time, and skips its own shell. If the session-process line is not
 the Claude Code process, the shell list is unverified, and the kickoff says so.
-If the block prints `(shell list unverified: ps failed)`, the list is unverified too: don't
-report it as empty.
+If the block prints `(shell list unverified: ps failed)` or `(shell list unverified: awk failed)`,
+the list is unverified too: don't report it as empty.
 ```bash
 # This shell is one the harness started, so its parent is the Claude Code process.
 ME=$$; CC=$PPID
@@ -190,12 +190,15 @@ elif ! printf '%s\n' "$PS_OUT" | awk -v me="$ME" -v cc="$CC" '
     print flag $(0); found = 1
   }
   END { if (!found) print "(none)" }'; then
-  echo "(shell list unverified: ps failed)"
+  echo "(shell list unverified: awk failed)"
 fi
 ```
 
-Agents: call ListAgents if the session has it, or else read the harness's task list. For each
-agent still running, note what it is and how long ago it started.
+Agents: call ListAgents if the session has it, or else read the harness's task list. ListAgents
+also lists the current session and peer sessions: keep only background agents this session
+started, and leave out itself and every peer session. If you can't tell which are this
+session's own, the agent list is unverified, and the kickoff says so. For each agent kept that is
+still running, note what it is and how long ago it started.
 
 Anything running longer than about 30 minutes is reported in the kickoff (Step 3): what it is,
 how long it has run, and whether it waits on something that has already finished — for example a

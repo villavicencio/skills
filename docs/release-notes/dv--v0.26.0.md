@@ -15,14 +15,16 @@ background" (VIL-794).
 
 - **`dv:pickup`, new Step 1c "Background work still running".** It lists the shells the harness
   started under the Claude Code process (a shell-list block that reads `ps`, flags any running 30
-  minutes or more, skips its own shell and says so when the list can't be read) and the agents
-  still running (ListAgents, or the harness's task list). Anything running longer than about 30
+  minutes or more, skips its own shell and says so when the list can't be read) and the background agents
+  this session started and that are still running (ListAgents, or the harness's task list, with
+  the current session and peer sessions left out; if ownership can't be told, the list is
+  reported as unverified). Anything running longer than about 30
   minutes is reported: what it is, how long it has run, and whether it waits on something that
   has already finished. The kickoff gets a new "Background work" line for these, which is never
   cut, and the numbered kickoff list shifts by one. The skill stops nothing.
 - **`dv:handoff`, new Step 1c "Background work still running".** The same listing. Work running
   longer than about 30 minutes goes under "Gotchas & Watch-outs" in `HANDOFF.md`, one bullet
-  each, starting "Still running when this handoff was written:". The closing reply adds a
+  each, starting "Still running when this handoff was written:". The agent list is scoped the same way. The closing reply adds a
   "Still running in the background" line. Shorter-lived work is left out, and the skill stops
   nothing.
 

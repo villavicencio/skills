@@ -572,7 +572,8 @@ after this session has ended. Do not run it.
   `wt done <topic>`.
 - Otherwise: `git -C <main checkout> worktree remove <worktree path>`. It keeps the branch;
   deleting a merged branch is a separate procedure and not this skill's.
-- If the Orca CLI resolved (section below), its removal offer replaces this command.
+- If the worktree lives in Orca and its CLI resolved (section below), the Orca removal offer
+  replaces this command; otherwise keep the command above.
 - While the note waits for the probe answers ("Deliver the note", below), say that removing the
   worktree ends this session, and the note is then not sent.
 - **Initialized submodules.** If Step 1 printed "initialized submodules" above 0, `wt done`,
@@ -620,7 +621,8 @@ Reply in this order, short:
 ## Optional: Orca delivery and removal
 
 The terminal send and the removal offer in this section need the worktree to live in Orca and
-its CLI to be on PATH. The chat path in "Deliver the note" (the "None" case) needs only
+its CLI to be on PATH. The worktree lives in Orca when `"<orca CLI>" worktree list --json` lists
+its path. The chat path in "Deliver the note" (the "None" case) needs only
 ListAgents, so it runs without Orca too. Everything above works without either. Resolve the CLI
 and look for the parent's agent terminal:
 
@@ -721,7 +723,8 @@ the answer's `from` address for the note, and the Director replied. Not tested: 
 is mid-turn when a message arrives (that one was idle), a wrong or ambiguous answer, several
 candidates, and a full closeout run end to end.
 
-**Offer the removal.** Only when the block printed an Orca CLI, and Step 2 said safe to delete (or I have accepted the listed
+**Offer the removal.** Only when the worktree lives in Orca, the block printed an Orca CLI, and
+Step 2 said safe to delete (or I have accepted the listed
 build-output lines and reflog-only commits), end the reply with one question. Before running the removal on my yes,
 recheck as Step 5 says; if the verdict changed, do not remove. While the note waits for the
 probe answers, say so before the question: the removal ends this session, and the note is

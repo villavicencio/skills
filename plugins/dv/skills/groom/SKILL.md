@@ -43,8 +43,9 @@ overrule it.
 
 **Forks** (the only decisions forks-only mode asks, as step 6 says):
 
-- a change to scope or to Out of scope: a Scope step added or removed (folding a spin-off in is the
-  exception, a routine call) and any Done means line dropped;
+- a change to scope or to Out of scope: a Scope step added or removed and any Done means line
+  dropped (folding a spin-off in, and closing a conditional step as step 3 says, are the exceptions:
+  routine calls);
 - a design choice between real alternatives, including picking a side where step 3 found
   conflicting rules (Current rules);
 - anything destructive or hard to undo;
@@ -63,7 +64,8 @@ ask.
 **Recording.** Each routine call becomes an add item under Decisions, in this form, with today's
 date: "<decision>. Decided by dv:groom (forks-only), <date>". A fork keeps the default form:
 "<decision>. <my name>, <date>". Size counts as a routine call when it is set or changed, and so
-does the no-split verdict (step 4).
+does the no-split verdict (step 4). A routine call that settles a Decisions line marked open
+replaces that line, as step 6 says for an answer.
 
 ## Before anything else
 
@@ -351,7 +353,9 @@ finding in one sentence. If there are no forks, say so in one line, ask nothing 
 Each answer to a fork is recorded in the default form. Each routine call is recorded in the
 "Decided by dv:groom (forks-only)" form (see "Forks-only mode" above). Your call to file or fold a
 spin-off stands as the approval to create it with what the proposal showed, subject to step 5's
-rule that a spin-off with an incomplete duplicate search is not filed. A split stays a question: my
+rule that a spin-off with an incomplete duplicate search is not filed. A spin-off whose duplicate
+search found a match is not filed: the routine call is to drop it, with the match's id and state
+named in its Decisions line and in the report. A split stays a question: my
 answer approves the children and the parent's change together, as above.
 
 ## 7. Edit

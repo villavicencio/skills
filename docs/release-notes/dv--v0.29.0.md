@@ -17,14 +17,17 @@ was applied by hand and drifted (VIL-853).
 - **`dv:groom` step 7, new edit-list item.** The `groomed` label is its own numbered item, counted
   as an item that adds, added with `addLabels` so the ticket's other labels stay. It goes on last
   (new "Order of writes" item 5), after every other approved item, the estimate included, has
-  landed, so a grooming that stops part way leaves the label off. It is left out when the ticket
+  landed, so a grooming that stops part way, or leaves an approved item for David to edit in Linear
+  (a description with no headings), leaves the label off. It is left out when the ticket
   already has the label, and left out (with the reason in the report) when the team has no active
   `groomed` label; the skill never creates the label.
 - **Forks-only mode.** The label item is applied with the rest of the edit list, without the
   approval question, including when it is the only item.
 - **Label rule.** "Do not change the state, labels, project, priority or assignee" keeps every
   other label forbidden and names `groomed` as the one exception. The estimate rule from 0.28.0
-  is unchanged.
+  is unchanged; two lines beside it now say what step 4 already implied: a parent that becomes the
+  first child takes that child's size and points, and a split's child is filed with its size and
+  points in its Size section.
 - **A ticket that needs no other edits.** The last Rules bullet (Size with points, a matching
   estimate, no unapproved 13) no longer leaves it untouched: its text stays as it is, and the edit
   list holds only the label item (asked as usual, or applied without the question in forks-only
@@ -38,7 +41,8 @@ was applied by hand and drifted (VIL-853).
   kickoff, which skips grooming for a ticket that has the label, still grooms those children. A
   spin-off never gets the label: it is drafted, not groomed.
 - **Step 8 report.** Says whether the label was added, already there, or not added and why (not
-  approved, no active label, step 7 stopped before it, or the write failed), for the ticket and
+  approved, no active label, step 7 stopped before it, an approved item did not land, or the write
+  failed), for the ticket and
   each child filed, beside the size, points and estimate lines from 0.28.0. When only the label
   landed, the report says the text is unchanged.
 - **`dv:ticket` File step 2.** The rule that leaves off workflow-state labels gains one exception:

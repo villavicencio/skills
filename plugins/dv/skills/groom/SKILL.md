@@ -438,9 +438,9 @@ removes existing text. It covers:
   ticket and for each child, with its points. When they differ, clear that estimate
   (`estimate: null`) so the wrong number is not counted, keep the points in the Size section, and
   say so under Needs you with both numbers: that ticket is not ready until its points are stored, by
-  a change to the team's scale (mine) or a split. For a child just filed, clear it with one more `save_issue` on
-  that child and read the reply; if the clear fails, stop before changing the parent, as for a
-  failed filing ("Order of writes", item 2);
+  a change to the team's scale (mine) or a split. For a child just filed, clear it with one more
+  `save_issue` on that child and read the reply; if the clear fails, stop before changing the
+  parent, as for a failed filing ("Order of writes", item 2);
 - links to comments that hold evidence a Scope step depends on;
 - for a split, the children to file and the parent's change (its estimate included), exactly as
   approved;
@@ -472,13 +472,12 @@ approves only the items that add.
 
 **Forks-only mode:** do not ask this question. Show the numbered edit list, then apply every item
 under "Order of writes" and "Patches" below, which still hold in full; the `groomed` label item is
-applied with the rest the same way, also when it is the only item (last Rules bullet). My answers
-to the fork questions, including a split approval, were the approval for what they decided. Do
-not offer the
-whole-description replacement, which needs its own question; use patches. For a description that
-has text but no headings, do what "Patches" says: leave it, show the sections you would add as
-text in the report, say I will edit it in Linear, and list that item as not landed. Other items
-still apply.
+applied with the rest the same way, also when it is the only item (last Rules bullet). My answers to
+the fork questions, including a split approval, were the approval for what they decided. Do not
+offer the whole-description replacement, which needs its own question; use patches. For a
+description that has text but no headings, do what "Patches" says: leave it, show the sections you
+would add as text in the report, say I will edit it in Linear, and list that item as not landed.
+Other items still apply.
 
 **Whole-description replacement.** When the interview answers change three or more sections, you
 may offer this instead of patches: show the complete new description, say that the old one stays
@@ -531,8 +530,10 @@ Patches stay the default; three changed sections allow the offer and do not deci
 5. **The `groomed` label goes on last,** after every other approved item has landed, so a ticket
    whose grooming stopped part way is not marked groomed: on the groomed ticket, and for a split on
    each child it filed, with `addLabels` (File step 2 allows it), when the child's team has an
-   active `groomed` label. If step 7 stopped for any reason (items 1, 2 or 4, or a patch that could
-   not be placed), leave the label off every ticket and say so in the report.
+   active `groomed` label. If step 7 stopped for any reason (items 1, 2 including a failed estimate
+   clear, or 4, or a patch that could not be placed), or an approved item did not land because it
+   was left for me to edit in Linear (a description with no headings), leave the label off every
+   ticket and say so in the report.
 
 **Patches.** Edit with `patch` operations on `save_issue` (`replace`, `insert_before`,
 `insert_after`, `replace_range`, and `append` for an empty description), not by sending the whole
@@ -582,18 +583,18 @@ reply-format rules when the session's instructions give any:
 3. One line each: size and points, with the estimate `get_issue` now shows; split verdict; what
    changed in the ticket ("text unchanged" when only the label landed, "nothing changed" when
    nothing did); the `groomed` label: added, already there, or not added and why (not approved, the
-   team has no active `groomed` label, step 7 stopped before it, or the write failed); spin-offs and
-   children filed, as links, each child with the estimate its `save_issue` returned and whether it
-   got the `groomed` label (if not: no active label, step 7 stopped before it, or the write failed);
-   what was not checked; the branch to work it on.
+   team has no active `groomed` label, step 7 stopped before it, an approved item did not land, or
+   the write failed); spin-offs and children filed, as links, each child with the estimate its
+   `save_issue` returned and whether it got the `groomed` label (if not: no active label, step 7
+   stopped before it, or the write failed); what was not checked; the branch to work it on.
 
 Do not ask whether to start the work and do not start it: starting is a separate request from me.
 
 **Forks-only mode:** under item 3, "what changed in the ticket" lists each edit-list item that
 landed, one line each, and any that did not (step 7 stops on a failed write). End the report
 with a short list headed "Decided without asking", one line per routine call ("<decision>: <option taken>"), the same calls recorded under Decisions (when the
-ticket's text is left unchanged under the last Rules bullet, they are listed and not recorded); when there
-were none, "Decided without asking: none."
+ticket's text is left unchanged under the last Rules bullet, they are listed and not recorded);
+when there were none, "Decided without asking: none."
 
 ## Rules
 
@@ -603,9 +604,8 @@ were none, "Decided without asking: none."
   spin-off counts as my approval of it.
 - Edit only the groomed ticket, and a child this run filed only to clear an estimate Linear stored
   wrong (step 7) or to add its `groomed` label ("Order of writes" item 5). Create only the children
-  and spin-offs I approved. Do not edit or
-  comment on any other ticket; a follow-up on a neighbor goes under "After the merge" or becomes a
-  spin-off.
+  and spin-offs I approved. Do not edit or comment on any other ticket; a follow-up on a neighbor
+  goes under "After the merge" or becomes a spin-off.
 - No file edits, branches or commits: grooming reads repos and writes only to Linear.
 - Do not put secrets or credentials in a ticket.
 - A ticket with nothing stale, open or missing, that already has its Size with points and an

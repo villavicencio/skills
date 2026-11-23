@@ -183,12 +183,20 @@ For both:
 - **Same steps as any other ticket.** The format, the fact check (step 5) and both duplicate
   searches (step 3, and again just before step 7) all run. A question the draft cannot settle by
   reading (see "Before anything else", item 3) still goes to me; only the yes is skipped.
-- **Project and link.** The ticket goes in the source ticket's project, and its `save_issue` call
-  sets `relatedTo` to the source ticket. The source ticket is the one the session is working for
-  (a), or the one the closeout note is about (b). If it cannot be read, or the note names none,
-  this is not one of the two cases: file as usual and wait for my yes.
+- **Project and link.** The source ticket is the one the session is working for (a), or the one
+  the closeout note is about (b). If it cannot be read, or the note names none, this is not one of
+  the two cases: file as usual and wait for my yes. Otherwise the ticket goes in the source
+  ticket's project, and its `save_issue` call sets `relatedTo` to the source ticket. This
+  overrides step 1 of "File": read the source ticket first, and use its project even when the item
+  or the request names another. If that project cannot be used (step 1 skips a canceled project,
+  and asks when the project does not settle the team), file nothing and bring it to me as a
+  decision.
 - **A near-match stops the filing.** If step 3's search finds a ticket that is the same problem,
   file nothing and bring the match to me as a decision, with its id and state.
+- **If `save_issue` errors or its reply is lost, stop.** The create may have landed. Do not retry
+  and do not adopt an id you did not get back. Search the project for the title, and tell me
+  what you find, with the draft of the ticket you tried to file, as a possible creation for me to
+  settle; delete nothing. `dv:groom` handles a failed filing the same way.
 - **Report the new id.** Give its link and title. A manager-mode session sends it to the
   Director as a highlight (see `dv:manager-mode`, "Highlights"). A director-mode session names it
   in its reply to me.

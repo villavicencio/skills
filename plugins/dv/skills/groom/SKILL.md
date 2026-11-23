@@ -355,7 +355,7 @@ Each answer to a fork is recorded in the default form. Each routine call is reco
 spin-off stands as the approval to create it with what the proposal showed, subject to step 5's
 rule that a spin-off with an incomplete duplicate search is not filed. A spin-off whose duplicate
 search found a match is not filed: the routine call is to drop it, with the match's id and state
-named in its Decisions line and in the report. A split stays a question: my
+named in the report, and in its Decisions line when the ticket is edited. A split stays a question: my
 answer approves the children and the parent's change together, as above.
 
 ## 7. Edit

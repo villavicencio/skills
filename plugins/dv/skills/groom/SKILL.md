@@ -361,7 +361,9 @@ ticket is edited. With a Canceled match, whether to file it is a fork and is ask
 other match, filing it is the routine call, under the rule above. That step 6 decision stands in
 for File step 3's duplicate question, as my interview answer stands in for File step 6's draft; if
 the duplicate search just before creating finds a match step 6 had not seen, that is a fork: ask
-it, and do not file. A split stays a question: my
+it and hold that filing until the answer comes. If the answer is to file, re-run the duplicate
+check and file it under File's rules. On any other answer, do not file it, and name the match in
+the report. A split stays a question: my
 answer approves the children and the parent's change together, as above.
 
 ## 7. Edit

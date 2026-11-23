@@ -2,7 +2,7 @@
 
 Minor release. `dv:manager-mode` tells the manager to brief engineers on how to wait for a
 MergeWren review, to leave no background shell behind, and to stop a finished agent that is still
-listed as waiting. The other sixteen skills have no behaviour changes; their version moves to
+listed as waiting once its final report is verified. The other fifteen skills have no behaviour changes; their version moves to
 `0.24.0` only because the suite is released as one plugin.
 
 Numbering: 0.24.0 follows 0.23.0, which made `dv:director-mode` run a ticket from kickoff to
@@ -24,8 +24,9 @@ harness moved to the background, then leaving that shell running after the PR me
 - **"A "completed" notification can be interim"** adds that an engineer waiting on a reviewer can
   send one per review round, so several on one PR are expected.
 - **New: "Stop a finished agent left waiting".** If an agent is still listed as waiting on a
-  shell after it has reported and its PR has merged, the manager stops it (TaskStop) and says so
-  in its next report to David.
+  shell after it has sent its final report (checked against evidence, as the "interim
+  notification" rule says) and its PR has merged, the manager stops that shell and the agent
+  (TaskStop) and says so in its next report to David.
 
 ## Not tested
 

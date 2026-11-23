@@ -20,7 +20,9 @@ unless I asked (VIL-916).
   a hire.
   - **Rebase.** When the Director says the ticket's PR is behind the default branch, or `gh` shows
     it, the manager hires an engineer to rebase it and, in a repo that versions its releases, bump
-    the version. MergeWren must pass the new head before the PR goes back to the Director.
+    the version. The engineer reads the PR branch's remote head first, pushes with
+    `--force-with-lease` against that head, and stops and reports if the head changed or ownership
+    of the branch is unclear. MergeWren must pass the new head before the PR goes back to the Director.
   - **Review findings.** An engineer fixes or declines each MergeWren finding and pushes again,
     under the "Fix rounds" rules in dotfiles `docs/agents/code-review.md`. After two fix rounds the
     open list goes to me.

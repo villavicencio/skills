@@ -115,16 +115,18 @@ what you can read; do not make me answer questions you can look up.
   not ready: say what is missing and ask me.
 - **Prerequisites.** Find, check, tell apart, map and ask are worded as in `dv:groom` step 3,
   "Prerequisites", which applies them to an existing ticket; keep the shared parts alike. The
-  cases that count as unclear (a closed PR or ticket that can no longer meet the condition, or a
-  state you cannot read) are File mode's own.
+  cases that count as unclear (a Canceled or Duplicate ticket, a PR closed without merging, an
+  open PR whose ticket is Done, Canceled or a Duplicate, or a state you cannot read) are File
+  mode's own.
   - **Find them.** Mark each place the request, or a ticket or PR it names, makes this ticket wait
     on something: "pull when", "wait for", "after X merges", "requires X", "blocked by", "once X
     lands".
   - **Check each one.** Read its current state: `get_issue` for a ticket. When the condition is a
     PR merging, read that PR's merge state with
     `gh pr view <N> -R <owner>/<repo> --json state,mergedAt,headRefName,body`, not only the state
-    of the ticket it belongs to. The repo is the one the request, or the ticket or PR that names
-    the PR, gives, or else the current one. A prerequisite that is already met (the PR has
+    of the ticket it belongs to: for a PR, its merge state decides whether the condition is met.
+    The repo is the one the request, or the ticket or PR that names the PR, gives, or else the
+    current one. A prerequisite that is already met (the PR has
     merged, the ticket is Done) is not a blocker: say so in the draft. A prerequisite ticket that
     is Canceled or a Duplicate gets no blocked-by either, nor does a PR closed without merging:
     the condition can never be met as written, so it counts as unclear ("Ask" below). So does a
@@ -174,9 +176,9 @@ Show, in this order:
   the repo's instructions, asked).
 - The relations: each "Blocked by" with its evidence (the ticket's state, or the PR's merge state
   from `gh pr view`), each prerequisite found already met, each related ticket from step 4, and
-  each link an id in the text will add (shared rules, "Ticket ids in text"). For each, say where
-  it came from (named in the request, found in a ticket or PR it names, asked, written in the
-  text).
+  each other link an id in the text will add (shared rules, "Ticket ids in text"). For each, say
+  where it came from (named in the request, found in a ticket or PR it names, asked, written in
+  the text).
 - The title and the full description as it will be filed.
 - The assumptions, as a short list.
 - Any near-match or related tickets found in step 3. These are listed, not linked, unless I ask.

@@ -486,9 +486,9 @@ reply-format rules when the session's instructions give any:
 
 Do not ask whether to start the work and do not start it: starting is a separate request from me.
 
-**Forks-only mode:** under item 3, "what changed in the ticket" lists each edit-list item as
-written, one line each. End the report with a short list headed "Decided without asking", one line
-per routine call ("<decision>: <option taken>"), the same calls recorded under Decisions (when the
+**Forks-only mode:** under item 3, "what changed in the ticket" lists each edit-list item that
+landed, one line each, and any that did not (step 7 stops on a failed write). End the report
+with a short list headed "Decided without asking", one line per routine call ("<decision>: <option taken>"), the same calls recorded under Decisions (when the
 ticket is left unchanged under the last Rules bullet, they are listed and not recorded); when there
 were none, "Decided without asking: none."
 

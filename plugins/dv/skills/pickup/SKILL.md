@@ -4,7 +4,7 @@ description: "Read this branch's handoff and orient: anchor on its commit (N com
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.20.1"
+  version: "0.21.0"
 ---
 
 # /pickup — Pick Up Where We Left Off

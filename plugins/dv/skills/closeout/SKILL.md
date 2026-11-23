@@ -4,7 +4,7 @@ description: "Close out a finished worktree session and brief the parent session
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.20.1"
+  version: "0.21.0"
 ---
 
 # /closeout — close out a finished worktree session

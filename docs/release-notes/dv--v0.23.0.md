@@ -20,10 +20,11 @@ rest runs on its own while the home chat keeps him up to date (VIL-917).
   - The `orca worktree create` line passes `--surface chat`, so the session opens as an Orca
     chat whatever the host's Chat UI setting is.
   - The kickoff prompt invokes `dv:manager-mode` first. Its grooming line (kept only for a ticket
-    that isn't groomed) now comes after that and reads `Before the first hire, run dv:groom VIL-N
-    forks-only, and start the work once its forks are settled. Send each fork to the Director as
-    a decision highlight.` Manager-mode comes first so that the session has found the Director
-    before a grooming fork needs to reach David.
+    that isn't groomed) comes after that: grooming waits until the Director has answered
+    manager-mode's probe, or no Director can be verified, then runs `dv:groom VIL-N forks-only`,
+    and the work starts once its forks are settled. Each fork is asked in the worktree chat and,
+    when a Director is verified, also sent to it as a decision highlight, so it reaches David's
+    home chat.
   - The kickoff prompt adds `After the Director reports the PR merged, run dv:closeout.`
 - **New: "Relay highlights to me".** Each `Highlight, VIL-N:` message a worktree session sends is
   relayed to David in the home chat as one or two lines under the ticket id as a link. The
@@ -56,8 +57,9 @@ rest runs on its own while the home chat keeps him up to date (VIL-917).
   its own PRs, VIL-879), the Director hires one engineer under `dv:manager-mode`'s tier and
   effort rules to merge the default branch in, push normally (no rebase, no force push) and bump
   the version, and reports it as a highlight. When the PR's branch is still checked out in a
-  worktree, the engineer works there (no session in it, clean tree), since Git won't check the
-  branch out twice; otherwise it makes a worktree of its own. A pilot PR counts only once its
+  worktree, the engineer works there (no session in it, a clean tree with no untracked files, no
+  operation in progress), since Git won't check the branch out twice, and leaves that worktree
+  in place; otherwise it makes a worktree of its own and removes it when done. A pilot PR counts only once its
   pilot run has ended; when that can't be told, David is asked. The Director still never merges a PR MergeWren
   hasn't passed on its new head. After a merge it tells a live session that the PR merged, so the
   session runs `dv:closeout`, and the branch and worktree wait for the note.

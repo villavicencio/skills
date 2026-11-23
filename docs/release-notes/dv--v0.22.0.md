@@ -53,9 +53,11 @@ hand (VIL-918).
 - **`dv:manager-mode` "Highlights".** The Director is verified once per session with the same
   candidates, probe and one-Director rule, pointing at closeout's section by name. It needs
   ListAgents, not Orca, so a Director in an agent terminal or on a machine without Orca gets
-  highlights too. The verified
-  name and its answer's `from` address go in the written state; the probe runs again if a send
-  fails or ListAgents no longer lists that name. Highlights that come up while the probe waits
+  highlights too. The rule covers the candidates probed until a Director is verified (at most
+  three), including ones ListAgents lists later; once a Director is verified, that result holds for the session and
+  a candidate that appears later is not probed. The verified name and its answer's `from` address
+  go in the written state; verification runs again from scratch if a send fails or ListAgents no
+  longer lists that name. Highlights that come up while the probe waits
   go in one message once the Director is verified; until then none is sent. Nothing else in
   manager-mode changed.
 - **README**, the `dv:closeout` and `dv:manager-mode` entries describe the probe.

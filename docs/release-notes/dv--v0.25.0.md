@@ -16,9 +16,11 @@ cheaper critique had no way to ask for it (VIL-801).
   `/dv:critique model: opus effort: high migrate from NVM to fnm`. `model` takes `haiku`,
   `sonnet` or `opus`; `effort` takes `low`, `medium`, `high`, `xhigh` or `max`. Either may be
   left out, and a leading `model:` or `effort:` is a setting, not part of the change to critique.
-- **`dv:critique`, Step 2 and Notes.** All three agents run on the given `model` (default:
-  Sonnet). If an `effort` is given, each agent gets it; if not, none is set. With no settings
-  the behaviour is unchanged.
+- **`dv:critique`, Step 2 and Notes.** In Claude Code, all three agents run on the given `model`
+  (default: Sonnet). If an `effort` is given, each agent gets it; if not, none is set. With no
+  settings the behaviour is unchanged. Under Codex, `model:` and `effort:` are not applied yet:
+  the three agents run as they do today. Running them on named Codex models is a separate
+  ticket, "Make dv:critique's three agents run on named Codex models in a Codex session".
 - **`dv:critique`, usage examples** use the `/dv:critique` name instead of `/critique`.
 
 ## Not tested

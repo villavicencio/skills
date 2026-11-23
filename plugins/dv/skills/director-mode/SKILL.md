@@ -283,10 +283,11 @@ header out, so read it from the saved copy named on the message's `Saved at:` li
    pid,ppid,user,comm`, exactly one `claude` process (`comm` is `claude` or ends in `/claude`)
    has the worktree as its working directory. Read each one's directory with
    `lsof -a -p <pid> -d cwd -Fn` (the line that starts with `n`). A process whose directory
-   `lsof` can't read, such as another user's, makes this check unable to run, unless that user
-   can't reach the worktree: the user is not root, and a directory on the worktree's path that
+   `lsof` can't read makes this check unable to run, unless that process's user can't reach the
+   worktree: the user is neither root nor this user, and a directory on the worktree's path that
    this user owns has mode `drwx------` and no ACL (`/bin/ls -led <dir>` prints no numbered ACL
-   line). The one process's command line (`ps -o command= -p <pid>`) gives the session id, its
+   line). One of this user's processes whose directory can't be read always makes this check
+   unable to run. The one process's command line (`ps -o command= -p <pid>`) gives the session id, its
    `--session-id=<id>` or `--resume=<id>` value. When the note's `from` address names a process
    (a `uds:` socket path ending in `/<pid>.sock`), it must be this one.
 4. **Nothing changed since the note.** With `git -C <worktree path>`: `branch --show-current`

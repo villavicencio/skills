@@ -62,8 +62,9 @@ rest runs on its own while the home chat keeps him up to date (VIL-917).
 - `notify_when_idle` reaches only a session on the same machine, so a Director on another host
   never ends a session itself; the worktree stays and David is told.
 - `lsof` cannot read another OS user's process. Such a process makes the one-session check
-  unable to run, unless that user can't reach the worktree (not root, and a directory on the
-  worktree's path that this user owns is `drwx------` with no ACL).
+  unable to run, unless that user can't reach the worktree (not root and not this user, and a
+  directory on the worktree's path that this user owns is `drwx------` with no ACL). One of this
+  user's own processes that can't be read always makes the check unable to run.
 - A message David typed into the worktree session counts against the transcript check when it
   is a `user` record or a queued-command attachment not marked as from a peer or a task
   notification. Record kinds Claude Code adds later are not known to this check.

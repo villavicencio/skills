@@ -27,6 +27,35 @@ checkout.
 ## Workflow
 - Branch-first for substantive work; small doc/typo updates may commit directly to main
 - Each plugin release ideally lands as one PR
+- **Releases publish themselves (VIL-809).** `.github/workflows/release.yml` runs after
+  `validate` passes on a push to `main`: for each plugin whose `plugin.json` version has no
+  GitHub release yet, it creates the tag `<plugin>--v<version>` at that push's commit, publishes
+  the release with `docs/release-notes/<plugin>--v<version>.md` as its notes, and starts
+  `validate` on the tag. If `validate` didn't pass, the run fails naming the commit and the
+  `validate` run, and nothing is released. A person still does three things: bump the version
+  (plugin.json and every skill's `metadata.version`), write that notes file, and merge. Don't
+  tag or create a release by hand for a version the workflow will release; that races it.
+  Logic and rules are in `tooling/release_plugins.py` (unit tests:
+  `python3 tooling/test_release_plugins.py`, which both jobs run first). Its checks run before
+  it creates anything; any of these fails the run with nothing tagged or released: a directory
+  under `plugins/` without a readable `.claude-plugin/plugin.json`, a missing or empty notes
+  file, a draft release on the tag, a malformed name or version, or a version below the
+  plugin's highest release with no tag of its own. A tag with no release gets its release on
+  that tag (`--verify-tag`, no `--target`, so the tag stays put); a version that already has a
+  release is skipped. "Latest" goes only to a version above every earlier release of that
+  plugin (with one plugin, that is the highest release).
+  A run releases only the version in its own checkout's `plugin.json`, so a version gets no
+  automatic release when it is replaced before a commit carrying it passes `validate`, or when
+  two quick merges finish `validate` out of order and the newer version releases first (the
+  older one is then refused as lower). To release such a version by hand, at a commit that
+  carries it and passed `validate` (if none did, leave it unreleased), run from a checkout
+  that has its notes file:
+  `gh release create <plugin>--v<version> --repo villavicencio/skills --target <sha> --title "<plugin> v<version>" --notes-file docs/release-notes/<plugin>--v<version>.md --latest=false`
+  If starting `validate` on the tag fails, the run fails and its error gives the
+  `gh workflow run` command to start it by hand; a re-run will not retry it, since the release
+  then exists. On a pull request the same workflow runs `release_plugins.py --dry-run` with a
+  read-only token, so a release PR without its notes file fails before it merges; run that
+  locally to see what a merge would publish.
 - **PR review: MergeWren (review-stack) is the gate, since 2026-11-03.** It reviews every new
   head of a non-draft PR here on its own (onboarded with posting on, VIL-540); there is no
   trigger and no quota, so pushing a fix starts the next round. Wait for its verdict with
@@ -55,6 +84,16 @@ checkout.
   if it exists there and this repo ignores it, so list each file literally and ignore it in
   `.gitignore`. Keep anything that changes state other checkouts depend on out of the script
   (uv's shared cache is fine); `dv:orca-setup` covers how to change it.
+- Live-checking a skill change before merge (VIL-908, 2026-11-22): in a throwaway clone of
+  this repo, run `claude -p --plugin-dir <worktree>/plugins/dv --allowed-tools "Bash(git rev-parse:*)" -- "<prompt>"`.
+  The branch's copy loads as `dv@inline` over the installed dv. The headless session needs
+  every command the skill runs allowed with `--allowed-tools` (that check needed
+  `git rev-parse`). Use a throwaway clone, not the main checkout, when the skill's behavior
+  depends on which checkout it runs in. A skill whose fenced bash block is one compound command
+  (`dv:closeout`'s Step 1 is one) is refused by the headless permission checker under a narrow
+  `--allowed-tools` list (`Contains brace with quote character (expansion obfuscation)`;
+  VIL-869, 2026-11-22): allow `Bash` in the throwaway clone (`--allowed-tools "Bash" -- "<prompt>"`) and say in the
+  prompt which steps to skip. `--allowed-tools` takes every argument after it, so put the prompt after `--`.
 - CI gates (`.github/workflows/validate.yml`):
   - `agentskills validate plugins/*/skills/*` — spec conformance per skill
   - `tooling/check_skill_placeholders.py` — no `$` followed by a digit in any SKILL.md: Claude Code replaces `$0`, `$1`, ... with the words typed after the skill command, code blocks included (VIL-517). Write awk's `$0` as `$(0)`, don't use shell `$1`, write prices as `USD 350`

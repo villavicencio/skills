@@ -1,7 +1,7 @@
 # dv — v0.28.0
 
 Minor release. `dv:groom` adds the `groomed` label when it applies a ticket's grooming, and
-`dv:ticket` allows that label on the children and spin-offs `dv:groom` files. The other fourteen
+`dv:ticket` allows that label on the children of a split that `dv:groom` files. The other fourteen
 skills have no behaviour changes; their version moves to `0.28.0` only because the suite is
 released as one plugin.
 
@@ -28,13 +28,15 @@ was applied by hand and drifted (VIL-853).
   without the question in forks-only mode). The grooming line and the no-split line still go in
   only alongside edits to the text. Forks-only's "Decided without asking" list refers to the
   ticket's text being unchanged in that case.
-- **Children and spin-offs.** Those filed in step 7 get `groomed` when their team has the label,
-  and the split and spin-off proposals show it among their labels.
+- **Split children, not spin-offs.** The children of a split filed in step 7 get `groomed` when
+  their team has the label, and the split proposal shows it among their labels. A spin-off does
+  not get it: it is drafted, not groomed, and `dv:director-mode`'s kickoff skips grooming for a
+  ticket that has the label.
 - **Step 8 report.** Says whether the label was added, already there, or not added and why (not
   approved, no active label, step 7 stopped before it, or the write failed), for the ticket and
-  each child or spin-off. When only the label landed, the report says the text is unchanged.
+  each child filed. When only the label landed, the report says the text is unchanged.
 - **`dv:ticket` File step 2.** The rule that leaves off workflow-state labels gains one exception:
-  a child or spin-off that `dv:groom` files gets `groomed`.
+  a split's child that `dv:groom` files gets `groomed`; a spin-off does not.
 
 ## Upgrade
 

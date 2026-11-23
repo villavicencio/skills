@@ -311,8 +311,8 @@ command's output, a ticket id). Three kinds:
   edit-list items.
 - **Spin-offs:** work the ticket suggests but should not carry: a helper, a follow-up measurement,
   a neighbor with the same flaw. Each is one line: a title in the format, why, the Linear project
-  it would go in (found live, as in `dv:ticket` File step 1), and its state and labels (`groomed`
-  among them when that team has an active `groomed` label; step 7). Before offering one, run
+  it would go in (found live, as in `dv:ticket` File step 1), and its state and labels (never
+  `groomed`: a spin-off is drafted, not groomed). Before offering one, run
   File step 3's duplicate search for it, reading every page and keeping a tally as step 1's
   overlap search does, and keep any match, with its id and state. A spin-off whose duplicate
   search is incomplete is offered with that said, and is not filed in step 7 until the search
@@ -438,7 +438,8 @@ still apply.
 **Whole-description replacement.** When the interview answers change three or more sections, you
 may offer this instead of patches: show the complete new description, say that the old one stays
 in Linear's history, and ask one plain question to replace the whole description. Relations, the
-title, the `groomed` label and filings stay numbered items beside it. A no leaves the description exactly as it was.
+title, the `groomed` label and filings stay numbered items beside it. A no leaves the description
+exactly as it was.
 Just before saving, read the ticket again; if its description is no longer the one the
 replacement was built from, do not save: say what changed and ask again.
 Patches stay the default; three changed sections allow the offer and do not decide it.
@@ -452,11 +453,12 @@ Patches stay the default; three changed sections allow the offer and do not deci
    approved on; if it changed, file nothing, say what changed and ask again.
 2. **File approved children and spin-offs.** Read `dv:ticket`'s `SKILL.md` (`../ticket/SKILL.md`
    from this skill's directory), section "File", and create each with its rules: project found
-   live (a child takes the parent's project), labels from the team plus `groomed` when that team
-   has an active `groomed` label (File step 2 allows it for a ticket dv:groom files), the format,
-   facts checked or
-   marked `[assumed]`, Backlog with a pull condition unless it can start now, the re-run of the
-   duplicate searches just before creating, and `save_issue`. My interview answer stands in for
+   live (a child takes the parent's project), labels from the team, plus `groomed` on a split's
+   child when that team has an active `groomed` label (File step 2 allows it; a spin-off never gets
+   it, since it is drafted, not groomed, and `dv:director-mode` skips grooming a ticket that has
+   the label), the format, facts checked or marked `[assumed]`, Backlog with a pull condition
+   unless it can start now, the re-run of the duplicate searches just before creating, and
+   `save_issue`. My interview answer stands in for
    File step 6's draft and question. Set each one's relations in the `save_issue` call that
    creates it: `parentId` for a child under a parent that stays, `blockedBy` for a child that waits
    on another child or for any ticket whose pull condition names an open ticket (unless File mode
@@ -528,8 +530,8 @@ reply-format rules when the session's instructions give any:
 3. One line each: size; split verdict; what changed in the ticket ("text unchanged" when only the
    label landed, "nothing changed" when nothing did); the `groomed` label: added, already there,
    or not added and why (not approved, the team has no active `groomed` label, step 7 stopped
-   before it, or the write failed), with the same for each child and spin-off filed;
-   spin-offs and children filed, as links; what was not checked; the branch to work it on.
+   before it, or the write failed), and for each child filed, whether it got the label (if not:
+   no active label, or the write failed); spin-offs and children filed, as links; what was not checked; the branch to work it on.
 
 Do not ask whether to start the work and do not start it: starting is a separate request from me.
 

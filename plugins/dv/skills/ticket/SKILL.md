@@ -76,8 +76,8 @@ label that fits the ticket's type, going by its description, and an area label o
 description matches the work and it names this project's area. Do not create labels.
 If a label that would help does not exist, say so in the draft. Leave off labels whose
 description marks workflow state, such as `someday`, unless I asked for them: adding or removing
-those is my call. The one exception: a child or spin-off that `dv:groom` files gets `groomed`
-(`dv:groom` step 7, "Order of writes" item 2, says when).
+those is my call. The one exception: a split's child that `dv:groom` files gets `groomed`
+(`dv:groom` step 7, "Order of writes" item 2, says when). A spin-off never gets it.
 
 ### 3. Existing tickets
 

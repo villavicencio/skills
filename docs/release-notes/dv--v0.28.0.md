@@ -1,8 +1,10 @@
 # dv — v0.28.0
 
 Minor release. `dv:ticket` File mode records what a new ticket waits on as Linear's blocked-by
-relation, not only as a line of prose. The other fifteen skills have no behaviour changes; their
-version moves to `0.28.0` only because the suite is released as one plugin.
+relation, not only as a line of prose. `dv:groom` reads the shared rules file changed below, so
+it now treats a worked-example or background ticket as a wanted related link too. The other
+fourteen skills have no behaviour changes; their version moves to `0.28.0` only because the suite
+is released as one plugin.
 
 Numbering: 0.28.0 follows 0.27.0, which made `dv:pickup` and `dv:handoff` list long-running
 background work.

@@ -41,7 +41,7 @@ In this mode the session takes the routine calls off me: it decides them itself,
 forks, applies its edits without the approval question, and records what it decided so I can
 overrule it.
 
-**Forks** (asked, as step 6 says):
+**Forks** (the only decisions forks-only mode asks, as step 6 says):
 
 - a change to scope or to Out of scope: a Scope step added or removed (folding a spin-off in is the
   exception, a routine call) and any Done means line dropped;

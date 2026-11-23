@@ -14,8 +14,11 @@ background" (VIL-794).
 ## Changed
 
 - **`dv:pickup`, new Step 1c "Background work still running".** It lists the shells the harness
-  started under the Claude Code process (a shell-list block that reads `ps`, flags any running 30
-  minutes or more, skips its own shell and says so when the list can't be read) and the background agents
+  started under the Claude Code process (a best-effort shell-list block that reads `ps`, flags any
+  running 30 minutes or more, skips its own shell and says so when the list can't be read; it
+  sees only direct children of this Claude process whose command line names a shell snapshot, so
+  a shell replaced by `exec` or work in a deeper or reparented process can be missed, and `(none)`
+  means "none found", not proof) and the background agents
   this session started and that are still running (ListAgents, or the harness's task list, with
   the current session and peer sessions left out; if ownership can't be told, the list is
   reported as unverified). Anything running longer than about 30

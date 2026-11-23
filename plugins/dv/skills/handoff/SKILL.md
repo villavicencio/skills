@@ -102,6 +102,7 @@ showing parent pid, elapsed time and start time, and skips its own shell. If the
 the Claude Code process, the shell list is unverified, and the handoff says so.
 If the block prints `(shell list unverified: ps failed)` or `(shell list unverified: awk failed)`,
 the list is unverified too: don't report it as empty.
+The check is best effort. It lists only direct children of this Claude process whose command line names a shell snapshot, so a shell replaced by `exec`, or work in a deeper or reparented process, can be missed and the list can read `(none)`. Treat `(none)` as "none found", not as proof.
 ```bash
 # This shell is one the harness started, so its parent is the Claude Code process.
 ME=$$; CC=$PPID

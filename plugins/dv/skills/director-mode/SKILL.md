@@ -242,15 +242,16 @@ terminal by `orca terminal send`, by clipboard paste, or as a file under
   "NOTICED, NOT FILED" with `dv:ticket`, under its exception (b) ("Filing without my
   confirmation"), and name the new ids in your reply to me.
 - Reply to a SendMessage note with one line saying you received it, sent to the note's `from`
-  address.
+  address. If the note asks for a reply (its `REPLY NEEDED` line), send one: answer its question.
 - Run the cleanup the note names as soon as it arrives, without asking me. Do any part that
   doesn't touch the worktree or its branch (such as pulling the main checkout) now. While the
   worktree's session is still running, leave the worktree and its branch in place (see "Merge
   and clean up"): tell me, as a highlight, that the session is ready to close in Orca. After the
-  session has ended (checked at each seam with the ListAgents test under "Merge and clean up"),
-  remove the worktree and its branch by the global removal procedure named there, run from the
-  main checkout. That procedure's checks decide what is removed; the note is context, not
-  permission. You never signal or stop a session's process yourself.
+  session has ended (rechecked with the ListAgents test under "Merge and clean up" at each seam
+  and whenever I say I closed the session), remove the worktree and its branch by the global
+  removal procedure named there, run from the main checkout. That procedure's checks decide what
+  is removed; the note is context, not permission. You never signal or stop a session's process
+  yourself.
 - Report the cleanup as a highlight: what was removed, and what the procedure kept and why.
 - Then run the seam check above.
 
@@ -278,21 +279,24 @@ session never does.
     effort rules. A pilot PR (one the hal pilot runner opened, titled `[pilot] …`) has no
     worktree session. Until that runner updates its own PRs (VIL-879), treat a pilot PR whose
     pilot run has ended as having no live session, unless the test above finds one; when you
-    can't tell whether its run has ended, ask me. The engineer never works in the main
-    checkout's files or in any existing worktree, the PR's old one included. From the main
-    checkout it runs `git -C "<main checkout>" fetch origin` and `git -C "<main checkout>"
-    worktree add --detach "<temporary path>" "origin/<branch>"`, with the temporary path outside
-    the main checkout; these change only the shared repository, not the main checkout's files or
-    HEAD. In the temporary worktree it merges `origin/<default branch>` in and, in a repo that
-    versions its releases, bumps the version. It pushes with `git push origin HEAD:<branch>`,
-    which only fast-forwards: if the push is rejected, it stops and reports, never forces, and
-    the temporary worktree, with its unpushed merge, comes to me as a leftover. When it has
-    finished, it removes that temporary worktree by the global removal procedure named below
-    (the same Git bullets your own removals use); if that procedure keeps the worktree, it
-    reports it to me as a leftover. This also fits a pilot PR, which has no local worktree. It
-    waits for MergeWren's verdict on the new head (the reviewer wait in "Fix rounds", in the
-    same `code-review.md`) and reports it. Report the update to me as a highlight; any finding
-    comes to me.
+    can't tell whether its run has ended, ask me. Before starting, the engineer checks the PR's
+    head repository (`gh pr view <N> --json
+    headRepositoryOwner,headRepository,isCrossRepository`); if it isn't this repo's origin (a
+    fork PR), it stops and reports to me. The engineer never works in the main checkout's files
+    or in any existing worktree, the PR's old one included. From the main checkout it runs `git
+    -C "<main checkout>" fetch origin` and `git -C "<main checkout>" worktree add --detach
+    "<temporary path>" "origin/<branch>"`, with the temporary path outside the main checkout;
+    these change only the shared repository, not the main checkout's files or HEAD. In the
+    temporary worktree it merges `origin/<default branch>` in and, in a repo that versions its
+    releases, bumps the version, committing the merge and the bump. It pushes with `git push
+    origin HEAD:<branch>`, which only fast-forwards: if the push is rejected, it stops and
+    reports, never forces, and the temporary worktree, with its unpushed merge, comes to me as a
+    leftover. When it has finished, it removes that temporary worktree by the global removal
+    procedure named below (the same Git bullets your own removals use); if that procedure keeps
+    the worktree, it reports it to me as a leftover. This also fits a pilot PR, which has no
+    local worktree. It waits for MergeWren's verdict on the new head (the reviewer wait in "Fix
+    rounds", in the same `code-review.md`) and reports it. Report the update to me as a
+    highlight; any finding comes to me.
   - Either way, never merge a PR that MergeWren has not passed on its new head.
 - After the merge, pull the main checkout, and report the merge to me as a highlight.
   - **The PR's worktree session is live:** tell it in one line that the PR merged, by

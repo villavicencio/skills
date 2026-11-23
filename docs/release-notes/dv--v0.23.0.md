@@ -47,10 +47,11 @@ rest runs on its own while the home chat keeps him up to date (VIL-917).
   replaced. When a PR falls behind after another merge, its live worktree session updates it by
   merge. With no live session (a pilot PR counts as having none until the pilot runner updates its
   own PRs, VIL-879), the Director hires one engineer under `dv:manager-mode`'s tier and effort
-  rules to update the PR, and reports it as a highlight. The engineer never touches an existing
-  worktree, the PR's old one included: it makes a temporary detached worktree at
-  `origin/<branch>`, merges `origin/<default branch>` in, bumps the version and pushes with `git
-  push origin HEAD:<branch>`, which only fast-forwards. If the push is rejected it stops and
+  rules to update the PR, and reports it as a highlight. The engineer first checks the PR's head
+  repository and stops and reports to David for a fork PR. It never touches an existing worktree,
+  the PR's old one included: it makes a temporary detached worktree at `origin/<branch>`, merges
+  `origin/<default branch>` in, bumps the version, commits the merge and the bump, and pushes with
+  `git push origin HEAD:<branch>`, which only fast-forwards. If the push is rejected it stops and
   reports, never forces, and the temporary worktree comes to David as a leftover; when it has
   finished, it removes that temporary worktree by the global removal procedure, and reports it to
   David as a leftover if the procedure keeps it. This also fits pilot PRs, which have no local

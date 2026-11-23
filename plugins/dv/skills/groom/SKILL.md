@@ -310,7 +310,8 @@ the table with one sentence on what drives them, its order, what blocks what, an
 project, state and labels.
 It also says what happens to the parent: it becomes the first child, or it stays as the parent with
 the children under it (`parentId`). When it stays as the parent, write its full replacement
-description: Why, a Scope that names the children, Done means and Decisions. The rest of its text
+description: Why, a Scope that names the children, Done means, Decisions, and Size (its size and
+points before the split, and that the points now sit on the children). The rest of its text
 moves into the children or is dropped, and the replacement shows which. The parent's estimate
 follows: the first child's points when it becomes the first child; none when it stays as the
 parent (`estimate: null`), so its children's points are not counted twice.
@@ -431,9 +432,11 @@ removes existing text. It covers:
   `save_issue`'s `estimate` field (a number), the Decisions lines from the interview, and the
   no-split line. Setting an estimate where there was none is an add item; changing one is a
   replace item. Linear can store a different number from the one sent, with no error: a team
-  whose scale stops at 8 stores 13 as 8 (team VIL, 2026-11-23). So compare the estimate
-  `save_issue` returns with the points; when they differ, keep the points in the Size section and
-  say so under Needs you, with both numbers;
+  whose scale stops at 8 stores 13 as 8 (team VIL, 2026-11-23). So compare the estimate each
+  `save_issue` returns, for this ticket and for each child, with its points. When they differ,
+  clear that estimate (`estimate: null`) so the wrong number is not counted, keep the points in
+  the Size section, and say so under Needs you with both numbers: that ticket is not ready until
+  its points are stored, by a change to the team's scale (mine) or a split;
 - links to comments that hold evidence a Scope step depends on;
 - for a split, the children to file and the parent's change (its estimate included), exactly as
   approved;
@@ -529,8 +532,8 @@ whole-description replacement). Other approved edits, such as the title, still a
 
 Relations go on `save_issue` with `blockedBy`, `relatedTo` and `removeBlockedBy`. Do not change
 the state, labels, project, priority or assignee unless I ask, or unless I chose that change in an
-interview answer. Set the estimate only to the points in the edit list (step 4), or as the
-approved split sets it. Change labels with `addLabels` and `removeLabels`, since `labels`
+interview answer. Set the estimate only to the points in the edit list (step 4) or as the
+approved split sets it, and clear it only when Linear stored a different number (the edit list). Change labels with `addLabels` and `removeLabels`, since `labels`
 replaces the whole set.
 
 ## 8. Report
@@ -547,7 +550,8 @@ reply-format rules when the session's instructions give any:
    `list_issue_statuses` names them. A started,
    finished or canceled ticket is not ready to start. After a split, name the child that is ready
    and the one that comes first, as links; do not call the parent ready when the work is in its
-   children. When not ready, name what it lacks or waits on.
+   children. A ticket whose points Linear did not store (step 7) is not ready. When not ready, name
+   what it lacks or waits on.
 2. **Needs you:** what only I can do or decide: a target proposed and not confirmed, an item I did
    not approve that still matters, a repo the session could not read, an overlap or duplicate
    search that did not finish (with its words, so it can be run again). Left out when empty.
@@ -575,8 +579,7 @@ were none, "Decided without asking: none."
 - No file edits, branches or commits: grooming reads repos and writes only to Linear.
 - Do not put secrets or credentials in a ticket.
 - A ticket with nothing stale, open or missing, that already has its Size with points and an
-  estimate that matches them or that Linear cannot store (step 7; a parent whose children carry
-  the points has none), and is not
+  estimate that matches them (a parent whose children carry the points has none), and is not
   pointed 13 without a recorded yes to keeping it unsplit, stays as it is: propose
   no edits, say so in one line, and go to step 8. The no-split line and the grooming line in Agent
   notes are added only alongside other edits.

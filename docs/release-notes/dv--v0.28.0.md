@@ -26,10 +26,11 @@ words only, and its edit step forbade setting the estimate.
   `estimate` field. `estimate` is out of the list of fields grooming must not change (only for
   the points it proposed), and each approved child gets its estimate in the `save_issue` call that
   creates it, overriding `dv:ticket` File's rule against setting an estimate unasked. Spin-offs
-  get no estimate until they are groomed. Grooming compares the estimate `save_issue` returns with
-  the points and reports a difference under Needs you: Linear stores a number outside the team's
-  scale as a different one with no error (team VIL stored 13 as 8 on 2026-11-23, since its scale
-  stops at 8).
+  get no estimate until they are groomed. Grooming compares the estimate each `save_issue` returns
+  (the groomed ticket's and each child's) with the points: Linear stores a number outside the
+  team's scale as a different one with no error (team VIL stored 13 as 8 on 2026-11-23, since its
+  scale stops at 8). On a difference it clears that estimate, keeps the points in the Size
+  section, reports it under Needs you, and the ticket is not ready until its points are stored.
 - **Step 8 "Report".** The size line shows the points and the estimate as Linear now holds it;
   each filed child is listed with its estimate.
 - **Forks-only mode.** Setting or changing points is a routine call, like Size. A split stays a
@@ -37,6 +38,8 @@ words only, and its edit step forbade setting the estimate.
 - **Format check and the "stays as it is" rule.** Step 2 flags a Size with no points as a gap. A
   ticket that already has its Size but no points, or an estimate that doesn't match them, or that
   is pointed 13 with no recorded yes to keeping it unsplit, is no longer left unchanged.
+- **Split parent.** A parent that stays as the parent keeps a Size section (its size and points
+  before the split, and that the points sit on the children).
 - **Step 6 "Interview".** The split proposal shows each child's size and points and the parent's
   estimate, and for a ticket pointed 13 the split question says that "no split" keeps it at 13. In
   forks-only mode that "no split" is David's answer to a fork, recorded in the fork form.

@@ -4,7 +4,7 @@ description: For realtime-fact queries — prices, stock state, "as of today" cl
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.28.0"
+  version: "0.29.0"
 ---
 
 # /cite — Re-fetch + freshness-tag or decline

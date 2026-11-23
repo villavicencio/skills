@@ -41,8 +41,9 @@ Linear relates every ticket whose id (`VIL-N`) is written in a description or a 
 the text adds a related link, with no `relatedTo` call. So writing an id is writing a relation.
 Before saving text, name each id it adds that the ticket is not already related to, and count it
 as a relation to add. When a relation is not wanted (I declined it, or the other ticket is only a
-test or an example), do not write its id: name the PR, the repo, the file or the ticket's title
-instead. After saving, read the ticket's relations back and report any you did not expect.
+test or a sample id), do not write its id: name the PR, the repo, the file or the ticket's title
+instead. A ticket the work follows as a worked example, or builds on as background, is related:
+that link is wanted unless I decline it. After saving, read the ticket's relations back and report any you did not expect.
 
 ## Agent notes markers
 

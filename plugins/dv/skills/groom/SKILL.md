@@ -592,9 +592,9 @@ reply-format rules when the session's instructions give any:
    nothing did); the `groomed` label as read back: added, already there, or not added and why (not
    approved, the team has no active `groomed` label, step 7 stopped before it, an approved item did
    not land, or the write failed); spin-offs and children filed, as links, each child with the
-   estimate its `save_issue` returned and its labels as read back after item 5, or "not labelled:
-   step 7 stopped before it" when item 5 did not run (if it lacks `groomed` otherwise: no active
-   label, or the write failed); what was not checked; the branch to work it on.
+   estimate its `save_issue` returned and its labels as read back after item 5, or "not labelled"
+   with the same reasons as the groomed ticket's label; what was not checked; the branch to work it
+   on.
 
 Do not ask whether to start the work and do not start it: starting is a separate request from me.
 

@@ -44,8 +44,8 @@ overrule it.
 **Forks** (the only decisions forks-only mode asks, as step 6 says):
 
 - a change to scope or to Out of scope: a Scope step added or removed and any Done means line
-  dropped (folding a spin-off in, and closing a conditional step as step 3 says, are the exceptions:
-  routine calls);
+  dropped (closing a conditional step as step 3 says is the exception: a routine call), which
+  includes folding a spin-off into the ticket;
 - a design choice between real alternatives, including picking a side where step 3 found
   conflicting rules (Current rules);
 - anything destructive or hard to undo;
@@ -54,7 +54,7 @@ overrule it.
 - a prerequisite that step 3 cannot map clearly to one issue (no relation is set on a guess).
 
 **Routine calls:** every other open decision, such as wording, ordering, Size, Done means
-phrasing, filing, folding or dropping a spin-off, settling an `[assumed]` marker you verified,
+phrasing, filing or dropping a spin-off, settling an `[assumed]` marker you verified,
 adding or removing a relation that step 3 maps clearly, closing a conditional step by removing it or
 making it unconditional (step 3), and rewording or adding a Done means line that proves the
 existing scope. Decide each one yourself: take the option you would have marked
@@ -351,8 +351,9 @@ the two are one unit, filed and edited in step 7 without a second approval.
 option you took. Then ask only the forks, in rounds of at most 4 questions, each starting with its
 finding in one sentence. If there are no forks, say so in one line, ask nothing and go to step 7.
 Each answer to a fork is recorded in the default form. Each routine call is recorded in the
-"Decided by dv:groom (forks-only)" form (see "Forks-only mode" above). Your call to file or fold a
-spin-off stands as the approval to create it with what the proposal showed, subject to step 5's
+"Decided by dv:groom (forks-only)" form (see "Forks-only mode" above). Your call to file a
+spin-off stands as the approval to create it with what the proposal showed (folding one in is a
+fork and is asked), subject to step 5's
 rule that a spin-off with an incomplete duplicate search is not filed. A spin-off whose duplicate
 search found a match that is open, or Done, and covers the work is not filed: the routine call is
 to drop it, with the match's id and state named in the report, and in its Decisions line when the
@@ -504,7 +505,7 @@ were none, "Decided without asking: none."
 
 - This skill is for Linear. Do not open GitHub issues.
 - Nothing is created or edited in Linear before I approve it. **Forks-only mode** is the exception:
-  step 7 applies its edit list without an approval question, and a routine call to file or fold a
+  step 7 applies its edit list without an approval question, and a routine call to file a
   spin-off counts as my approval of it.
 - Edit only the groomed ticket. Create only the children and spin-offs I approved. Do not edit or
   comment on any other ticket; a follow-up on a neighbor goes under "After the merge" or becomes a

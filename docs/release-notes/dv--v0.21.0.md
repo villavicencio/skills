@@ -19,12 +19,12 @@ calls and ask only the forks (VIL-915).
   step it changes (Before anything else items 5 and 6, steps 4, 6, 7 and 8, and Rules). Nothing in
   them applies without the argument.
   - **Forks, which are asked:** a change to scope or Out of scope (a Scope step added or removed,
-    a Done means line dropped), a design choice between real alternatives (including rules that
+    including by folding a spin-off in; a Done means line dropped), a design choice between real alternatives (including rules that
     conflict), anything destructive or hard to undo, a target or pull condition only David can
     supply, a split, and a prerequisite that cannot be mapped to one issue. When it cannot tell, the
     call is a fork.
   - **Routine calls, which it decides:** wording, ordering, Size, Done means phrasing, filing,
-    folding or dropping a spin-off, settling a verified `[assumed]` marker, a clearly mapped
+    filing or dropping a spin-off, settling a verified `[assumed]` marker, a clearly mapped
     relation, a conditional step closed (removed or made unconditional), and a Done means line
     reworded or added that proves the existing scope. It takes the option it would have marked
     "(Recommended)". A spin-off whose duplicate search found an open or Done match that covers the

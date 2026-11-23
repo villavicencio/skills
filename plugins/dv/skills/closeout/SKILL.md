@@ -680,10 +680,11 @@ would be run as commands, so never send to one.
 What a test showed (VIL-836, 2026-11-18, from a worktree to the main checkout): the text arrived
 in the main checkout's terminal. Not tested: whether a parent agent acts on a note, and whether
 one that is mid-turn reads it. So for a terminal, say in the reply that the note was sent and that
-the parent may still need it pasted. For a chat Director: SendMessage between two local Claude
-sessions worked on 2026-11-22 (a worktree session handed a PR to the Director and a reply came
-back), but closeout's own chat path has not yet been run end to end, and a mid-turn Director's
-handling of the message is untested.
+the parent may still need it pasted. For a chat Director (VIL-918, 2026-11-23, on hal): the
+delivery step, run by hand from a worktree, found one chat with Orca's agent list and one
+`skills-*` peer with ListAgents, sent the note once with SendMessage, and the Director replied.
+Not tested: a Director that is mid-turn when the note arrives (that one was idle), and a full
+closeout run end to end.
 
 **Offer the removal.** Only when Step 2 said safe to delete (or I have accepted the listed
 build-output lines and reflog-only commits), end the reply with one question. Before running the removal on my yes,

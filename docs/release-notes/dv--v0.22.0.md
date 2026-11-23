@@ -41,9 +41,12 @@ hand (VIL-918).
 
 ## Not tested
 
-Closeout's chat path has not been run end to end in this release. SendMessage between two local
-Claude sessions worked on 2026-11-22, when a worktree session handed a PR to the Director and a
-reply came back. Whether a Director that is mid-turn handles the message is not known.
+Tested on 2026-11-23, on hal: the chat path's delivery step, run by hand from a worktree. Both
+checks found one Director (one `kind: chat` entry in Orca's agent list, one `skills-*` peer in
+ListAgents), the note was sent once with SendMessage, and the Director replied.
+
+Not tested: a Director that is mid-turn when the note arrives (this one was idle), and a full
+`dv:closeout` run end to end.
 
 ## Upgrade
 

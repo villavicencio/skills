@@ -1,10 +1,10 @@
 ---
 name: closeout
-description: "Close out a finished worktree session and brief the parent session in the main checkout. Verifies from git, gh and the tracker (not from memory) the ticket, the session's PRs, what the worktree holds that is uncommitted, only here or not on the default branch, and the main checkout against its upstream; a check that cannot run makes the verdict 'not confirmed safe'. Writes a plain-text note for the parent (what shipped, tickets filed or changed, things noticed and not filed, decisions waiting, cleanup the parent owns, whether a reply is needed) and copies it to the clipboard, says whether the worktree is safe to delete and what would be lost if not, and when it is safe archives the session's handoff. Never removes the worktree without a yes. Use when the user says \"close out this worktree\", \"is this worktree safe to delete\" or \"wrap up this worktree\". NOT for work that continues in a later session (that is dv:handoff), NOT for merging a PR or deleting a merged branch."
+description: "Close out a finished worktree session and brief the parent session in the main checkout. Verifies from git, gh and the tracker (not from memory) the ticket, the session's PRs, what the worktree holds that is uncommitted, only here or not on the default branch, and the main checkout against its upstream; a check that cannot run makes the verdict 'not confirmed safe'. Writes a plain-text note for the parent (what shipped, tickets filed or changed, things noticed and not filed, decisions waiting, cleanup, whether a reply is needed), copies it to the clipboard and sends it to the parent when Orca can find it, says whether the worktree is safe to delete and what would be lost if not, and when it is safe archives the session's handoff. Never removes the worktree without a yes. Use when the user says \"close out this worktree\", \"is this worktree safe to delete\" or \"wrap up this worktree\". NOT for work that continues in a later session (that is dv:handoff), NOT for merging a PR or deleting a merged branch."
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.20.1"
+  version: "0.22.0"
 ---
 
 # /closeout — close out a finished worktree session
@@ -608,7 +608,8 @@ Reply in this order, short:
 3. The verified facts, one line each: the ticket and its state; each PR and its merge state; what
    the worktree holds beyond the default branch; the main checkout against its remote (behind,
    ahead, dirty); where the handoff went, or that it was left; where the note was saved and
-   whether it reached the clipboard; the removal command, when safe.
+   whether it reached the clipboard, and whether it was sent to the Director and whether the
+   Director replied; the removal command, when safe.
 4. The line the optional section below tells you to add, if any.
 5. The note itself in a code block, so I can copy it if the clipboard missed.
 
@@ -625,6 +626,7 @@ if ! command -v "$C" >/dev/null 2>&1; then
 elif git rev-parse --git-dir >/dev/null 2>&1; then
   MAIN=$(git worktree list --porcelain | sed -n 's/^worktree //p' | head -1)
   echo "Orca CLI: $C"
+  echo "Main checkout: $MAIN"
   "$C" terminal list --worktree "path:$MAIN" --json
 fi
 ```
@@ -644,14 +646,44 @@ would be run as commands, so never send to one.
   "delivered". Do not resend on a timeout. After a transport error, reissue the same command with
   the `--retry-request` id the error reports.
 - More than one: ask me which, as a plain question, before sending.
-- None: say the parent has no agent terminal open, and that the note is on the clipboard and at
-  its saved path. A parent that runs as an Orca chat is not a terminal and cannot be reached this
-  way.
+- None: the parent may run as an Orca chat, which is not a terminal, so look for a chat Director
+  in the steps below. Two checks must both find it, and a chat is never sent a note through
+  `terminal send`.
+  1. Orca's view: run `"<orca CLI>" agent list --worktree "path:<main checkout>" --json`, with
+     the CLI path and main checkout path the block printed. It must list exactly one entry whose
+     `kind` is `chat`. Do not filter on `state`: a live chat that is idle can show `done`.
+  2. Claude Code's view: ListAgents must list exactly one peer session, other than this one,
+     whose name is the main checkout folder's basename, then `-`, then a suffix (for example
+     `skills-03` for `/Users/david/Projects/skills`). ListAgents shows no working directory, so
+     the match is by name. Sessions have been named this way so far; it is not a Claude Code
+     contract, which is why check 1 must agree.
+
+  With both checks met, send the note to that peer with SendMessage, once. `<note path>` is the
+  `note saved:` path Step 3 printed. The receiver sees only the first line until it expands the
+  message, so the first line must say what the message is:
+
+  ```
+  Closeout note, <ticket id, or the branch when there is none>: <the note's Worktree verdict line>
+  Saved at: <note path>
+  <the note, from its Worktree line to its REPLY NEEDED line>
+  Please reply with one line to say you received it.
+  ```
+
+  Do not resend. A message has no read receipt, and a reply comes back later as a message from
+  the Director, often after this turn has ended. Report one of three outcomes: sent and replied
+  (quote the reply); sent with no reply yet; or not sent, naming the check that failed or could
+  not run. Never write "delivered" without a reply.
+  If either check finds none or more than one, or cannot run, nothing is sent: the note stays on
+  the clipboard and at its saved path, and the reply names the check and what it showed. Under
+  Codex there is no ListAgents view of other sessions, so check 2 cannot run there.
 
 What a test showed (VIL-836, 2026-11-18, from a worktree to the main checkout): the text arrived
 in the main checkout's terminal. Not tested: whether a parent agent acts on a note, and whether
-one that is mid-turn reads it. So say in the reply that the note was sent and that the parent may
-still need it pasted.
+one that is mid-turn reads it. So for a terminal, say in the reply that the note was sent and that
+the parent may still need it pasted. For a chat Director: SendMessage between two local Claude
+sessions worked on 2026-11-22 (a worktree session handed a PR to the Director and a reply came
+back), but closeout's own chat path has not yet been run end to end, and a mid-turn Director's
+handling of the message is untested.
 
 **Offer the removal.** Only when Step 2 said safe to delete (or I have accepted the listed
 build-output lines and reflog-only commits), end the reply with one question. Before running the removal on my yes,

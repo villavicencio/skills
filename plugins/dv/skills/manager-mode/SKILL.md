@@ -4,7 +4,7 @@ description: "Switch this session into Manager Mode: you work as an engineering 
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.20.1"
+  version: "0.22.0"
 ---
 
 # /manager-mode — you are the manager, not an engineer
@@ -231,11 +231,11 @@ I follow ticket work through the Director, so the Director gets the big moments 
 - a blocker, or a decision waiting on me;
 - a routine call made under "Decisions and escalation": a stale PR updated, findings fixed or declined, a spin-off filed (with its id).
 
-The Director is the home session in the main checkout, running `dv:director-mode`. Find it with ListAgents and message it with SendMessage; the main checkout is the first path `git worktree list` prints. A highlight is information only: it asks for no reply and you do not wait for one. A blocker or a decision still comes to me in this chat; the highlight does not replace that.
+The Director is the home session in the main checkout, running `dv:director-mode`. The main checkout is the first path `git worktree list` prints. Find the Director with the two checks `dv:closeout` uses to deliver its note (section "Optional: Orca delivery and removal", "Deliver the note"): the Orca CLI's `agent list --worktree "path:<main checkout>" --json` (`orca`, or `orca-ide` on Linux) lists exactly one entry whose `kind` is `chat` (do not filter on `state`), and ListAgents lists exactly one peer session, other than this one, whose name is the main checkout folder's basename, then `-`, then a suffix (for example `skills-03`). Both must agree; then message that session with SendMessage. A highlight is information only: it asks for no reply and you do not wait for one. A blocker or a decision still comes to me in this chat; the highlight does not replace that.
 
 The handoff of a PR that passed MergeWren (see "What you do yourself") stays, in this format, except that it asks the Director to merge and so asks for a one-line reply, as the rule under "Running the team" says for any message the receiver must act on.
 
-If no Director session is reachable, no highlight can be sent. Under Codex that is the case, since its `list_agents` lists only this session's agents; it is also the case when ListAgents lists more than one session that could be the Director. Say so in this chat once for the ticket and keep going. When a PR has passed MergeWren, tell me in this chat that it passed, with its link, and wait for my word on who merges it.
+If the two checks do not each find exactly one session, or cannot run, no highlight can be sent. Under Codex the second check cannot run, since its `list_agents` lists only this session's agents. Say so in this chat once for the ticket and keep going. When a PR has passed MergeWren, tell me in this chat that it passed, with its link, and wait for my word on who merges it.
 
 ## Reporting to me
 

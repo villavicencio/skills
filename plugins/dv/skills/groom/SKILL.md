@@ -1,6 +1,6 @@
 ---
 name: groom
-description: "Groom one Linear ticket before anyone works it. Checks it against the agreed ticket format, reads its neighbors and searches for overlapping work, verifies every fact its Scope and Done means rely on, closes conditional steps, records prerequisites as blocked-by relations, sizes it with a reason, decides whether to split it, and scouts for in-ticket improvements and spin-off tickets. Every open decision goes to the user as a multiple-choice interview; approved edits are then applied, and approved children or spin-offs filed. It never starts the work. Use when the user says \"groom VIL-123\", \"groom the ticket\", \"size it\", \"split it up if we have to\", \"is this ticket ready to work\", or wants the admin work on a ticket done first (\"don't start work yet\"). NOT for filing a new ticket from a request (that is dv:ticket), NOT for starting the work, NOT for grooming many tickets in one run."
+description: "Groom one Linear ticket before anyone works it. Checks it against the agreed ticket format, reads its neighbors and searches for overlapping work, verifies every fact its Scope and Done means rely on, closes conditional steps, records prerequisites as blocked-by relations, sizes it with a reason, decides whether to split it, and scouts for in-ticket improvements and spin-off tickets. Every open decision goes to the user as a multiple-choice interview; approved edits are then applied, and approved children or spin-offs filed. With `forks-only` it decides routine calls itself, records them, asks only real forks, and edits without the approval question. It never starts the work. Use when the user says \"groom VIL-123\", \"groom the ticket\", \"size it\", \"split it up if we have to\", \"is this ticket ready to work\", or wants the admin work on a ticket done first (\"don't start work yet\"). NOT for filing a new ticket from a request (that is dv:ticket), NOT for starting the work, NOT for grooming many tickets in one run."
 license: Apache-2.0
 metadata:
   author: villavicencio
@@ -25,9 +25,47 @@ message that invoked this skill. "I" and "me" in this skill mean the user. A lea
 `dv:ticket groom`) is ignored.
 
 - **A ticket id (`VIL-N`) or a Linear issue link:** groom that ticket.
+- **`forks-only`, with the ticket (`dv:groom VIL-N forks-only`):** groom that ticket in forks-only
+  mode, described in "Forks-only mode" below. The word may come before or after the id. Without it,
+  grooming is the default path and nothing in that section applies.
 - **Nothing, or a request to groom with no id or link:** ask which ticket, as a plain question.
 - **More than one ticket:** groom one per run. Ask which to start with, as a plain question.
 - **A request to file a new ticket:** that is `dv:ticket`. Say so in one line and stop.
+
+## Forks-only mode
+
+This section and every paragraph marked **Forks-only mode** below apply only when the arguments
+include `forks-only`. Without it, ignore them; grooming is as the rest of this file says.
+
+In this mode the session takes the routine calls off me: it decides them itself, asks me only the
+forks, applies its edits without the approval question, and records what it decided so I can
+overrule it.
+
+**Forks** (the only decisions forks-only mode asks, as step 6 says):
+
+- a change to scope or to Out of scope: a Scope step added or removed and any Done means line
+  dropped (closing a conditional step as step 3 says is the exception: a routine call), which
+  includes folding a spin-off into the ticket;
+- a design choice between real alternatives, including picking a side where step 3 found
+  conflicting rules (Current rules);
+- anything destructive or hard to undo;
+- a target only I can set (step 3, Targets), or a missing pull condition only I can supply;
+- a split, with the parent's replacement description when it stays as the parent;
+- a prerequisite that step 3 cannot map clearly to one issue (no relation is set on a guess).
+
+**Routine calls:** every other open decision, such as wording, ordering, Size, Done means
+phrasing, filing or dropping a spin-off, settling an `[assumed]` marker you verified,
+adding or removing a relation that step 3 maps clearly, closing a conditional step by removing it or
+making it unconditional (step 3), and rewording or adding a Done means line that proves the
+existing scope. Decide each one yourself: take the option you would have marked
+"(Recommended)" had you asked. When you cannot tell whether a call is a fork, treat it as one and
+ask.
+
+**Recording.** Each routine call becomes an add item under Decisions, in this form, with today's
+date: "<decision>. Decided by dv:groom (forks-only), <date>". A fork keeps the default form:
+"<decision>. <my name>, <date>". Size counts as a routine call when it is set or changed, and so
+does the no-split verdict (step 4). A routine call that settles a Decisions line marked open
+replaces that line, as step 6 says for an answer.
 
 ## Before anything else
 
@@ -52,7 +90,11 @@ message that invoked this skill. "I" and "me" in this skill mean the user. A lea
 5. **Question or assumption.** Ask when the answer would change the scope, a Done means line, the
    split, a target or a relation, and you cannot look it up. Otherwise state your best reading and
    mark it `[assumed]`.
+   **Forks-only mode:** ask only when the answer is a fork; for anything else, decide it as a
+   routine call.
 6. **Nothing is written before I approve it,** and my answers are not a go to start the work.
+   **Forks-only mode:** step 7 is the exception; it applies its edit list without an approval
+   question.
 7. **Time.** Note the date and time with its zone (my zone if the session's instructions give one,
    otherwise UTC) when you start. It goes at the top of Agent notes.
 
@@ -240,6 +282,9 @@ The split is an interview question, never automatic. The proposal is preliminary
 answers may change it, and step 6 settles it. A "no split" verdict becomes an add item under
 Decisions: "No split: <reason>. Groomed, <date>."
 
+**Forks-only mode:** a proposed split is a fork and is asked. The "no split" line reads "No split:
+<reason>. Decided by dv:groom (forks-only), <date>."
+
 ## 5. Scout
 
 Look once, past the ticket's text, at what the change touches and what would make it stick. One
@@ -302,6 +347,25 @@ what the proposal showed; do not show a draft and ask again unless I ask to see 
 approval to start the work. A split approval covers the children and the parent's change together:
 the two are one unit, filed and edited in step 7 without a second approval.
 
+**Forks-only mode.** Give the findings list as above, and mark each routine call in it with the
+option you took. Then ask only the forks, in rounds of at most 4 questions, each starting with its
+finding in one sentence. If there are no forks, say so in one line, ask nothing and go to step 7.
+Each answer to a fork is recorded in the default form. Each routine call is recorded in the
+"Decided by dv:groom (forks-only)" form (see "Forks-only mode" above). Your call to file a
+spin-off stands as the approval to create it with what the proposal showed (folding one in is a
+fork and is asked), subject to step 5's
+rule that a spin-off with an incomplete duplicate search is not filed. A spin-off whose duplicate
+search found a match that is open, or Done, and covers the work is not filed: the routine call is
+to drop it, with the match's id and state named in the report, and in its Decisions line when the
+ticket is edited. With a Canceled match, whether to file it is a fork and is asked. With any
+other match, filing it is the routine call, under the rule above. That step 6 decision stands in
+for File step 3's duplicate question, as my interview answer stands in for File step 6's draft; if
+the duplicate search just before creating finds a match step 6 had not seen, that is a fork: ask
+it and hold that filing until the answer comes. If the answer is to file, re-run the duplicate
+check and file it under File's rules. On any other answer, do not file it, and name the match in
+the report. A split stays a question: my
+answer approves the children and the parent's change together, as above.
+
 ## 7. Edit
 
 **The edit list.** Number every change, and say for each whether it adds text, or replaces or
@@ -337,6 +401,14 @@ a question that names the numbers approves every named item, replacements and re
 I may answer with a subset of numbers instead. A bare yes to a question that names no numbers
 approves only the items that add.
 
+**Forks-only mode:** do not ask this question. Show the numbered edit list, then apply every item
+under "Order of writes" and "Patches" below, which still hold in full; my answers to the fork
+questions, including a split approval, were the approval for what they decided. Do not offer the
+whole-description replacement, which needs its own question; use patches. For a description that
+has text but no headings, do what "Patches" says: leave it, show the sections you would add as
+text in the report, say I will edit it in Linear, and list that item as not landed. Other items
+still apply.
+
 **Whole-description replacement.** When the interview answers change three or more sections, you
 may offer this instead of patches: show the complete new description, say that the old one stays
 in Linear's history, and ask one plain question to replace the whole description. Relations, the
@@ -365,6 +437,7 @@ Patches stay the default; three changed sections allow the offer and do not deci
    adopt any ticket id you did not get back from `save_issue`. The create may have landed, so
    search the project for the title and list what you find beside the tickets that exist and the
    draft of each that may not, under Needs you, for me to settle. Delete nothing.
+   **Forks-only mode:** the routine call to file a spin-off stands in for my interview answer.
 3. **Never write a ticket id that does not exist yet.** Write a child's or spin-off's id into the
    groomed ticket only after the `save_issue` call that created it, using the id it returned.
 4. **Then change the groomed ticket.** For a split, the parent's approved change (the reduced
@@ -424,10 +497,18 @@ reply-format rules when the session's instructions give any:
 
 Do not ask whether to start the work and do not start it: starting is a separate request from me.
 
+**Forks-only mode:** under item 3, "what changed in the ticket" lists each edit-list item that
+landed, one line each, and any that did not (step 7 stops on a failed write). End the report
+with a short list headed "Decided without asking", one line per routine call ("<decision>: <option taken>"), the same calls recorded under Decisions (when the
+ticket is left unchanged under the last Rules bullet, they are listed and not recorded); when there
+were none, "Decided without asking: none."
+
 ## Rules
 
 - This skill is for Linear. Do not open GitHub issues.
-- Nothing is created or edited in Linear before I approve it.
+- Nothing is created or edited in Linear before I approve it. **Forks-only mode** is the exception:
+  step 7 applies its edit list without an approval question, and a routine call to file a
+  spin-off counts as my approval of it.
 - Edit only the groomed ticket. Create only the children and spin-offs I approved. Do not edit or
   comment on any other ticket; a follow-up on a neighbor goes under "After the merge" or becomes a
   spin-off.

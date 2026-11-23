@@ -5,7 +5,7 @@ Minor release. `dv:closeout` can deliver its note to a Director that runs as an 
 have no behaviour changes; their version moves to `0.22.0` only because the suite is released as
 one plugin.
 
-Numbering: 0.22.0 follows 0.20.1. Version 0.21.0 is taken by another open PR.
+Numbering: 0.22.0 follows 0.21.0, which gave `dv:groom` a forks-only mode (VIL-915).
 
 Why: the home session now runs as an Orca chat. `dv:closeout` sent its note only to an agent
 terminal in the main checkout, so it never reached the Director and the note was carried over by

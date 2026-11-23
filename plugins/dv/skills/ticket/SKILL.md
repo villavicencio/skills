@@ -208,9 +208,10 @@ For both:
 ## Groom
 
 Grooming is the `dv:groom` skill; this entry point only hands over to it. Invoke `dv:groom` with
-the Skill tool, passing the ticket id or link (or nothing, if none was given), and follow it from
-there. If the Skill tool cannot load it, read `../groom/SKILL.md` from this skill's directory and
-follow that file. Do not groom from this skill.
+the Skill tool, passing the rest of the arguments as given (the ticket id or link and any mode word
+such as `forks-only`, or nothing, if none was given), and follow it from there. If the Skill tool
+cannot load it, read `../groom/SKILL.md` from this skill's directory and follow that file. Do not
+groom from this skill.
 
 ## Rules
 

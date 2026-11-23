@@ -307,8 +307,8 @@ these holds:
 Do not split when the parts must land together to be correct. A proposed split names each child:
 a title in the format, its Done means lines taken from the parent, its size word and points from the
 table with one sentence on what drives them, its order, what blocks what, and one line with its
-project, state and labels (`groomed` added once the split is complete when that team has an active
-`groomed` label; step 7).
+project, state and labels (`groomed` added once the split is complete, if the child passes the
+ready test and its team has an active `groomed` label; step 7, "Order of writes" item 5).
 It also says what happens to the parent: it becomes the first child, or it stays as the parent with
 the children under it (`parentId`). When it stays as the parent, write its full replacement
 description: Why, a Scope that names the children, Done means, Decisions, and Size ("Split: the
@@ -452,12 +452,13 @@ removes existing text. It covers:
   on, a re-measurement). When Agent notes already exist, the grooming line goes before their first
   line, and the lists go after their last line;
 - the `groomed` label, as its own item, which counts as an item that adds. It is added with
-  `addLabels` (never `labels`, which replaces the set) so the ticket's other labels stay, and it
-  goes on last ("Order of writes", item 5). Leave it out when the ticket already has it. Before
-  proposing it, check with `list_issue_labels` that the ticket's team has an active `groomed`
-  label; if it is missing or retired, do not create one: leave the item out and say so in the
-  report. This item is the groomed ticket's label only: a split's children get theirs as part of
-  the approved split (item 5), whether or not this item is on the list.
+  `addLabels` (never `labels`, which replaces the set) so the ticket's other labels stay, and only
+  if the ticket passes the ready test once the other writes have landed ("Order of writes", item 5);
+  otherwise it stays off and the report says why. Leave the item out when the ticket already has the
+  label. Before proposing it, check with `list_issue_labels` that the ticket's team has an active
+  `groomed` label; if it is missing or retired, do not create one: leave the item out and say so in
+  the report. This item is the groomed ticket's label only: a split's children get theirs as part of
+  the approved split, by the same test per child (item 5), whether or not this item is on the list.
 
 If I decline a relation to a ticket, in the edit list or in the interview, no text you save may
 name that ticket's id: name its PR, repo or title instead, and say so in the report.
@@ -472,7 +473,8 @@ approves only the items that add.
 
 **Forks-only mode:** do not ask this question. Show the numbered edit list, then apply every item
 under "Order of writes" and "Patches" below, which still hold in full; the `groomed` label item is
-applied with the rest the same way, also when it is the only item (last Rules bullet). My answers to
+applied with the rest the same way, under item 5's ready test, also when it is the only item (last
+Rules bullet). My answers to
 the fork questions, including a split approval, were the approval for what they decided. Do not
 offer the whole-description replacement, which needs its own question; use patches. For a
 description that has text but no headings, do what "Patches" says: leave it, show the sections you
@@ -507,12 +509,12 @@ Patches stay the default; three changed sections allow the offer and do not deci
    in that same call, and write its size and points in its Size section (File step 4 leaves Size for
    grooming, and this is its grooming); this overrides File's rule against setting an estimate
    unasked. A spin-off gets no estimate: it is pointed when it is groomed. Do not put `groomed` on
-   any filing here: a split's child gets it in item 5, and a spin-off never does, since it is
-   drafted, not groomed, and `dv:director-mode` skips grooming a ticket that has the label. If a
-   filing fails or returns an error, stop: leave the parent as it is (it still holds all the work)
-   and do not adopt any ticket id you did not get back from `save_issue`. The create may have
-   landed, so search the project for the title and list what you find beside the tickets that exist
-   and the draft of each that may not, under Needs you, for me to settle. Delete nothing.
+   any filing here: a split's child may get it in item 5, under its ready test, and a spin-off never
+   does, since it is drafted, not groomed, and `dv:director-mode` skips grooming a ticket that has
+   the label. If a filing fails or returns an error, stop: leave the parent as it is (it still holds
+   all the work) and do not adopt any ticket id you did not get back from `save_issue`. The create
+   may have landed, so search the project for the title and list what you find beside the tickets
+   that exist and the draft of each that may not, under Needs you, for me to settle. Delete nothing.
    **Forks-only mode:** the routine call to file a spin-off stands in for my interview answer.
 3. **Never write a ticket id that does not exist yet.** Write a child's or spin-off's id into the
    groomed ticket only after the `save_issue` call that created it, using the id it returned.
@@ -527,19 +529,24 @@ Patches stay the default; three changed sections allow the offer and do not deci
    there, go on; if not, retry once; if it still is not there, stop and say under Needs you that
    the children exist and the parent still carries their work. Then apply the rest of the approved
    items.
-5. **The `groomed` label goes on last,** after every other approved item has landed, so a ticket
-   whose grooming stopped before this item is not marked groomed: on the groomed ticket, and for a
-   split on each child it filed, with `addLabels` (File step 2 allows it), when the child's team has
-   an active `groomed` label. If step 7 stopped before this item for any reason (items 1, 2
-   including a failed estimate clear, or 4, or a patch that could not be placed), or an approved
-   item did not land because it was left for me to edit in Linear (a description with no headings),
-   leave the label off every ticket and say so in the report. The label writes are separate calls,
-   so they can themselves stop part way, and a call can land even when it returns an error. So after
-   the label writes, or after an error during them, read back with `get_issue` the groomed ticket
-   and every child this run filed, and report each one's labels as read (step 8). If the reads show
-   that a ticket this item was to label lacks `groomed` while another has it, name each ticket this
-   item was to label, with whether it has the label, under Needs you: `dv:director-mode` skips
-   grooming a ticket that has the label.
+5. **The `groomed` label goes on last, and only on a ticket grooming left ready.** If step 7 stopped
+   before this item for any reason (items 1, 2 including a failed estimate clear, or 4, or a patch
+   that could not be placed), leave the label off every ticket and say so in the report. Otherwise
+   read the groomed ticket again with `get_issue`, and each child this run filed, and give each the
+   ready test: step 8 item 1 would call it ready, setting aside its workflow state, what it waits on
+   (blockers, a pull condition) and, for a parent that stays as the parent, that its work sits in
+   its children. A ticket fails the test when grooming left a gap: a needed fix I declined or that
+   did not land (such as an item left for me to edit in Linear), an overlap or duplicate search that
+   did not finish, a Done means line that cannot be proved, a target not confirmed, or points Linear
+   did not store. Add `groomed` with `addLabels` (File step 2 allows it on a child) to each ticket
+   that passes, when its team has an active `groomed` label, and to the groomed ticket only when its
+   edit-list item was approved (in forks-only mode, applied). A ticket that fails keeps no new
+   label, and the report names its gap. The label writes are separate calls, so they can stop part
+   way, and a call can land even when it returns an error. So after the label writes, or after an
+   error during them, read back with `get_issue` the groomed ticket and every child this run filed,
+   and report each one's labels as read (step 8). Name under Needs you each ticket this item meant
+   to label that lacks `groomed` after the read-back: `dv:director-mode` skips grooming a ticket
+   that has the label, and grooms one that lacks it.
 
 **Patches.** Edit with `patch` operations on `save_issue` (`replace`, `insert_before`,
 `insert_after`, `replace_range`, and `append` for an empty description), not by sending the whole
@@ -558,14 +565,15 @@ headings (plain text, or only an Agent notes block) has no safe place to anchor 
 show me the sections you would add as text, and say I will edit it in Linear (or offer the
 whole-description replacement). Other approved edits, such as the title, still apply.
 
-Relations go on `save_issue` with `blockedBy`, `relatedTo` and `removeBlockedBy`. Do not change
-the state, labels, project, priority or assignee unless I ask, or unless I chose that change in an
+Relations go on `save_issue` with `blockedBy`, `relatedTo` and `removeBlockedBy`. Do not change the
+state, labels, project, priority or assignee unless I ask, or unless I chose that change in an
 interview answer. The one exception among labels is `groomed`: on the groomed ticket as its
 edit-list item, approved with the others (in forks-only mode, applied with them), and on a split's
-children as "Order of writes" item 5 says; every other label change still needs my request or an
-interview answer. Set the estimate only to the points in the edit list (step 4) or as the approved
-split sets it, and clear it only when Linear stored a different number (the edit list). Change
-labels with `addLabels` and `removeLabels`, since `labels` replaces the whole set.
+children, in both cases only as "Order of writes" item 5's ready test allows; every other label
+change still needs my request or an interview answer. Set the estimate only to the points in the
+edit list (step 4) or as the approved split sets it, and clear it only when Linear stored a
+different number (the edit list). Change labels with `addLabels` and `removeLabels`, since `labels`
+replaces the whole set.
 
 ## 8. Report
 
@@ -577,24 +585,26 @@ reply-format rules when the session's instructions give any:
 
 1. **Ready or not.** Name the ticket as a markdown link (the url from `get_issue`; the bare id if
    none came back). Ready means no gaps, Done means lines that can be proved, nothing it waits on,
-   every overlap search finished (step 1), and the team's backlog or ready-to-start state as
-   `list_issue_statuses` names them. A started,
-   finished or canceled ticket is not ready to start. After a split, name the child that is ready
-   and the one that comes first, as links; do not call the parent ready when the work is in its
-   children. A ticket whose points Linear did not store (step 7) is not ready. When not ready, name
-   what it lacks or waits on.
+   every overlap search finished (step 1), no needed fix declined or not landed, no duplicate search
+   left unfinished, no target unconfirmed, and the team's backlog or ready-to-start state as
+   `list_issue_statuses` names them. A started, finished or canceled ticket is not ready to start.
+   After a split, name the child that is ready and the one that comes first, as links; do not call
+   the parent ready when the work is in its children. A ticket whose points Linear did not store
+   (step 7) is not ready. When not ready, name what it lacks or waits on. The same judgment, setting
+   aside state and what the ticket waits on, is the ready test that decides the `groomed` label
+   (step 7, "Order of writes" item 5).
 2. **Needs you:** what only I can do or decide: a target proposed and not confirmed, an item I did
-   not approve that still matters, a repo the session could not read, an overlap or duplicate
-   search that did not finish (with its words, so it can be run again), a split left partly
-   labelled (step 7, "Order of writes" item 5). Left out when empty.
+   not approve that still matters, a repo the session could not read, an overlap or duplicate search
+   that did not finish (with its words, so it can be run again), a ticket item 5 meant to label that
+   lacks `groomed` after the read-back, a ticket that already had `groomed` but is not ready now
+   (step 7, "Order of writes" item 5). Left out when empty.
 3. One line each: size and points, with the estimate `get_issue` now shows; split verdict; what
    changed in the ticket ("text unchanged" when only the label landed, "nothing changed" when
    nothing did); the `groomed` label as read back: added, already there, or not added and why (not
-   approved, the team has no active `groomed` label, step 7 stopped before it, an approved item did
-   not land, or the write failed); spin-offs and children filed, as links, each child with the
-   estimate its `save_issue` returned and its labels as read back after item 5, or "not labelled"
-   with the same reasons as the groomed ticket's label; what was not checked; the branch to work it
-   on.
+   approved, the team has no active `groomed` label, step 7 stopped before it, the ticket is not
+   ready and the gap that keeps it so, or the write failed); spin-offs and children filed, as links,
+   each child with the estimate its `save_issue` returned and its labels as read back, or "not
+   labelled" with the same reasons; what was not checked; the branch to work it on.
 
 Do not ask whether to start the work and do not start it: starting is a separate request from me.
 
@@ -620,7 +630,8 @@ when there were none, "Decided without asking: none."
   estimate that matches them (a parent whose points sit on its children has none, and is not
   pointed), and is not pointed 13 without a recorded yes to keeping it unsplit, keeps its text as it
   is: say in one line that its text needs no edits, and propose an edit list that holds only the
-  `groomed` label item (step 7), asked and applied as step 7 says (in forks-only mode, applied
-  without the question). When that item is left out (the ticket has the label, or the team has
-  none), propose no edits and go to step 8. The no-split line and the grooming line in Agent notes
-  are added only alongside other edits to the text; the label item alone does not bring them in.
+  `groomed` label item (step 7), asked and applied as step 7 says, under item 5's ready test (in
+  forks-only mode, applied without the question). When that item is left out (the ticket has the
+  label, or the team has none), propose no edits and go to step 8. The no-split line and the
+  grooming line in Agent notes are added only alongside other edits to the text; the label item
+  alone does not bring them in.

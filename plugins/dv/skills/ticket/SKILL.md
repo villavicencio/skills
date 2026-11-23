@@ -77,7 +77,8 @@ description matches the work and it names this project's area. Do not create lab
 If a label that would help does not exist, say so in the draft. Leave off labels whose
 description marks workflow state, such as `someday`, unless I asked for them: adding or removing
 those is my call. The one exception: `dv:groom` adds `groomed` to a split's child it filed, once
-the split is complete (`dv:groom` step 7, "Order of writes" item 5). A spin-off never gets it.
+the split is complete and only if the child passes its ready test (`dv:groom` step 7, "Order of
+writes" item 5). A spin-off never gets it.
 
 ### 3. Existing tickets
 

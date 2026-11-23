@@ -75,7 +75,8 @@ unless I asked (VIL-916).
 
 ## Not changed
 
-- How the Director shows highlights to me, and the Director updating a PR that has no live session.
+- How the Director shows highlights to me. Also unchanged: the Director still cannot update a PR
+  whose worktree session has ended. That is left to VIL-917 (the `dv:director-mode` ticket).
 - `dv:groom`. Its spin-offs still follow its own interview, where my answer stands in for the draft.
 
 ## Upgrade

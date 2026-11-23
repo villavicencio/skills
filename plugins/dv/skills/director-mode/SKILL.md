@@ -377,13 +377,13 @@ session never does.
     HEAD. In the temporary worktree it merges `origin/<default branch>` in and, in a repo that
     versions its releases, bumps the version. It pushes with `git push origin HEAD:<branch>`,
     which only fast-forwards: if the push is rejected, it stops and reports, never forces, and
-    the temporary worktree, with its unpushed merge, comes to me as a leftover. After the push
-    it removes only that temporary worktree, with `git worktree remove "<temporary path>"` and
-    no `--force`. That is the one exception to the global removal bullets below: a worktree this
-    engineer made, clean, whose HEAD equals `origin/<branch>` after the push. This also fits a
-    pilot PR, which has no local worktree. It waits for MergeWren's verdict on the new head (the
-    reviewer wait in "Fix rounds", in the same `code-review.md`) and reports it. Report the
-    update to me as a highlight; any finding comes to me.
+    the temporary worktree, with its unpushed merge, comes to me as a leftover. When it has
+    finished, it removes that temporary worktree by the global removal procedure named below
+    (the same Git bullets your own removals use); if that procedure keeps the worktree, it
+    reports it to me as a leftover. This also fits a pilot PR, which has no local worktree. It
+    waits for MergeWren's verdict on the new head (the reviewer wait in "Fix rounds", in the
+    same `code-review.md`) and reports it. Report the update to me as a highlight; any finding
+    comes to me.
   - Either way, never merge a PR that MergeWren has not passed on its new head.
 - After the merge, pull the main checkout, and report the merge to me as a highlight.
   - **The PR's worktree session is live:** tell it in one line that the PR merged, by
@@ -394,8 +394,8 @@ session never does.
 - Clean up by the global procedure for removing branches and worktrees (the Git bullets "After a
   PR merges…", "A leftover local branch…" and "Remove a finished Orca worktree yourself…"), run
   from the main checkout. Any other worktree or branch removal, merged PR or not, follows the
-  same bullets, except the stale-PR engineer's own temporary worktree above. The procedure keeps
-  what fails a check or cannot be checked; tell me what it kept and why.
+  same bullets, the stale-PR engineer's temporary worktree included. The procedure keeps what
+  fails a check or cannot be checked; tell me what it kept and why.
 - Leave a worktree and its branch in place until its session has ended, by itself or under "End
   a finished worktree session"; the global procedure's own checks, including that no other
   session is still in it, decide removal, and a `dv:closeout` note is context, not permission to

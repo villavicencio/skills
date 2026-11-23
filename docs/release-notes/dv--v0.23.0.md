@@ -67,12 +67,13 @@ rest runs on its own while the home chat keeps him up to date (VIL-917).
   worktree, the PR's old one included: it makes a temporary detached worktree at
   `origin/<branch>`, merges `origin/<default branch>` in, bumps the version and pushes with `git
   push origin HEAD:<branch>`, which only fast-forwards. If the push is rejected it stops and
-  reports, never forces, and the temporary worktree comes to David as a leftover; after a push it
-  removes only that temporary worktree, the one exception to the global removal bullets. This also
-  fits pilot PRs, which have no local worktree. A pilot PR counts only once its pilot run has
-  ended; when that can't be told, David is asked. The Director still never merges a PR MergeWren
-  hasn't passed on its new head. After a merge it tells a live session that the PR merged, so the
-  session runs `dv:closeout`, and the branch and worktree wait for the note.
+  reports, never forces, and the temporary worktree comes to David as a leftover; when it has
+  finished, it removes that temporary worktree by the global removal procedure, and reports it to
+  David as a leftover if the procedure keeps it. This also fits pilot PRs, which have no local
+  worktree. A pilot PR counts only once its pilot run has ended; when that can't be told, David is
+  asked. The Director still never merges a PR MergeWren hasn't passed on its new head. After a
+  merge it tells a live session that the PR merged, so the session runs `dv:closeout`, and the
+  branch and worktree wait for the note.
 - **"Hiring"** names the one exception (the stale-PR update), and the frontmatter description
   and the README entry describe the new behaviour.
 

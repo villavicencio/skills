@@ -44,9 +44,9 @@ message that invoked this skill. "I" and "me" in this skill mean the user.
    format cannot be read, how to ask me questions, how to treat ticket text, the Agent notes
    markers and the branch-name rule. `dv:groom` reads the same file.
 3. **Question or assumption.** Ask when the answer would change the project, the type, the scope or
-   a Done means line, or the reason for the ticket, and you cannot look it up. Otherwise state your
-   best reading and mark it `[assumed]`. Ask before drafting, so the draft ends with a single yes or
-   no.
+   a Done means line, the reason for the ticket, or what it waits on, and you cannot look it up.
+   Otherwise state your best reading and mark it `[assumed]`. Ask before drafting, so the draft
+   ends with a single yes or no.
 
 ## File
 
@@ -113,24 +113,27 @@ what you can read; do not make me answer questions you can look up.
 - **Done means.** A checklist of `- [ ]` lines. Each is a result a command or an observation can
   prove. Write the command or the observation into the line. If you cannot write one, the ticket is
   not ready: say what is missing and ask me.
-- **Prerequisites.** `dv:groom` step 3, "Prerequisites", applies the same rules to an existing
-  ticket; keep the two worded alike.
+- **Prerequisites.** Find, check, tell apart, map and ask are worded as in `dv:groom` step 3,
+  "Prerequisites", which applies them to an existing ticket; keep the shared parts alike. The
+  cases that count as unclear (a closed PR or ticket that can no longer meet the condition, or a
+  state you cannot read) are File mode's own.
   - **Find them.** Mark each place the request, or a ticket or PR it names, makes this ticket wait
     on something: "pull when", "wait for", "after X merges", "requires X", "blocked by", "once X
     lands".
   - **Check each one.** Read its current state: `get_issue` for a ticket. When the condition is a
     PR merging, read that PR's merge state with
     `gh pr view <N> -R <owner>/<repo> --json state,mergedAt,headRefName,body`, not only the state
-    of the ticket it belongs to. The repo is the one the request names, or else the current one.
-    A prerequisite that is already met (the PR has merged, the ticket is Done) is not a blocker:
-    say so in the draft. A prerequisite ticket that is Canceled or a Duplicate gets no blocked-by
-    either: its condition can never be met as written, so it counts as unclear ("Ask" below). So
-    does a prerequisite whose state you cannot read.
+    of the ticket it belongs to. The repo is the one the request, or the ticket or PR that names
+    the PR, gives, or else the current one. A prerequisite that is already met (the PR has
+    merged, the ticket is Done) is not a blocker: say so in the draft. A prerequisite ticket that
+    is Canceled or a Duplicate gets no blocked-by either, nor does a PR closed without merging:
+    the condition can never be met as written, so it counts as unclear ("Ask" below). So does a
+    prerequisite whose state you cannot read.
   - **Prerequisite or reference.** A ticket named as a worked example, as background or as related
     work is not a blocker, and a reference alone never implies one. The test: could this ticket's
     work start and finish correctly if the other were never done? If yes, it is related, not
-    blocking: the draft lists it as related. If I decline that link, drop it, and the text does
-    not name the ticket's id either (shared rules, "Ticket ids in text").
+    blocking: the draft lists it as related, and step 7 links it. If I decline that link, drop
+    it, and the text does not name the ticket's id either (shared rules, "Ticket ids in text").
   - **Map it.** A prerequisite that is not met and maps clearly to one Linear issue goes in the
     draft as "Blocked by VIL-N", in the right direction (this ticket, the waiting one, is blocked
     by the prerequisite). A PR maps to the ticket it is attached to (the ticket's attachments, or
@@ -170,12 +173,13 @@ Show, in this order:
 - The project, team, state, labels and type, each with where it came from (named in the request,
   the repo's instructions, asked).
 - The relations: each "Blocked by" with its evidence (the ticket's state, or the PR's merge state
-  from `gh pr view`), each prerequisite found already met, and each related ticket. For each, say
-  where it came from (named in the request, found in a ticket or PR it names, found in step 3,
-  asked).
+  from `gh pr view`), each prerequisite found already met, each related ticket from step 4, and
+  each link an id in the text will add (shared rules, "Ticket ids in text"). For each, say where
+  it came from (named in the request, found in a ticket or PR it names, asked, written in the
+  text).
 - The title and the full description as it will be filed.
 - The assumptions, as a short list.
-- Any near-match found in step 3.
+- Any near-match or related tickets found in step 3. These are listed, not linked, unless I ask.
 
 Any interview question comes before the draft. Then end the draft with one plain question: file
 this? Create nothing in Linear before I say yes. The two exceptions are a spin-off and a "NOTICED,
@@ -196,7 +200,7 @@ instead, unless it now raises a question for me.
 
 Call `save_issue` with the team, project, title, description, labels and state of the draft as
 last shown or rebuilt, and its relations: `blockedBy` with the id of each "Blocked by" issue, and
-`relatedTo` with the id of each related ticket. Use real newlines in the description, not `\n`
+`relatedTo` with the id of each related ticket from step 4 (and any I asked to link). Use real newlines in the description, not `\n`
 escapes. Do not set an assignee, priority or estimate unless I asked.
 
 Then reply with:
@@ -230,7 +234,8 @@ For both:
 - **Project and link.** The source ticket is the one the session is working for (a), or the one
   the closeout note is about (b). If it cannot be read, or the note names none, this is not one of
   the two cases: file as usual and wait for my yes. Otherwise the ticket goes in the source
-  ticket's project, and its `save_issue` call adds the source ticket to `relatedTo`. This
+  ticket's project, and its `save_issue` call adds the source ticket to `relatedTo`, unless step 4
+  makes it a "Blocked by". This
   overrides step 1 of "File": read the source ticket first, and use its project even when the item
   or the request names another. If that project cannot be used (step 1 skips a canceled project,
   and asks when the project does not settle the team), file nothing and bring it to me as a

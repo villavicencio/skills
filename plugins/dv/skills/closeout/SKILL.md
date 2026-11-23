@@ -82,30 +82,102 @@ else
     DIRTY=$(printf '%s\n' "$STATUS" | grep -v '^!! ' | grep -v '^.. HANDOFF\.md$' | grep .)
     if [ -n "$DIRTY" ]; then printf '%s\n' "$DIRTY"; else echo "(none)"; fi
 
-    echo "=== Ignored entries (removing the worktree deletes them), by top-level path ==="
-    IGN=$(printf '%s\n' "$STATUS" | sed -n 's/^!! //p' | grep -v -x 'HANDOFF\.md')
-    if [ -z "$IGN" ]; then echo "(none)"
-    elif [ "$TOP" = "$MAIN" ]; then printf '%s\n' "$IGN" | sed 's/^/  /'
-    else
-      # Each entry: same (identical in the main checkout), different, only-here, or
-      # not-examined (not a regular file or symlink). Symlinks compare by target.
-      printf '%s\n' "$IGN" | while IFS= read -r p; do
+    echo "=== Ignored entries and nested git repos (removing the worktree deletes them), by build-output name, then by top-level path ==="
+    # A second status call with -z, read from a temp file: its paths arrive unquoted and
+    # NUL-terminated, so a name with a space, tab, quote or non-ASCII character is compared and
+    # matched as it is (the call above quotes such names). A newline in a name is shown as "?".
+    IGNF=$(mktemp 2>/dev/null) || IGNF=""
+    if [ -n "$IGNF" ] && git status --porcelain -z --ignored --untracked-files=all > "$IGNF"; then
+      # Each entry: same (identical in the main checkout), different, only-here, nested-repo (a
+      # directory holding a .git file or directory: a git repository, which can hold unpushed
+      # commits), or not-examined (anything else that is not a regular file or symlink).
+      # Symlinks compare by target. In the main checkout itself entries are listed, not compared.
+      # Build output: an entry inside a directory named .venv, venv, node_modules, __pycache__,
+      # .pytest_cache, .mypy_cache or .ruff_cache, matched as a whole directory name at any depth
+      # (myvenv/ and venv_notes/ are not build output, nor is a file named venv). An entry counts
+      # once, under the outermost such directory on its path. Build output is grouped one line
+      # per name, with its entry count and how many directories of that name hold the entries;
+      # everything else is grouped by top-level path, and only it feeds the examples list. A
+      # nested-repo entry is never build output: it goes on its top-level line even under a
+      # build-output name, and every one is listed by path (the 10-example cap does not apply).
+      # A repo git cannot open (a .git file pointing nowhere, a .git directory without HEAD) is
+      # walked into and its files listed one by one, so every entry is also checked for a .git
+      # in each directory above it, up to the worktree; the repo is then listed once, by path.
+      # Git lists nothing at all for a repo it cannot open that holds only its .git folder,
+      # ignored or not, so a find also looks for every .git (file or folder) below the worktree's
+      # top. Each one is listed as a nested repo, except an initialized submodule's (those have
+      # their own checks below); one git already listed is listed once.
+      # The case patterns open with "(" so bash 3.2 parses them inside the command substitution.
+      NRF=""; SUBP=""
+      if [ "$TOP" != "$MAIN" ]; then
+        if NRF=$(mktemp 2>/dev/null) && find "$TOP" -mindepth 2 -name .git -prune -print0 > "$NRF"; then :
+        else FAILS="$FAILS- finding .git folders below the worktree failed: a nested repo git does not list may be missed$NL"; fi
+        if [ -f "$TOP/.gitmodules" ]; then
+          SUBP=$(git -C "$TOP" submodule foreach --quiet --recursive 'printf "%s\n" "$displaypath"') \
+            || FAILS="$FAILS- listing submodule paths failed: a submodule may be listed as a nested repo$NL"
+        fi
+      fi
+      if IGNOUT=$( { while IFS= read -r -d '' r; do
+        case "$r" in ('!! '*) ;; (*) continue ;; esac
+        p=${r#'!! '}; [ "$p" = HANDOFF.md ] && continue
         a="$TOP/$p"; m="$MAIN/$p"
-        if [ -L "$a" ]; then
+        if [ "$TOP" = "$MAIN" ]; then k=listed
+        elif [ -L "$a" ]; then
           if [ -L "$m" ] && [ "$(readlink "$a")" = "$(readlink "$m")" ]; then k=same
           elif [ -e "$m" ] || [ -L "$m" ]; then k=different; else k=only-here; fi
         elif [ -f "$a" ]; then
           if [ -f "$m" ] && [ ! -L "$m" ]; then if cmp -s "$a" "$m"; then k=same; else k=different; fi
           elif [ -e "$m" ] || [ -L "$m" ]; then k=different; else k=only-here; fi
+        elif [ -d "$a" ] && { [ -e "$a/.git" ] || [ -L "$a/.git" ]; }; then k=nested-repo
         else k=not-examined; fi
+        if [ "$k" != listed ] && [ "$k" != nested-repo ]; then
+          d=${p%/}
+          while :; do
+            case "$d" in (*/*) d=${d%/*} ;; (*) break ;; esac
+            if [ -e "$TOP/$d/.git" ] || [ -L "$TOP/$d/.git" ]; then k=nested-repo; p="$d/"; break; fi
+          done
+        fi
+        case "$p" in (*"$NL"*) p=$(printf '%s' "$p" | tr '\n' '?') ;; esac
         printf '%s\t%s\n' "$k" "$p"
-      done | awk -F '\t' '
-        { top=$(2); if (index(top, "/")) top=substr(top, 1, index(top, "/")); n[top]++; c[top, $(1)]++
-          if ($(1) != "same" && $(1) != "only-here" && shown < 10) { ex[++shown]=$(1) ": " $(2) } }
-        END { for (t in n) printf "  %s  %d entries: %d same as the main checkout, %d only here, %d different, %d not examined\n",
-                t, n[t], c[t,"same"], c[t,"only-here"], c[t,"different"], c[t,"not-examined"]
-              for (i=1; i<=shown; i++) print "    " ex[i] }'
+      done < "$IGNF"
+      [ -n "$NRF" ] && while IFS= read -r -d '' g; do
+        p=${g#"$TOP"/}; p=${p%/.git}
+        case "$p" in (*"$NL"*) ;; (*) [ -n "$SUBP" ] && printf '%s\n' "$SUBP" | grep -q -x -F -e "$p" && continue ;; esac
+        case "$p" in (*"$NL"*) p=$(printf '%s' "$p" | tr '\n' '?') ;; esac
+        printf 'nested-repo\t%s/\n' "$p"
+      done < "$NRF"; } | awk '
+        BEGIN { nb=split(".venv venv node_modules __pycache__ .pytest_cache .mypy_cache .ruff_cache", bn, " ")
+                for (i=1; i<=nb; i++) isb[bn[i]]=1 }
+        # The kind is the text before the first tab; the path is all of the rest, tabs included.
+        { k=substr($(0), 1, index($(0), "\t") - 1); path=substr($(0), length(k) + 2)
+          if (k == "listed") { print "  " path; next }
+          if (k == "nested-repo") { if (path in nr_seen) next; nr_seen[path]=1 }
+          np=split(path, part, "/"); g=""; dir=""
+          # Every component but the last is a directory; the last is the entry itself.
+          for (i=1; i<np; i++) { dir=dir part[i] "/"; if (part[i] in isb) { g=part[i]; break } }
+          if (g != "" && k != "nested-repo") { bn_n[g]++; bn_c[g, k]++; if (!((g, dir) in seen)) { seen[g, dir]=1; bn_d[g]++ }; next }
+          top=path; if (index(top, "/")) top=substr(top, 1, index(top, "/")); n[top]++; c[top, k]++
+          if (k == "nested-repo") ex[++shown]=k ": " path
+          else if (k != "same" && k != "only-here" && capped < 10) { capped++; ex[++shown]=k ": " path } }
+        END { if (NR == 0) print "(none)"
+              for (i=1; i<=nb; i++) { g=bn[i]; if (!(g in bn_n)) continue
+                printf "  %s/ (any depth): %d entr%s in %d director%s: %d same as the main checkout, %d only here, %d different, %d not examined\n",
+                  g, bn_n[g], (bn_n[g] == 1 ? "y" : "ies"), bn_d[g], (bn_d[g] == 1 ? "y" : "ies"),
+                  bn_c[g,"same"], bn_c[g,"only-here"], bn_c[g,"different"], bn_c[g,"not-examined"] }
+              for (t in n) printf "  %s  %d entries: %d same as the main checkout, %d only here, %d different, %d not examined, %d nested git repos\n",
+                t, n[t], c[t,"same"], c[t,"only-here"], c[t,"different"], c[t,"not-examined"], c[t,"nested-repo"]
+              for (i=1; i<=shown; i++) print "    " ex[i] }'); then
+        printf '%s\n' "$IGNOUT"
+      else
+        FAILS="$FAILS- grouping the ignored entries failed: ignored files unknown$NL"
+        echo "(not listed — see the checks that did not run)"
+      fi
+    else
+      FAILS="$FAILS- git status -z for the ignored entries failed: ignored files unknown$NL"
+      echo "(not listed — see the checks that did not run)"
     fi
+    [ -n "$IGNF" ] && rm -f "$IGNF"
+    [ -n "$NRF" ] && rm -f "$NRF"
   else
     FAILS="$FAILS- git status in the worktree failed: uncommitted and ignored files unknown$NL"
   fi
@@ -305,7 +377,7 @@ verdict, and never say "safe" without it.
 - Nothing is uncommitted or untracked, `HANDOFF.md` aside.
 - No commit is listed under "Commits here that are not on" the default branch.
 - Every ignored entry is the same as the main checkout's. No ignored entry is "only here",
-  "different" or "not examined".
+  "different", "not examined" or a nested git repo, on a build-output line or a top-level line.
 - "Worktree-private git state" says none: an operation in progress, a per-worktree ref or
   per-worktree config goes with the worktree.
 - No commit is listed as reachable only from this worktree's HEAD reflog or ORIG_HEAD.
@@ -319,14 +391,27 @@ verdict, and never say "safe" without it.
 
 **Safe once you accept losing** the listed items: every rule above holds except two, and what
 breaks them is only this. Ignored entries that are not the same as the main checkout's are all
-"only here" under one of these top-level paths, build output a setup step recreates: `.venv/`,
-`venv/`, `node_modules/`, `__pycache__/`, `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`. And
-commits listed as reachable only from this worktree's HEAD reflog or ORIG_HEAD (usually commits
-amended or reset away; removal ends their recovery path). The verdict names each path with its
-entry count, and the reflog-only commits with their count, list id and the commits as listed
-(all of them, or the first 50 when there are more). It is not "safe" until I accept losing them:
-nothing in Steps 4 and 5 that needs "safe" runs before that yes, and the question that asks for
-it names the paths and the reflog-only commits.
+build output, whatever their kind: "only here", "different" or "not examined" (a nested git repo
+is never build output; see below). Build output is
+an entry inside a directory named `.venv/`, `venv/`, `node_modules/`, `__pycache__/`,
+`.pytest_cache/`, `.mypy_cache/` or `.ruff_cache/`, at any depth (a setup step or the next run
+recreates it), and Step 1 lists it on that name's `<name>/ (any depth)` line, never on a
+top-level line. A top-level line named after a build-output directory (`.venv/  1 entries: …`)
+is not build output: it holds what Step 1 kept off the build-output line, such as a nested repo.
+The name must be a whole directory name: `myvenv/`, `venv_notes/` and a file named `venv` are not
+build output. An entry under two such names (`node_modules/pkg/__pycache__/x.pyc`)
+counts once, under the outermost. A nested git repository (kind `nested-repo`: a folder below the
+worktree's top holding a `.git` file or folder, ignored or not, such as a `pip install -e git+…`
+clone in `.venv/src/<pkg>/`; an initialized submodule is not one) is never build output, even
+under a build-output name: it can hold unpushed commits, Step 1 lists it on its
+top-level line and by path, and any one of them rules this verdict out. And commits listed as
+reachable only from this worktree's HEAD reflog or ORIG_HEAD (usually commits amended or reset away; removal ends their recovery path).
+The verdict names every build-output line Step 1 printed, with its name, entry count and
+directory count (for example `__pycache__/ (any depth): 666 entries in 87 directories`), and the
+reflog-only commits with their count, list id and the commits as listed (all of them, or the
+first 50 when there are more). It is not "safe" until I accept losing them: nothing in Steps 4
+and 5 that needs "safe" runs before that yes, and the question that asks for it names the
+build-output lines and the reflog-only commits.
 
 Safe to delete is about data. Whether a given removal command can do it is separate: see the
 initialized-submodule case in Step 5.
@@ -343,8 +428,10 @@ initialized-submodule case in Step 5.
   copy is the one that matters.
 
 Otherwise it is **not safe to delete**, and the reply names exactly what would be lost: each
-file (an edited `.env`, anything "different" or "not examined", anything "only here" outside the
-build-output paths), and each commit by short sha and subject. Say where a commit still lives. On a named branch
+file outside build output (an edited `.env`, anything "different", "not examined" or "only here"
+on a top-level line), each nested git repository by path (wherever it is, build-output names
+included), and each commit by short sha and subject. Build output is named by its
+per-name lines, as above. Say where a commit still lives. On a named branch
 the commit stays on that branch after the worktree goes, and on the remote if it says pushed; on a
 detached HEAD nothing refers to it once the worktree is gone. When a check could not run, the
 verdict is **not confirmed safe**, with the check that is missing.
@@ -360,7 +447,7 @@ Use these headings in this order, and write "none" under one with nothing to say
 
 ```
 CLOSEOUT NOTE from <branch or "detached"> at <worktree path>, <date and time with zone>
-Worktree: <safe to delete | safe once you accept losing: <build-output paths, reflog-only commits> | NOT safe to delete: what would be lost | not confirmed safe: what is unverified>, by these checks
+Worktree: <safe to delete | safe once you accept losing: <each build-output line as name, entry count and directory count; reflog-only commits with count and list id> | NOT safe to delete: what would be lost, each nested git repo by path | not confirmed safe: what is unverified>, by these checks
 Not checked: <the fixed list from Step 2>
 
 WHAT SHIPPED
@@ -417,7 +504,7 @@ failed or no command was found, say so.
 ### Step 4 — Archive the handoff (only when safe to delete)
 
 Run this only when Step 2 said safe to delete, or said safe once I accept losing the listed
-build-output paths and I have said yes to that. It moves this session's handoff out of the shared
+build-output lines and reflog-only commits and I have said yes to that. It moves this session's handoff out of the shared
 store into `handoffs/_done/`, the way `/pickup` does for a branch whose PR merged, so `/pickup` in
 other worktrees stops listing a closed session. It also covers a detached worktree, which
 `/pickup` never archives: the handoff is found by the worktree path it records, and archived
@@ -493,24 +580,29 @@ after this session has ended. Do not run it.
   submodules are detached, not removed". Do not offer `--force` yourself.
 
 When the worktree is not safe, or not confirmed safe, name no removal command and offer none.
-When it is safe once I accept losing, end the reply with one plain question that names what would
-be lost: the build-output paths with their entry counts, and the reflog-only commits with their
+When it is safe once I accept losing (never while a nested git repo is listed: that is not safe),
+end the reply with one plain question that names what would be lost: each build-output line with
+its name, entry count and directory count (for example
+`__pycache__/ (any depth): 666 entries in 87 directories`), and the reflog-only commits with their
 count and list id. Accept losing them? On my yes, recheck first (below), then run Step 4, then
 name the removal command (or make the Orca offer below).
 
 **Recheck in every later turn.** A yes arrives in a later turn, and the worktree may have changed
 since the verdict. Before acting on any yes (accepting losses, archiving, removing), run the Step 1
 block again and apply Step 2 to its output. Act only if the verdict is the same and, for "safe
-once you accept losing", the listed paths, entry counts, reflog-only commit count and list id are
-the same. If anything
-changed, act on nothing: report the new verdict, update the saved note if it no longer holds, and
+once you accept losing", every build-output line is the same as printed, word for word: its
+name, entry count, directory count and every per-kind count (same, only here, different, not
+examined). The reflog-only commit count and list id must be the same too, and no nested git repo
+may be listed. This compares counts, not paths or contents: a file edited in place, with every
+count unchanged, is not caught. If anything changed, act on nothing: report the new verdict, update the saved note if it no longer holds, and
 ask again.
 
 Reply in this order, short:
 
-1. One line: safe to delete; safe once you accept losing (the build-output paths and reflog-only
-   commits); not safe to delete (and what would be lost); or not confirmed safe (and which check
-   is missing). Then the Not checked list from Step 2.
+1. One line: safe to delete; safe once you accept losing (each build-output line with its name,
+   entry count and directory count, and the reflog-only commits); not safe to delete (and what
+   would be lost, each nested git repo by path); or not confirmed safe (and which check is
+   missing). Then the Not checked list from Step 2.
 2. **Needs you:** decisions waiting on me, and anything still owed on the ticket that this
    session could not close. Leave it out if there is none.
 3. The verified facts, one line each: the ticket and its state; each PR and its merge state; what
@@ -562,7 +654,7 @@ one that is mid-turn reads it. So say in the reply that the note was sent and th
 still need it pasted.
 
 **Offer the removal.** Only when Step 2 said safe to delete (or I have accepted the listed
-build-output losses), end the reply with one question. Before running the removal on my yes,
+build-output lines and reflog-only commits), end the reply with one question. Before running the removal on my yes,
 recheck as Step 5 says; if the verdict changed, do not remove. The question is:
 remove this worktree now? Run the removal only after my yes, in a later turn, as the last action
 of the session, because it stops this worktree's sessions:

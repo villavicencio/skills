@@ -28,15 +28,18 @@ was applied by hand and drifted (VIL-853).
   without the question in forks-only mode). The grooming line and the no-split line still go in
   only alongside edits to the text. Forks-only's "Decided without asking" list refers to the
   ticket's text being unchanged in that case.
-- **Split children, not spin-offs.** The children of a split filed in step 7 get `groomed` when
-  their team has the label, and the split proposal shows it among their labels. A spin-off does
-  not get it: it is drafted, not groomed, and `dv:director-mode`'s kickoff skips grooming for a
-  ticket that has the label.
+- **Split children, not spin-offs.** The split proposal gives each child its own Size, and the
+  child is filed with it. Once the whole split has landed (children filed, parent changed),
+  `dv:groom` adds `groomed` to each child, when its team has the label, in the same last step as
+  the groomed ticket's label. A split that stops part way leaves every label off, so
+  `dv:director-mode`'s kickoff, which skips grooming for a ticket that has the label, still grooms
+  those children. A spin-off never gets the label: it is drafted, not groomed.
 - **Step 8 report.** Says whether the label was added, already there, or not added and why (not
   approved, no active label, step 7 stopped before it, or the write failed), for the ticket and
   each child filed. When only the label landed, the report says the text is unchanged.
 - **`dv:ticket` File step 2.** The rule that leaves off workflow-state labels gains one exception:
-  a split's child that `dv:groom` files gets `groomed`; a spin-off does not.
+  `dv:groom` adds `groomed` to a split's child it filed once the split is complete; a spin-off
+  never gets it.
 
 ## Upgrade
 

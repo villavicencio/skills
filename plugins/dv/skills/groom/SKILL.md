@@ -284,9 +284,9 @@ these holds:
 - one part is risky and the rest is not.
 
 Do not split when the parts must land together to be correct. A proposed split names each child:
-a title in the format, its Done means lines taken from the parent, its order, what blocks what, and
-one line with its project, state and labels (`groomed` among them when that team has an active
-`groomed` label; step 7).
+a title in the format, its Done means lines taken from the parent, its Size with its reason, its
+order, what blocks what, and one line with its project, state and labels (`groomed` added once the
+split is complete when that team has an active `groomed` label; step 7).
 It also says what happens to the parent: it becomes the first child, or it stays as the parent with
 the children under it (`parentId`). When it stays as the parent, write its full replacement
 description: Why, a Scope that names the children, Done means and Decisions. The rest of its text
@@ -334,9 +334,9 @@ markers, neighbors and overlapping work, the size, the split verdict and the sco
 overlapping work opens with one tally per search, from step 1 and step 5: its words, pages read
 and results (for example, "`groom pagination`: 2 pages, 263 results"), with an incomplete search
 marked as such. Show
-the split proposal in full here (each child's title, Done means lines, order and blockers, and the
-parent's full replacement description when it stays as the parent), and each spin-off's title,
-reason, project and any duplicate match.
+the split proposal in full here (each child's title, Done means lines, Size, labels, order and
+blockers, and the parent's full replacement description when it stays as the parent), and each
+spin-off's title, reason, project and any duplicate match.
 
 Then ask every open decision, in rounds of at most 4 questions:
 
@@ -397,7 +397,8 @@ removes existing text. It covers:
 - relations the text itself creates: an item whose text names a ticket id the ticket is not yet
   related to says so ("and relates VIL-N"), since Linear relates any id written in a description
   (shared rules, "Ticket ids in text");
-- Size, the Decisions lines from the interview, and the no-split line;
+- Size (for a parent that becomes the first child, that child's Size from the split), the
+  Decisions lines from the interview, and the no-split line;
 - links to comments that hold evidence a Scope step depends on;
 - for a split, the children to file and the parent's change, exactly as approved;
 - Agent notes, which opens with the grooming line ("Groomed <date> <time> <zone> against
@@ -412,7 +413,8 @@ removes existing text. It covers:
   goes on last ("Order of writes", item 5). Leave it out when the ticket already has it. Before
   proposing it, check with `list_issue_labels` that the ticket's team has an active `groomed`
   label; if it is missing or retired, do not create one: leave the item out and say so in the
-  report.
+  report. This item is the groomed ticket's label only: a split's children get theirs as part of
+  the approved split (item 5), whether or not this item is on the list.
 
 If I decline a relation to a ticket, in the edit list or in the interview, no text you save may
 name that ticket's id: name its PR, repo or title instead, and say so in the report.
@@ -452,21 +454,21 @@ Patches stay the default; three changed sections allow the offer and do not deci
    first child, read the parent again and compare its description with the one the split was
    approved on; if it changed, file nothing, say what changed and ask again.
 2. **File approved children and spin-offs.** Read `dv:ticket`'s `SKILL.md` (`../ticket/SKILL.md`
-   from this skill's directory), section "File", and create each with its rules: project found
-   live (a child takes the parent's project), labels from the team, plus `groomed` on a split's
-   child when that team has an active `groomed` label (File step 2 allows it; a spin-off never gets
-   it, since it is drafted, not groomed, and `dv:director-mode` skips grooming a ticket that has
-   the label), the format, facts checked or marked `[assumed]`, Backlog with a pull condition
-   unless it can start now, the re-run of the duplicate searches just before creating, and
-   `save_issue`. My interview answer stands in for
-   File step 6's draft and question. Set each one's relations in the `save_issue` call that
-   creates it: `parentId` for a child under a parent that stays, `blockedBy` for a child that waits
-   on another child or for any ticket whose pull condition names an open ticket (unless File mode
-   already sets it), and `relatedTo` the groomed ticket for a spin-off. If a filing fails or
-   returns an error, stop: leave the parent as it is (it still holds all the work) and do not
-   adopt any ticket id you did not get back from `save_issue`. The create may have landed, so
-   search the project for the title and list what you find beside the tickets that exist and the
-   draft of each that may not, under Needs you, for me to settle. Delete nothing.
+   from this skill's directory), section "File", and create each with its rules: project found live
+   (a child takes the parent's project), labels from the team, the format, facts checked or marked
+   `[assumed]`, Backlog with a pull condition unless it can start now, the re-run of the duplicate
+   searches just before creating, and `save_issue`. A split's child also carries the Size the split
+   gave it (File step 4 leaves Size for grooming, and this is its grooming). Do not put `groomed` on
+   any filing here: a split's child gets it in item 5, and a spin-off never does, since it is
+   drafted, not groomed, and `dv:director-mode` skips grooming a ticket that has the label. My
+   interview answer stands in for File step 6's draft and question. Set each one's relations in the
+   `save_issue` call that creates it: `parentId` for a child under a parent that stays, `blockedBy`
+   for a child that waits on another child or for any ticket whose pull condition names an open
+   ticket (unless File mode already sets it), and `relatedTo` the groomed ticket for a spin-off. If
+   a filing fails or returns an error, stop: leave the parent as it is (it still holds all the work)
+   and do not adopt any ticket id you did not get back from `save_issue`. The create may have
+   landed, so search the project for the title and list what you find beside the tickets that exist
+   and the draft of each that may not, under Needs you, for me to settle. Delete nothing.
    **Forks-only mode:** the routine call to file a spin-off stands in for my interview answer.
 3. **Never write a ticket id that does not exist yet.** Write a child's or spin-off's id into the
    groomed ticket only after the `save_issue` call that created it, using the id it returned.
@@ -482,8 +484,10 @@ Patches stay the default; three changed sections allow the offer and do not deci
    the children exist and the parent still carries their work. Then apply the rest of the approved
    items.
 5. **The `groomed` label goes on last,** after every other approved item has landed, so a ticket
-   whose grooming stopped part way is not marked groomed. If step 7 stopped on a failed write or a
-   patch that could not be placed, leave the label off and say so in the report.
+   whose grooming stopped part way is not marked groomed: on the groomed ticket, and for a split on
+   each child it filed, with `addLabels` (File step 2 allows it), when the child's team has an
+   active `groomed` label. If step 7 stopped for any reason (items 1, 2 or 4, or a patch that could
+   not be placed), leave the label off every ticket and say so in the report.
 
 **Patches.** Edit with `patch` operations on `save_issue` (`replace`, `insert_before`,
 `insert_after`, `replace_range`, and `append` for an empty description), not by sending the whole
@@ -531,7 +535,8 @@ reply-format rules when the session's instructions give any:
    label landed, "nothing changed" when nothing did); the `groomed` label: added, already there,
    or not added and why (not approved, the team has no active `groomed` label, step 7 stopped
    before it, or the write failed), and for each child filed, whether it got the label (if not:
-   no active label, or the write failed); spin-offs and children filed, as links; what was not checked; the branch to work it on.
+   no active label, step 7 stopped before it, or the write failed); spin-offs and children filed,
+   as links; what was not checked; the branch to work it on.
 
 Do not ask whether to start the work and do not start it: starting is a separate request from me.
 
@@ -547,7 +552,8 @@ were none, "Decided without asking: none."
 - Nothing is created or edited in Linear before I approve it. **Forks-only mode** is the exception:
   step 7 applies its edit list without an approval question, and a routine call to file a
   spin-off counts as my approval of it.
-- Edit only the groomed ticket. Create only the children and spin-offs I approved. Do not edit or
+- Edit only the groomed ticket, apart from the `groomed` label that step 7 adds to the split's
+  children it filed. Create only the children and spin-offs I approved. Do not edit or
   comment on any other ticket; a follow-up on a neighbor goes under "After the merge" or becomes a
   spin-off.
 - No file edits, branches or commits: grooming reads repos and writes only to Linear.

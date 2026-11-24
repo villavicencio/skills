@@ -34,8 +34,8 @@ the skills repo's sessions can read, so tickets filed elsewhere landed with none
   Step numbering: the step is "2b" so that File steps 3 to 7, which `dv:groom` and the shared
   rules cite by number, keep their numbers.
 - **`dv:ticket`, "Filing without my confirmation".** A spin-off or closeout item takes its source
-  ticket's milestone. When the source has none, it is filed with none and the report says so;
-  no milestone is ever created on this path.
+  ticket's milestone. When the source has none, or a finished one, it is filed with none and the
+  report says so; no milestone is ever created on this path.
 - **`dv:groom`, step 3, new "Milestone" check.** A ticket whose Decisions records "No milestone"
   is left alone. An open ticket with no milestone, in a project that has milestones, gets the one
   that fits as an add item (a routine call in `forks-only` mode). When none fits, the field stays
@@ -45,8 +45,9 @@ the skills repo's sessions can read, so tickets filed elsewhere landed with none
   user, not to the Director.
 - **`dv:groom`, splits and spin-offs.** A split's children take the parent's milestone and a
   spin-off takes the groomed ticket's, as the approved edit list leaves it ("Order of writes"
-  item 2, which also creates an approved new milestone before any filing). The split proposal and
-  each spin-off line show the milestone.
+  item 2); with none or a finished one, they get none. An approved new milestone is created before
+  "Order of writes" item 1, whether or not anything is filed. The split proposal and each spin-off
+  line show the milestone. A Done, Canceled or Duplicate ticket's milestone is left as it is.
 - **`dv:groom`, edit list, report and rules.** The milestone is an edit-list item; the report
   gives the milestone as read back; a milestone is created only on a yes; and a ticket whose text
   needs no edits may still get the milestone item beside the `groomed` label item.

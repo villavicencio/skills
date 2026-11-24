@@ -90,12 +90,13 @@ Put the ticket in one of its project's milestones, under the shared rules, "Mile
 
 - **The request names a milestone.** Use it if it matches one in the list. If it matches none,
   or only a finished one, say so and ask.
-- **One fits.** Take the closest, and show it in the draft (step 6) with its one-line reason.
-- **None fits.** Propose a new milestone in the interview: its name and one line on what done
-  means. The options are to create it, to file with no milestone for now, or to keep the ticket
-  out of milestones (the draft's Decisions then records "No milestone", as the shared rules say).
-  The milestone is created in step 7, and only on my yes to it.
 - **The project has no milestones, or only finished ones.** The draft says so, and proposes none.
+- **One fits.** Take the closest, and show it in the draft (step 6) with its one-line reason.
+- **The project has open milestones, but none fits.** Propose a new milestone in the interview:
+  its name and one line on what done means. The options are to create it, to file with no
+  milestone for now, or to keep the ticket out of milestones (the draft's Decisions then records
+  "No milestone", as the shared rules say). The milestone is created in step 7, and only on my
+  yes to it.
 
 A spin-off or closeout item filed under "Filing without my confirmation" takes its source
 ticket's milestone instead (see there). A child or spin-off that `dv:groom` files takes the
@@ -176,8 +177,9 @@ Show, in this order:
 - The project, team, state, labels and type, each with where it came from (named in the request,
   the repo's instructions, asked).
 - The milestone with its one-line reason (step 2b), or the new milestone I said yes to, marked as
-  to be created, or "no milestone" with why (none fits and I chose none, the project has none, or
-  the source ticket has none).
+  to be created, or "no milestone" with why (none fits and I chose none for now, I chose to keep
+  the ticket out of milestones, the project has none, or the source ticket has none or a finished
+  one).
 - The relations: each "Blocked by" with its evidence (the ticket's state, or the PR's merge state
   from `gh pr view`), each prerequisite found already met, each related ticket from step 4, and
   each other link an id in the text will add (shared rules, "Ticket ids in text"). For each, say
@@ -252,8 +254,9 @@ For both:
   and asks when the project does not settle the team), file nothing and bring it to me as a
   decision.
 - **Milestone.** The ticket takes the source ticket's milestone, read with `get_issue`; this
-  overrides step 2b. When the source ticket has none, file it with no milestone and say so in the
-  report. Never create a milestone on this path (shared rules, "Milestones").
+  overrides step 2b. When the source ticket has none, or one that is finished (shared rules,
+  "Milestones"), file it with no milestone and say so in the report. Never create a milestone on
+  this path (shared rules, "Milestones").
 - **A near-match stops the filing.** If step 3's search finds a ticket that is the same problem,
   file nothing and bring the match to me as a decision, with its id and state.
 - **A capped or unfinished duplicate search stops the filing.** If a search in step 3 returns 100

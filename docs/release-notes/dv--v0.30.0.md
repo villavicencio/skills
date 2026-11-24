@@ -2,9 +2,11 @@
 
 Minor release. `dv:groom` adds the `groomed` label to a ticket, and to each child of a split it
 files, only when grooming leaves that ticket ready, setting aside its workflow state and what it
-waits on. So on the board, `groomed` means grooming finished with no gap left: no needed fix
-declined or missing, every overlap and duplicate search finished, every Done means line provable,
-no unconfirmed target, and its points stored. `dv:ticket` allows the label on those children. The
+waits on. So a `groomed` label that `dv:groom` adds means grooming finished with no gap left: no
+needed fix declined or missing, every overlap and duplicate search finished, every Done means line
+provable, no unconfirmed target, and its points stored. The ready test governs the labels `dv:groom`
+adds. A `groomed` label already on a ticket stays, and when that ticket is not ready, the report
+names it under Needs you for David to remove. `dv:ticket` allows the label on those children. The
 other fourteen skills have no behaviour changes; their version moves to `0.30.0` only because the
 suite is released as one plugin.
 

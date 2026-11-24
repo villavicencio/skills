@@ -8,7 +8,8 @@
 """Output-quality evals for dv skills.
 
 For each case, runs the model twice:
-  * WITH the skill — the SKILL.md body injected as the system prompt
+  * WITH the skill — the SKILL.md body, plus the skill's references/*.md if it
+    has any, injected as the system prompt
   * WITHOUT the skill — a neutral baseline system prompt
 
 Then applies code-checkable regex assertions to the WITH-skill response and
@@ -56,6 +57,22 @@ def load_skill_body(skill_md: Path) -> str:
         if len(parts) == 3:
             return parts[2].strip()
     return text.strip()
+
+
+def load_references(skill_dir: Path) -> str:
+    """The skill's own references/*.md, which its SKILL.md tells the agent to read first.
+
+    dv:ticket keeps the rules its evals test (the shared "Prerequisites" section) in
+    references/ticket-format.md, so the with-skill prompt needs that file as well as the body.
+    """
+    ref_dir = skill_dir / "references"
+    if not ref_dir.is_dir():
+        return ""
+    parts = []
+    for ref in sorted(ref_dir.glob("*.md")):
+        parts.append(f"<reference path=\"references/{ref.name}\">\n"
+                     f"{ref.read_text(encoding='utf-8').strip()}\n</reference>")
+    return "\n\n".join(parts)
 
 
 def check_assertions(text: str, spec: dict) -> list[str]:
@@ -116,6 +133,9 @@ def main() -> int:
     model = args.model or evals.get("model") or DEFAULT_MODEL
     skill_md = plugin_root / "skills" / skill_name / "SKILL.md"
     skill_body = load_skill_body(skill_md)
+    references = load_references(skill_md.parent)
+    if references:
+        skill_body = f"{skill_body}\n\n{references}"
     cases = evals["cases"]
 
     if args.dry_run:

@@ -51,8 +51,8 @@ overrule it.
 - anything destructive or hard to undo;
 - a target only I can set (step 3, Targets), or a missing pull condition only I can supply;
 - a split, with the parent's replacement description when it stays as the parent;
-- a prerequisite that the shared rules send to a question (step 3; no relation is set on a
-  guess).
+- a prerequisite that the shared rules' "Prerequisites" sends to a question (step 3; no relation
+  is set on a guess).
 
 **Routine calls:** every other open decision, such as wording, ordering, Size and points, Done
 means phrasing, filing or dropping a spin-off, settling an `[assumed]` marker you verified,

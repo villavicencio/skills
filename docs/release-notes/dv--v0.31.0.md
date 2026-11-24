@@ -45,6 +45,9 @@ ticket named it in both, which Linear refuses ("Two issues can have only one rel
   `blockedBy` alone.
 - **"Before anything else" in both skills.** The list of what the shared file holds names the
   prerequisite and relation rules.
+- **Output evals.** `tooling/evals/run_output_evals.py` injects a skill's `references/*.md` after
+  its `SKILL.md` body in the with-skill run, so `dv:ticket`'s evals still see the rules they test,
+  which now live in the shared file. Only `dv:ticket` has both evals and a `references/` directory.
 - **README.** The `dv:ticket` and `dv:groom` entries describe the same prerequisite rules, and the
   plugin table shows `0.31.0`.
 

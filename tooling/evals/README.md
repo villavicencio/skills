@@ -74,7 +74,8 @@ skills (reddit, twitter, handoff, tmux, critique) so collisions surface.
 ## Output evals — methodology
 
 `evals.json` holds cases that each run twice: **with** the `SKILL.md` body
-injected as the system prompt, and **without** (a neutral baseline). Assertions
+injected as the system prompt (followed by the skill's `references/*.md`, if it
+has any, since the skill reads them first), and **without** (a neutral baseline). Assertions
 are applied to the with-skill response and are strictly **code-checkable**
 (regex match / non-match) — never "is it good". The baseline response is
 captured so you can confirm the skill is actually doing work.

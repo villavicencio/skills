@@ -125,8 +125,9 @@ what you can read; do not make me answer questions you can look up.
   - A prerequisite that is not met and maps clearly to one issue goes in the draft as "Blocked by
     VIL-N".
   - Ask about each one the shared rules send to a question ("Ask") before showing the draft.
-    This holds under "Filing without my confirmation" too. If my answer names no issue (the wait is on a decision, or on a PR no
-    ticket tracks), the ticket waits in Backlog on its pull-condition line with no relation.
+    This holds under "Filing without my confirmation" too. If my answer names no issue (the wait
+    is on a decision, or on a PR no ticket tracks), the ticket waits in Backlog on its
+    pull-condition line with no relation.
 - **State.** Use the team's state for ready to start (an unstarted state, such as Todo) when it can
   be started now: it has no prerequisite, or every prerequisite is met. Use its backlog state when
   it waits for something; check the names with `list_issue_statuses`. For a Backlog ticket add the

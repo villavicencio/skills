@@ -4,7 +4,7 @@ description: "File a Linear ticket in the agreed format. Filing turns a rough re
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.30.0"
+  version: "0.31.0"
 ---
 
 # /ticket — file a Linear ticket
@@ -41,8 +41,9 @@ message that invoked this skill. "I" and "me" in this skill mean the user.
    else instead.
 2. **Shared rules.** Read `references/ticket-format.md` in this skill's directory now and follow
    it. It says where the format lives and how to read it (do that now), the fallback when the
-   format cannot be read, how to ask me questions, how to treat ticket text, the Agent notes
-   markers and the branch-name rule. `dv:groom` reads the same file.
+   format cannot be read, how to ask me questions, how to treat ticket text, the prerequisite and
+   relation rules, the Agent notes markers and the branch-name rule. `dv:groom` reads the same
+   file.
 3. **Question or assumption.** Ask when the answer would change the project, the type, the scope or
    a Done means line, the reason for the ticket, or what it waits on, and you cannot look it up.
    Otherwise state your best reading and mark it `[assumed]`. Ask before drafting, so the draft
@@ -115,40 +116,17 @@ what you can read; do not make me answer questions you can look up.
 - **Done means.** A checklist of `- [ ]` lines. Each is a result a command or an observation can
   prove. Write the command or the observation into the line. If you cannot write one, the ticket is
   not ready: say what is missing and ask me.
-- **Prerequisites.** Find, check, tell apart, map and ask are worded as in `dv:groom` step 3,
-  "Prerequisites", which applies them to an existing ticket; keep the shared parts alike. The
-  cases that count as unclear (a Canceled or Duplicate ticket, a PR closed without merging, an
-  open PR whose ticket is Done, Canceled or a Duplicate, or a state you cannot read) are File
-  mode's own.
-  - **Find them.** Mark each place the request, or a ticket or PR it names, makes this ticket wait
-    on something: "pull when", "wait for", "after X merges", "requires X", "blocked by", "once X
-    lands".
-  - **Check each one.** Read its current state: `get_issue` for a ticket. When the condition is a
-    PR merging, read that PR's merge state with
-    `gh pr view <N> -R <owner>/<repo> --json state,mergedAt,headRefName,body`, not only the state
-    of the ticket it belongs to: for a PR, its merge state decides whether the condition is met.
-    The repo is the one the request, or the ticket or PR that names the PR, gives, or else the
-    current one. A prerequisite that is already met (the PR has
-    merged, the ticket is Done) is not a blocker: say so in the draft. A prerequisite ticket that
-    is Canceled or a Duplicate gets no blocked-by either, nor does a PR closed without merging:
-    the condition can never be met as written, so it counts as unclear ("Ask" below). So does a
-    prerequisite whose state you cannot read.
-  - **Prerequisite or reference.** A ticket named as a worked example, as background or as related
-    work is not a blocker, and a reference alone never implies one. The test: could this ticket's
-    work start and finish correctly if the other were never done? If yes, it is related, not
-    blocking: the draft lists it as related, and step 7 links it. If I decline that link, drop
-    it, and the text does not name the ticket's id either (shared rules, "Ticket ids in text").
-  - **Map it.** A prerequisite that is not met and maps clearly to one Linear issue goes in the
-    draft as "Blocked by VIL-N", in the right direction (this ticket, the waiting one, is blocked
-    by the prerequisite). A PR maps to the ticket it is attached to (the ticket's attachments, or
-    the `VIL-N` id in the PR's branch name or description). A PR that is still open while the
-    ticket it maps to is Done, Canceled or a Duplicate counts as unclear. The pull-condition line
-    at the end of Why stays; the relation does not replace it.
-  - **Ask.** When the dependency is unclear, or the PR or condition maps to no issue or to more
-    than one, ask me as an interview question before showing the draft. Set no relation on a
-    guess. This holds under "Filing without my confirmation" too. If my answer names no issue
-    (the wait is on a decision, or on a PR no ticket tracks), the ticket waits in Backlog on its
-    pull-condition line with no relation.
+- **Prerequisites.** Apply the shared rules, "Prerequisites", to the request and to each ticket
+  or PR it names. Then, for the draft:
+  - A prerequisite that is already met is not a blocker: say so in the draft.
+  - A related ticket (a reference, not a prerequisite) is listed in the draft as related, and
+    step 7 links it. If I decline that link, drop it, and the text does not name the ticket's id
+    either (shared rules, "Ticket ids in text").
+  - A prerequisite that is not met and maps clearly to one issue goes in the draft as "Blocked by
+    VIL-N".
+  - Ask about each one the shared rules send to a question ("Ask") before showing the draft.
+    This holds under "Filing without my confirmation" too. If my answer names no issue (the wait is on a decision, or on a PR no
+    ticket tracks), the ticket waits in Backlog on its pull-condition line with no relation.
 - **State.** Use the team's state for ready to start (an unstarted state, such as Todo) when it can
   be started now: it has no prerequisite, or every prerequisite is met. Use its backlog state when
   it waits for something; check the names with `list_issue_statuses`. For a Backlog ticket add the
@@ -239,7 +217,7 @@ For both:
   the closeout note is about (b). If it cannot be read, or the note names none, this is not one of
   the two cases: file as usual and wait for my yes. Otherwise the ticket goes in the source
   ticket's project, and its `save_issue` call adds the source ticket to `relatedTo`, unless step 4
-  makes it a "Blocked by". This
+  makes it a "Blocked by" (shared rules, "Prerequisites": one relation per pair). This
   overrides step 1 of "File": read the source ticket first, and use its project even when the item
   or the request names another. If that project cannot be used (step 1 skips a canceled project,
   and asks when the project does not settle the team), file nothing and bring it to me as a

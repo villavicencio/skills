@@ -49,8 +49,7 @@ was applied by hand and drifted (VIL-853).
   without the label. Once the whole split has landed (children filed, parent changed), `dv:groom`
   gives each child the same ready test and adds `groomed` to each child that passes, when its team
   has the label, in the same last step as the groomed ticket's label. A split that stops before that
-  step leaves every label off, so `dv:director-mode`'s kickoff, which skips grooming for a ticket
-  that has the label, still grooms those children. The label writes are separate calls and can
+  step leaves every label off, and the report says so. The label writes are separate calls and can
   themselves stop part way, so after them, or after an error during them, `dv:groom` reads back the
   groomed ticket and every child it filed, reports each one's labels as read, and names under Needs
   you each ticket it meant to label that lacks the label. A spin-off never gets the label: it is

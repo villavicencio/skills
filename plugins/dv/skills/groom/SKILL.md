@@ -546,7 +546,7 @@ Patches stay the default; three changed sections allow the offer and do not deci
    error during them, read back with `get_issue` the groomed ticket and every child this run filed,
    and report each one's labels as read (step 8). Name under Needs you each ticket this item meant
    to label that lacks `groomed` after the read-back: `dv:director-mode` skips grooming a ticket
-   that has the label, and grooms one that lacks it.
+   that has the label.
 
 **Patches.** Edit with `patch` operations on `save_issue` (`replace`, `insert_before`,
 `insert_after`, `replace_range`, and `append` for an empty description), not by sending the whole

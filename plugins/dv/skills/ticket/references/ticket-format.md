@@ -94,7 +94,8 @@ skill says what it does with the result.
 - **Read them.** `list_milestones` with the ticket's project gives each milestone's name,
   description (what done means) and progress. `get_issue` gives a ticket's milestone
   (`projectMilestone`), and its Decisions section is in the description. A milestone at 100%
-  progress is finished: put no ticket in it.
+  progress is finished: put no new ticket in it, and ask before leaving an open ticket in one
+  (`dv:groom` step 3).
 - **Fit.** A ticket fits the milestone whose goal, as its name and description state it, the
   ticket's work serves. Take the closest, with a one-line reason that names that goal; when two
   fit, name the other in the reason. A milestone that fits only loosely is not a fit: say that

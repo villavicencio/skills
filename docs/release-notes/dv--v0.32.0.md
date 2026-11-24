@@ -18,7 +18,7 @@ the skills repo's sessions can read, so tickets filed elsewhere landed with none
 
 - **Shared rules, new "Milestones" section.** How to read a project's milestones
   (`list_milestones`) and a ticket's (`get_issue`, `projectMilestone`); a milestone at 100%
-  progress is finished and gets no ticket; a ticket fits the milestone whose stated goal its work
+  progress is finished and gets no new ticket, and an open ticket left in one is asked about; a ticket fits the milestone whose stated goal its work
   serves, with a one-line reason, and a loose fit counts as none; the milestone is set with
   `save_issue`'s `milestone` field; a Decisions line that records "No milestone" keeps a ticket out
   of milestones, and a ticket that records it but has a milestone anyway is asked, not changed; a new milestone is proposed only as a question (a name and one line on what done
@@ -29,15 +29,17 @@ the skills repo's sessions can read, so tickets filed elsewhere landed with none
   the request names, else the one that fits; the draft (step 6) shows it with its reason. When
   none fits, the interview proposes a new milestone, with "file with no milestone for now" and
   "keep it out of milestones" as the other options. When the project has no milestones, or only
-  finished ones, the draft says so and proposes none. Step 7 creates an approved new milestone
-  just before `save_issue`, sets the milestone in the `save_issue` call, and reads it back.
+  finished ones, the draft says so and proposes none. Step 7 reads the milestones again (one that
+  has since finished or gone sends the draft back to step 2b, or, without confirmation, files with
+  none), creates an approved new milestone just before `save_issue`, sets the milestone in the `save_issue` call, and reads it back.
   Step numbering: the step is "2b" so that File steps 3 to 7, which `dv:groom` and the shared
   rules cite by number, keep their numbers.
 - **`dv:ticket`, "Filing without my confirmation".** A spin-off or closeout item takes its source
   ticket's milestone. When the source has none, or a finished one, it is filed with none and the
   report says so; no milestone is ever created on this path.
 - **`dv:groom`, step 3, new "Milestone" check.** A ticket whose Decisions records "No milestone"
-  gets none proposed; if it has a milestone anyway, whether to take it out or keep it is asked. An open ticket with no milestone, in a project that has milestones, gets the one
+  gets none proposed; if it has a milestone anyway, whether to take it out or keep it is asked.
+  An open ticket in a finished milestone is asked the same way as one that no longer fits. An open ticket with no milestone, in a project that has milestones, gets the one
   that fits as an add item (a routine call in `forks-only` mode). When none fits, the field stays
   empty, the report says so, and a new milestone is an open decision (a fork). A ticket whose goal
   no longer fits its milestone is asked: move it or keep it; grooming never moves a ticket out of

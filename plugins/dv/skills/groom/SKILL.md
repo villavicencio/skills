@@ -269,7 +269,8 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
     milestone (its name and one line on what done means) is an open decision, with "leave it
     with none" and "keep it out of milestones" (which records "No milestone") as options. It is
     created only on my yes.
-  - Its goal no longer fits the milestone it has: an open decision, to move it (to the milestone
+  - Its goal no longer fits the milestone it has, or that milestone is finished: an open
+    decision, to move it (to the milestone
     that fits, or out of milestones, which records "No milestone") or keep it. Grooming never
     moves a ticket out of a milestone as a routine call.
   - It fits the milestone it has: nothing to do.

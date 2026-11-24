@@ -206,6 +206,10 @@ pull-condition line and its relations), show it again as in step 6, and save not
 answer. Under "Filing without my confirmation", where no draft is shown, file the rebuilt draft
 instead, unless it now raises a question for me.
 
+Then call `list_milestones` again. If the milestone the draft names is now finished or gone, save
+nothing: pick again under step 2b and show the draft again as in step 6. Under "Filing without my
+confirmation", file it with no milestone instead and say so in the report.
+
 If I said yes to a new milestone (step 2b), create it now with `save_milestone`, under the shared
 rules, "Milestones" (look for it by name first). If it cannot be created, save nothing and tell me.
 

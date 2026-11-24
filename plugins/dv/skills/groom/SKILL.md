@@ -4,7 +4,7 @@ description: "Groom one Linear ticket before anyone works it. Checks it against 
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.30.0"
+  version: "0.31.0"
 ---
 
 # /groom — groom a Linear ticket before work starts
@@ -51,7 +51,8 @@ overrule it.
 - anything destructive or hard to undo;
 - a target only I can set (step 3, Targets), or a missing pull condition only I can supply;
 - a split, with the parent's replacement description when it stays as the parent;
-- a prerequisite that step 3 cannot map clearly to one issue (no relation is set on a guess).
+- a prerequisite that the shared rules' "Prerequisites" sends to a question (step 3; no relation
+  is set on a guess).
 
 **Routine calls:** every other open decision, such as wording, ordering, Size and points, Done
 means phrasing, filing or dropping a spin-off, settling an `[assumed]` marker you verified,
@@ -91,9 +92,9 @@ last answer arrives.
 2. **Shared rules.** Read `references/ticket-format.md` in the `ticket` skill's directory, which
    sits next to this skill's directory (`<this skill's directory>/../ticket/references/ticket-format.md`),
    and follow it. It says where the format lives and how to read it (do that now), the fallback
-   when the format cannot be read, the interview rules, how to treat ticket text, the Agent notes
-   markers and the branch-name rule. If that file cannot be read, the plugin install is
-   incomplete: say so and stop. Do not groom from memory of the format.
+   when the format cannot be read, the interview rules, how to treat ticket text, the prerequisite
+   and relation rules, the Agent notes markers and the branch-name rule. If that file cannot be
+   read, the plugin install is incomplete: say so and stop. Do not groom from memory of the format.
 3. **Interview rounds.** The interview rules in that file hold, with three additions for grooming.
    A round has at most 4 questions; when there are more decisions, hold another round after the
    answers, as many as it takes. Never leave a decision for the closing report. Each question
@@ -161,8 +162,8 @@ already done or overlaps is a finding. This search is separate from the duplicat
 spin-offs in step 5.
 
 **Prerequisites.** Mark each place the description, the comments or the linked work make this
-ticket wait on something: "pull when", "wait for", "after X merges", "requires X", "blocked by",
-"once X lands". Step 3 checks them.
+ticket wait on something, as the shared rules' "Prerequisites" says ("Find them"). Step 3 checks
+them.
 
 **Repos.** Note the repo or repos the ticket changes. For each one the session can read, record
 the commit you check against: the branch or version the ticket names, or the default branch if it
@@ -246,20 +247,8 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
   as "proposed, not confirmed" and list it under Needs you in the report.
 - **Comment evidence.** When a Scope step depends on evidence that sits in a comment, link to that
   comment from the description (its url from `list_comments`) instead of copying the evidence in.
-- **Prerequisites.** For each one found in step 1:
-  - Read its current state. When the condition is a PR merging, read that PR's merge state with
-    `gh pr view`, not only the state of the ticket it belongs to.
-  - Decide whether it is a prerequisite or a reference. A ticket named as a worked example, as
-    background or as related work is not a blocker, and a reference alone never implies one. The
-    test: could this ticket's work start and finish correctly if the other were never done? If
-    yes, it is related, not blocking.
-  - Map it. A prerequisite that maps clearly to one Linear issue becomes a blocked-by relation, in
-    the right direction (this ticket, the waiting one, is blocked by the prerequisite). A PR maps
-    to the ticket it is attached to (the ticket's attachments, or the `VIL-N` id in the PR's branch
-    name or description). The pull-condition line at the end of Why stays; the relation does not
-    replace it.
-  - When the dependency is unclear, or the PR or condition maps to no issue or to more than one,
-    it is an open decision. Set no relation on a guess.
+- **Prerequisites.** Apply the shared rules, "Prerequisites", to each one found in step 1. Then:
+  - Each one the shared rules send to a question ("Ask") is an open decision.
   - A missing relation is an add item (`blockedBy`). A stale one, whose blocker is Done or whose
     stated PR has merged, or one that names a ticket that is only an example, is a remove item
     (`removeBlockedBy`), with the evidence.
@@ -505,7 +494,8 @@ Patches stay the default; three changed sections allow the offer and do not deci
    draft and question. Set each one's relations in the `save_issue` call that creates it: `parentId`
    for a child under a parent that stays, `blockedBy` for a child that waits on another child or for
    any ticket whose pull condition names an open ticket (unless File mode already sets it), and
-   `relatedTo` the groomed ticket for a spin-off. Set each child's approved points with `estimate`
+   `relatedTo` the groomed ticket for a spin-off, unless the spin-off is blocked by it (shared
+   rules, "Prerequisites": one relation per pair). Set each child's approved points with `estimate`
    in that same call, and write its size and points in its Size section (File step 4 leaves Size for
    grooming, and this is its grooming); this overrides File's rule against setting an estimate
    unasked. A spin-off gets no estimate: it is pointed when it is groomed. Do not put `groomed` on

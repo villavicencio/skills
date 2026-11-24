@@ -4,6 +4,7 @@
   "model": "claude-sonnet-5",
   "notes": [
     "Cases run with NO tools. Each prompt therefore states that the setup steps are done and gives the results of the reads the skill would make (get_issue, gh pr view), so the case tests the decision the skill governs: blocked-by, related, met, or ask. Without that preamble the with-skill model correctly stops at 'Before anything else' for want of Linear tools, which tests nothing.",
+    "Since dv 0.31.0 the prerequisite rules these cases test live in references/ticket-format.md (section 'Prerequisites'), not in the SKILL.md body. The runner injects the skill's references/*.md after the body, so the with-skill run still has them.",
     "The ticket ids (VIL-9101 and up) and PR numbers are invented. They exist only in these prompts.",
     "Every case except the ambiguous one asks for the state and relations only, not the full ticket, so the answer fits the runner's 500-token cap and the same instruction reaches the baseline. The ambiguous case asks for 'what you would show me next', because the behavior under test is asking before drafting at all.",
     "must_match_any is a DISJUNCTION, so a case that needs several facts at once uses ONE compound pattern anchored with \\A and built from lookaheads; do not split it into alternatives.",

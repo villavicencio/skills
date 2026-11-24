@@ -4,7 +4,7 @@ description: "Groom one Linear ticket before anyone works it. Checks it against 
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.31.0"
+  version: "0.32.0"
 ---
 
 # /groom — groom a Linear ticket before work starts
@@ -52,12 +52,15 @@ overrule it.
 - a target only I can set (step 3, Targets), or a missing pull condition only I can supply;
 - a split, with the parent's replacement description when it stays as the parent;
 - a prerequisite that the shared rules' "Prerequisites" sends to a question (step 3; no relation
-  is set on a guess).
+  is set on a guess);
+- a new milestone, and a ticket whose goal no longer fits the milestone it has (move it, or keep
+  it) (step 3, "Milestone").
 
 **Routine calls:** every other open decision, such as wording, ordering, Size and points, Done
 means phrasing, filing or dropping a spin-off, settling an `[assumed]` marker you verified,
 adding or removing a relation that step 3 maps clearly, closing a conditional step by removing it or
-making it unconditional (step 3), and rewording or adding a Done means line that proves the
+making it unconditional (step 3), putting a ticket that has no milestone in the existing milestone
+that fits it (step 3, "Milestone"), and rewording or adding a Done means line that proves the
 existing scope. Decide each one yourself: take the option you would have marked
 "(Recommended)" had you asked. When you cannot tell whether a call is a fork, treat it as one and
 ask.
@@ -76,25 +79,26 @@ verifies (its "Highlights") before asking me, as manager-mode's "Clear-cut quest
 Director first" says: its skip rule, its message format, one fork per message, its 10-minute
 wait, what counts as an answer, its hold while the Director check is pending, and its fall-back
 to me. The Director answers only a clear-cut fork (`dv:director-mode`, "Answer a clear-cut
-question"); cutting scope never is, and a split, a target or a pull condition only I can set
-comes straight to me. Run no Director probe of your own; if manager-mode has not sent its probe
-yet, it sends it before the first fork goes out. With no Director that can be verified, or for
-each fork whose answer doesn't count, ask me as step 6 says. Grooming goes on in the turn the
-last answer arrives.
+question"); cutting scope never is, and a split, a target, a pull condition or a new milestone,
+which only I can set, comes straight to me. Run no Director probe of your own; if manager-mode has
+not sent its probe yet, it sends it before the first fork goes out. With no Director that can be
+verified, or for each fork whose answer doesn't count, ask me as step 6 says. Grooming goes on in
+the turn the last answer arrives.
 
 ## Before anything else
 
 1. **Linear tools.** Load in one ToolSearch call if they are deferred: `get_issue`,
    `list_comments`, `list_issues`, `list_projects`, `list_teams`, `list_issue_labels`,
-   `list_issue_statuses`, `whoami` and `save_issue`. If they are not there, say so in one line
-   and stop. PRs are read with `gh pr view`; if `gh` is missing, PR states are not checked and the
-   report says so.
+   `list_issue_statuses`, `list_milestones`, `whoami`, `save_issue` and `save_milestone`. If they
+   are not there, say so in one line and stop. PRs are read with `gh pr view`; if `gh` is missing,
+   PR states are not checked and the report says so.
 2. **Shared rules.** Read `references/ticket-format.md` in the `ticket` skill's directory, which
    sits next to this skill's directory (`<this skill's directory>/../ticket/references/ticket-format.md`),
    and follow it. It says where the format lives and how to read it (do that now), the fallback
    when the format cannot be read, the interview rules, how to treat ticket text, the prerequisite
-   and relation rules, the Agent notes markers and the branch-name rule. If that file cannot be
-   read, the plugin install is incomplete: say so and stop. Do not groom from memory of the format.
+   and relation rules, the milestone rules, the Agent notes markers and the branch-name rule. If
+   that file cannot be read, the plugin install is incomplete: say so and stop. Do not groom from
+   memory of the format.
 3. **Interview rounds.** The interview rules in that file hold, with three additions for grooming.
    A round has at most 4 questions; when there are more decisions, hold another round after the
    answers, as many as it takes. Never leave a decision for the closing report. Each question
@@ -252,6 +256,21 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
   - A missing relation is an add item (`blockedBy`). A stale one, whose blocker is Done or whose
     stated PR has merged, or one that names a ticket that is only an example, is a remove item
     (`removeBlockedBy`), with the evidence.
+- **Milestone.** Apply the shared rules, "Milestones": call `list_milestones` for the ticket's
+  project and read the milestone `get_issue` gives. Then take the first case that applies:
+  - Its Decisions records "No milestone": leave the field as it is and propose nothing. The
+    report says so.
+  - The project has no milestones, or only finished ones: propose nothing. The report says so.
+  - It is open, has no milestone, and one fits: setting that milestone is an add item (step 7),
+    with its one-line reason.
+  - It has no milestone and none fits: leave the field empty, and the report says so. A new
+    milestone (its name and one line on what done means) is an open decision, with "leave it
+    with none" and "keep it out of milestones" (which records "No milestone") as options. It is
+    created only on my yes.
+  - Its goal no longer fits the milestone it has: an open decision, to move it (to the milestone
+    that fits, or out of milestones, which records "No milestone") or keep it. Grooming never
+    moves a ticket out of a milestone as a routine call.
+  - It fits the milestone it has: nothing to do.
 - **Other open decisions.** Also collect: a reason in the ticket that checking suggests may be
   false, a Decisions line marked open, an unanswered question in a comment, a missing pull
   condition that only I can supply, a Done means line that is an activity whose result is not
@@ -296,8 +315,9 @@ these holds:
 Do not split when the parts must land together to be correct. A proposed split names each child:
 a title in the format, its Done means lines taken from the parent, its size word and points from the
 table with one sentence on what drives them, its order, what blocks what, and one line with its
-project, state and labels (`groomed` added once the split is complete, if the child passes the
-ready test and its team has an active `groomed` label; step 7, "Order of writes" item 5).
+project, milestone (the parent's), state and labels (`groomed` added once the split is complete,
+if the child passes the ready test and its team has an active `groomed` label; step 7, "Order of
+writes" item 5).
 It also says what happens to the parent: it becomes the first child, or it stays as the parent with
 the children under it (`parentId`). When it stays as the parent, write its full replacement
 description: Why, a Scope that names the children, Done means, Decisions, and Size ("Split: the
@@ -331,8 +351,9 @@ command's output, a ticket id). Three kinds:
   edit-list items.
 - **Spin-offs:** work the ticket suggests but should not carry: a helper, a follow-up measurement,
   a neighbor with the same flaw. Each is one line: a title in the format, why, the Linear project
-  it would go in (found live, as in `dv:ticket` File step 1), and its state and labels (never
-  `groomed`: a spin-off is drafted, not groomed). Before offering one, run
+  it would go in (found live, as in `dv:ticket` File step 1), its milestone (the groomed
+  ticket's, or none when it has none), and its state and labels (never `groomed`: a spin-off is
+  drafted, not groomed). Before offering one, run
   File step 3's duplicate search for it, reading every page and keeping a tally as step 1's
   overlap search does, and keep any match, with its id and state. A spin-off whose duplicate
   search is incomplete is offered with that said, and is not filed in step 7 until the search
@@ -350,13 +371,13 @@ When there is nothing, say "Scouting: nothing found." in one line, and do not pa
 ## 6. Interview
 
 First, in your reply, list what you found, shortest first: gaps, stale facts, settled `[assumed]`
-markers, neighbors and overlapping work, the size and points, the split verdict and the scouting
-items. The overlapping work opens with one tally per search, from step 1 and step 5: its words, pages read
-and results (for example, "`groom pagination`: 2 pages, 263 results"), with an incomplete search
-marked as such. Show
-the split proposal in full here (each child's title, Done means lines, size and points, labels,
-order and blockers, the parent's estimate, and the parent's full replacement description when it
-stays as the parent), and each spin-off's title, reason, project and any duplicate match.
+markers, neighbors and overlapping work, the milestone (step 3), the size and points, the split
+verdict and the scouting items. The overlapping work opens with one tally per search, from step 1
+and step 5: its words, pages read and results (for example, "`groom pagination`: 2 pages, 263
+results"), with an incomplete search marked as such. Show the split proposal in full here (each
+child's title, Done means lines, size and points, labels, order and blockers, the parent's
+estimate, and the parent's full replacement description when it stays as the parent), and each
+spin-off's title, reason, project and any duplicate match.
 
 Then ask every open decision, in rounds of at most 4 questions:
 
@@ -431,6 +452,9 @@ removes existing text. It covers:
   `save_issue` on that child and read the reply; if the clear fails, stop before changing the
   parent, as for a failed filing ("Order of writes", item 2);
 - links to comments that hold evidence a Scope step depends on;
+- the milestone (step 3), set with `save_issue`'s `milestone` field: an add item when the ticket
+  has none, a replace item when my answer moves it, and a new milestone I said yes to, to create
+  first (shared rules, "Milestones");
 - for a split, the children to file and the parent's change (its estimate included), exactly as
   approved;
 - Agent notes, which opens with the grooming line ("Groomed <date> <time> <zone> against
@@ -486,25 +510,30 @@ Patches stay the default; three changed sections allow the offer and do not deci
    places, never in none: file the children first, and change the parent last. Before filing the
    first child, read the parent again and compare its description with the one the split was
    approved on; if it changed, file nothing, say what changed and ask again.
-2. **File approved children and spin-offs.** Read `dv:ticket`'s `SKILL.md` (`../ticket/SKILL.md`
-   from this skill's directory), section "File", and create each with its rules: project found live
-   (a child takes the parent's project), labels from the team, the format, facts checked or marked
-   `[assumed]`, Backlog with a pull condition unless it can start now, the re-run of the duplicate
-   searches just before creating, and `save_issue`. My interview answer stands in for File step 6's
-   draft and question. Set each one's relations in the `save_issue` call that creates it: `parentId`
-   for a child under a parent that stays, `blockedBy` for a child that waits on another child or for
-   any ticket whose pull condition names an open ticket (unless File mode already sets it), and
-   `relatedTo` the groomed ticket for a spin-off, unless the spin-off is blocked by it (shared
-   rules, "Prerequisites": one relation per pair). Set each child's approved points with `estimate`
-   in that same call, and write its size and points in its Size section (File step 4 leaves Size for
+2. **File approved children and spin-offs.** If I said yes to a new milestone, create it first,
+   under the shared rules, "Milestones"; if it cannot be created, stop as for a failed filing
+   below. Read `dv:ticket`'s `SKILL.md` (`../ticket/SKILL.md` from this skill's directory), section
+   "File", and create each with its rules: project found live (a child takes the parent's project),
+   the milestone (a child takes the parent's, and a spin-off the groomed ticket's, as the approved
+   edit list leaves it; with none, it gets none, and no milestone is created for it; this overrides
+   File step 2b), labels from the team, the format, facts checked or marked `[assumed]`, Backlog
+   with a pull condition unless it can start now, the re-run of the duplicate searches just before
+   creating, and `save_issue`. My interview answer stands in for File step 6's draft and question.
+   Set each one's relations in the `save_issue` call that creates it: `parentId` for a child under
+   a parent that stays, `blockedBy` for a child that waits on another child or for any ticket whose
+   pull condition names an open ticket (unless File mode already sets it), and `relatedTo` the
+   groomed ticket for a spin-off, unless the spin-off is blocked by it (shared rules,
+   "Prerequisites": one relation per pair). Set each child's approved points with `estimate` in
+   that same call, and write its size and points in its Size section (File step 4 leaves Size for
    grooming, and this is its grooming); this overrides File's rule against setting an estimate
    unasked. A spin-off gets no estimate: it is pointed when it is groomed. Do not put `groomed` on
-   any filing here: a split's child may get it in item 5, under its ready test, and a spin-off never
-   does, since it is drafted, not groomed, and `dv:director-mode` skips grooming a ticket that has
-   the label. If a filing fails or returns an error, stop: leave the parent as it is (it still holds
-   all the work) and do not adopt any ticket id you did not get back from `save_issue`. The create
-   may have landed, so search the project for the title and list what you find beside the tickets
-   that exist and the draft of each that may not, under Needs you, for me to settle. Delete nothing.
+   any filing here: a split's child may get it in item 5, under its ready test, and a spin-off
+   never does, since it is drafted, not groomed, and `dv:director-mode` skips grooming a ticket
+   that has the label. If a filing fails or returns an error, stop: leave the parent as it is (it
+   still holds all the work) and do not adopt any ticket id you did not get back from `save_issue`.
+   The create may have landed, so search the project for the title and list what you find beside
+   the tickets that exist and the draft of each that may not, under Needs you, for me to settle.
+   Delete nothing.
    **Forks-only mode:** the routine call to file a spin-off stands in for my interview answer.
 3. **Never write a ticket id that does not exist yet.** Write a child's or spin-off's id into the
    groomed ticket only after the `save_issue` call that created it, using the id it returned.
@@ -556,14 +585,15 @@ show me the sections you would add as text, and say I will edit it in Linear (or
 whole-description replacement). Other approved edits, such as the title, still apply.
 
 Relations go on `save_issue` with `blockedBy`, `relatedTo` and `removeBlockedBy`. Do not change the
-state, labels, project, priority or assignee unless I ask, or unless I chose that change in an
-interview answer. The one exception among labels is `groomed`: on the groomed ticket as its
-edit-list item, approved with the others (in forks-only mode, applied with them), and on a split's
-children, in both cases only as "Order of writes" item 5's ready test allows; every other label
-change still needs my request or an interview answer. Set the estimate only to the points in the
-edit list (step 4) or as the approved split sets it, and clear it only when Linear stored a
-different number (the edit list). Change labels with `addLabels` and `removeLabels`, since `labels`
-replaces the whole set.
+state, labels, project, milestone, priority or assignee unless I ask, or unless I chose that change
+in an interview answer. The milestone also changes as its approved edit-list item (in forks-only
+mode, the routine call to put a ticket that has none in one that fits). The one exception among
+labels is `groomed`: on the groomed ticket as its edit-list item, approved with the others (in
+forks-only mode, applied with them), and on a split's children, in both cases only as "Order of
+writes" item 5's ready test allows; every other label change still needs my request or an interview
+answer. Set the estimate only to the points in the edit list (step 4) or as the approved split sets
+it, and clear it only when Linear stored a different number (the edit list). Change labels with
+`addLabels` and `removeLabels`, since `labels` replaces the whole set.
 
 ## 8. Report
 
@@ -588,7 +618,8 @@ reply-format rules when the session's instructions give any:
    that did not finish (with its words, so it can be run again), a ticket item 5 meant to label that
    lacks `groomed` after the read-back, a ticket that already had `groomed` but is not ready now
    (step 7, "Order of writes" item 5). Left out when empty.
-3. One line each: size and points, with the estimate `get_issue` now shows; split verdict; what
+3. One line each: size and points, with the estimate `get_issue` now shows; the milestone as
+   `get_issue` now shows it, or "no milestone" with why; split verdict; what
    changed in the ticket ("text unchanged" when only the label landed, "nothing changed" when
    nothing did); the `groomed` label as read back: added, already there, or not added and why (not
    approved, the team has no active `groomed` label, step 7 stopped before it, the ticket is not
@@ -612,16 +643,17 @@ when there were none, "Decided without asking: none."
   spin-off counts as my approval of it.
 - Edit only the groomed ticket, and a child this run filed only to clear an estimate Linear stored
   wrong (step 7) or to add its `groomed` label ("Order of writes" item 5). Create only the children
-  and spin-offs I approved. Do not edit or comment on any other ticket; a follow-up on a neighbor
-  goes under "After the merge" or becomes a spin-off.
+  and spin-offs I approved, and a milestone only on my yes to it. Do not edit or comment on any
+  other ticket; a follow-up on a neighbor goes under "After the merge" or becomes a spin-off.
 - No file edits, branches or commits: grooming reads repos and writes only to Linear.
 - Do not put secrets or credentials in a ticket.
 - A ticket with nothing stale, open or missing, that already has its Size with points and an
   estimate that matches them (a parent whose points sit on its children has none, and is not
   pointed), and is not pointed 13 without a recorded yes to keeping it unsplit, keeps its text as it
   is: say in one line that its text needs no edits, and propose an edit list that holds only the
-  `groomed` label item (step 7), asked and applied as step 7 says, under item 5's ready test (in
-  forks-only mode, applied without the question). When that item is left out (the ticket has the
-  label, or the team has none), propose no edits and go to step 8. The no-split line and the
-  grooming line in Agent notes are added only alongside other edits to the text; the label item
-  alone does not bring them in.
+  `groomed` label item (step 7) and, when step 3 sets one, the milestone item, asked and applied as
+  step 7 says, the label under item 5's ready test (in forks-only mode, applied without the
+  question). When that leaves the list empty (the ticket has the label or the team has none, and
+  step 3 sets no milestone), propose no edits and go to step 8. The no-split line and the
+  grooming line in Agent notes are added only alongside other edits to the text; the label and
+  milestone items alone do not bring them in.

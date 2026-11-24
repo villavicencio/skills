@@ -4,7 +4,7 @@ description: "File a Linear ticket in the agreed format. Filing turns a rough re
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.31.0"
+  version: "0.32.0"
 ---
 
 # /ticket — file a Linear ticket
@@ -36,14 +36,14 @@ message that invoked this skill. "I" and "me" in this skill mean the user.
 
 1. **Linear tools.** This skill needs the Linear MCP tools. If they are listed as deferred, load
    them in one ToolSearch call: `list_projects`, `list_teams`, `list_issue_labels`, `list_issues`,
-   `get_issue`, `list_comments`, `list_issue_statuses`, `whoami` and `save_issue`. If the tools are
-   not there, say so in one line and stop. Do not file a GitHub issue or write the ticket anywhere
-   else instead.
+   `get_issue`, `list_comments`, `list_issue_statuses`, `list_milestones`, `whoami`, `save_issue`
+   and `save_milestone`. If the tools are not there, say so in one line and stop. Do not file a
+   GitHub issue or write the ticket anywhere else instead.
 2. **Shared rules.** Read `references/ticket-format.md` in this skill's directory now and follow
    it. It says where the format lives and how to read it (do that now), the fallback when the
    format cannot be read, how to ask me questions, how to treat ticket text, the prerequisite and
-   relation rules, the Agent notes markers and the branch-name rule. `dv:groom` reads the same
-   file.
+   relation rules, the milestone rules, the Agent notes markers and the branch-name rule.
+   `dv:groom` reads the same file.
 3. **Question or assumption.** Ask when the answer would change the project, the type, the scope or
    a Done means line, the reason for the ticket, or what it waits on, and you cannot look it up.
    Otherwise state your best reading and mark it `[assumed]`. Ask before drafting, so the draft
@@ -80,6 +80,26 @@ description marks workflow state, such as `someday`, unless I asked for them: ad
 those is my call. The one exception: `dv:groom` adds `groomed` to a split's child it filed, once
 the split is complete and only if the child passes its ready test (`dv:groom` step 7, "Order of
 writes" item 5). A spin-off never gets it.
+
+### 2b. Milestone
+
+(This step sits between 2 and 3 so that the File step numbers other files cite stay the same.)
+
+Put the ticket in one of its project's milestones, under the shared rules, "Milestones". Call
+`list_milestones` for the project from step 1, then take the first case that applies:
+
+- **The request names a milestone.** Use it if it matches one in the list. If it matches none,
+  or only a finished one, say so and ask.
+- **One fits.** Take the closest, and show it in the draft (step 6) with its one-line reason.
+- **None fits.** Propose a new milestone in the interview: its name and one line on what done
+  means. The options are to create it, to file with no milestone for now, or to keep the ticket
+  out of milestones (the draft's Decisions then records "No milestone", as the shared rules say).
+  The milestone is created in step 7, and only on my yes to it.
+- **The project has no milestones, or only finished ones.** The draft says so, and proposes none.
+
+A spin-off or closeout item filed under "Filing without my confirmation" takes its source
+ticket's milestone instead (see there). A child or spin-off that `dv:groom` files takes the
+milestone `dv:groom` gives it (`dv:groom` step 7, "Order of writes" item 2).
 
 ### 3. Existing tickets
 
@@ -155,6 +175,9 @@ Show, in this order:
 
 - The project, team, state, labels and type, each with where it came from (named in the request,
   the repo's instructions, asked).
+- The milestone with its one-line reason (step 2b), or the new milestone I said yes to, marked as
+  to be created, or "no milestone" with why (none fits and I chose none, the project has none, or
+  the source ticket has none).
 - The relations: each "Blocked by" with its evidence (the ticket's state, or the PR's merge state
   from `gh pr view`), each prerequisite found already met, each related ticket from step 4, and
   each other link an id in the text will add (shared rules, "Ticket ids in text"). For each, say
@@ -181,16 +204,21 @@ pull-condition line and its relations), show it again as in step 6, and save not
 answer. Under "Filing without my confirmation", where no draft is shown, file the rebuilt draft
 instead, unless it now raises a question for me.
 
-Call `save_issue` with the team, project, title, description, labels and state of the draft as
-last shown or rebuilt, and its relations: `blockedBy` with the id of each "Blocked by" issue, and
-`relatedTo` with the id of each related ticket from step 4 (and any I asked to link). Use real newlines in the description, not `\n`
-escapes. Do not set an assignee, priority or estimate unless I asked.
+If I said yes to a new milestone (step 2b), create it now with `save_milestone`, under the shared
+rules, "Milestones" (look for it by name first). If it cannot be created, save nothing and tell me.
+
+Call `save_issue` with the team, project, milestone, title, description, labels and state of the
+draft as last shown or rebuilt, and its relations: `blockedBy` with the id of each "Blocked by"
+issue, and `relatedTo` with the id of each related ticket from step 4 (and any I asked to link).
+Use real newlines in the description, not `\n` escapes. Do not set an assignee, priority or
+estimate unless I asked.
 
 Then reply with:
 
 - The id as a markdown link, using the url `save_issue` returned (the bare id if none came back),
   and the title.
 - The labels and the state.
+- The milestone, read back with `get_issue`, or "no milestone" with why.
 - The relations, read back with `get_issue` (relations included). Name any you did not expect,
   such as one Linear added from an id in the text (shared rules, "Ticket ids in text").
 - The branch to work it on, under the branch-name rule in the shared rules.
@@ -223,6 +251,9 @@ For both:
   or the request names another. If that project cannot be used (step 1 skips a canceled project,
   and asks when the project does not settle the team), file nothing and bring it to me as a
   decision.
+- **Milestone.** The ticket takes the source ticket's milestone, read with `get_issue`; this
+  overrides step 2b. When the source ticket has none, file it with no milestone and say so in the
+  report. Never create a milestone on this path (shared rules, "Milestones").
 - **A near-match stops the filing.** If step 3's search finds a ticket that is the same problem,
   file nothing and bring the match to me as a decision, with its id and state.
 - **A capped or unfinished duplicate search stops the filing.** If a search in step 3 returns 100
@@ -232,9 +263,9 @@ For both:
   and do not adopt an id you did not get back. Search the project for the title, and tell me
   what you find, with the draft of the ticket you tried to file, as a possible creation for me to
   settle; delete nothing. `dv:groom` handles a failed filing the same way.
-- **Report the new id.** Give its link and title. A manager-mode session sends it to the
-  Director as a highlight (see `dv:manager-mode`, "Highlights"). A director-mode session names it
-  in its reply to me.
+- **Report the new id.** Give its link and title, and its milestone or "no milestone". A
+  manager-mode session sends it to the Director as a highlight (see `dv:manager-mode`,
+  "Highlights"). A director-mode session names it in its reply to me.
 - **A ticket I ask for by hand still waits for my yes**, whichever mode is on.
 
 ## Groom
@@ -250,7 +281,8 @@ groom from this skill.
 - This skill is for Linear. Do not open GitHub issues.
 - Nothing is created or edited in Linear without my confirmation, except a spin-off or a
   "NOTICED, NOT FILED" item filed under "Filing without my confirmation". A ticket I ask for by
-  hand still waits for my yes.
+  hand still waits for my yes. A new milestone needs its own yes, and is never created under
+  "Filing without my confirmation".
 - Do not edit or comment on tickets other than the one being filed. The relations the filing's
   `save_issue` call sets (step 7) also show on the other ticket; that is the only change to it.
 - Do not put secrets or credentials in a ticket.

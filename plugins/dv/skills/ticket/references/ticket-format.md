@@ -1,7 +1,8 @@
 # Ticket rules shared by dv:ticket and dv:groom
 
 `dv:ticket` (filing) and `dv:groom` (grooming) both read this file before they start. It is the one
-copy of the rules they share, so the two skills cannot drift apart. "I" and "me" mean the user.
+copy of the rules they share (the format, questions, ticket ids, prerequisites, milestones, Agent
+notes markers and branch names), so the two skills cannot drift apart. "I" and "me" mean the user.
 
 ## The format
 
@@ -83,6 +84,34 @@ What a ticket waits on. `dv:ticket` applies these rules to the ticket it files (
   only the blocked-by, and adding `blockedBy` to a ticket already related to that issue replaces
   the related link (both seen 2026-11-24). Read the relations back after saving, as "Ticket ids
   in text" says.
+
+## Milestones
+
+Each ticket sits in one of its project's milestones. `dv:ticket` picks one for the ticket it files
+(File step 2b) and `dv:groom` checks the one the groomed ticket has (step 3, "Milestone"). Each
+skill says what it does with the result.
+
+- **Read them.** `list_milestones` with the ticket's project gives each milestone's name,
+  description (what done means) and progress. `get_issue` gives a ticket's milestone
+  (`projectMilestone`), and its Decisions section is in the description. A milestone at 100%
+  progress is finished: put no ticket in it.
+- **Fit.** A ticket fits the milestone whose goal, as its name and description state it, the
+  ticket's work serves. Take the closest, with a one-line reason that names that goal; when two
+  fit, name the other in the reason. A milestone that fits only loosely is not a fit: say that
+  none fits rather than fill the field.
+- **Set it** with `save_issue`'s `milestone` field, by the milestone's id from `list_milestones`.
+  Read it back with `get_issue`.
+- **"No milestone".** A Decisions line that records "No milestone" (with who and when) keeps the
+  ticket out of milestones: set none, propose none, and leave the field as it is. When I choose to
+  keep a ticket out of milestones, record it that way: "No milestone. <my name>, <date>".
+- **A new milestone is my call.** Propose one only as a question to me: its name and one line on
+  what done means. Create it only on my yes, with `save_milestone` (the project, the name, and
+  that line as the description). Never set a target date; only I set one. Just before creating,
+  call `list_milestones` again; if a milestone with that name now exists, use it instead. If
+  `save_milestone` errors or its reply is lost, call `list_milestones` before anything else, since
+  the create may have landed; if the milestone is not there, tell me and do not retry.
+- **Nothing is created without my yes.** A path that skips my yes, such as `dv:ticket`'s "Filing
+  without my confirmation" or a `dv:groom` routine call, never creates a milestone.
 
 ## Agent notes markers
 

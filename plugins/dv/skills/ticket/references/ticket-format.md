@@ -102,12 +102,15 @@ skill says what it does with the result.
 - **Set it** with `save_issue`'s `milestone` field, by the milestone's id from `list_milestones`.
   Read it back with `get_issue`.
 - **"No milestone".** A Decisions line that records "No milestone" (with who and when) keeps the
-  ticket out of milestones: set none, propose none, and leave the field as it is. When I choose to
-  keep a ticket out of milestones, record it that way: "No milestone. <my name>, <date>".
+  ticket out of milestones: set none and propose none. A ticket that records it but has a
+  milestone anyway is a disagreement only I settle: ask whether to take it out or keep it, and
+  change nothing before the answer (`dv:groom` step 3). When I choose to keep a ticket out of
+  milestones, record it that way: "No milestone. <my name>, <date>".
 - **A new milestone is my call.** Propose one only as a question to me: its name and one line on
   what done means. Create it only on my yes, with `save_milestone` (the project, the name, and
   that line as the description). Never set a target date; only I set one. Just before creating,
-  call `list_milestones` again; if a milestone with that name now exists, use it instead. If
+  call `list_milestones` again; if an open milestone with that name now exists, use it instead,
+  and if only a finished one has that name, ask me again before creating anything. If
   `save_milestone` errors or its reply is lost, call `list_milestones` before anything else, since
   the create may have landed; if the milestone is not there, tell me and do not retry.
 - **Nothing is created without my yes.** A path that skips my yes, such as `dv:ticket`'s "Filing

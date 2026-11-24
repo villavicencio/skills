@@ -53,8 +53,8 @@ overrule it.
 - a split, with the parent's replacement description when it stays as the parent;
 - a prerequisite that the shared rules' "Prerequisites" sends to a question (step 3; no relation
   is set on a guess);
-- a new milestone, and a ticket whose goal no longer fits the milestone it has (move it, or keep
-  it) (step 3, "Milestone").
+- a new milestone, a ticket whose goal no longer fits the milestone it has (move it, or keep it),
+  and a ticket whose Decisions records "No milestone" but that has one (step 3, "Milestone").
 
 **Routine calls:** every other open decision, such as wording, ordering, Size and points, Done
 means phrasing, filing or dropping a spin-off, settling an `[assumed]` marker you verified,
@@ -259,8 +259,9 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
 - **Milestone.** Apply the shared rules, "Milestones": call `list_milestones` for the ticket's
   project and read the milestone `get_issue` gives. Then take the first case that applies:
   - It is Done, Canceled or a Duplicate: leave the field as it is and propose nothing.
-  - Its Decisions records "No milestone": leave the field as it is and propose nothing. The
-    report says so.
+  - Its Decisions records "No milestone" and it has none: propose nothing. The report says so.
+  - Its Decisions records "No milestone" but it has a milestone: an open decision, to take it out
+    or keep it (a keep replaces the "No milestone" line). Nothing changes before the answer.
   - The project has no milestones, or only finished ones: propose nothing. The report says so.
   - It is open, has no milestone, and one fits: setting that milestone is an add item (step 7),
     with its one-line reason.
@@ -353,7 +354,8 @@ command's output, a ticket id). Three kinds:
 - **Spin-offs:** work the ticket suggests but should not carry: a helper, a follow-up measurement,
   a neighbor with the same flaw. Each is one line: a title in the format, why, the Linear project
   it would go in (found live, as in `dv:ticket` File step 1), its milestone (the groomed
-  ticket's, or none when it has none), and its state and labels (never `groomed`: a spin-off is
+  ticket's, or none when it has none; in another project, an existing one that fits there, or
+  none), and its state and labels (never `groomed`: a spin-off is
   drafted, not groomed). Before offering one, run
   File step 3's duplicate search for it, reading every page and keeping a tally as step 1's
   overlap search does, and keep any match, with its id and state. A spin-off whose duplicate
@@ -519,8 +521,10 @@ it cannot be created, write nothing else: say so under Needs you, and leave the 
 2. **File approved children and spin-offs.** Read `dv:ticket`'s `SKILL.md` (`../ticket/SKILL.md`
    from this skill's directory), section "File", and create each with its rules: project found live
    (a child takes the parent's project), the milestone (a child takes the parent's, and a spin-off
-   the groomed ticket's, as the approved edit list leaves it; with none or a finished one, it gets
-   none, and no milestone is created for it; this overrides File step 2b), labels from the team,
+   filed in the groomed ticket's project takes the groomed ticket's, as the approved edit list
+   leaves it, with none when that is none or finished; a spin-off filed in another project takes
+   the existing milestone File step 2b picks there, or none; no milestone is created for either;
+   this overrides File step 2b), labels from the team,
    the format, facts checked or marked `[assumed]`, Backlog with a pull condition unless it can
    start now, the re-run of the duplicate searches just before creating, and `save_issue`. My
    interview answer stands in for File step 6's draft and question. Set each one's relations in the

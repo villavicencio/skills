@@ -21,9 +21,9 @@ the skills repo's sessions can read, so tickets filed elsewhere landed with none
   progress is finished and gets no ticket; a ticket fits the milestone whose stated goal its work
   serves, with a one-line reason, and a loose fit counts as none; the milestone is set with
   `save_issue`'s `milestone` field; a Decisions line that records "No milestone" keeps a ticket out
-  of milestones; a new milestone is proposed only as a question (a name and one line on what done
+  of milestones, and a ticket that records it but has a milestone anyway is asked, not changed; a new milestone is proposed only as a question (a name and one line on what done
   means), created only on a yes with `save_milestone`, never with a target date, looked for by
-  name just before creating, and read back after an error instead of retried; a path that skips
+  name just before creating (an open one with that name is used; a finished one is asked again), and read back after an error instead of retried; a path that skips
   the yes never creates one.
 - **`dv:ticket`, new File step 2b, "Milestone".** Lists the project's milestones and takes the one
   the request names, else the one that fits; the draft (step 6) shows it with its reason. When
@@ -37,7 +37,7 @@ the skills repo's sessions can read, so tickets filed elsewhere landed with none
   ticket's milestone. When the source has none, or a finished one, it is filed with none and the
   report says so; no milestone is ever created on this path.
 - **`dv:groom`, step 3, new "Milestone" check.** A ticket whose Decisions records "No milestone"
-  is left alone. An open ticket with no milestone, in a project that has milestones, gets the one
+  gets none proposed; if it has a milestone anyway, whether to take it out or keep it is asked. An open ticket with no milestone, in a project that has milestones, gets the one
   that fits as an add item (a routine call in `forks-only` mode). When none fits, the field stays
   empty, the report says so, and a new milestone is an open decision (a fork). A ticket whose goal
   no longer fits its milestone is asked: move it or keep it; grooming never moves a ticket out of
@@ -45,7 +45,8 @@ the skills repo's sessions can read, so tickets filed elsewhere landed with none
   user, not to the Director.
 - **`dv:groom`, splits and spin-offs.** A split's children take the parent's milestone and a
   spin-off takes the groomed ticket's, as the approved edit list leaves it ("Order of writes"
-  item 2); with none or a finished one, they get none. An approved new milestone is created before
+  item 2); with none or a finished one, they get none. A spin-off filed in another project takes
+  an existing milestone that fits there, or none, never one from the groomed ticket's project. An approved new milestone is created before
   "Order of writes" item 1, whether or not anything is filed. The split proposal and each spin-off
   line show the milestone. A Done, Canceled or Duplicate ticket's milestone is left as it is.
 - **`dv:groom`, edit list, report and rules.** The milestone is an edit-list item; the report

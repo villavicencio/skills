@@ -27,7 +27,10 @@ ticket named it in both, which Linear refuses ("Two issues can have only one rel
     Canceled or a Duplicate, a state that can't be read, and a wait that maps to no issue or to
     more than one.
   - **One relation per pair.** Linear allows one relation between two issues, so a ticket that is
-    blocked by another is not also set as related to it. `blockedBy` wins.
+    blocked by another is not also set as related to it. `blockedBy` wins. An id in the ticket's
+    text adds no second relation: a save that sets `blockedBy` to an issue the text names sets
+    only the blocked-by, and adding `blockedBy` to a ticket already related to that issue
+    replaces the related link (both seen in Linear on 2026-11-24).
 - **`dv:ticket`, File step 4, "Prerequisites".** Points to the shared section. It keeps the draft
   (a met prerequisite is named, a related ticket is listed and linked in step 7, "Blocked by
   VIL-N"), asking before the draft is shown (also under "Filing without my confirmation"), and the

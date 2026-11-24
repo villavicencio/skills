@@ -78,7 +78,11 @@ What a ticket waits on. `dv:ticket` applies these rules to the ticket it files (
 - **One relation per pair.** Linear allows one relation between two issues: a `save_issue` call
   that names the same issue in both `blockedBy` and `relatedTo` fails ("Two issues can have only
   one relation"). So a ticket that is blocked by another is not also set as related to it.
-  `blockedBy` wins.
+  `blockedBy` wins. An id in the text ("Ticket ids in text") does not add a second relation: when
+  one `save_issue` call saves text that names an issue and sets `blockedBy` to it, Linear sets
+  only the blocked-by, and adding `blockedBy` to a ticket already related to that issue replaces
+  the related link (both seen 2026-11-24). Read the relations back after saving, as "Ticket ids
+  in text" says.
 
 ## Agent notes markers
 

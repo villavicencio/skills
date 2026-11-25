@@ -166,7 +166,8 @@ reached you, reply `Ask David, VIL-N, Qk: too late` and relay nothing: the sessi
 ### At each seam and each closeout: name what is newly unblocked
 
 A seam is a PR merged, a closeout note received, the start of the session, or my asking what is
-next. At each one:
+next. At the start of the session, run the sweep (the last bullet) before the first bullet, so
+the list of newly unblocked tickets reflects any blocker the sweep moved to Done. At each one:
 
 - For each ticket that finished since the last seam, read the tickets it blocks (the ticket's
   relations; in Linear, `get_issue` with `includeRelations`). At the start of the session, read
@@ -208,14 +209,17 @@ next. At each one:
      id, such as `Fixes VIL-N`. Only the description counts, not the PR title. A non-closing
      word such as `Refs VIL-N` does not close it. Any other flagged ticket goes to Todo: one
      whose merged PRs all lack a closing word, or whose PRs were all closed unmerged. Just
-     before each write, read the ticket's state and its attached PRs again and run the
-     Ownership lookup again. If the state or an attached PR changed since step 2 (a PR opened
-     or went to draft, or the state moved), or the lookup now finds an owner or an open or draft
-     PR, or cannot run, leave the ticket and name it.
-     Comment one line on the ticket saying why, naming the PR, such as "Moved to Todo: PR #12
-     merged with Refs, not a closing word, and no PR is open."
+     before the state change, read the ticket's state, labels and attached PRs again and run
+     the Ownership lookup again. If the state or an attached PR changed since step 2 (a PR
+     opened or went to draft, or the state moved), the ticket is now labeled `someday` or in
+     Backlog, or the lookup now finds an owner or an open or draft PR, or cannot run, leave the
+     ticket and name it. This guard covers the state change only. After the state change
+     succeeds, write one line as a comment on the ticket saying why, naming the PR, such as
+     "Moved to Todo: PR #12 merged with Refs, not a closing word, and no PR is open." If the
+     comment write fails, leave the state as moved and name the ticket in the report as "moved,
+     comment not written".
   6. Report one line per moved ticket: its id as a link, the old and new state, and the PR. Name
-     each ticket left as it is (owned, an open PR found by the lookup, owner unknown, no linked PR, unreadable, changed before the write)
+     each ticket left as it is (owned, an open PR found by the lookup, owner unknown, no linked PR, unreadable, changed before the state change)
      with the reason.
 
 ### Recommend which worktree sessions to start next

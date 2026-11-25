@@ -14,9 +14,11 @@ for one to three weeks after their PRs merged, and one In Review for eight weeks
 ## Changed
 
 - **`dv:director-mode`, "At each seam and each closeout".** A new bullet runs at the start of the
-  session only:
+  session only, before the step that names newly unblocked tickets, so that list reflects any
+  blocker the sweep moved to Done:
   1. List the repo project's tickets that are In Progress or In Review, using the state names
-     `list_issue_statuses` returns. A `someday` ticket and a Backlog ticket are skipped.
+     `list_issue_statuses` returns. A `someday` ticket and a Backlog ticket are skipped, and checked again before the state
+     change.
      The list follows the `list_issues` cursors until a reply says `hasNextPage: false`. A page
      that fails is retried once with the same cursor; if it fails again, nothing is moved and the
      report says the scan was incomplete.
@@ -37,10 +39,12 @@ for one to three weeks after their PRs merged, and one In Review for eight weeks
      closing word from the list in dotfiles `docs/agents/tickets.md`, "Linking a PR to a ticket
      without closing it", followed by the ticket's id, such as `Fixes VIL-N`; the PR title does
      not count. Otherwise Todo (a non-closing word such as `Refs VIL-N`, or all PRs closed
-     unmerged). Just before each write the ticket's state and attached PRs are read again and
-     the Ownership lookup is run again; if the state or an attached PR changed since step 2, or
-     the lookup now finds an owner or an open or draft PR, or can't run, the ticket keeps its
-     state and is named. Each move gets a one-line comment naming the PR.
+     unmerged). Just before the state change the ticket's state, labels and attached PRs are
+     read again and the Ownership lookup is run again; if the state or an attached PR changed
+     since step 2, the ticket is now labeled `someday` or in Backlog, or the lookup now finds an
+     owner or an open or draft PR or can't run, the ticket keeps its state and is named. After
+     the state change succeeds, a one-line comment naming the PR is written; if that write
+     fails, the ticket stays moved and is reported as "moved, comment not written".
   6. The session-start report has one line per moved ticket, and names each ticket left as it is
      with the reason.
 - **"Keep ticket states true".** Points at the sweep, and says it follows the global state rule

@@ -518,11 +518,19 @@ Patches stay the default; three changed sections allow the offer and do not deci
 A new milestone I said yes to is created as the shared rules' "Creating an approved milestone"
 says: right before the first save below that sets it (the first child or spin-off filed with it in
 item 2, or the groomed ticket's change in item 4), after the re-reads that come before that save
-(item 1's re-read of the parent, the duplicate re-run before that filing, item 4's re-read). If it
-cannot be created, or those rules send it back to me, stop: write nothing more, list under Needs
-you the tickets already filed and the items not applied, and leave the `groomed` label off (item
-5). If the save that sets it fails, follow those rules' "A failed save after it" as well as item
-2's report for a failed filing: no retry, which overrides item 4's retry once for that save.
+(item 1's re-read of the parent, the duplicate re-run before that filing, item 4's re-read, and the
+milestone re-read below). If it cannot be created, or those rules send it back to me, stop: write
+nothing more, list under Needs you the tickets already filed and the items not applied, and leave
+the `groomed` label off (item 5). If the save that sets it fails, follow those rules' "A failed
+save after it" as well as item 2's report for a failed filing: no retry, which overrides item 4's
+retry once for that save.
+
+The milestone step 3 settled (the one the groomed ticket will have after the approved edit list:
+kept, set or none) is checked again under the shared rules' "Re-read before the save": just before
+the first save below that uses it, the first child or spin-off filed with it (item 2), and again
+just before item 4's save, each time before any new milestone is created. If that rule sends it
+back to me, stop as above: write nothing more, list under Needs you the tickets already filed and
+the items not applied, and leave the `groomed` label off (item 5).
 
 1. **A split never loses work.** Linear cannot create several tickets and edit another in one
    step, so a split can fail part way. Order it so that a failure can only leave work in two

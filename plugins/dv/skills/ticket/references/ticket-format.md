@@ -110,6 +110,14 @@ skill says what it does with the result.
 - **A new milestone is my call.** Propose one only as a question to me: its name and one line on
   what done means. Create it only on my yes, with `save_milestone` (the project, the name, and
   that line as the description). Never set a target date; only I set one.
+- **Re-read before the save (`dv:groom`).** The milestone grooming settled in step 3 is the one
+  the groomed ticket will have after the approved edit list (kept, set or none). Just before the
+  first save that uses it, and before creating a new one, call `list_milestones` again and
+  `get_issue` for the groomed ticket. If that milestone has finished, gone or changed its goal
+  since step 3, or the groomed ticket's milestone changed since then, save nothing that sets it
+  and ask me again, in forks-only mode too. A milestone I chose to keep while it was finished does
+  not count as having finished. For a new milestone, "Look first" below checks the milestone
+  itself; the groomed ticket is still read. `dv:ticket` re-reads in its own File step 7.
 - **Creating an approved milestone.** Both skills follow these steps, and each says where they
   fall in its own run:
   1. **Last.** Create it right before the first save that sets it, after every re-read or check

@@ -30,6 +30,12 @@ the skills repo's sessions can read, so tickets filed elsewhere landed with none
   - A new milestone is proposed only as a question (a name and one line on what done means),
     created only on a yes with `save_milestone`, and never with a target date. A path that skips
     the yes never creates one.
+  - "Re-read before the save", for `dv:groom`: just before the first child or spin-off filing
+    that uses the milestone step 3 settled, and before the groomed ticket's own save (each time
+    before any new milestone is created), the milestones and the groomed ticket's milestone are
+    read again. If that milestone has finished, gone or changed its goal since step 3, or the
+    groomed ticket's milestone changed, the save stops and goes back to the user, in `forks-only`
+    mode too. `dv:ticket` keeps its own re-read in File step 7.
   - "Creating an approved milestone", one rule both skills point to: create it last, right
     before the first save that sets it and after every re-read that can stop the run; just before
     creating, reuse an open milestone with that name only when its description states the

@@ -185,8 +185,9 @@ next. At each one:
      attachments, plus the PRs that the `gh pr list` commands of the Ownership lookup in
      `dv:manager-mode`'s "Before the first brief: check the ticket" find for the ticket (its
      per-branch `--head` and its `--search` commands; run them here, and don't copy them into
-     this skill). Then read each PR with `gh pr view <url> --json state,isDraft,body`. If a read
-     fails, leave the ticket and name it.
+     this skill). Then read each PR with `gh pr view <url> --json state,isDraft,body`. If any of
+     these calls fails (`get_issue`, a `gh pr list`, a `gh pr view`), the ticket is unreadable:
+     leave it and name it.
   3. Flag a ticket that has at least one linked PR and no open PR, a draft counting as open. A
      ticket with no linked PR is named in the report and not moved: it may be In Progress with
      no PR on purpose.
@@ -204,12 +205,13 @@ next. At each one:
      id, such as `Fixes VIL-N`. Only the description counts, not the PR title. A non-closing
      word such as `Refs VIL-N` does not close it. Any other flagged ticket goes to Todo: one
      whose merged PRs all lack a closing word, or whose PRs were all closed unmerged. Just
-     before each write, read the ticket's state and its PRs again. If either changed since step
-     2 (a PR opened or went to draft, or the state moved), leave the ticket and name it.
+     before each write, read the ticket's state and its PRs again and run the Ownership lookup
+     again. If the state or a PR changed since step 2 (a PR opened or went to draft, or the
+     state moved), or the lookup now finds an owner or cannot run, leave the ticket and name it.
      Comment one line on the ticket saying why, naming the PR, such as "Moved to Todo: PR #12
      merged with Refs, not a closing word, and no PR is open."
   6. Report one line per moved ticket: its id as a link, the old and new state, and the PR. Name
-     each ticket left as it is (owned, owner unknown, no linked PR, unreadable, changed during the sweep)
+     each ticket left as it is (owned, owner unknown, no linked PR, unreadable, changed or newly owned before the write)
      with the reason.
 
 ### Recommend which worktree sessions to start next

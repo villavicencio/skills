@@ -20,7 +20,7 @@ for one to three weeks after their PRs merged, and one In Review for eight weeks
   2. Find each ticket's linked PRs: the GitHub pull request URLs among its `get_issue`
      attachments, plus the PRs the `gh pr list` commands of the Ownership lookup find for the
      ticket (pointed at, not copied). Read each with `gh pr view <url> --json state,isDraft,body`.
-     A failed read leaves the ticket as it is, named.
+     If any of these calls fails, the ticket is unreadable: it keeps its state and is named.
   3. Flag a ticket with at least one linked PR and no open PR, a draft counting as open. A ticket
      with no linked PR is named and not moved, since it may be In Progress with no PR on purpose.
   4. Run the Ownership lookup in `dv:manager-mode`'s "Before the first brief: check the ticket"
@@ -32,8 +32,9 @@ for one to three weeks after their PRs merged, and one In Review for eight weeks
      closing word from the list in dotfiles `docs/agents/tickets.md`, "Linking a PR to a ticket
      without closing it", followed by the ticket's id, such as `Fixes VIL-N`; the PR title does
      not count. Otherwise Todo (a non-closing word such as `Refs VIL-N`, or all PRs closed
-     unmerged). Just before each write the ticket's state and PRs are read again; if either
-     changed since step 2, the ticket keeps its state and is named. Each move gets a one-line
+     unmerged). Just before each write the ticket's state and PRs are read again and the
+     Ownership lookup is run again; if the state or a PR changed since step 2, or the lookup now
+     finds an owner or can't run, the ticket keeps its state and is named. Each move gets a one-line
      comment naming the PR.
   6. The session-start report has one line per moved ticket, and names each ticket left as it is
      with the reason.

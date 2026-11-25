@@ -4,7 +4,7 @@ description: "Switch this session into Director Mode, the mode for the home sess
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.36.0"
+  version: "0.37.0"
 ---
 
 # /director-mode — the home session directs; worktree managers hire
@@ -27,9 +27,11 @@ placeholder, take the argument from my message that invoked this skill. "I" and 
 - **Nothing, or anything else:** Director Mode is on from now until I turn it off, by invoking
   this skill with `off` or by telling you in plain words. Reply with this one line:
   `Director Mode on: <model> at <effort> effort.`, with the values from "Expected setting"
-  below, and the warning line after it when that section calls for one. Text after the skill
-  name is the first request to handle as Director. If the mode was already on, reply
-  `Director Mode already on.` and carry on; do not restart work already in flight.
+  below, and the warning line after it when that section calls for one. Then announce yourself
+  to the worktree sessions and add the `Announced to:` line ("Announce yourself to the worktree
+  sessions"). Text after the skill name is the first request to handle as Director. If the mode
+  was already on, reply `Director Mode already on.` and carry on; do not restart work already in
+  flight, and announce nothing.
 
 A project makes the mode standing with one line in its `CLAUDE.md` or `AGENTS.md`. Where
 worktree sessions run `dv:manager-mode`, the line names both, such as:
@@ -117,16 +119,43 @@ needed" (`dv:manager-mode`, "Highlights").
   gets the one-line reply it asks for. A message that starts `Question, VIL-N,` is not a
   highlight; it is answered under "Answer a worktree session's question".
 
+### Announce yourself to the worktree sessions
+
+When the mode turns on, tell each live worktree session of this repo that you are the Director.
+A restarted Director comes back under a new name and address, and a worktree session would
+otherwise learn of it only when its next send to the old address fails.
+
+- Announce only from the main checkout (the `git rev-parse` test under "On, off, and
+  standing"). From a linked worktree, announce nothing: a session's probe would get the wrong
+  path from you.
+- The live worktree sessions: for each linked worktree that `git worktree list` prints (every
+  path after the first, which is the main checkout), each ListAgents peer whose name is that
+  worktree folder's basename, then `-`, then a suffix with no `-` in it (the test under "Merge
+  and clean up"). The name proves nothing; the session's probe is what checks you.
+- Send each of them this one line, once, with SendMessage:
+  `Director announcement, <main checkout path>: Director Mode is on in this session, the home session in the main checkout. No reply needed; send me your Director check.`
+- After the on line and any warning lines, add one line: `Announced to: <the sessions whose send
+  succeeded>.`, or `Announced to: none.` when no send succeeded. Name each send that failed, with
+  its error, and don't resend it; that session verifies you when it next sends. If ListAgents or `git worktree list` fails, or under Codex (where `list_agents`
+  lists only this session's own agents), say so on that line and announce nothing.
+- Each session that gets the announcement probes you (`dv:manager-mode`, "Highlights"). Answer
+  each probe as the next section says.
+
 ### Answer a "Director check" probe
 
 Before a worktree session sends you highlights or a closeout note, it checks that you are the
 Director with a probe that starts `Director check,` (`dv:closeout`, "Deliver the note", step 2;
-`dv:manager-mode`, "Highlights"). Answer each probe, a repeat included, with SendMessage to the
+`dv:manager-mode`, "Highlights"). Probes come at any time, and one from each session that got
+your announcement soon after it. Answer each probe, a repeat included, with SendMessage to the
 probe's `from` address. The answer is one line, the absolute path of the directory this session
 runs in (`git rev-parse --show-toplevel`), and nothing else: no greeting, quotes or backticks. In
-the main checkout that is the main checkout's path, which is what the sender checks for. Then
-expect that sender's closeout note, highlights or questions. A probe is not a highlight: don't
-relay it to me.
+the main checkout that is the main checkout's path, which is what the sender checks for. If that
+send fails, look the session up in ListAgents by the probe's `from-name` and send the answer once
+more, to the address listed now. If the session isn't listed, or that send fails too, tell me in
+one line and send nothing more. Answer in your next turn: a session counts a probe with no
+answer after 10 minutes as failed (`dv:closeout`, "Deliver the note", step 2). Then expect that
+sender's closeout note, highlights or questions, including any it held while it had no
+Director. A probe is not a highlight: don't relay it to me.
 
 ### Answer a worktree session's question
 

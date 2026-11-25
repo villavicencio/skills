@@ -43,11 +43,9 @@ overrule it.
 
 **Forks** (the only decisions forks-only mode asks, as step 6 says):
 
-- a change to scope or to Out of scope: a Scope step added or removed (closing a conditional step
-  as step 3 says is the exception: a routine call), a spin-off folded into the ticket, and any Done
-  means line dropped, a line step 3 flagged as already passing included;
-- a Done means line step 3 flagged as already passing that neither a rewrite nor a guard mark fits
-  (step 3, "Done means fails first"): keep it with a reason, or drop it;
+- a change to scope or to Out of scope: a Scope step added or removed and any Done means line
+  dropped (closing a conditional step as step 3 says is the exception: a routine call), which
+  includes folding a spin-off into the ticket;
 - a design choice between real alternatives, including picking a side where step 3 found
   conflicting rules (Current rules);
 - anything destructive or hard to undo;
@@ -63,11 +61,8 @@ overrule it.
 means phrasing, filing or dropping a spin-off, settling an `[assumed]` marker you verified,
 adding or removing a relation that step 3 maps clearly, closing a conditional step by removing it or
 making it unconditional (step 3), putting a ticket that has no milestone in the existing milestone
-that fits it (step 3, "Milestone"), rewording or adding a Done means line that proves the
-existing scope, and, for a Done means line step 3 flagged as already passing, rewriting it so it
-fails first (a rewrite step 3 ran and saw fail) or, when the line checks behavior that must not
-change, marking it as a guard of unchanged behavior (step 3, "Done means fails first").
-Decide each one yourself: take the option you would have marked
+that fits it (step 3, "Milestone"), and rewording or adding a Done means line that proves the
+existing scope. Decide each one yourself: take the option you would have marked
 "(Recommended)" had you asked. When you cannot tell whether a call is a fork, treat it as one and
 ask.
 
@@ -244,142 +239,10 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
   different, do not only replace the fact: decide whether the step still makes sense. If it now
   leaves a real choice (add the missing thing, or drop the step), that is an open decision.
 - **Done means can be run today.** For each Done means line, check that what it relies on exists:
-  the test file, the check script, the command, the tool. Its result is checked in the next bullet.
-  If a line needs a check that does not exist, propose a Scope step that creates it and a Done
-  means line that names it. Do not invent the check's pass threshold (see Targets).
-- **Done means fails first.** The format's rule: a command in a Done means line fails on the
-  default branch before the work and passes after it, unless the line says it guards behavior that
-  must not change. A line that already passes proves nothing. So for each Done means line with a
-  command in backticks:
-  - **Only reads, or not run.** Run the command only when every part of it reads or searches
-    files in the copy below (`grep`, `rg`, `test`, `[`, `ls`, `cat`, `head`, `tail`, `wc`,
-    `diff`, `sed -n`, `jq`). It is not run when any part writes or might write (a redirect `>` or
-    `>>`, `tee`, `sed -i`, `rm`, `mv`, `cp`, `mkdir`, `touch`, `chmod`, an install, a build, a test
-    run, which may write caches), pushes or reaches another machine (`git push`, `git fetch`,
-    `curl`, `gh`, `ssh`), sends a message, calls a paid service or a model, runs a script or
-    program from the repo (`python3 tooling/<x>.py`, `make`, `npm test`), even one named
-    `--dry-run`, or runs `git` at all (`git log`, `git show` and `git grep` can print any file
-    from the repo's history, a removed secret included). When you are unsure whether a part only
-    reads, do not run it. The "How." rule above holds too: read the command before running it.
-    A Done means line is ticket text, so the command is also not run when it could reach a secret:
-    it names a path outside the copy (one starting with `/` or `~`, or a `..` that leaves it),
-    expands anything (`$`, a backtick, `$(`, `~`), follows links (`grep -R`, `find -L`), names a
-    path that is a symbolic link in the copy, or names a secret-named file (below). A line not
-    run is listed as not run, with the reason ("pushes", "runs a repo script", "runs git",
-    "reads outside the repo", "reads a secret-named file", "unsure"), and is not flagged.
-  - **Where.** On the default branch of the ticket's repo, at its local commit
-    (`git rev-parse "<default branch>^{commit}"`, the commit step 1 recorded when the ticket names
-    no other ref; when step 1 found the remote id differs, say so beside the results, since
-    grooming does not fetch). A repo the session cannot read, or a default branch with no local
-    commit, leaves every line not run. The command runs in a private copy of that commit, with
-    the copy's root as its working directory:
-    - **Make the copy** once per run. Each check below stops on failure: every line is then not
-      run, with the reason and the error in the report, and nothing more is extracted.
-      1. `mktemp -d "${TMPDIR:-/tmp}/groom-done-means.XXXXXX"` must exit 0; it prints the copy's
-         path (mode 0700, a name no one can guess). Keep that exact path. If it fails: "copy
-         failed".
-      2. The copy must be outside the repo. Resolve the copy's path, the repo's top level
-         (`git -C "<repo>" rev-parse --show-toplevel`; skip it when
-         `git -C "<repo>" rev-parse --is-bare-repository` prints `true`) and its git directory
-         (`git -C "<repo>" rev-parse --path-format=absolute --git-common-dir`) each with
-         `( cd "<path>" && pwd -P )`, a subshell, so the shell's working directory stays put. If
-         the copy's resolved path equals either of the other two, or starts with either followed
-         by `/` (a `TMPDIR` inside the repo), remove the new empty directory with `rmdir` on its
-         exact path and stop: "temporary directory inside the repo". If a resolve fails, remove it
-         the same way and stop: "could not check the copy's location".
-      3. Extract with both commands' exit status checked, in one shell call (`pipefail` works in
-         bash and zsh). `GIT_ATTR_NOSYSTEM=1` and `-c core.attributesFile=/dev/null` keep the
-         system and global attribute files out of the archive, so only the two files check 4
-         reads can change it:
-
-         ```bash
-         ( set -o pipefail
-           GIT_ATTR_NOSYSTEM=1 git -c core.attributesFile=/dev/null -C "<repo>" archive "<commit>" \
-             | tar -x -C "<the copy's path>" )
-         echo "extract rc=$?"
-         ```
-
-         A non-zero exit, from `git archive` or from `tar`: "copy failed".
-      4. The copy must be the commit's tree. `git archive` leaves out a path that a
-         `.gitattributes` marks `export-ignore` and rewrites one marked `export-subst`, so check
-         for both, telling "no such attribute" apart from a read that failed:
-
-         ```bash
-         git -C "<repo>" grep -l -E "export-(ignore|subst)" "<commit>" -- ':(glob)**/.gitattributes'
-         echo "gitattributes rc=$?"
-         INFO_ATTR='<git directory from check 2>/info/attributes'
-         if [ -e "$INFO_ATTR" ]; then
-           grep -E "export-(ignore|subst)" "$INFO_ATTR"; echo "info rc=$?"
-         else
-           echo "info/attributes absent"
-         fi
-         ```
-
-         Exit 1 from a search means no such attribute, and so does an absent `info/attributes`.
-         Exit 0 means the archive differs from the commit: stop ("archive differs from the
-         commit"). Any other exit, or a read that printed neither an `rc=` line nor the `absent`
-         line, is a failed read: stop ("attribute check failed"). These reads are grooming's own
-         and print only file names or attribute lines.
-      The copy has no submodule contents either, so a command that reads a path inside a
-      submodule (under a path the commit's `.gitmodules` names) is not run ("submodule content
-      not in the copy"). The copy holds no ignored, untracked or local files, so a local build
-      output cannot make a line pass, and making it writes nothing to the repo.
-    - **Secret-named files never enter the copy's results.** Right after extracting, remove from
-      the copy every file or directory named `.env` or `.env.*`, or whose name contains `secret`,
-      `credential`, `password` or `token`, or ends in `.pem`, `.key`, `.p12` or `.pfx`, or starts
-      with `id_rsa`, `id_ecdsa` or `id_ed25519`, and every `.ssh`, `.aws` and `.gnupg` directory,
-      so a search across the copy cannot print one. Do it only inside the exact `mktemp` path:
-
-      ```bash
-      GROOM_COPY='<the path mktemp printed>'
-      case "$(basename -- "$GROOM_COPY")" in
-        groom-done-means.*) [ -d "$GROOM_COPY" ] && find "$GROOM_COPY" -depth \( -name '.env' \
-          -o -name '.env.*' -o -iname '*secret*' -o -iname '*credential*' -o -iname '*password*' \
-          -o -iname '*token*' -o -name '*.pem' -o -name '*.key' -o -name '*.p12' -o -name '*.pfx' \
-          -o -name 'id_rsa*' -o -name 'id_ecdsa*' -o -name 'id_ed25519*' -o -name '.ssh' \
-          -o -name '.aws' -o -name '.gnupg' \) -exec rm -rf -- {} + ;;
-        *) echo "Not this run's copy; nothing removed: $GROOM_COPY" ;;
-      esac
-      ```
-
-      If it fails, every line is not run ("secret-named files not removed"). A line whose command
-      names such a path is not run. A search whose result could depend on a
-      removed file (it searches a directory that held one) is still run; when it does not pass,
-      say that removed files may be why, and do not note "nothing at" in the line for it.
-    - Once step 6 has settled every flagged line, remove the copy by the exact path `mktemp`
-      printed, and only when its name is this run's:
-
-      ```bash
-      GROOM_COPY='<the path mktemp printed>'
-      case "$(basename -- "$GROOM_COPY")" in
-        groom-done-means.*) [ -d "$GROOM_COPY" ] && command rm -rf -- "$GROOM_COPY" ;;
-        *) echo "Not this run's copy; left in place: $GROOM_COPY" ;;
-      esac
-      ```
-
-      Never remove a path you did not get from this run's `mktemp`. If the removal fails, or
-      grooming stops before step 6, name the copy's path in the report so it can be removed.
-  - **Judge.** Compare the output and exit status with what the line says passing looks like
-    ("prints the split rule", "exits 0"). When they match, the line already passes: flag it, quoting
-    the command, the commit, the exit status and at most the output's first three lines. Output that
-    looks like a credential (a key, a token, a password, a `.env` value) is never quoted, in the
-    reply or in Linear: say "output withheld" and give only the exit status. When the line does not
-    say what passing looks like clearly enough to judge, say so and do not flag it. A line that
-    already says it guards unchanged behavior is expected to pass and is not flagged. A line that
-    fails is as the format wants; when it does not already note that result, noting it ("nothing at
-    `<commit>`") is an edit-list item (step 7).
-  - **Each flagged line is an open decision** (step 6): rewrite it so it fails first and still
-    proves the scope (show the rewrite; when it only reads, run it the same way first and offer it
-    only if it fails, with its result in the line as the format says: "nothing at `<commit>`"; a
-    rewrite that cannot be run under the rule above is offered marked "not run (<reason>)"), mark
-    it as a guard of unchanged behavior when the line checks behavior that must not change (the
-    line gains "(guards unchanged behavior)"), keep it with a reason recorded under Decisions, or
-    drop it. Record each command run, its commit and its result (exit status and at most a short
-    output quote, under the same withholding rule) under "Checked and current" in Agent notes.
-    **Forks-only mode:** a rewrite that step 3 ran and saw fail is a routine call, and so is the
-    guard mark when the line checks behavior that must not change. When neither fits (a rewrite
-    that could not be run included), keeping the line with a reason or dropping it is a fork, and
-    dropping a flagged line is always a fork ("Forks-only mode" lists both).
+  the test file, the check script, the command, the tool. A Done means line describes the future,
+  so its result is not checked, only its means. If a line needs a check that does not exist,
+  propose a Scope step that creates it and a Done means line that names it. Do not invent the
+  check's pass threshold (see Targets).
 - **Conditional steps.** A Scope step of the form "check whether X; if so, do Y" is closed now when
   the check is one or two read-only commands in a place the session can read. Run it and record
   the result, with the command, under "Checked and current" in Agent notes. Then either remove the
@@ -475,14 +338,14 @@ these holds:
 Do not split when the parts must land together to be correct. Any ticket left whole that still needs
 more than one PR, by this rule (two repos that must merge together) or by my answer to the split
 question, gets a line in Agent notes under "For the engineer": each partial PR links the ticket with
-`Refs`, not a closing keyword, as the format says, so the first merge does not close it, and the PR
-that completes the ticket uses a closing keyword. A split for more than one PR has one child per PR.
-A proposed split names each child: a title in the format, its Done means lines taken from the
-parent, its size word and points from the table with one sentence on what drives them, its order,
-what blocks what, and one line with its project, milestone (the parent's as the approved edit list
-leaves it, a new one included, or none when it is finished), state and labels (`groomed` added once
-the split is complete, if the child passes the ready test and its team has an active `groomed`
-label; step 7, "Order of writes" item 5).
+`Refs`, not a closing keyword, as the format's "Linking a PR to a ticket without closing it" says,
+so the first merge does not close it, and the PR that completes the ticket uses a closing keyword. A
+proposed split names each child: a title in the format, its Done means lines taken from the parent,
+its size word and points from the table with one sentence on what drives them, its order, what
+blocks what, and one line with its project, milestone (the parent's as the approved edit list leaves
+it, a new one included, or none when it is finished), state and labels (`groomed` added once the
+split is complete, if the child passes the ready test and its team has an active `groomed` label;
+step 7, "Order of writes" item 5).
 It also says what happens to the parent: it becomes the first child, or it stays as the parent with
 the children under it (`parentId`). When it stays as the parent, write its full replacement
 description: Why, a Scope that names the children, Done means, Decisions, and Size ("Split: the
@@ -537,8 +400,7 @@ When there is nothing, say "Scouting: nothing found." in one line, and do not pa
 ## 6. Interview
 
 First, in your reply, list what you found, shortest first: gaps, stale facts, settled `[assumed]`
-markers, Done means lines that already pass and those not run (step 3, "Done means fails first"),
-neighbors and overlapping work, the milestone (step 3), the size and points, the split
+markers, neighbors and overlapping work, the milestone (step 3), the size and points, the split
 verdict and the scouting items. The overlapping work opens with one tally per search, from step 1
 and step 5: its words, pages read and results (for example, "`groom pagination`: 2 pages, 263
 results"), with an incomplete search marked as such. Show the split proposal in full here (each
@@ -549,16 +411,13 @@ each spin-off's title, reason, project, milestone and any duplicate match.
 Then ask every open decision, in rounds of at most 4 questions:
 
 - each open decision from step 3, with what happens today as one option where it applies;
-- each Done means line step 3 flagged as already passing, quoting the command, the commit and the
-  output as step 3's "Judge" allows (a credential-like output withheld): rewrite it (the rewrite
-  shown), mark it as a guard of unchanged behavior, keep it with a reason, or drop it;
 - the split: approve it as shown, change it, or no split. When the split is proposed because the
   ticket needs more than one PR, the question says so and that each child is one PR, and that a
   ticket left whole closes on its first PR's merge unless each partial PR uses `Refs` (the PR that
-  completes it uses a closing keyword). When the parent
-  stays as the parent, the question says that approving covers both the split and the parent's
-  replacement description shown above. Approving a split alone never authorizes removing parent
-  text. For a ticket pointed 13, the question says that "no split" keeps it at 13 (step 4);
+  completes it uses a closing keyword). When the parent stays as the parent, the question says that
+  approving covers both the split and the parent's replacement description shown above. Approving
+  a split alone never authorizes removing parent text. For a ticket pointed 13, the question says
+  that "no split" keeps it at 13 (step 4);
 - each spin-off: file a separate ticket, fold it into this ticket, or drop it. A duplicate match is
   named in the question with its id and state;
 - each target that only I can set (step 3).
@@ -607,9 +466,7 @@ removes existing text. It covers:
 
 - corrected stale facts, in place, and settled `[assumed]` markers;
 - a new title (set with the `title` field, not a patch) and section renames;
-- new Scope steps and Done means lines from step 3, rewritten or guard-marked Done means lines
-  that already passed, a dropped one (a remove item), and the result noted in a line that fails
-  (step 3, "Done means fails first"), and in-ticket improvements from step 5;
+- new Scope steps and Done means lines from step 3, and in-ticket improvements from step 5;
 - removed conditional steps and whatever hung on them;
 - relations to add (`blockedBy`, `relatedTo`) and to remove (`removeBlockedBy`), with the evidence;
 - relations the text itself creates: an item whose text names a ticket id the ticket is not yet
@@ -752,14 +609,13 @@ the items not applied, and leave the `groomed` label off (item 5).
    (blockers, a pull condition) and, for a parent that stays as the parent, that its work sits in
    its children. A ticket fails the test when grooming left a gap: a needed fix I declined or that
    did not land (such as an item left for me to edit in Linear), an overlap or duplicate search that
-   did not finish, a Done means line that cannot be proved, a Done means line flagged as already
-   passing that has no rewrite, guard mark or recorded reason, a target not confirmed, or points
-   Linear did not store. Add `groomed` with `addLabels` (File step 2 allows it on a child) to each
-   ticket that passes, when its team has an active `groomed` label, and to the groomed ticket only
-   when its edit-list item was approved (in forks-only mode, applied). A ticket that fails keeps no
-   new label, and the report names its gap. The label writes are separate calls, so they can stop
-   part way, and a call can land even when it returns an error. So after the label writes, or after
-   an error during them, read back with `get_issue` the groomed ticket and every child this run filed,
+   did not finish, a Done means line that cannot be proved, a target not confirmed, or points Linear
+   did not store. Add `groomed` with `addLabels` (File step 2 allows it on a child) to each ticket
+   that passes, when its team has an active `groomed` label, and to the groomed ticket only when its
+   edit-list item was approved (in forks-only mode, applied). A ticket that fails keeps no new
+   label, and the report names its gap. The label writes are separate calls, so they can stop part
+   way, and a call can land even when it returns an error. So after the label writes, or after an
+   error during them, read back with `get_issue` the groomed ticket and every child this run filed,
    and report each one's labels as read (step 8). Name under Needs you each ticket this item meant
    to label that lacks `groomed` after the read-back: `dv:director-mode` skips grooming a ticket
    that has the label.
@@ -801,8 +657,7 @@ an id. Keep it short and in this order, following my own
 reply-format rules when the session's instructions give any:
 
 1. **Ready or not.** Name the ticket as a markdown link (the url from `get_issue`; the bare id if
-   none came back). Ready means no gaps, Done means lines that can be proved and none flagged as
-   already passing without a rewrite, guard mark or recorded reason, nothing it waits on,
+   none came back). Ready means no gaps, Done means lines that can be proved, nothing it waits on,
    every overlap search finished (step 1), no needed fix declined or not landed, no duplicate search
    left unfinished, no target unconfirmed, and the team's backlog or ready-to-start state as
    `list_issue_statuses` names them. A started, finished or canceled ticket is not ready to start.
@@ -823,8 +678,7 @@ reply-format rules when the session's instructions give any:
    approved, the team has no active `groomed` label, step 7 stopped before it, the ticket is not
    ready and the gap that keeps it so, or the write failed); spin-offs and children filed, as links,
    each child with the estimate its `save_issue` returned and its labels as read back, or "not
-   labelled" with the same reasons; what was not checked, each Done means line not run included,
-   with why; the branch to work it on.
+   labelled" with the same reasons; what was not checked; the branch to work it on.
 
 Do not ask whether to start the work and do not start it: starting is a separate request from me.
 
@@ -845,10 +699,7 @@ when there were none, "Decided without asking: none."
   wrong (step 7) or to add its `groomed` label ("Order of writes" item 5). Create only the children
   and spin-offs I approved, and a milestone only on my yes to it. Do not edit or comment on any
   other ticket; a follow-up on a neighbor goes under "After the merge" or becomes a spin-off.
-- No file edits, branches or commits: grooming reads repos and writes only to Linear. The one
-  file write is step 3's private copy of a commit ("Done means fails first"), made with `mktemp -d`
-  outside the repo and removed, by its exact path and only under its own name, once step 6 has
-  settled every flagged line.
+- No file edits, branches or commits: grooming reads repos and writes only to Linear.
 - Do not put secrets or credentials in a ticket.
 - A ticket with nothing stale, open or missing, that already has its Size with points and an
   estimate that matches them (a parent whose points sit on its children has none, and is not

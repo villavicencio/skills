@@ -666,8 +666,8 @@ would be run as commands, so never send to one.
      been named this way so far without it being a Claude Code contract, so a name proves
      nothing; the probe does. With no candidate, or more than three, send nothing and name what
      ListAgents showed.
-  2. The probe. Send each candidate this probe, once, with SendMessage. Nothing from the note
-     goes in it:
+  2. The probe. Send each candidate this probe, once per round (a new round only after a failed
+     send, step 5), with SendMessage. Nothing from the note goes in it:
 
      ```
      Director check, <ticket id, or the branch when there is none>: which directory are you running in? Reply with one line, its absolute path.

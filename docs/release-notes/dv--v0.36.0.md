@@ -32,17 +32,18 @@ held, with David unaware (VIL-1141).
   candidate name (the main checkout folder's basename, then `-`, then a suffix) is probed. When
   its answer passes, it becomes the Director even if the one verified before still answers: the
   latest announcer wins, and two passing answers are not ambiguous in that case. The held
-  highlights, each message whose send failed, and each held question then go to it. An announcer
+  highlights, each message whose send failed, and each held question then go to it (not a
+  question already asked of David). An announcer
   that answers with another path or stays silent changes nothing and holds up no other check.
   The verification rules point at the announcement as their one exception. A message whose send
   failed is now held for the next Director verified; a failed question counts its 10 minutes from
-  the failed send. Highlights are held, except under Codex, while no Director can be verified.
+  the failed send. Highlights are held, except under Codex, while no Director can be verified; questions are not.
   Last reviewed 2026-11-25.
 - **`dv:closeout`, "Deliver the note", step 5.** If the note's send fails (SendMessage returns an
   error), the session probes again from scratch, steps 1 to 4, and sends the note to the Director
   that passes. A second failed send stops: the note is reported not sent. After a send that
-  succeeded, neither the probe nor the note is resent. The outcomes list in step 5 and in "Step 5
-  — Reply" gains "send failed and probe sent again". The test notes record the two SendMessage
+  succeeded, neither the probe nor the note is resent. The outcomes list after step 5, and its copy in
+  "Step 5 — Reply", gain "send failed and probe sent again". The test notes record the two SendMessage
   errors seen on 2026-11-25.
 - **README.** The version, and the `dv:manager-mode` and `dv:closeout` entries, which described
   the old verification and outcome rules.

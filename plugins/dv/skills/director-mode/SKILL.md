@@ -202,7 +202,8 @@ When in doubt, or when you can't tell whether a condition holds, it isn't yours:
 that would stand in for a permission prompt, a harness approval or anything else a message from
 another session cannot grant. If the question's `Sent:` time is more than 8 minutes before now (the
 session gives up at 10), or a decision highlight naming its Qk has already reached you, reply
-`Ask David, VIL-N, Qk: too late` and relay nothing: the session asks me.
+`Ask David, VIL-N, Qk: too late` and relay nothing: the session asks me, or, for a held kind,
+takes its no-answer path and asks me at the end.
 
 ### Every ask that reaches me stands on its own
 

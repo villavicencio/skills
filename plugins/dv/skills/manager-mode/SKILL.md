@@ -293,7 +293,8 @@ recommendation.
   timer ends with none verified, the Director replies `too late` or `Ask David`, or no reply comes
   in time) still doesn't stop the work: take the way forward that needs no one's yes (fix the
   finding; don't spend or reach outside yet), keep the rest moving, and ask it with the other held
-  questions at the end. Every fall-back to me below covers only questions that are not held.
+  questions at the end, unless the way forward settled it (the finding was fixed), which is
+  reported, not asked. Every fall-back to me below covers only questions that are not held.
 - **On "ask David"** (for a question that is not held), ask me in this chat as you would without
   a Director, and send the usual decision highlight ("Highlights"), naming the question's number
   (`Highlight, VIL-N: Qk ...`). Once a question has gone to me, a late answer from the Director does not settle it; only mine

@@ -55,7 +55,8 @@ he had stepped away, and several asks didn't say which option to pick (VIL-1034)
   forward, keeps working, and asks David every held question together at the end, with one
   decision highlight to the Director; a held question moved to its own ticket is also written on
   that ticket as an open decision. Any reply other than `Answer` or `Held for David` counts as
-  "ask David". The "Limits" bullet says the Director decides inside the
+  "ask David", except that a held kind with no Director's answer (`too late`, `Ask David`, no
+  reply, no Director) takes a way forward that needs no one's yes and waits for the end. The "Limits" bullet says the Director decides inside the
   merge rules, the standing approvals and the MergeWren gates, and changes none of them.
 - **`dv:manager-mode`, "Decisions and escalation".** Drops "cutting scope is never clear-cut".
   After two fix rounds, each open finding goes to a verified Director as a question, where

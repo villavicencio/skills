@@ -53,8 +53,9 @@ overrule it.
 - a split, with the parent's replacement description when it stays as the parent;
 - a prerequisite that the shared rules' "Prerequisites" sends to a question (step 3; no relation
   is set on a guess);
-- a new milestone, a ticket whose goal no longer fits the milestone it has (move it, or keep it),
-  and a ticket whose Decisions records "No milestone" but that has one (step 3, "Milestone").
+- a new milestone, a ticket whose goal no longer fits the milestone it has or that sits in a
+  finished one (move it, or keep it), and a ticket whose Decisions records "No milestone" but that
+  has one (step 3, "Milestone").
 
 **Routine calls:** every other open decision, such as wording, ordering, Size and points, Done
 means phrasing, filing or dropping a spin-off, settling an `[assumed]` marker you verified,
@@ -262,7 +263,8 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
   - Its Decisions records "No milestone" and it has none: propose nothing. The report says so.
   - Its Decisions records "No milestone" but it has a milestone: an open decision, to take it out
     or keep it (a keep replaces the "No milestone" line). Nothing changes before the answer.
-  - The project has no milestones, or only finished ones: propose nothing. The report says so.
+  - It has no milestone, and the project has no milestones or only finished ones: propose
+    nothing. The report says so.
   - It is open, has no milestone, and one fits: setting that milestone is an add item (step 7),
     with its one-line reason.
   - It has no milestone and none fits: leave the field empty, and the report says so. A new
@@ -270,9 +272,8 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
     with none" and "keep it out of milestones" (which records "No milestone") as options. It is
     created only on my yes.
   - Its goal no longer fits the milestone it has, or that milestone is finished: an open
-    decision, to move it (to the milestone
-    that fits, or out of milestones, which records "No milestone") or keep it. Grooming never
-    moves a ticket out of a milestone as a routine call.
+    decision, to move it (to the milestone that fits, or out of milestones, which records "No
+    milestone") or keep it. Grooming never moves a ticket out of a milestone as a routine call.
   - It fits the milestone it has: nothing to do.
 - **Other open decisions.** Also collect: a reason in the ticket that checking suggests may be
   false, a Decisions line marked open, an unanswered question in a comment, a missing pull

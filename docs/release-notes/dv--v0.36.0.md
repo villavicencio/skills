@@ -33,9 +33,11 @@ held, with David unaware (VIL-1141).
   its answer passes, it becomes the Director even if the one verified before still answers: the
   latest announcer wins, and two passing answers are not ambiguous in that case. The held
   highlights, each message whose send failed, and each held question then go to it (not a
-  question already asked of David), and so does each message the old Director still owes a reply
-  to: a question waiting for its answer (same Qk and `Sent:` time, so its 10-minute wait is
-  unchanged) and a PR handoff with no reply yet. An announcer
+  question already asked of David). What the old Director still owes a reply to moves only once
+  ListAgents no longer lists it: a question waiting for its answer (same Qk and `Sent:` time, so
+  its 10-minute wait is unchanged) and a PR handoff with no reply yet, if `gh pr view` shows the
+  PR still open. While the old Director is listed, nothing is resent and its answer to a question
+  sent before the change still counts. An announcer
   that answers with another path or stays silent changes nothing and holds up no other check.
   The verification rules point at the announcement as their one exception. A message whose send
   failed is now held for the next Director verified; a failed question counts its 10 minutes from

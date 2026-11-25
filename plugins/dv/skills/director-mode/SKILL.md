@@ -366,7 +366,10 @@ carries no session id or more than one, stops nothing.
 
    This check is what you run for the global removal procedure's "no other session still in
    it", which names no command. Before the stop, the one session it allows is the one you are
-   about to stop; after the stop it allows none ("After the signal").
+   about to stop. For a removal (after the stop, and every removal under "Merge and clean
+   up") it allows none, and both parts still run: ListAgents lists neither the session that
+   sent the note or handed you the PR nor any peer named for the worktree as above, and the
+   scan, run with an empty `<claude pid>`, prints `RESULT: pass`.
 
 **The worktree process scan.** Run it from the main checkout, never from a shell whose directory
 is in the worktree: that shell would count as another process. `<worktree path>` is the path the
@@ -376,8 +379,10 @@ ignoring case.
 
 ```bash
 W="<worktree path>"; T="<claude pid>"; U=$(id -u)
-R=$(cd "$W" && pwd -P) || { echo "RESULT: cannot run (no directory at $W)"; exit 1; }
-{ ps -axo pid=,ppid=,uid=,stat=; echo "=== lsof"; lsof -n -P -w -a -u "$U" -Fpn; echo "=== ps"; ps -axo pid=,ppid=,uid=,stat=; } 2>/dev/null |
+R=$(cd "$W" && pwd -P) && A=$(ps -axo pid=,ppid=,uid=,stat=) && L=$(lsof -n -P -w -a -u "$U" -Fpn) &&
+  B=$(ps -axo pid=,ppid=,uid=,stat=) && [ -n "$A" ] && [ -n "$L" ] && [ -n "$B" ] ||
+  { echo "RESULT: cannot run (the directory, ps or lsof failed)"; exit 1; }
+printf '%s\n=== lsof\n%s\n=== ps\n%s\n' "$A" "$L" "$B" |
 awk -v W="$W" -v R="$R" -v T="$T" -v U="$U" '
   BEGIN { s = 1; w = tolower(W); sub(/\/+$/, "", w); r = tolower(R) }
   $(0) == "=== lsof" { s = 2; next }
@@ -401,7 +406,8 @@ awk -v W="$W" -v R="$R" -v T="$T" -v U="$U" '
 `SESSION` lines are the session's own processes, each with a path it has in the worktree. Any
 `OTHER` line (a process that is not the session's, with its path), `UNREADABLE` line (a process
 of this user that `lsof` could not read, though it ran through the whole scan), `NOT IN WORKTREE`
-line, or a `RESULT:` other than `pass` fails the check.
+line, or a `RESULT:` other than `pass` fails the check. If either `ps` or `lsof` exits non-zero
+or prints nothing, the scan prints `RESULT: cannot run`, which fails it too.
 
 **The closeout recheck.** Don't write your own inventory of the worktree; rerun closeout's. Run
 the block in `dv:closeout`'s "Step 1 — Verify the worktree, its PRs and the main checkout" inside
@@ -441,13 +447,20 @@ read the `claude` process's parent and the wrapper's command line again. Then se
 process SIGTERM, once: `kill -TERM <wrapper pid>`. Never SIGKILL, never `pkill` or `killall`,
 and never any other process.
 
-**After the signal.** The session has ended when `ps -o pid= -p <wrapper pid>,<claude pid>`
-prints nothing and the worktree process scan, run with an empty `<claude pid>`, prints
-`RESULT: pass`: no process of this user has its directory or an open file in the worktree. A
-process the session started that outlives it, such as a background job, shows up here. If
-either still shows a process when you look again a minute later (with Monitor or in a later
-turn, not a foreground sleep), remove nothing and tell me what is still running. Otherwise
-remove the worktree and its branch as above, and report it as a highlight.
+**After the signal.** The session has ended when this prints `GONE` (it prints `CANNOT RUN` if
+`ps` fails):
+
+```bash
+P=$(ps -axo pid=) && [ -n "$P" ] && printf '%s\n' "$P" | awk -v a="<wrapper pid>" -v b="<claude pid>" '$(1) == a || $(1) == b { f = 1 } END { print (f ? "STILL RUNNING" : "GONE") }' || echo "CANNOT RUN"
+```
+
+and check 4 then passes in its removal form (no session allowed: ListAgents lists neither
+the session nor any other peer named for the worktree, and no process of this user has its
+directory or an open file in the worktree). A process the session started that outlives it,
+such as a background job, shows up there. If anything but `GONE` and a pass shows when you
+look again a minute later (with Monitor or in a later turn, not a foreground sleep), remove
+nothing and tell me what is still running. Otherwise remove the worktree and its branch as
+above, and report it as a highlight.
 
 ### Merge and clean up, from the main checkout
 
@@ -503,9 +516,10 @@ session never does.
   from the main checkout. Any other worktree or branch removal, merged PR or not, follows the
   same bullets, the stale-PR engineer's temporary worktree included. The procedure keeps what
   fails a check or cannot be checked; tell me what it kept and why. For its "no other session
-  still in it", which names no command, run the worktree process scan under "End a finished
-  worktree session" with an empty `<claude pid>`: it passes only when no process of this user
-  has its directory or an open file in the worktree. Another user's processes are not seen.
+  still in it", which names no command, run check 4 under "End a finished worktree session"
+  in its removal form: ListAgents lists no live session for the worktree (the test above), and
+  the worktree process scan with an empty `<claude pid>` finds no process of this user with its
+  directory or an open file in the worktree. Another user's processes are not seen.
 - Leave a worktree and its branch in place until its session has ended, by itself, closed by
   me, or under "End a finished worktree session"; the global procedure's own checks, including
   that no other session is still in it, decide removal, and a `dv:closeout` note is context, not

@@ -45,28 +45,35 @@ before the signal (VIL-930).
   `--session-id=` or `--resume=` value. The second `orca-provider-exec` with that value, a child
   of `claude`, is left alone. Right before the signal it confirms ListAgents shows the session
   idle, reruns checks 3 and 4, and rereads the wrapper's command line. No SIGKILL, `pkill` or
-  `killall`. After the signal, the wrapper and `claude` must be gone and the scan, run with no
-  session, must find no process of the user in the worktree; otherwise nothing is removed and
-  David is told what is still running. Then the worktree is removed by the global procedure.
+  `killall`. After the signal, a `ps` check must show the wrapper and `claude` gone (it says it
+  can't run if `ps` fails), and check 4 must pass with no session allowed: ListAgents lists
+  neither the session nor any other peer named for the worktree, and the scan finds no process
+  of the user in the worktree. Otherwise nothing is removed and David is told what is still
+  running. Then the worktree is removed by the global procedure.
 - **"Merge and clean up".** For a removal by the global removal procedure, its "no other
-  session still in it" is the worktree process scan run with no session: it passes only when no
-  process of the user has its directory or an open file in the worktree. Before the signal it is
-  check 4, which allows only the session being stopped.
+  session still in it" is check 4 with no session allowed: ListAgents lists no live session for
+  the worktree, and the worktree process scan finds no process of the user with its directory
+  or an open file in the worktree. Before the signal, check 4 allows only the session being
+  stopped.
 - **"The roles"**, the frontmatter description, the plugin description and the README entry
   describe the new behaviour; the README entry drops "It never signals or stops a session's
   process."
 
 ## What the one-session check covers
 
-The worktree process scan is a fenced block in the skill, run from the main checkout. It reads
-the process table with `ps` before and after one `lsof` pass over every process whose effective
-user id is the Director's user. A process counts as in the worktree when its working directory,
-or any file it has open, is the worktree or anything below it, compared without regard to case
-and through the worktree's real path. The command name plays no part. The check passes only
-when every such process is the session's `claude` process or one of its descendants, the
-`claude` process is among them, and `lsof` read every process of the user (zombies aside) that
-ran through the whole scan. An Orca terminal left open in the worktree, such as the Setup terminal that runs a
-repo's setup script, is another process, so it fails the check.
+The check has two parts: ListAgents (no peer named for the worktree other than the session being
+stopped; for a removal, none at all) and the worktree process scan, a fenced block in the skill run from the main checkout.
+The scan reads the process table with `ps` before and after one `lsof` pass over every process
+whose effective user id is the Director's user. A process counts as in the worktree when its
+working directory, or any file it has open, is the worktree or anything below it, compared
+without regard to case and through the worktree's real path. The command name plays no part.
+Before the signal the scan passes only when every such process is the session's `claude`
+process or one of its descendants, the `claude` process is among them, and `lsof` read every
+process of the user (zombies aside) that ran through the whole scan. For a removal it allows no
+session, so it passes only when no such process exists. If either `ps` call or `lsof` exits
+non-zero or prints nothing, the scan prints `RESULT: cannot run` and the check fails. An Orca
+terminal left open in the worktree, such as the Setup terminal that runs a repo's setup script,
+is another process, so it fails the check.
 
 ## Known limits
 
@@ -92,17 +99,19 @@ repo's setup script, is another process, so it fails the check.
 
 ## Tested
 
-On hal, 2026-11-24, with the scan block taken verbatim from the skill and its placeholders
-filled, run from `/` (outside the worktree), in a scratch detached worktree:
+On hal, 2026-11-24, with the scan block and the after-the-signal `ps` check taken verbatim from
+the skill and their placeholders filled, run from `/` (outside the worktree), in a scratch
+detached worktree:
 
 - A stand-in session (a `bash` process in the worktree root with a child `sleep`) alone:
   `SESSION` for both, `RESULT: pass`.
 - A second process started with `(cd <worktree>/plugins/dv/skills && sleep 600 &)`:
-  `OTHER <pid> <worktree>/plugins/dv/skills`, `RESULT: fail`, so the worktree is kept. The same
-  result with the worktree named through the `/tmp` symlink.
+  `OTHER <pid> <worktree>/plugins/dv/skills`, `RESULT: fail`, so the worktree is kept.
+- A stub `lsof` that exits 1, or a stub `ps` that exits 1, first on `PATH`: the scan printed
+  `RESULT: cannot run`; with the stub `ps`, the `ps` check printed `CANNOT RUN`.
 - After that `sleep` was stopped: `RESULT: pass` again. After a SIGTERM to the stand-in's top
-  process only, its orphaned child made the scan run with no session print `OTHER` and
-  `RESULT: fail`; once the child was stopped, `RESULT: pass`.
+  process only, the `ps` check printed `GONE` for it, and its orphaned child made the scan with
+  no session print `OTHER` and `RESULT: fail`; once the child was stopped, `RESULT: pass`.
 
 On this ticket's own worktree, the scan run with the live session's `claude` pid printed
 `SESSION` for that process and `OTHER` for the login shell of the worktree's Orca Setup

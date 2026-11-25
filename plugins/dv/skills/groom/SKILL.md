@@ -93,7 +93,10 @@ under Decisions as open, take the way forward the reply names, and manager-mode 
 of the work with its other held questions. Run no Director
 probe of your own; if manager-mode has not sent its probe yet, it sends it before the first fork
 goes out. With no Director that can be verified, or for each fork whose answer doesn't count, ask
-me as step 6 says. Grooming goes on in the turn the last answer arrives.
+me as step 6 says, except a held kind (spending money, reaching outside, or declining a high or
+critical finding on a safety boundary): under manager-mode's "A held kind with no Director's
+answer", record it under Decisions as open, take the way forward that needs no one's yes, and
+leave it for the end. Grooming goes on in the turn the last answer arrives.
 
 ## Before anything else
 

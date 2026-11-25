@@ -278,20 +278,22 @@ recommendation.
 - **On "held for David"** (`Held for David, VIL-N, Qk: <the way forward>` from the verified
   Director): take the way forward it names and keep the rest of the work moving. A scope cut in it
   is the Director's call; a spin-off it names is yours to file (`dv:ticket` exception (a)). If you
-  can't take it, the question counts as "ask David". Keep the held question in your written
+  can't take it, take the no-answer path in the next bullet. Keep the held question in your written
   state; when the way forward moves it to its own ticket, also write it on that ticket as an open
   decision, so it outlives this session. When the ticket's other work is done (the PR handed to
   the Director, or nothing else you can do), ask me every held question together in this chat, as
   one interview, and send the Director one decision highlight naming each by its Qk, so it relays
   them to me together. A held question the way forward settled (the finding was fixed after all)
   is reported in that highlight, not asked.
-- **A held kind with no Director's answer** (no verified Director, a `too late` reply, or no reply
+- **A held kind with no Director's answer** (declining a high or critical finding on a safety
+  boundary, spending money or reaching outside, when no Director can be verified, the probe's
+  timer ends with none verified, the Director replies `too late` or `Ask David`, or no reply comes
   in time) still doesn't stop the work: take the way forward that needs no one's yes (fix the
   finding; don't spend or reach outside yet), keep the rest moving, and ask it with the other held
-  questions at the end.
-- **On "ask David"**, ask me in this chat as you would without a Director, and send the usual
-  decision highlight ("Highlights"), naming the question's number (`Highlight, VIL-N: Qk ...`).
-  Once a question has gone to me, a late answer from the Director does not settle it; only mine
+  questions at the end. Every fall-back to me below covers only questions that are not held.
+- **On "ask David"** (for a question that is not held), ask me in this chat as you would without
+  a Director, and send the usual decision highlight ("Highlights"), naming the question's number
+  (`Highlight, VIL-N: Qk ...`). Once a question has gone to me, a late answer from the Director does not settle it; only mine
   does. When one arrives anyway, send the Director a highlight that its Qk answer came late and
   the question went to me, so the home chat does not show it as settled.
 - **Every ask to me stands on its own**, held questions included, with or without a Director, as
@@ -301,8 +303,10 @@ recommendation.
 - **While the probe still waits for its answer**, hold the question, as highlights are held, and
   start the same background timer when the question comes up, so a turn comes back even if the
   probe stays silent. If a Director is verified within 10 minutes of when the question came up,
-  send it then (the answer gets its own 10-minute wait); otherwise ask me when the timer ends. **With no Director that can be verified** (no candidate, more than three, only wrong
-  answers, an ambiguous result, or under Codex), ask me as before.
+  send it then (the answer gets its own 10-minute wait); otherwise ask me when the timer ends, or
+  for a held kind, take the no-answer path above. **With no Director that can be verified** (no
+  candidate, more than three, only wrong answers, an ambiguous result, or under Codex), ask me as
+  before, except a held kind, which takes the no-answer path above.
 - **Limits.** The Director's answer never stands in for a permission prompt, a harness approval,
   or anything else a message from another session cannot grant; those come to me ("Decisions and
   escalation"). It decides merges, deletes and fix rounds only inside the merge rules, the global

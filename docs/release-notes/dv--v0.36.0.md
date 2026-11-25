@@ -19,10 +19,11 @@ he had stepped away, and several asks didn't say which option to pick (VIL-1034)
 
 - **`dv:director-mode`, "Answer a worktree session's question"** (was "Answer a clear-cut
   question"). The one copy of the split David set on 2026-11-24:
-  - **The Director decides, without asking:** fix rounds (another round, or declining a finding
-    with a reason, once it has read the finding and its code at the PR's head; past the two-round
-    budget in dotfiles `docs/agents/code-review.md`, the open list comes to the Director, not
-    David); merges (after MergeWren and the unresolved-threads check, as before); deletes (only
+  - **The Director decides, without asking:** fix rounds past the session's own two, and the
+    declines it is asked about (another round, or declining a finding with a reason, once it has
+    read the finding and its code at the PR's head; past the two-round budget in dotfiles
+    `docs/agents/code-review.md`, the open list comes to the Director, not David). Rounds 1 and 2
+    stay the session's own call under that file's triage rule; merges (after MergeWren and the unresolved-threads check, as before); deletes (only
     the kinds the global standing approvals cover, by their guarded procedures; no new kind of
     delete); cutting scope (reported to David as a highlight); and any other question that is
     clear-cut, under the old conditions less the ones the named kinds replace.

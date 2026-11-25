@@ -138,13 +138,15 @@ what you decide for me and what waits for me on 2026-11-24, in place of the clea
 
 **You decide, without asking me:**
 
-- **Fix rounds:** another fix round, or declining a MergeWren finding with a reason. Decide only
-  after you have read the finding and the code it names at the PR's current head
-  (`gh pr view <N> --json headRefOid`); if you can't, it is not yours to decide. The budget in
-  dotfiles `docs/agents/code-review.md` ("Fix rounds") still counts the rounds; past two, where
-  that section says to bring me the open list, it comes to you instead, and you decide each finding
-  on it. The one exception, declining a high or critical finding on a safety boundary, is held for
-  me (below).
+- **Fix rounds past the session's own two, and the declines you are asked about:** another fix
+  round, or declining a MergeWren finding with a reason. Rounds 1 and 2 stay the session's own
+  call, fixes and declines alike, under the triage rule in dotfiles `docs/agents/code-review.md`
+  ("Fix rounds"); from them only a held decline (below) comes to you. That section's budget still
+  counts the rounds; past two, where it says to bring me the open list, the list comes to you
+  instead, and you decide each finding on it. Decide only after you have read the finding and the
+  code it names at the PR's current head (`gh pr view <N> --json headRefOid`); if you can't, it is
+  not yours to decide. The one exception, declining a high or critical finding on a safety
+  boundary, is held for me (below).
 - **Merges**, under "Merge and clean up": after MergeWren's verdict and an empty
   unresolved-threads check, as before. A finding you declined under this split counts, for
   `code-review.md`'s merge rule, as declined with me.

@@ -51,17 +51,25 @@ held, with David unaware (VIL-1141).
   errors seen on 2026-11-25.
 - **A failed send is a failure, never silence** (all three skills). The rule is stated once, in
   `dv:closeout`'s "Deliver the note", step 2: a SendMessage that returns an error was not
-  delivered. A candidate whose probe's send fails leaves the candidates for that round, as if
-  ListAgents had not listed it: it doesn't count toward the three and isn't probed again in that
-  round; with none left, nothing is sent. Step 4 says a failed probe is not silence, the
-  end-of-turn reply names the probes sent and each failed send, and a new round starts only after
-  the note's send fails. `dv:manager-mode` points at that rule for its probes (a round there is one
-  verification, and a failed probe starts no new one); no candidate left counts as "no
-  candidate", and an announcer whose probe's send fails changes nothing. `dv:director-mode`
-  names a failed announcement send without resending it, lists only the sessions it reached on
-  its `Announced to:` line, and does not resend a probe answer whose send failed.
+  delivered, and a probe with no answer 10 minutes after it was sent has failed too. A candidate
+  whose probe failed leaves the candidates for that round, as if ListAgents had not listed it: it
+  doesn't count toward the three and isn't probed again in that round; with none left, nothing is
+  sent, and an answer that comes after its probe failed changes nothing. A background timer (such as `sleep 600`) brings a turn back after the 10 minutes, and is
+  stopped once every probe sent has an answer. Step 4's silence lasts at most 10 minutes. When
+  every probe's send failed, the reply says the note is not sent, with each error; otherwise it
+  names the probes sent and each failed send. A new round starts only after the note's send
+  fails. `dv:manager-mode` points at that rule for its probes (a round there is one
+  verification). A failed probe starts no new verification at once; when a verification ends
+  with no Director and at least one probe failed, a question held while it ran goes to you then,
+  and the next highlight or question starts a new verification, during which a question is held
+  as it is while any probe waits. No
+  candidate left counts as "no candidate", and an announcer whose probe fails changes nothing.
+  `dv:director-mode` names a failed announcement send without resending it and lists only the
+  sessions it reached on its `Announced to:` line. When a probe answer's send fails, it sends the
+  answer once more to the address ListAgents lists now for that session, then tells you in one
+  line if that fails too or the session isn't listed.
 - **README.** The version, and the `dv:manager-mode` and `dv:closeout` entries, which described
-  the old verification and outcome rules.
+  the old verification, waiting and outcome rules.
 
 ## Decisions
 

@@ -675,11 +675,17 @@ would be run as commands, so never send to one.
 
      A send that returns an error (such as "socket path is stale" or "No agent named ... is
      reachable") was not delivered: handle it as a failure, never as silence, a pending answer or
-     a send. A candidate whose probe's send fails leaves the candidates for this round, as if
-     ListAgents had not listed it: it doesn't count toward the three and isn't probed again in
-     this round. Step 1's rules apply to those left; with none left, send nothing.
+     a send. A probe with no answer 10 minutes after it was sent has failed too. A candidate
+     whose probe failed leaves the candidates for this round, as if ListAgents had not listed it:
+     it doesn't count toward the three and isn't probed again in this round. Step 1's rules apply
+     to those left; with none left, send nothing. An answer that arrives after its probe failed
+     changes nothing.
 
-     Answers come back later as messages, often after this turn has ended. End this turn with
+     Answers come back later as messages, often after this turn has ended. So that a turn comes
+     back to notice the 10 minutes, start a background timer when the probes go out (a background
+     shell command such as `sleep 600`), and stop it once every probe sent has an answer. When it
+     ends, drop each candidate still silent and apply step 4 to those left. If every probe's send
+     failed, the note is not sent: end this turn saying so, with each error. Otherwise end it with
      the reply, naming the candidates whose probe was sent and each failed send with its error,
      and saying the note waits for their answers.
   3. The answers. A probed candidate's answer passes when its `from-name` is that candidate and
@@ -690,8 +696,8 @@ would be run as commands, so never send to one.
   4. The Director. With one candidate, its passing answer makes it the Director. With two or
      three, the Director is the one whose answer passed, and only once every other probed
      candidate has answered with a different path. While a probed candidate is silent, wait: the
-     note stays where it is, and silence never counts as a different path. A probe whose send
-     failed is not silence (step 2). If two or more
+     note stays where it is, and silence never counts as a different path. Silence lasts at most
+     10 minutes, and a probe whose send failed is not silence (step 2). If two or more
      answers pass, it is ambiguous: send nothing. In every case where no Director is found,
      report who answered what.
 

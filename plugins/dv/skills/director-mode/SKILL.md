@@ -149,10 +149,12 @@ your announcement soon after it. Answer each probe, a repeat included, with Send
 probe's `from` address. The answer is one line, the absolute path of the directory this session
 runs in (`git rev-parse --show-toplevel`), and nothing else: no greeting, quotes or backticks. In
 the main checkout that is the main checkout's path, which is what the sender checks for. If that
-send fails, don't resend it: the session has gone or moved, and probes again if it still needs
-you. Then
-expect that sender's closeout note, highlights or questions, including any it held while it had
-no Director. A probe is not a highlight: don't relay it to me.
+send fails, look the session up in ListAgents by the probe's `from-name` and send the answer once
+more, to the address listed now. If the session isn't listed, or that send fails too, tell me in
+one line and send nothing more. Answer in your next turn: a session counts a probe with no
+answer after 10 minutes as failed (`dv:closeout`, "Deliver the note", step 2). Then expect that
+sender's closeout note, highlights or questions, including any it held while it had no
+Director. A probe is not a highlight: don't relay it to me.
 
 ### Answer a clear-cut question
 

@@ -5,8 +5,11 @@ PR, and runs each Done means command that only reads on the default branch to fl
 already pass. Only `dv:groom` changes. The other fifteen skills have no behaviour changes; their
 version moves to `0.38.0` only because the suite is released as one plugin.
 
-Numbering: 0.38.0 follows 0.37.0, in which a Director that turns on announces itself to the
-worktree sessions. 0.38.0 keeps that change.
+Numbering: 0.38.0 follows 0.37.1, in which `dv:groom`'s points follow the amount of work, not the
+number of repos, and the stale 13-stored-as-8 note is gone. 0.38.0 keeps that change and 0.37.0's
+(a Director that turns on announces itself to the worktree sessions). 0.37.1's new sentence under
+"Points" now names needing more than one PR, not only PRs in more than one repo, as the split
+signal, to match the widened split verdict.
 
 Why: on the hal runs of 2026-11-19 and 11-20, groomed tickets still reached the queue with two
 problems grooming could have caught. Tickets spanning two repos or several parts produced partial

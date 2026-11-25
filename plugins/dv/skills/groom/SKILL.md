@@ -363,8 +363,8 @@ its importance. Take them from this table, so they stay comparable across sessio
 | 8 | a large change across several modules, with a lot of work in many files |
 | 13 | too big to run as one ticket |
 
-Points follow the amount of work, not the number of repos or PRs. Needing PRs in more than one repo
-that can merge on their own is a split signal (see Split verdict).
+Points follow the amount of work, not the number of repos or PRs. Needing more than one PR, PRs in
+more than one repo that can merge on their own included, is a split signal (see Split verdict).
 
 As a guide and not a rule, small is typically 1 to 3 points, medium 5, large 8 to 13. With a
 range for size, give the points for each end ("small, 2; medium, 5, if step 5 finds something"),

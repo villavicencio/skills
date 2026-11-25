@@ -17,6 +17,9 @@ for one to three weeks after their PRs merged, and one In Review for eight weeks
   session only:
   1. List the repo project's tickets that are In Progress or In Review, using the state names
      `list_issue_statuses` returns. A `someday` ticket and a Backlog ticket are skipped.
+     The list follows the `list_issues` cursors until a reply says `hasNextPage: false`. A page
+     that fails is retried once with the same cursor; if it fails again, nothing is moved and the
+     report says the scan was incomplete.
   2. Find each ticket's linked PRs: the GitHub pull request URLs among its `get_issue`
      attachments (Linear attaches a PR whose branch name or description names the ticket).
      Read each with `gh pr view <url> --json state,isDraft,body`. If `get_issue` or a

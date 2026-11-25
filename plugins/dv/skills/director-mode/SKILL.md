@@ -180,7 +180,11 @@ next. At each one:
   1. List the tickets in this repo's project (the project "Recommend which worktree sessions to
      start next" uses) that are In Progress or In Review, by the state names
      `list_issue_statuses` returns for the team. Skip a ticket labeled `someday` and a ticket in
-     Backlog. If a state is missing or the list can't be read, say so and sweep nothing.
+     Backlog. If a state is missing, say so and sweep nothing. Follow the `list_issues` cursors:
+     while a reply has `hasNextPage: true`, call again with the same arguments plus that reply's
+     `cursor`. The list is complete only when a reply says `hasNextPage: false`. A page that
+     fails gets one retry with the same cursor; if it fails again, the scan is incomplete: move
+     nothing and report an incomplete scan.
   2. For each ticket, find its linked PRs: the GitHub pull request URLs among its `get_issue`
      attachments. Linear attaches a PR whose branch name or description names the ticket, so an
      attachment is an exact link. Read each with `gh pr view <url> --json state,isDraft,body`. If

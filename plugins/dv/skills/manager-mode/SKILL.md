@@ -268,7 +268,10 @@ recommendation.
   fix round, a decline, a merge, a delete or cutting scope, accept the option it names, whichever
   it is: that call is the Director's. Declining a high or critical finding on code that deletes,
   handles secrets or sits on another safety boundary is the exception: only I decide it, so an
-  answer that declines one counts as "held for David", with fixing it as the way forward. On any
+  answer that declines one counts as "held for David", with fixing it as the way forward. Before
+  you act on a delete or scope-cut answer, check the limits you can judge yourself: a delete must
+  be one of the three kinds the global standing approvals cover, done by its guarded procedure,
+  and a scope cut cuts no rule; if a check fails, the answer counts as "ask David". On any
   other question, it must name the option you recommended, and before you act on it, check the
   question again against every condition of clear-cut you can judge yourself (all but the
   Director's agreement); if any fails, it counts as "ask David". Either way it is then my

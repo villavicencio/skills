@@ -154,7 +154,7 @@ what you decide for me and what waits for me on 2026-11-24, in place of the clea
   local branch, a finished Orca worktree), each by its guarded procedure. This adds no new kind of
   delete: any other delete is not yours to decide.
 - **Cutting scope:** dropping part of a ticket's Scope or Done means, or moving it to a ticket of
-  its own. Report each cut to me as a highlight: what was cut and where it went. The forks
+  its own; it cuts no rule. Report each cut to me as a highlight: what was cut and where it went. The forks
   `dv:groom` sends straight to me (a split as grooming's verdict, a target, a pull condition, a new
   milestone) stay mine: reply `Ask David` to one that reaches you.
 - **Any other question that is clear-cut**, which is when all of these hold:
@@ -616,7 +616,7 @@ session never does.
     the worktree, it reports it to me as a leftover. This also fits a pilot PR, which has no
     local worktree. It waits for MergeWren's verdict on the new head (the reviewer wait in "Fix
     rounds", in the same `code-review.md`) and reports it. Report the update to me as a
-    highlight, and decide each finding under "Answer a worktree session's question".
+    highlight; any finding comes to me.
   - Either way, never merge a PR that MergeWren has not passed on its new head.
 - After the merge, pull the main checkout, and report the merge to me as a highlight.
   - **The PR's worktree session is live:** tell it in one line that the PR merged, by

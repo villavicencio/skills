@@ -44,8 +44,6 @@ he had stepped away, and several asks didn't say which option to pick (VIL-1034)
   (`orca agent list --worktree "path:<worktree path>"`, then `orca agent read <session id>`) and
   says whether a custom answer is needed. The relay of a decision highlight, closeout `WAITING ON`
   items and the Director's fuller reports use it.
-- **`dv:director-mode`, "Merge and clean up".** A stale PR's findings, with no live session, are
-  the Director's to decide under the split, not David's.
 - **`dv:director-mode` description** is 1,011 characters by VIL-1143's measure (was 1,027), under
   the Agent Skills spec's 1,024 limit. It now names the routine calls the Director decides, and
   drops the stale-PR hiring sentence, which the body still states.

@@ -4,7 +4,7 @@ description: "Close out a finished worktree session and brief the parent session
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.35.0"
+  version: "0.36.0"
 ---
 
 # /closeout — close out a finished worktree session
@@ -612,9 +612,10 @@ Reply in this order, short:
    the worktree holds beyond the default branch; the main checkout against its remote (behind,
    ahead, dirty); where the handoff went, or that it was left; where the note was saved and
    whether it reached the clipboard; what happened with the Director, as one of the outcomes in
-   "Deliver the note" (not sent and why, probe sent and the note waiting for the answers,
-   answered but not verified (a wrong path, or ambiguous), note sent with no reply yet, note sent
-   and replied); the removal command, when safe.
+   "Deliver the note" (not sent and why, probe sent and the note waiting for the answers, send
+   failed and probe sent again with the note waiting for the answers, answered but not verified
+   (a wrong path, or ambiguous), note sent with no reply yet, note sent and replied); the removal
+   command, when safe.
 4. The line the optional section below tells you to add, if any.
 5. The note itself in a code block, so I can copy it if the clipboard missed.
 
@@ -704,11 +705,17 @@ would be run as commands, so never send to one.
      Please reply with one line to say you received it.
      ```
 
-     Resend neither the probe nor the note.
+     If the note's send fails (SendMessage returns an error, such as "socket path is stale" for
+     a session that has ended, or "No agent named ... is reachable"), the Director may have
+     restarted under a new name. Probe again from scratch, steps 1 to 4, with the candidates
+     ListAgents lists now, and send the note to the Director that passes, by this step. If that
+     second send fails too, send nothing more and report the note not sent. After a send that
+     succeeded, resend neither the probe nor the note.
 
   Report one of these outcomes: not sent, naming what failed or could not run; probe sent, the
-  note waits for the answers; answered but not verified (a wrong path, or ambiguous), with who
-  answered what, and nothing sent; note sent with no reply yet; or note sent and replied, quoting the reply. A
+  note waits for the answers; send failed and probe sent again, the note waits for the answers;
+  answered but not verified (a wrong path, or ambiguous), with who answered what, and nothing
+  sent; note sent with no reply yet; or note sent and replied, quoting the reply. A
   message has no read receipt, so never write "delivered" without a reply. Until the note is
   sent, it stays on the clipboard and at its saved path. Under Codex there is no ListAgents view
   of other sessions, so this path cannot run there.
@@ -721,7 +728,10 @@ step, run by hand from a worktree, found one candidate, `skills-03`. It answered
 one line, the main checkout's absolute path, under that same `from-name`; SendMessage accepted
 the answer's `from` address for the note, and the Director replied. Not tested: a Director that
 is mid-turn when a message arrives (that one was idle), a wrong or ambiguous answer, several
-candidates, and a full closeout run end to end.
+candidates, and a full closeout run end to end. A send to a stale address fails (VIL-1141,
+2026-11-25): SendMessage returns `success: false` with "socket path is stale" for a session's old
+socket path, and "No agent named ... is reachable" for a name ListAgents no longer lists. Not
+tested: a socket file left behind by a session that crashed.
 
 **Offer the removal.** Only when the worktree lives in Orca, the block printed an Orca CLI, and
 Step 2 said safe to delete (or I have accepted the listed

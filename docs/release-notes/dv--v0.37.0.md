@@ -1,14 +1,16 @@
-# dv — v0.36.0
+# dv — v0.37.0
 
 Minor release. A Director that turns on announces itself to the live worktree sessions, and each
 session re-verifies the Director on that announcement; `dv:closeout` probes again after a failed
 note send. `dv:director-mode`, `dv:manager-mode` and `dv:closeout` change. The other thirteen
-skills have no behaviour changes; their version moves to `0.36.0` only because the suite is
+skills have no behaviour changes; their version moves to `0.37.0` only because the suite is
 released as one plugin.
 
-Numbering: 0.36.0 follows 0.35.1, in which the Director stopped sending a SIGTERM to end a
-finished worktree session and asks you to close its chat in Orca instead. 0.36.0 keeps that
-change.
+Numbering: 0.37.0 follows 0.36.0, in which the Director decides routine calls for you, holds
+yours for the end of the work, and every ask stands on its own. 0.37.0 keeps that change and
+0.35.1's (the Director asks you to close a finished chat instead of sending a SIGTERM). This
+release's cross-references use 0.36.0's section names: `dv:director-mode` "Answer a worktree
+session's question" and `dv:manager-mode` "Questions go to the Director first".
 
 Why: a restarted Director comes back under a new name and address, and a worktree session learned
 of it only when its next send to the old address failed. On 2026-11-25 in review-stack, one
@@ -33,15 +35,16 @@ held, with David unaware (VIL-1141).
   candidate name (the main checkout folder's basename, then `-`, then a suffix) is probed. When
   its answer passes, it becomes the Director even if the one verified before still answers: the
   latest announcer wins, and two passing answers are not ambiguous in that case. The held
-  highlights, each message whose send failed, and each held question then go to it (not a question
-  already asked of David). What the old Director still owes a reply to moves at the same time: a
+  highlights, each message whose send failed, and each question held while the probe waited then go to it (not a
+  question already asked of David, nor one the Director held for David). What the old Director still owes a reply to moves at the same time: a
   question waiting for its answer, unless it has gone to David (same Qk, a new `Sent:` time and a
   new 10-minute wait), and a PR handoff sent to it with no reply yet. From the switch on, the old
   Director's answers no longer count. An announcer that answers with another path or stays silent
   changes nothing and holds up no other check. The verification rules point at the announcement as
   their one exception. A message whose send failed is now held for the next Director verified; a
   failed question counts its 10 minutes from the failed send. Highlights are held, except under
-  Codex, while no Director can be verified; questions are not.
+  Codex, while no Director can be verified; questions are not, and go as "Questions go to the
+  Director first" says with no Director that can be verified.
   Last reviewed 2026-11-25.
 - **`dv:closeout`, "Deliver the note", step 5.** If the note's send fails (SendMessage returns an
   error), the session probes again from scratch, steps 1 to 4, and sends the note to the Director
@@ -60,7 +63,8 @@ held, with David unaware (VIL-1141).
   names the probes sent and each failed send. A new round starts only after the note's send
   fails. `dv:manager-mode` points at that rule for its probes (a round there is one
   verification). A failed probe starts no new verification at once; when a verification ends
-  with no Director and at least one probe failed, a question held while it ran goes to you then,
+  with no Director and at least one probe failed, a question held while it ran goes then as "Questions go
+  to the Director first" says with no Director that can be verified,
   and the next highlight or question starts a new verification, during which a question is held
   as it is while any probe waits. No
   candidate left counts as "no candidate", and an announcer whose probe fails changes nothing.

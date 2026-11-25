@@ -4,7 +4,7 @@ description: "Switch this session into Director Mode, the mode for the home sess
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.35.0"
+  version: "0.35.1"
 ---
 
 # /director-mode — the home session directs; worktree managers hire
@@ -78,7 +78,7 @@ Then carry on: from a linked worktree the Director advises but does no merge, pu
   engineers for its ticket, sends you highlights and questions you may answer when they are
   clear-cut ("Answer a clear-cut question"), opens the PR, and hands the PR to you once
   MergeWren passes. When you report the PR merged, it runs `dv:closeout` and sends you a note;
-  you end the session yourself when the checks in "End a finished worktree session" allow it,
+  you ask me to close the session when the checks in "End a finished worktree session" allow it,
   and clean up once it has ended ("Take closeout notes").
 
 dotfiles `docs/agents/parallel-sessions.md` ("Roles") gives merges to the home session too; if
@@ -335,38 +335,40 @@ terminal by `orca terminal send`, by clipboard paste, or as a file under
 - Run the cleanup the note names as soon as it arrives, without asking me. Do any part that
   doesn't touch the worktree or its branch (such as pulling the main checkout) now. While the
   worktree's session is still running, leave the worktree and its branch in place (see "Merge
-  and clean up"), and end the session under "End a finished worktree session" below. When that
-  rule stops nothing, tell me, as a highlight, which check failed and why, and that the session
-  is still open in Orca for me to close. After the session has ended (stopped under that rule,
-  or rechecked with the ListAgents test under "Merge and clean up" at each seam and whenever I
-  say I closed the session), remove the worktree and its branch by the global removal procedure
+  and clean up"), and ask me to close the session under "End a finished worktree session" below.
+  When a check there fails or can't run, tell me, as a highlight, which check failed and why, and
+  that the session is still open in Orca for me to close. After the session has ended (closed by me, or
+  rechecked with the ListAgents test under "Merge and clean up" at each seam and whenever I say I
+  closed the session), remove the worktree and its branch by the global removal procedure
   named there, run from the main checkout. That procedure's checks decide what is removed; the
-  note is context, not permission. Apart from that rule's one SIGTERM, you never signal or stop
-  a session's process.
+  note is context, not permission. You never signal or stop a session's process.
 - Report the cleanup as a highlight: what was removed, and what the procedure kept and why.
 - Then run the seam check above.
 
 #### End a finished worktree session
 
 A session that has run `dv:closeout` stays open until something closes it, and Orca has no CLI
-command to close a chat. The global removal procedure keeps a worktree while another session is
-in it. So you end a finished worktree session yourself, with one SIGTERM to its Orca wrapper,
-only when the four checks below hold and the global procedure's own checks pass. I approved this
-rule on 2026-11-22. If any check fails or can't run, stop nothing and remove nothing: leave the
-worktree and tell me which check failed and why, naming each process the worktree process scan
-reported (`ps -ww -o pid=,ppid=,command= -p <pid>`). If I ask you to try again after clearing it,
-send the session one line with `notify_when_idle: true` and start again from check 1 when the
-new notice arrives.
+command to close a chat (`orca --help`, `orca agent --help` and `orca terminal --help` list none,
+checked 2026-11-25; `orca terminal close` closes terminals, and a chat is not one). The global
+removal procedure keeps a worktree while another session is in it. So once the four checks below
+hold and the global procedure's own checks pass, you ask me to close that worktree's chat in
+Orca, and you remove the worktree after I say I did. You never signal or stop a session's
+process. Why: on 2026-11-25, SIGTERM to the `stdin-end-and-sigterm` wrapper did not end an open
+Orca chat; closing the chat in Orca did. If any check fails or can't run, do not ask me to close it
+and remove nothing: leave the worktree and tell me which check failed and why, naming each
+process the worktree process scan reported (`ps -ww -o pid=,ppid=,command= -p <pid>`). If I ask
+you to try again after clearing it, send the session one line with `notify_when_idle: true` and
+start again from check 1 when the new notice arrives.
 
 The idle notice comes in a later turn than the note. So after your reply to the note, wait for
 the notice; don't poll ListAgents or ask the session whether it is done. When the notice
 arrives, or at once if the reply can't be sent because the session has gone, first run the
-`ps` check under "After the signal" with the `claude` pid (the one the note's `from` address
-names; a note with no `from` address stops nothing) in place of both pids. If it prints
-`GONE`, the session has already ended and nothing is left to stop: skip this rule's checks
-and the signal, and remove the worktree as "Take closeout notes" says, by the global
-procedure with check 4 in its removal form. Otherwise run checks 1, 3 and 4, then "Before
-the signal", then "Stopping it".
+`ps` check under "After I close it" with the `claude` pid (the one the note's `from` address
+names; a note with no `from` address ends nothing) in place of both pids. If it prints
+`GONE`, the session has already ended: skip this rule's checks and the ask, and remove the
+worktree as "Take closeout notes" says, by the global procedure with check 4 in its removal
+form. Otherwise run checks 1, 3 and 4, then "Before asking me to close it", then "Asking me to
+close it".
 
 **The note's header, time and sender.** The note's header is its first line, `CLOSEOUT NOTE
 from <branch> at <worktree path>, <date and time with zone>`. A note sent by SendMessage leaves
@@ -377,7 +379,7 @@ before `.txt` on a clash). The note's `from` address names the session's `claude
 `uds:` socket path ending in `/<pid>.sock`. That process's command line
 (`ps -ww -o command= -p <pid>`) gives the session id, its `--session-id=<id>` or `--resume=<id>`
 value. A note with no saved copy or no `from` address, or a `from` process whose command line
-carries no session id or more than one, stops nothing.
+carries no session id or more than one, ends nothing.
 
 1. **The note.** Its closeout note reached you, and the header names this worktree's path. Its
    Worktree verdict is `safe to delete`, or `safe once you accept losing: …` with every listed
@@ -385,7 +387,7 @@ carries no session id or more than one, stops nothing.
    instructions or memory). `NOT safe to delete` and `not confirmed safe` fail the check. The
    section under its `WAITING ON` heading is `none`, and its `REPLY NEEDED` line reads
    `REPLY NEEDED: no`. A decision waiting on me or a question waiting for a reply fails the
-   check: the session may still be waiting for the answer, so stop nothing and tell me.
+   check: the session may still be waiting for the answer, so do not ask me to close it, and tell me.
 2. **Idle after the note.** Your reply to the note went with `notify_when_idle: true`, so the
    session takes a turn to read it and the notice comes when that turn ends. The check holds
    when a `[Cross-session idle notice]` for that session arrives after the note's timestamp. A
@@ -413,21 +415,21 @@ carries no session id or more than one, stops nothing.
      whole scan. Its known limits: it looks only at this user's processes (`lsof` can't read
      another user's without root), so another user's, root's included, aren't seen; nor is a
      session that works in the worktree from a directory outside it with no file open there;
-     and a process that starts during or after its last run before the signal can be caught
-     only by the scan after the signal. An Orca terminal left open in the worktree, such as the
+     and a process that starts during or after its last run before I close the chat can be
+     caught only by the scan after I do. An Orca terminal left open in the worktree, such as the
      Setup terminal that runs a repo's setup script, is another process and fails the check;
      name it by its title from `orca terminal list --worktree "path:<worktree path>" --json`.
 
    This check is what you run for the global removal procedure's "no other session still in
-   it", which names no command. Before the stop, the one session it allows is the one you are
-   about to stop. For a removal (after the stop, and every removal under "Merge and clean
+   it", which names no command. Before I close the chat, the one session it allows is the one you are
+   about to ask me to close. For a removal (after I close it, and every removal under "Merge and clean
    up") it allows none, and both parts still run: ListAgents lists neither the session that
    sent the note or handed you the PR nor any peer named for the worktree as above, and the
    scan, run with an empty `<claude pid>`, prints `RESULT: pass`.
 
 **The worktree process scan.** Run it from the main checkout, never from a shell whose directory
 is in the worktree: that shell would count as another process. `<worktree path>` is the path the
-note's header names; `<claude pid>` is the session's `claude` process, or empty after the stop.
+note's header names; `<claude pid>` is the session's `claude` process, or empty after I close it.
 `lsof` prints real paths, so the scan matches the worktree path and its real path (`pwd -P`),
 ignoring case.
 
@@ -481,27 +483,27 @@ of these hold:
   move at or after the timestamp, fails it.
 - Step 1 lists no stash made on that branch.
 
-If the block can't run, or anything differs, keep the worktree, stop nothing, and tell me. The
+If the block can't run, or anything differs, keep the worktree, do not ask me to close it, and tell me. The
 recheck is only as good as closeout's inventory: it compares counts, not contents, so a file
 edited in place with every count unchanged is not caught (the open ticket VIL-868).
 
-**Before the signal.** Run the global removal procedure's step 2 checks on this worktree (the
-Git bullet "Remove a finished Orca worktree yourself…"), all of them; its "no other session
-still in it" is check 4. They only inspect: run none of the procedure's removal steps yet. If
-one fails or can't run, stop nothing and leave the worktree.
+**Before asking me to close it.** Run the global removal procedure's step 2 checks on this
+worktree (the Git bullet "Remove a finished Orca worktree yourself…"), all of them; its "no
+other session still in it" is check 4. They only inspect: run none of the procedure's removal
+steps yet. If one fails or can't run, do not ask me to close it, and leave the worktree.
 
-**Stopping it.** The session's Orca wrapper is the parent of its `claude` process
-(`ps -o ppid= -p <claude pid>`). Its command line (`ps -ww -o command= -p <wrapper pid>`) is
-`orca-provider-exec … session stdin-end-and-sigterm -- … claude …` and carries the same
-`--session-id=<id>` or `--resume=<id>` value as the `claude` process. If the parent doesn't match
-that, stop nothing. A second `orca-provider-exec` process with the same value runs as a child of
-the `claude` process; it is not the wrapper, so leave it alone. In the same turn, right before
-the signal, confirm the session's ListAgents row says it is idle, run checks 3 and 4 again, and
-read the `claude` process's parent and the wrapper's command line again. Then send that one
-process SIGTERM, once: `kill -TERM <wrapper pid>`. Never SIGKILL, never `pkill` or `killall`,
-and never any other process.
+**Asking me to close it.** Find the session's wrapper before you ask, for the check afterwards:
+it is the parent of its `claude` process (`ps -o ppid= -p <claude pid>`), and its command line
+(`ps -ww -o command= -p <wrapper pid>`) is `orca-provider-exec … session -- … claude …`
+carrying the same `--session-id=<id>` or `--resume=<id>` value as the `claude`
+process. If the parent doesn't match that, leave `<wrapper pid>` empty. A second
+`orca-provider-exec` process with the same value runs as a child of the `claude` process; it
+ends with the session, and the checks below cover it. Then, as one highlight line, ask me to
+close that worktree's chat in Orca, naming the worktree folder (for example `Close the chat for
+<worktree folder> in Orca; its checks passed.`). Then wait until I say I closed it. Don't poll,
+and send nothing to any process.
 
-**After the signal.** The session has ended when this prints `GONE` (it prints `CANNOT RUN` if
+**After I close it.** The session has ended when this prints `GONE` (it prints `CANNOT RUN` if
 `ps` fails):
 
 ```bash
@@ -511,9 +513,10 @@ P=$(ps -axo pid=) && [ -n "$P" ] && printf '%s\n' "$P" | awk -v a="<wrapper pid>
 and check 4 then passes in its removal form (no session allowed: ListAgents lists neither
 the session nor any other peer named for the worktree, and no process of this user has its
 directory or an open file in the worktree). A process the session started that outlives it,
-such as a background job, shows up there. If anything but `GONE` and a pass shows when you
-look again a minute later (with Monitor or in a later turn, not a foreground sleep), remove
-nothing and tell me what is still running. Otherwise remove the worktree and its branch as
+such as a background job, shows up there. If the check prints `STILL RUNNING`, run it once more
+in a later turn (my "closed" can arrive before Orca finishes ending the process). If anything but
+`GONE` and a pass still shows, remove nothing and tell me what is still running. The global
+procedure's own step 2 checks run again at removal. Otherwise remove the worktree and its branch as
 above, and report it as a highlight.
 
 ### Merge and clean up, from the main checkout
@@ -574,8 +577,8 @@ session never does.
   in its removal form: ListAgents lists no live session for the worktree (the test above), and
   the worktree process scan with an empty `<claude pid>` finds no process of this user with its
   directory or an open file in the worktree. Another user's processes are not seen.
-- Leave a worktree and its branch in place until its session has ended, by itself, closed by
-  me, or under "End a finished worktree session"; the global procedure's own checks, including
+- Leave a worktree and its branch in place until its session has ended, by itself or closed by
+  me (including when you asked under "End a finished worktree session"); the global procedure's own checks, including
   that no other session is still in it, decide removal, and a `dv:closeout` note is context, not
   permission to delete.
 - Re-check every ticket id the PR named. Reopen one only if it moved to Done and its work is not

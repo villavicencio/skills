@@ -109,11 +109,24 @@ skill says what it does with the result.
   milestones, record it that way: "No milestone. <my name>, <date>".
 - **A new milestone is my call.** Propose one only as a question to me: its name and one line on
   what done means. Create it only on my yes, with `save_milestone` (the project, the name, and
-  that line as the description). Never set a target date; only I set one. Just before creating,
-  call `list_milestones` again; if an open milestone with that name now exists, use it instead,
-  and if only a finished one has that name, ask me again before creating anything. If
-  `save_milestone` errors or its reply is lost, call `list_milestones` before anything else, since
-  the create may have landed; if the milestone is not there, tell me and do not retry.
+  that line as the description). Never set a target date; only I set one.
+- **Creating an approved milestone.** Both skills follow these steps, and each says where they
+  fall in its own run:
+  1. **Last.** Create it right before the first save that sets it, after every re-read or check
+     that comes before that save and can stop the run. If the run stops before that save, create
+     nothing.
+  2. **Look first.** Just before creating, call `list_milestones` again. An open milestone with
+     that name is used instead only when its description states the goal I approved. If its goal
+     differs, or only a finished milestone has the name, ask me again, create nothing, and save
+     nothing that would set it until I answer.
+  3. **A failed create.** If `save_milestone` errors or its reply is lost, call `list_milestones`
+     before anything else, since the create may have landed. If the milestone is not there, tell
+     me, save nothing that would set it, and do not retry.
+  4. **A failed save after it.** If the save that sets the new milestone errors or its reply is
+     lost, stop. The save may have landed. Do not retry, and do not adopt an id you did not get
+     back. Read back what you can (`get_issue` for a ticket being edited, a search of the project
+     for the title of one being filed, and `list_milestones`), and tell me what you find, saying
+     that the milestone now exists; delete nothing.
 - **Nothing is created without my yes.** A path that skips my yes, such as `dv:ticket`'s "Filing
   without my confirmation" or a `dv:groom` routine call, never creates a milestone.
 

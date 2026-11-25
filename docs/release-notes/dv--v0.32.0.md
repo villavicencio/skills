@@ -28,10 +28,15 @@ the skills repo's sessions can read, so tickets filed elsewhere landed with none
   - A Decisions line that records "No milestone" keeps a ticket out of milestones; a ticket that
     records it but has a milestone anyway is asked about, not changed.
   - A new milestone is proposed only as a question (a name and one line on what done means),
-    created only on a yes with `save_milestone`, never with a target date, and looked for by name
-    just before creating (an open one with that name is used; if only a finished one has it, the
-    user is asked again). After an error it is read back, not retried. A path that skips the yes
-    never creates one.
+    created only on a yes with `save_milestone`, and never with a target date. A path that skips
+    the yes never creates one.
+  - "Creating an approved milestone", one rule both skills point to: create it last, right
+    before the first save that sets it and after every re-read that can stop the run; just before
+    creating, reuse an open milestone with that name only when its description states the
+    approved goal, and otherwise (or when only a finished one has the name) ask again; after a
+    failed create, read `list_milestones` back and do not retry; and if the save that sets it then
+    fails or its reply is lost, stop, do not retry, read back what landed and report that the
+    milestone now exists.
 - **`dv:ticket`, new File step 2b, "Milestone".** It lists the project's milestones, then takes
   the first case that applies:
   - The request names a milestone: use it if it matches one in the list; if it matches none, or
@@ -43,10 +48,11 @@ the skills repo's sessions can read, so tickets filed elsewhere landed with none
     as the other options.
 
   Step 7 reads the milestones again: one that has since finished or gone sends the draft back to
-  step 2b (or, without confirmation, the ticket is filed with none). It then creates an approved
-  new milestone just before `save_issue`, sets the milestone in the `save_issue` call, and reads
-  it back. Step numbering: the step is "2b" so that File steps 3 to 7, which `dv:groom` and the
-  shared rules cite by number, keep their numbers.
+  step 2b (or, without confirmation, the ticket is filed with none). After its checks it creates an
+  approved new milestone right before `save_issue`, under the shared "Creating an approved
+  milestone" rule, sets the milestone in the `save_issue` call, and reads it back. Step numbering:
+  the step is "2b" so that File steps 3 to 7, which `dv:groom` and the shared rules cite by number,
+  keep their numbers.
 - **`dv:ticket`, "Filing without my confirmation".** A spin-off or closeout item takes its source
   ticket's milestone. When the source has none, or a finished one, it is filed with none and the
   report says so; no milestone is ever created on this path.
@@ -69,9 +75,12 @@ the skills repo's sessions can read, so tickets filed elsewhere landed with none
 - **`dv:groom`, splits and spin-offs.** A split's children take the parent's milestone, and a
   spin-off filed in the groomed ticket's project takes the groomed ticket's, as the approved edit
   list leaves it ("Order of writes" item 2); with none or a finished one, they get none. A spin-off
-  filed in another project takes the existing milestone File step 2b picks there, or none. No
-  milestone is created for either. An approved new milestone is created before "Order of writes"
-  item 1, whether or not anything is filed. The split proposal and each spin-off line show the
+  filed in another project takes the existing milestone File step 2b picks there, or none. Item 2
+  creates no milestone itself; an approved new milestone, which children and spin-offs in the
+  groomed ticket's project take, is created under the shared "Creating
+  an approved milestone" rule: right before the first save in "Order of writes" that sets it (a
+  filing in item 2, or the groomed ticket's change in item 4), after the re-reads before that save;
+  a failed save after it is not retried. The split proposal and each spin-off line show the
   milestone.
 - **`dv:groom`, edit list, report and rules.** The milestone is an edit-list item; the report
   gives the milestone as read back; a milestone is created only on a yes; and a ticket whose text

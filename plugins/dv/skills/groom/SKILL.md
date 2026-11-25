@@ -318,12 +318,13 @@ these holds:
 - it is pointed above 8 (13);
 - one part is risky and the rest is not.
 
-Do not split when the parts must land together to be correct. A proposed split names each child:
-a title in the format, its Done means lines taken from the parent, its size word and points from the
+Do not split when the parts must land together to be correct. A proposed split names each child: a
+title in the format, its Done means lines taken from the parent, its size word and points from the
 table with one sentence on what drives them, its order, what blocks what, and one line with its
-project, milestone (the parent's, or none when it is finished), state and labels (`groomed` added
-once the split is complete, if the child passes the ready test and its team has an active `groomed`
-label; step 7, "Order of writes" item 5).
+project, milestone (the parent's as the approved edit list leaves it, a new one included, or none
+when it is finished), state and labels (`groomed` added once the split is complete, if the child
+passes the ready test and its team has an active `groomed` label; step 7, "Order of writes" item
+5).
 It also says what happens to the parent: it becomes the first child, or it stays as the parent with
 the children under it (`parentId`). When it stays as the parent, write its full replacement
 description: Why, a Scope that names the children, Done means, Decisions, and Size ("Split: the
@@ -462,7 +463,8 @@ removes existing text. It covers:
 - the milestone (step 3), set with `save_issue`'s `milestone` field: an add item when the ticket
   has none; a replace item when my answer moves it, or a remove item when it takes it out (which
   also adds the "No milestone" Decisions line); a keep that replaces a "No milestone" line; and a
-  new milestone I said yes to, to create first (shared rules, "Milestones");
+  new milestone I said yes to, created just before the first save that sets it ("Order of
+  writes");
 - for a split, the children to file and the parent's change (its estimate included), exactly as
   approved;
 - Agent notes, which opens with the grooming line ("Groomed <date> <time> <zone> against
@@ -513,10 +515,14 @@ Patches stay the default; three changed sections allow the offer and do not deci
 
 **Order of writes.**
 
-Before item 1, if I said yes to a new milestone, create it under the shared rules, "Milestones",
-whether or not anything is filed, so the groomed ticket and any child or spin-off can take it. If
-it cannot be created, write nothing else: say so under Needs you, and leave the `groomed` label off
-(item 5).
+A new milestone I said yes to is created as the shared rules' "Creating an approved milestone"
+says: right before the first save below that sets it (the first child or spin-off filed with it in
+item 2, or the groomed ticket's change in item 4), after the re-reads that come before that save
+(item 1's re-read of the parent, the duplicate re-run before that filing, item 4's re-read). If it
+cannot be created, or those rules send it back to me, stop: write nothing more, list under Needs
+you the tickets already filed and the items not applied, and leave the `groomed` label off (item
+5). If the save that sets it fails, follow those rules' "A failed save after it" as well as item
+2's report for a failed filing: no retry, which overrides item 4's retry once for that save.
 
 1. **A split never loses work.** Linear cannot create several tickets and edit another in one
    step, so a split can fail part way. Order it so that a failure can only leave work in two
@@ -527,26 +533,27 @@ it cannot be created, write nothing else: say so under Needs you, and leave the 
    from this skill's directory), section "File", and create each with its rules: project found live
    (a child takes the parent's project), the milestone (a child takes the parent's, and a spin-off
    filed in the groomed ticket's project takes the groomed ticket's, as the approved edit list
-   leaves it, with none when that is none or finished; a spin-off filed in another project takes
-   the existing milestone File step 2b picks there, or none; no milestone is created for either;
-   this overrides File step 2b), labels from the team,
-   the format, facts checked or marked `[assumed]`, Backlog with a pull condition unless it can
-   start now, the re-run of the duplicate searches just before creating, and `save_issue`. My
-   interview answer stands in for File step 6's draft and question. Set each one's relations in the
-   `save_issue` call that creates it: `parentId` for a child under a parent that stays, `blockedBy`
-   for a child that waits on another child or for any ticket whose pull condition names an open
-   ticket (unless File mode already sets it), and `relatedTo` the groomed ticket for a spin-off,
-   unless the spin-off is blocked by it (shared rules, "Prerequisites": one relation per pair). Set
-   each child's approved points with `estimate` in that same call, and write its size and points in
-   its Size section (File step 4 leaves Size for grooming, and this is its grooming); this
-   overrides File's rule against setting an estimate unasked. A spin-off gets no estimate: it is
-   pointed when it is groomed. Do not put `groomed` on any filing here: a split's child may get it
-   in item 5, under its ready test, and a spin-off never does, since it is drafted, not groomed,
-   and `dv:director-mode` skips grooming a ticket that has the label. If a filing fails or returns
-   an error, stop: leave the parent as it is (it still holds all the work) and do not adopt any
-   ticket id you did not get back from `save_issue`. The create may have landed, so search the
-   project for the title and list what you find beside the tickets that exist and the draft of each
-   that may not, under Needs you, for me to settle. Delete nothing.
+   leaves it, a new one included, with none when that is none or finished; a spin-off filed in
+   another project takes the existing milestone File step 2b picks there, or none; this item
+   creates no milestone itself, and an approved new one is created as the paragraph above says;
+   this overrides File step 2b), labels from the team, the format, facts checked or marked
+   `[assumed]`, Backlog with a pull condition unless it can start now, the re-run of the duplicate
+   searches just before creating, and `save_issue`. My interview answer stands in for File step 6's
+   draft and question. Set each one's relations in the `save_issue` call that creates it:
+   `parentId` for a child under a parent that stays, `blockedBy` for a child that waits on another
+   child or for any ticket whose pull condition names an open ticket (unless File mode already sets
+   it), and `relatedTo` the groomed ticket for a spin-off, unless the spin-off is blocked by it
+   (shared rules, "Prerequisites": one relation per pair). Set each child's approved points with
+   `estimate` in that same call, and write its size and points in its Size section (File step 4
+   leaves Size for grooming, and this is its grooming); this overrides File's rule against setting
+   an estimate unasked. A spin-off gets no estimate: it is pointed when it is groomed. Do not put
+   `groomed` on any filing here: a split's child may get it in item 5, under its ready test, and a
+   spin-off never does, since it is drafted, not groomed, and `dv:director-mode` skips grooming a
+   ticket that has the label. If a filing fails or returns an error, stop: leave the parent as it
+   is (it still holds all the work) and do not adopt any ticket id you did not get back from
+   `save_issue`. The create may have landed, so search the project for the title and list what you
+   find beside the tickets that exist and the draft of each that may not, under Needs you, for me
+   to settle. Delete nothing.
    **Forks-only mode:** the routine call to file a spin-off stands in for my interview answer.
 3. **Never write a ticket id that does not exist yet.** Write a child's or spin-off's id into the
    groomed ticket only after the `save_issue` call that created it, using the id it returned.

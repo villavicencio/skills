@@ -210,8 +210,10 @@ Then call `list_milestones` again. If the milestone the draft names is now finis
 nothing: pick again under step 2b and show the draft again as in step 6. Under "Filing without my
 confirmation", file it with no milestone instead and say so in the report.
 
-If I said yes to a new milestone (step 2b), create it now with `save_milestone`, under the shared
-rules, "Milestones" (look for it by name first). If it cannot be created, save nothing and tell me.
+If I said yes to a new milestone (step 2b), create it now, after the checks above and right
+before `save_issue`, as the shared rules' "Creating an approved milestone" says, including what to
+do when `save_issue` then fails. Any other failed `save_issue` here is handled as "Filing without
+my confirmation" says: stop, do not retry, search for the title and tell me what you find.
 
 Call `save_issue` with the team, project, milestone, title, description, labels and state of the
 draft as last shown or rebuilt, and its relations: `blockedBy` with the id of each "Blocked by"

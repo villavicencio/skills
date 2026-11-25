@@ -493,15 +493,17 @@ other session still in it" is check 4. They only inspect: run none of the proced
 steps yet. If one fails or can't run, do not ask me to close it, and leave the worktree.
 
 **Asking me to close it.** Find the session's wrapper before you ask, for the check afterwards:
-it is the parent of its `claude` process (`ps -o ppid= -p <claude pid>`), and its command line
-(`ps -ww -o command= -p <wrapper pid>`) is `orca-provider-exec … session -- … claude …`
-carrying the same `--session-id=<id>` or `--resume=<id>` value as the `claude`
-process. If the parent doesn't match that, leave `<wrapper pid>` empty. A second
-`orca-provider-exec` process with the same value runs as a child of the `claude` process; it
-ends with the session, and the checks below cover it. Then, as one highlight line, ask me to
-close that worktree's chat in Orca, naming the worktree folder (for example `Close the chat for
-<worktree folder> in Orca; its checks passed.`). Then wait until I say I closed it. Don't poll,
-and send nothing to any process.
+it is the parent of its `claude` process (`ps -o ppid= -p <claude pid>`). Its command line
+(`ps -ww -o command= -p <wrapper pid>`) must start with `orca-provider-exec`, name the `session`
+subcommand, then `--` and `claude`, and carry the same `--session-id=<id>` or `--resume=<id>`
+value as the `claude` process. If the parent doesn't match that, the check can't run: do not ask
+me to close it, and leave the worktree. A second `orca-provider-exec` process with the same value
+runs as a child of the `claude` process; it ends with the session, and the checks below cover
+it. Then, in the same turn, confirm the session's ListAgents row says it is idle and run checks 3
+and 4 again. If either fails, do not ask me to close it. Otherwise, as one highlight line, ask
+me to close that worktree's chat in Orca, naming the worktree folder (for example `Close the
+chat for <worktree folder> in Orca; its checks passed.`). Then wait until I say I closed it.
+Don't poll, and send nothing to any process.
 
 **After I close it.** The session has ended when this prints `GONE` (it prints `CANNOT RUN` if
 `ps` fails):
@@ -515,8 +517,9 @@ the session nor any other peer named for the worktree, and no process of this us
 directory or an open file in the worktree). A process the session started that outlives it,
 such as a background job, shows up there. If the check prints `STILL RUNNING`, run it once more
 in a later turn (my "closed" can arrive before Orca finishes ending the process). If anything but
-`GONE` and a pass still shows, remove nothing and tell me what is still running. The global
-procedure's own step 2 checks run again at removal. Otherwise remove the worktree and its branch as
+`GONE` and a pass still shows, remove nothing and tell me what is still running. Before removing, run check 3 again
+(the closeout recheck and the transcript test), since I may have taken a while to reply; if it
+fails, remove nothing and tell me. The global procedure's own step 2 checks run again at removal. Otherwise remove the worktree and its branch as
 above, and report it as a highlight.
 
 ### Merge and clean up, from the main checkout

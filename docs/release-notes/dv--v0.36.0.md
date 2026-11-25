@@ -26,22 +26,21 @@ held, with David unaware (VIL-1141).
 - **`dv:director-mode`, "On, off, and standing" and "Answer a 'Director check' probe".** The on
   bullet points at the announcement. The probe section says a probe follows each announcement and
   that held highlights, questions and notes may follow the answer.
-- **`dv:manager-mode`, "Highlights".** A new paragraph: on a `Director announcement,` message,
-  the session probes its sender, even when a Director is already verified, an earlier result was
+- **`dv:manager-mode`, "Highlights".** A new paragraph: on a `Director announcement,` message, the
+  session probes its sender, even when a Director is already verified, an earlier result was
   ambiguous or found none, or that sender was probed before. Only a sender whose name fits the
   candidate name (the main checkout folder's basename, then `-`, then a suffix) is probed. When
   its answer passes, it becomes the Director even if the one verified before still answers: the
   latest announcer wins, and two passing answers are not ambiguous in that case. The held
-  highlights, each message whose send failed, and each held question then go to it (not a
-  question already asked of David). What the old Director still owes a reply to moves only once
-  ListAgents no longer lists it: a question waiting for its answer (same Qk and `Sent:` time, so
-  its 10-minute wait is unchanged) and a PR handoff with no reply yet, if `gh pr view` shows the
-  PR still open. While the old Director is listed, nothing is resent and its answer to a question
-  sent before the change still counts. An announcer
-  that answers with another path or stays silent changes nothing and holds up no other check.
-  The verification rules point at the announcement as their one exception. A message whose send
-  failed is now held for the next Director verified; a failed question counts its 10 minutes from
-  the failed send. Highlights are held, except under Codex, while no Director can be verified; questions are not.
+  highlights, each message whose send failed, and each held question then go to it (not a question
+  already asked of David). What the old Director still owes a reply to moves at the same time: a
+  question waiting for its answer, unless it has gone to David (same Qk, a new `Sent:` time and a
+  new 10-minute wait), and a PR handoff sent to it with no reply yet. From the switch on, the old
+  Director's answers no longer count. An announcer that answers with another path or stays silent
+  changes nothing and holds up no other check. The verification rules point at the announcement as
+  their one exception. A message whose send failed is now held for the next Director verified; a
+  failed question counts its 10 minutes from the failed send. Highlights are held, except under
+  Codex, while no Director can be verified; questions are not.
   Last reviewed 2026-11-25.
 - **`dv:closeout`, "Deliver the note", step 5.** If the note's send fails (SendMessage returns an
   error), the session probes again from scratch, steps 1 to 4, and sends the note to the Director

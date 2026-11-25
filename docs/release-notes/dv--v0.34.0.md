@@ -25,8 +25,11 @@ before the signal (VIL-930).
   and why, and that the session is still open in Orca for him to close; the worktree waits for
   the session to end, as before. Apart from the rule's one SIGTERM it never signals or stops a
   session's process.
-- **New: "End a finished worktree session".** Once the idle notice arrives, the Director runs
-  four checks:
+- **New: "End a finished worktree session".** Once the idle notice arrives, the Director first
+  checks with `ps` whether the session's `claude` process (the one the note's `from` address
+  names) is still running. If it has already exited, nothing is stopped: the worktree goes
+  straight to removal by the global procedure, with check 4 in its removal form. Otherwise it
+  runs four checks:
   1. The note's header names this worktree, and its verdict is `safe to delete`, or
      `safe once you accept losing: …` with every loss covered by a standing yes.
   2. A `[Cross-session idle notice]` for the session arrives after the note's timestamp (same

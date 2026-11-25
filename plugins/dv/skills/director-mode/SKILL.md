@@ -308,14 +308,19 @@ in it. So you end a finished worktree session yourself, with one SIGTERM to its 
 only when the four checks below hold and the global procedure's own checks pass. I approved this
 rule on 2026-11-22. If any check fails or can't run, stop nothing and remove nothing: leave the
 worktree and tell me which check failed and why, naming each process the worktree process scan
-reported (`ps -o pid=,ppid=,command= -p <pid>`). If I ask you to try again after clearing it,
+reported (`ps -ww -o pid=,ppid=,command= -p <pid>`). If I ask you to try again after clearing it,
 send the session one line with `notify_when_idle: true` and start again from check 1 when the
 new notice arrives.
 
 The idle notice comes in a later turn than the note. So after your reply to the note, wait for
 the notice; don't poll ListAgents or ask the session whether it is done. When the notice
-arrives, run checks 1, 3 and 4, then "Before the signal", then "Stopping it". If the session's
-`claude` process is already gone, nothing is left to stop: go on to the removal.
+arrives, or at once if the reply can't be sent because the session has gone, first run the
+`ps` check under "After the signal" with the `claude` pid (the one the note's `from` address
+names; a note with no `from` address stops nothing) in place of both pids. If it prints
+`GONE`, the session has already ended and nothing is left to stop: skip this rule's checks
+and the signal, and remove the worktree as "Take closeout notes" says, by the global
+procedure with check 4 in its removal form. Otherwise run checks 1, 3 and 4, then "Before
+the signal", then "Stopping it".
 
 **The note's header, time and sender.** The note's header is its first line, `CLOSEOUT NOTE
 from <branch> at <worktree path>, <date and time with zone>`. A note sent by SendMessage leaves
@@ -324,7 +329,7 @@ note's timestamp is the UTC time in that saved copy's file name, which closeout'
 Write the parent note and copy it" writes as `<branch slug>.<YYYYMMDDTHHMMSSZ>.txt` (with `-<n>`
 before `.txt` on a clash). The note's `from` address names the session's `claude` process: a
 `uds:` socket path ending in `/<pid>.sock`. That process's command line
-(`ps -o command= -p <pid>`) gives the session id, its `--session-id=<id>` or `--resume=<id>`
+(`ps -ww -o command= -p <pid>`) gives the session id, its `--session-id=<id>` or `--resume=<id>`
 value. A note with no saved copy or no `from` address, or a `from` process whose command line
 carries no session id or more than one, stops nothing.
 
@@ -437,7 +442,7 @@ still in it" is check 4. They only inspect: run none of the procedure's removal 
 one fails or can't run, stop nothing and leave the worktree.
 
 **Stopping it.** The session's Orca wrapper is the parent of its `claude` process
-(`ps -o ppid= -p <claude pid>`). Its command line (`ps -o command= -p <wrapper pid>`) is
+(`ps -o ppid= -p <claude pid>`). Its command line (`ps -ww -o command= -p <wrapper pid>`) is
 `orca-provider-exec … session stdin-end-and-sigterm -- … claude …` and carries the same
 `--session-id=<id>` or `--resume=<id>` value as the `claude` process. If the parent doesn't match
 that, stop nothing. A second `orca-provider-exec` process with the same value runs as a child of

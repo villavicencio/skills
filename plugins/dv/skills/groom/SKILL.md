@@ -4,7 +4,7 @@ description: "Groom one Linear ticket before anyone works it. Checks it against 
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.37.0"
+  version: "0.38.0"
 ---
 
 # /groom — groom a Linear ticket before work starts
@@ -44,8 +44,10 @@ overrule it.
 **Forks** (the only decisions forks-only mode asks, as step 6 says):
 
 - a change to scope or to Out of scope: a Scope step added or removed and any Done means line
-  dropped (closing a conditional step as step 3 says is the exception: a routine call), which
-  includes folding a spin-off into the ticket;
+  dropped, a line step 3 flagged as already passing included (closing a conditional step as step 3
+  says is the exception: a routine call), which includes folding a spin-off into the ticket;
+- a Done means line step 3 flagged as already passing that neither a rewrite nor a guard mark fits
+  (step 3, "Done means fails first"): keep it with a reason, or drop it;
 - a design choice between real alternatives, including picking a side where step 3 found
   conflicting rules (Current rules);
 - anything destructive or hard to undo;
@@ -61,8 +63,10 @@ overrule it.
 means phrasing, filing or dropping a spin-off, settling an `[assumed]` marker you verified,
 adding or removing a relation that step 3 maps clearly, closing a conditional step by removing it or
 making it unconditional (step 3), putting a ticket that has no milestone in the existing milestone
-that fits it (step 3, "Milestone"), and rewording or adding a Done means line that proves the
-existing scope. Decide each one yourself: take the option you would have marked
+that fits it (step 3, "Milestone"), rewording or adding a Done means line that proves the
+existing scope, and, for a Done means line step 3 flagged as already passing, rewriting it so it
+fails first or marking it as a guard of unchanged behavior (step 3, "Done means fails first").
+Decide each one yourself: take the option you would have marked
 "(Recommended)" had you asked. When you cannot tell whether a call is a fork, treat it as one and
 ask.
 
@@ -239,10 +243,46 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
   different, do not only replace the fact: decide whether the step still makes sense. If it now
   leaves a real choice (add the missing thing, or drop the step), that is an open decision.
 - **Done means can be run today.** For each Done means line, check that what it relies on exists:
-  the test file, the check script, the command, the tool. A Done means line describes the future,
-  so its result is not checked, only its means. If a line needs a check that does not exist,
-  propose a Scope step that creates it and a Done means line that names it. Do not invent the
-  check's pass threshold (see Targets).
+  the test file, the check script, the command, the tool. Its result is checked in the next bullet.
+  If a line needs a check that does not exist, propose a Scope step that creates it and a Done
+  means line that names it. Do not invent the check's pass threshold (see Targets).
+- **Done means fails first.** The format's rule: a command in a Done means line fails on the
+  default branch before the work and passes after it, unless the line says it guards behavior that
+  must not change. A line that already passes proves nothing. So for each Done means line with a
+  command in backticks:
+  - **Only reads, or not run.** Run the command only when every part of it only reads: reading or
+    searching files (`grep`, `rg`, `test`, `[`, `ls`, `cat`, `head`, `tail`, `wc`, `diff`,
+    `sed -n`, `jq`) or reading git (`git log`, `git show`, `git grep`, `git ls-files`,
+    `git rev-parse`). It is not run when any part writes or might write (a redirect `>` or `>>`,
+    `tee`, `sed -i`, `rm`, `mv`, `cp`, `mkdir`, `touch`, `chmod`, an install, a build, a test run,
+    which may write caches), pushes or reaches another machine (`git push`, `git fetch`, `curl`,
+    `gh`, `ssh`), sends a message, calls a paid service or a model, or runs a script or program
+    from the repo (`python3 tooling/<x>.py`, `make`, `npm test`), even one named `--dry-run`. When
+    you are unsure whether a part only reads, do not run it. The "How." rule above holds too: read
+    the command before running it. A line not run is listed as not run, with the reason ("pushes",
+    "runs a repo script", "unsure"), and is not flagged.
+  - **Where.** On the default branch of the ticket's repo, at the commit step 1 recorded for it:
+    in the session's checkout of that repo when `git rev-parse HEAD` prints that commit and
+    `git status --porcelain` prints nothing, otherwise in a copy of that commit extracted outside
+    the repo (`git archive "<commit>" | tar -x -C "<new empty temporary directory>"`), which also
+    writes nothing to the repo and is removed when step 3 ends. A command that reads git (`git log` and the like) runs only in the
+    checkout; with only the copy, it is not run ("no clean checkout at <commit>"). A repo the
+    session cannot read leaves every line not run.
+  - **Judge.** Compare the output and exit status with what the line says passing looks like
+    ("prints the split rule", "exits 0"). When they match, the line already passes: flag it,
+    quoting the command, the commit and the output's first lines. When the line does not say what
+    passing looks like clearly enough to judge, say so and do not flag it. A line that already says
+    it guards unchanged behavior is expected to pass and is not flagged.
+  - **Each flagged line is an open decision** (step 6): rewrite it so it fails first and still
+    proves the scope (show the rewrite; when it only reads, run it the same way first and offer it
+    only if it fails, with its result in the line as the format says: "nothing at `<commit>`"),
+    mark it as a guard of unchanged behavior when that is what it checks (the line gains "(guards
+    unchanged behavior)"), keep it with a reason recorded under Decisions, or drop it. Record each
+    command run, its commit and its result under "Checked and current" in Agent notes.
+    **Forks-only mode:** the rewrite, or the guard mark when no rewrite that fails first proves
+    the same scope, is a routine call; when neither fits, keeping the line with a reason or
+    dropping it is a fork, and dropping a flagged line is always a fork ("Forks-only mode" lists
+    both).
 - **Conditional steps.** A Scope step of the form "check whether X; if so, do Y" is closed now when
   the check is one or two read-only commands in a place the session can read. Run it and record
   the result, with the command, under "Checked and current" in Agent notes. Then either remove the
@@ -323,16 +363,22 @@ estimate field (step 7).
 **Split verdict.** Say "no split" with the reason, or propose a split. Propose one when any of
 these holds:
 
-- the ticket needs PRs in more than one repo that can merge on their own;
+- the ticket needs more than one PR, PRs in more than one repo that can merge on their own
+  included (the format's rule: a ticket is sized to one PR, so the split files one child ticket
+  per PR);
 - it mixes a mechanical change with a design choice;
 - part of it is blocked and part is not;
 - it is large;
 - it is pointed above 8 (13);
 - one part is risky and the rest is not.
 
-Do not split when the parts must land together to be correct. A proposed split names each child: a
-title in the format, its Done means lines taken from the parent, its size word and points from the
-table with one sentence on what drives them, its order, what blocks what, and one line with its
+Do not split when the parts must land together to be correct. When such a ticket still needs more
+than one PR (two repos that must merge together), it stays whole, and its Agent notes say under
+"For the engineer" that each partial PR links the ticket with `Refs`, not a closing keyword, as the
+format says, so the first merge does not close it. A split for more than one PR has one child per
+PR. A proposed split names each child: a title in the format, its Done means lines taken from the
+parent, its size word and points from the table with one sentence on what drives them, its order,
+what blocks what, and one line with its
 project, milestone (the parent's as the approved edit list leaves it, a new one included, or none
 when it is finished), state and labels (`groomed` added once the split is complete, if the child
 passes the ready test and its team has an active `groomed` label; step 7, "Order of writes" item
@@ -391,7 +437,8 @@ When there is nothing, say "Scouting: nothing found." in one line, and do not pa
 ## 6. Interview
 
 First, in your reply, list what you found, shortest first: gaps, stale facts, settled `[assumed]`
-markers, neighbors and overlapping work, the milestone (step 3), the size and points, the split
+markers, Done means lines that already pass and those not run (step 3, "Done means fails first"),
+neighbors and overlapping work, the milestone (step 3), the size and points, the split
 verdict and the scouting items. The overlapping work opens with one tally per search, from step 1
 and step 5: its words, pages read and results (for example, "`groom pagination`: 2 pages, 263
 results"), with an incomplete search marked as such. Show the split proposal in full here (each
@@ -402,9 +449,14 @@ each spin-off's title, reason, project, milestone and any duplicate match.
 Then ask every open decision, in rounds of at most 4 questions:
 
 - each open decision from step 3, with what happens today as one option where it applies;
-- the split: approve it as shown, change it, or no split. When the parent stays as the parent, the
-  question says that approving covers both the split and the parent's replacement description
-  shown above. Approving a split alone never authorizes removing parent text. For a ticket pointed
+- each Done means line step 3 flagged as already passing, quoting the command, the commit and the
+  output: rewrite it (the rewrite shown), mark it as a guard of unchanged behavior, keep it with a
+  reason, or drop it;
+- the split: approve it as shown, change it, or no split. When the split is proposed because the
+  ticket needs more than one PR, the question says so and that each child is one PR, and that a
+  ticket left whole closes on its first PR's merge unless each PR uses `Refs`. When the parent
+  stays as the parent, the question says that approving covers both the split and the parent's
+  replacement description shown above. Approving a split alone never authorizes removing parent text. For a ticket pointed
   13, the question says that "no split" keeps it at 13 (step 4);
 - each spin-off: file a separate ticket, fold it into this ticket, or drop it. A duplicate match is
   named in the question with its id and state;
@@ -454,7 +506,8 @@ removes existing text. It covers:
 
 - corrected stale facts, in place, and settled `[assumed]` markers;
 - a new title (set with the `title` field, not a patch) and section renames;
-- new Scope steps and Done means lines from step 3, and in-ticket improvements from step 5;
+- new Scope steps and Done means lines from step 3, rewritten or guard-marked Done means lines
+  that already passed (step 3, "Done means fails first"), and in-ticket improvements from step 5;
 - removed conditional steps and whatever hung on them;
 - relations to add (`blockedBy`, `relatedTo`) and to remove (`removeBlockedBy`), with the evidence;
 - relations the text itself creates: an item whose text names a ticket id the ticket is not yet
@@ -597,8 +650,9 @@ the items not applied, and leave the `groomed` label off (item 5).
    (blockers, a pull condition) and, for a parent that stays as the parent, that its work sits in
    its children. A ticket fails the test when grooming left a gap: a needed fix I declined or that
    did not land (such as an item left for me to edit in Linear), an overlap or duplicate search that
-   did not finish, a Done means line that cannot be proved, a target not confirmed, or points Linear
-   did not store. Add `groomed` with `addLabels` (File step 2 allows it on a child) to each ticket
+   did not finish, a Done means line that cannot be proved, a Done means line flagged as already
+   passing that has no rewrite, guard mark or recorded reason, a target not confirmed, or points
+   Linear did not store. Add `groomed` with `addLabels` (File step 2 allows it on a child) to each ticket
    that passes, when its team has an active `groomed` label, and to the groomed ticket only when its
    edit-list item was approved (in forks-only mode, applied). A ticket that fails keeps no new
    label, and the report names its gap. The label writes are separate calls, so they can stop part
@@ -645,7 +699,8 @@ an id. Keep it short and in this order, following my own
 reply-format rules when the session's instructions give any:
 
 1. **Ready or not.** Name the ticket as a markdown link (the url from `get_issue`; the bare id if
-   none came back). Ready means no gaps, Done means lines that can be proved, nothing it waits on,
+   none came back). Ready means no gaps, Done means lines that can be proved and none flagged as
+   already passing without a rewrite, guard mark or recorded reason, nothing it waits on,
    every overlap search finished (step 1), no needed fix declined or not landed, no duplicate search
    left unfinished, no target unconfirmed, and the team's backlog or ready-to-start state as
    `list_issue_statuses` names them. A started, finished or canceled ticket is not ready to start.
@@ -666,7 +721,8 @@ reply-format rules when the session's instructions give any:
    approved, the team has no active `groomed` label, step 7 stopped before it, the ticket is not
    ready and the gap that keeps it so, or the write failed); spin-offs and children filed, as links,
    each child with the estimate its `save_issue` returned and its labels as read back, or "not
-   labelled" with the same reasons; what was not checked; the branch to work it on.
+   labelled" with the same reasons; what was not checked, each Done means line not run included,
+   with why; the branch to work it on.
 
 Do not ask whether to start the work and do not start it: starting is a separate request from me.
 
@@ -687,7 +743,9 @@ when there were none, "Decided without asking: none."
   wrong (step 7) or to add its `groomed` label ("Order of writes" item 5). Create only the children
   and spin-offs I approved, and a milestone only on my yes to it. Do not edit or comment on any
   other ticket; a follow-up on a neighbor goes under "After the merge" or becomes a spin-off.
-- No file edits, branches or commits: grooming reads repos and writes only to Linear.
+- No file edits, branches or commits: grooming reads repos and writes only to Linear. The one
+  file write is step 3's temporary copy of a commit ("Done means fails first"), made outside the
+  repo in a new empty directory and removed when step 3 ends.
 - Do not put secrets or credentials in a ticket.
 - A ticket with nothing stale, open or missing, that already has its Size with points and an
   estimate that matches them (a parent whose points sit on its children has none, and is not

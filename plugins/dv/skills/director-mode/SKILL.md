@@ -336,7 +336,10 @@ carries no session id or more than one, stops nothing.
 1. **The note.** Its closeout note reached you, and the header names this worktree's path. Its
    Worktree verdict is `safe to delete`, or `safe once you accept losing: …` with every listed
    loss covered by a standing yes of mine (in the global instructions, this project's
-   instructions or memory). `NOT safe to delete` and `not confirmed safe` fail the check.
+   instructions or memory). `NOT safe to delete` and `not confirmed safe` fail the check. The
+   section under its `WAITING ON` heading is `none`, and its `REPLY NEEDED` line reads
+   `REPLY NEEDED: no`. A decision waiting on me or a question waiting for a reply fails the
+   check: the session may still be waiting for the answer, so stop nothing and tell me.
 2. **Idle after the note.** Your reply to the note went with `notify_when_idle: true`, so the
    session takes a turn to read it and the notice comes when that turn ends. The check holds
    when a `[Cross-session idle notice]` for that session arrives after the note's timestamp. A

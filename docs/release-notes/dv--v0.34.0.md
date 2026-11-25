@@ -31,7 +31,10 @@ before the signal (VIL-930).
   straight to removal by the global procedure, with check 4 in its removal form. Otherwise it
   runs four checks:
   1. The note's header names this worktree, and its verdict is `safe to delete`, or
-     `safe once you accept losing: …` with every loss covered by a standing yes.
+     `safe once you accept losing: …` with every loss covered by a standing yes. Its
+     `WAITING ON` section is `none` and it says `REPLY NEEDED: no`: a decision or question
+     still waiting means the session may be waiting for the answer, so nothing is stopped and
+     David is told.
   2. A `[Cross-session idle notice]` for the session arrives after the note's timestamp (same
      machine only; a note with no `from` address stops nothing).
   3. Nothing changed since the note: `dv:closeout`'s Step 1 block, rerun in the worktree from a

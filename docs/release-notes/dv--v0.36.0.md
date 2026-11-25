@@ -6,8 +6,8 @@ does reach him stands on its own. Three skills change: `dv:director-mode`, `dv:m
 `dv:groom`. The other thirteen skills have no behaviour changes; their version moves to `0.36.0`
 only because the suite is released as one plugin.
 
-Numbering: 0.36.0 follows 0.35.0, which had the Director sweep stale ticket states at session
-start.
+Numbering: 0.36.0 follows 0.35.1, which had the Director ask David to close a finished worktree
+session's chat in Orca instead of sending a SIGTERM.
 
 Why: on 2026-11-24 the dotfiles Director relayed about a dozen decisions to David, most of them
 whether to run a third, fourth or fifth MergeWren fix round or to decline a finding. He agreed with

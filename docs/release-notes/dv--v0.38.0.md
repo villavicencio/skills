@@ -23,14 +23,18 @@ the two rules this applies: "A Done means command fails first" and "A ticket is 
   means line's result is not checked, only its means. For each Done means line with a command in
   backticks, grooming runs the command when every part of it only reads (reading or searching
   files, reading git), on the default branch's local commit (grooming does not fetch, and says so
-  when the remote commit differs), from the root of a clean tree: the session's checkout when it is
-  at that commit with no local changes, otherwise a copy of that commit extracted with
-  `git archive` into a new empty directory outside the repo and removed once the interview has
-  settled every flagged line. A command that writes or might write, pushes or reaches another
-  machine, sends a message, calls a paid service or a model, or runs a script or program from the
-  repo (even one named `--dry-run`) is not run and is listed as not run with the reason; so is one grooming is unsure
-  about. A line whose output matches what it says passing looks like is flagged, with the command,
-  commit and output; a line already marked as a guard of unchanged behavior is not. A line that
+  when the remote commit differs). File reads run in a private copy of that commit: a
+  `mktemp -d` directory filled with `git archive`, which holds the commit's tracked files only (no
+  ignored or local files, no submodule contents, so a command reading a submodule is not run).
+  Git reads run in the session's checkout only when it is at that commit with no local changes.
+  The copy is removed once the interview has settled every flagged line, by the exact path
+  `mktemp` printed and only under its own `groom-done-means.` name; a failed removal is reported.
+  A command that writes or might write, pushes or reaches another machine, sends a message, calls
+  a paid service or a model, runs a script or program from the repo (even one named `--dry-run`),
+  or names a path outside the repo's tree, expands a variable or `~`, or follows a link is not run
+  and is listed as not run with the reason; so is one grooming is unsure about. A line whose
+  output matches what it says passing looks like is flagged, with the command, commit, exit status
+  and at most three lines of output; output that looks like a credential is never quoted; a line already marked as a guard of unchanged behavior is not. A line that
   fails but does not note that result gets it noted ("nothing at `<commit>`"), as an edit-list
   item.
 - **`dv:groom`, step 6.** The findings list names the lines that already pass and those not run.

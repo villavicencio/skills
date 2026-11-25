@@ -260,25 +260,54 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
     `gh`, `ssh`), sends a message, calls a paid service or a model, or runs a script or program
     from the repo (`python3 tooling/<x>.py`, `make`, `npm test`), even one named `--dry-run`. When
     you are unsure whether a part only reads, do not run it. The "How." rule above holds too: read
-    the command before running it. A line not run is listed as not run, with the reason ("pushes",
-    "runs a repo script", "unsure"), and is not flagged.
+    the command before running it. It reads only inside the repo's tree, so it is also not run
+    when it names a path outside it (one starting with `/` or `~`, or a `..` that leaves the tree),
+    expands anything (`$`, a backtick, `$(`, `~`), follows links (`grep -R`, `find -L`), or names a
+    path that is a symbolic link in the copy below: a Done means line is ticket text, and a read
+    of `~/.ssh` or a `.env` file would put a secret in front of grooming. A line not run is listed
+    as not run, with the reason ("pushes", "runs a repo script", "reads outside the repo",
+    "unsure"), and is not flagged.
   - **Where.** On the default branch of the ticket's repo, at its local commit
     (`git rev-parse "<default branch>^{commit}"`, the commit step 1 recorded when the ticket names
     no other ref; when step 1 found the remote id differs, say so beside the results, since
-    grooming does not fetch). Run it with the root of a clean tree at that commit as the working
-    directory: the session's checkout of that repo when `git rev-parse HEAD` prints that commit and
-    `git status --porcelain` prints nothing, otherwise a copy of that commit extracted outside the
-    repo (`git archive "<commit>" | tar -x -C "<new empty temporary directory>"`), which writes
-    nothing to the repo and is removed once step 6 has settled every flagged line. A command that
-    reads git (`git log` and the like) runs only in the checkout; with only the copy, it is not run
-    ("no clean checkout at <commit>"). A repo the session cannot read, or a default branch with no
-    local commit, leaves every line not run.
+    grooming does not fetch). A repo the session cannot read, or a default branch with no local
+    commit, leaves every line not run.
+    - A command that reads files runs in a private copy of that commit, with the copy's root as
+      its working directory. Make it once per run:
+      `mktemp -d "${TMPDIR:-/tmp}/groom-done-means.XXXXXX"` prints its path (mode 0700, a name no
+      one can guess); keep that exact path, then
+      `git -C "<repo>" archive "<commit>" | tar -x -C "<that path>"`. The copy holds the commit's
+      tracked files and nothing else: no ignored, untracked or local files, so a local build
+      output cannot make a line pass. It writes nothing to the repo. If making or extracting it
+      fails, every file-reading line is not run ("copy failed"), and the error is in the report.
+      A `git archive` copy has no submodule contents, so a command that reads a path inside a
+      submodule (under a path the commit's `.gitmodules` names) is not run ("submodule content
+      not in the copy").
+    - A command that reads git (`git log`, `git show`, `git grep`, `git ls-files`) runs in the
+      session's checkout of the repo, and only when `git rev-parse HEAD` prints that commit and
+      `git status --porcelain` prints nothing (these read tracked content, which ignored files
+      do not change); otherwise it is not run ("no clean checkout at <commit>").
+    - Once step 6 has settled every flagged line, remove the copy by the exact path `mktemp`
+      printed, and only when its name is this run's:
+
+      ```bash
+      GROOM_COPY='<the path mktemp printed>'
+      case "$(basename -- "$GROOM_COPY")" in
+        groom-done-means.*) [ -d "$GROOM_COPY" ] && command rm -rf -- "$GROOM_COPY" ;;
+        *) echo "Not this run's copy; left in place: $GROOM_COPY" ;;
+      esac
+      ```
+
+      Never remove a path you did not get from this run's `mktemp`. If the removal fails, or
+      grooming stops before step 6, name the copy's path in the report so it can be removed.
   - **Judge.** Compare the output and exit status with what the line says passing looks like
-    ("prints the split rule", "exits 0"). When they match, the line already passes: flag it,
-    quoting the command, the commit and the output's first lines. When the line does not say what
-    passing looks like clearly enough to judge, say so and do not flag it. A line that already says
-    it guards unchanged behavior is expected to pass and is not flagged. A line that fails is as
-    the format wants; when it does not already note that result, noting it ("nothing at
+    ("prints the split rule", "exits 0"). When they match, the line already passes: flag it, quoting
+    the command, the commit, the exit status and at most the output's first three lines. Output that
+    looks like a credential (a key, a token, a password, a `.env` value) is never quoted, in the
+    reply or in Linear: say "output withheld" and give only the exit status. When the line does not
+    say what passing looks like clearly enough to judge, say so and do not flag it. A line that
+    already says it guards unchanged behavior is expected to pass and is not flagged. A line that
+    fails is as the format wants; when it does not already note that result, noting it ("nothing at
     `<commit>`") is an edit-list item (step 7).
   - **Each flagged line is an open decision** (step 6): rewrite it so it fails first and still
     proves the scope (show the rewrite; when it only reads, run it the same way first and offer it
@@ -286,8 +315,8 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
     rewrite that cannot be run under the rule above is offered marked "not run (<reason>)"), mark
     it as a guard of unchanged behavior when the line checks behavior that must not change (the
     line gains "(guards unchanged behavior)"), keep it with a reason recorded under Decisions, or
-    drop it. Record each command run, its commit and its result under "Checked and current" in
-    Agent notes.
+    drop it. Record each command run, its commit and its result (exit status and at most a short
+    output quote, under the same withholding rule) under "Checked and current" in Agent notes.
     **Forks-only mode:** a rewrite that step 3 ran and saw fail is a routine call, and so is the
     guard mark when the line checks behavior that must not change. When neither fits (a rewrite
     that could not be run included), keeping the line with a reason or dropping it is a fork, and
@@ -462,8 +491,8 @@ Then ask every open decision, in rounds of at most 4 questions:
 
 - each open decision from step 3, with what happens today as one option where it applies;
 - each Done means line step 3 flagged as already passing, quoting the command, the commit and the
-  output: rewrite it (the rewrite shown), mark it as a guard of unchanged behavior, keep it with a
-  reason, or drop it;
+  output as step 3's "Judge" allows (a credential-like output withheld): rewrite it (the rewrite
+  shown), mark it as a guard of unchanged behavior, keep it with a reason, or drop it;
 - the split: approve it as shown, change it, or no split. When the split is proposed because the
   ticket needs more than one PR, the question says so and that each child is one PR, and that a
   ticket left whole closes on its first PR's merge unless each PR uses `Refs`. When the parent
@@ -669,8 +698,8 @@ the items not applied, and leave the `groomed` label off (item 5).
    ticket that passes, when its team has an active `groomed` label, and to the groomed ticket only
    when its edit-list item was approved (in forks-only mode, applied). A ticket that fails keeps no
    new label, and the report names its gap. The label writes are separate calls, so they can stop
-   part way, and a call can land even when it returns an error. So after the label writes, or after an
-   error during them, read back with `get_issue` the groomed ticket and every child this run filed,
+   part way, and a call can land even when it returns an error. So after the label writes, or after
+   an error during them, read back with `get_issue` the groomed ticket and every child this run filed,
    and report each one's labels as read (step 8). Name under Needs you each ticket this item meant
    to label that lacks `groomed` after the read-back: `dv:director-mode` skips grooming a ticket
    that has the label.
@@ -757,8 +786,9 @@ when there were none, "Decided without asking: none."
   and spin-offs I approved, and a milestone only on my yes to it. Do not edit or comment on any
   other ticket; a follow-up on a neighbor goes under "After the merge" or becomes a spin-off.
 - No file edits, branches or commits: grooming reads repos and writes only to Linear. The one
-  file write is step 3's temporary copy of a commit ("Done means fails first"), made outside the
-  repo in a new empty directory and removed once step 6 has settled every flagged line.
+  file write is step 3's private copy of a commit ("Done means fails first"), made with `mktemp -d`
+  outside the repo and removed, by its exact path and only under its own name, once step 6 has
+  settled every flagged line.
 - Do not put secrets or credentials in a ticket.
 - A ticket with nothing stale, open or missing, that already has its Size with points and an
   estimate that matches them (a parent whose points sit on its children has none, and is not

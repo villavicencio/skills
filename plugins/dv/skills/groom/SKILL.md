@@ -4,7 +4,7 @@ description: "Groom one Linear ticket before anyone works it. Checks it against 
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.32.0"
+  version: "0.33.0"
 ---
 
 # /groom — groom a Linear ticket before work starts
@@ -66,13 +66,19 @@ existing scope. Decide each one yourself: take the option you would have marked
 "(Recommended)" had you asked. When you cannot tell whether a call is a fork, treat it as one and
 ask.
 
-**Recording.** Each routine call becomes an add item under Decisions, in this form, with today's
-date: "<decision>. Decided by dv:groom (forks-only), <date>". A fork keeps the default form:
-"<decision>. <my name>, <date>". A fork the Director answered for me (below) names both:
-"<decision>. Director (<its ListAgents name>) for <my name>, <date>". Size and its points count
-as a routine call when they are set or changed, and so does the no-split verdict (step 4), except
-for a ticket pointed 13. A routine call that settles a Decisions line marked open
-replaces that line, as step 6 says for an answer.
+**Recording.** A routine call is recorded only when it changes the ticket or settles an open
+decision: one that step 3 collects, a spin-off, or the split. Such a call becomes an add item
+under Decisions, also when it settles an open decision by keeping what is there, in this form,
+with today's date: "<decision>. Decided by dv:groom (forks-only), <date>". Any other call that
+leaves something as it was is not recorded, even when you weighed changing it: a title, priority,
+label, section or line you kept, that no step 3 check or Decisions line put in question, gets no
+Decisions line (not "Title keeps its [scratch] prefix"). A fork keeps the default form, whatever
+the answer, a keep included: "<decision>. <my name>, <date>". A fork the Director answered for me
+(below) names both: "<decision>. Director (<its ListAgents name>) for <my name>, <date>". Size and
+its points are recorded when they are set or changed. So is the no-split verdict (step 4), unless
+the ticket already records the same verdict; for a ticket pointed 13 it is my answer to a fork
+instead (step 4). Each is a verdict, not a field left as it was. A routine call that settles a
+Decisions line marked open replaces that line, as step 6 says for an answer.
 
 **From a worktree session: clear-cut forks go to the Director first.** When this runs in a
 worktree session with `dv:manager-mode` on, send each fork to the Director that manager-mode
@@ -418,8 +424,9 @@ finding in one sentence; from a worktree session, each fork goes to the Director
 worktree session: clear-cut forks go to the Director first", under "Forks-only mode"), and only
 those it does not answer are asked here. If there are no forks, say so in one line, ask nothing
 and go to step 7. Each answer to a fork is recorded in the default form, or in the Director form
-when the Director answered it. Each routine call is recorded in the
-"Decided by dv:groom (forks-only)" form (see "Forks-only mode" above). Your call to file a
+when the Director answered it. Each routine call that "Recording" (under "Forks-only mode")
+says to record is recorded in the "Decided by dv:groom (forks-only)" form; one that leaves
+something as it was is not. Your call to file a
 spin-off stands as the approval to create it with what the proposal showed (folding one in is a
 fork and is asked), subject to step 5's
 rule that a spin-off with an incomplete duplicate search is not filed. A spin-off whose duplicate
@@ -659,7 +666,8 @@ Do not ask whether to start the work and do not start it: starting is a separate
 
 **Forks-only mode:** under item 3, "what changed in the ticket" lists each edit-list item that
 landed, one line each, and any that did not (step 7 stops on a failed write). End the report
-with a short list headed "Decided without asking", one line per routine call ("<decision>: <option taken>"), the same calls recorded under Decisions (when the
+with a short list headed "Decided without asking", one line per routine call that "Recording"
+says to record ("<decision>: <option taken>"), the same calls recorded under Decisions (when the
 ticket's text is left unchanged under the last Rules bullet, they are listed and not recorded);
 when there were none, "Decided without asking: none."
 

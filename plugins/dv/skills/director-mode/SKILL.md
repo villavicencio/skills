@@ -4,7 +4,7 @@ description: "Switch this session into Director Mode, the mode for the home sess
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.34.0"
+  version: "0.35.0"
 ---
 
 # /director-mode — the home session directs; worktree managers hire
@@ -166,7 +166,8 @@ reached you, reply `Ask David, VIL-N, Qk: too late` and relay nothing: the sessi
 ### At each seam and each closeout: name what is newly unblocked
 
 A seam is a PR merged, a closeout note received, the start of the session, or my asking what is
-next. At each one:
+next. At the start of the session, run the sweep (the last bullet) before the first bullet, so
+the list of newly unblocked tickets reflects any blocker the sweep moved to Done. At each one:
 
 - For each ticket that finished since the last seam, read the tickets it blocks (the ticket's
   relations; in Linear, `get_issue` with `includeRelations`). At the start of the session, read
@@ -175,6 +176,51 @@ next. At each one:
   link.
 - Skip a ticket labeled `someday` unless I ask for those. A ticket in Backlog stays there until
   its pull condition is met; name it only if that condition now holds, and say so.
+- **At the start of the session only, sweep for stale states.** A ticket can stay In Progress or
+  In Review for weeks after its last linked PR merged or was closed. Correct those now:
+  1. List the tickets in this repo's project (the project "Recommend which worktree sessions to
+     start next" uses) that are In Progress or In Review, by the state names
+     `list_issue_statuses` returns for the team. Skip a ticket labeled `someday` and a ticket in
+     Backlog. If a state is missing, say so and sweep nothing. Follow the `list_issues` cursors:
+     while a reply has `hasNextPage: true`, call again with the same arguments plus that reply's
+     `cursor`. The list is complete only when a reply says `hasNextPage: false`. A page that
+     fails gets one retry with the same cursor; if it fails again, the scan is incomplete: move
+     nothing and report an incomplete scan.
+  2. For each ticket, find its linked PRs: the GitHub pull request URLs among its `get_issue`
+     attachments. Linear attaches a PR whose branch name or description names the ticket, so an
+     attachment is an exact link. Read each with `gh pr view <url> --json state,isDraft,body`. If
+     `get_issue` or a `gh pr view` fails, the ticket is unreadable: leave it and name it.
+  3. Flag a ticket that has at least one linked PR and no open PR, a draft counting as open. A
+     ticket with no linked PR is named in the report and not moved: it may be In Progress with
+     no PR on purpose.
+  4. For each flagged ticket, run the Ownership lookup in `dv:manager-mode`'s "Before the first
+     brief: check the ticket" (don't copy it here). A live session found by its ListAgents,
+     branch and worktree lookups owns the ticket. A merged or closed PR, an assignee, or a
+     leftover branch or worktree with no live session does not. Leave an owned ticket as it is
+     and name its owner. The lookup's `gh pr list` results are a guard only: if they include an
+     open or draft PR, leave the ticket and name that PR, even when it is not an attachment. A
+     lookup result does not flag or move a ticket. If a lookup fails or cannot run, or this
+     session cannot see other sessions (under Codex, `list_agents` lists only its own agents),
+     the owner is unknown: leave the ticket and say so.
+  5. Move each other flagged ticket. With no owner, no work is continuing now, so the global
+     state rule gives Done or Todo. It goes to Done when a merged linked PR's description closes
+     it: a closing word on the list in dotfiles `docs/agents/tickets.md`, "Linking a PR to a
+     ticket without closing it" (Linear is what closes the ticket), followed by this ticket's
+     id, such as `Fixes VIL-N`. Only the description counts, not the PR title. A non-closing
+     word such as `Refs VIL-N` does not close it. Any other flagged ticket goes to Todo: one
+     whose merged PRs all lack a closing word, or whose PRs were all closed unmerged. Just
+     before the state change, read the ticket's state, labels and attached PRs again and run
+     the Ownership lookup again. If the state or an attached PR changed since step 2 (a PR
+     opened or went to draft, or the state moved), the ticket is now labeled `someday` or in
+     Backlog, or the lookup now finds an owner or an open or draft PR, or cannot run, leave the
+     ticket and name it. This guard covers the state change only. After the state change
+     succeeds, write one line as a comment on the ticket saying why, naming the PR, such as
+     "Moved to Todo: PR #12 merged with Refs, not a closing word, and no PR is open." If the
+     comment write fails, leave the state as moved and name the ticket in the report as "moved,
+     comment not written".
+  6. Report one line per moved ticket: its id as a link, the old and new state, and the PR. Name
+     each ticket left as it is (owned, an open PR found by the lookup, owner unknown, no linked PR, unreadable, changed before the state change)
+     with the reason.
 
 ### Recommend which worktree sessions to start next
 
@@ -546,6 +592,10 @@ reopen the ticket only if it moved to Done. Don't change a `someday` ticket's st
 Backlog ticket there until its pull condition is met and work starts. Use the state names `list_issue_statuses` returns for the ticket's
 team; if a state is missing, say so and leave the ticket as it is.
 
+At the start of the session, the sweep in "At each seam and each closeout" corrects the tickets
+still In Progress or In Review whose linked PRs are all merged or closed. It follows the global
+state rule only, whatever a repo's own meanings for a state.
+
 ## Reporting to me
 
 Highlights reach me as they happen ("Relay highlights to me"). In a fuller report, lead with
@@ -560,7 +610,7 @@ recommendation for a worktree session. Tell me in one line that you have switche
 
 ## Maintaining this text
 
-Last reviewed: 2026-11-24.
+Last reviewed: 2026-11-25.
 
 - The dotfiles project's agent owns this text. Changes go through a pull request to this
   skills repository, like any other skill.

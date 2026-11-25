@@ -1,79 +1,83 @@
 # dv — v0.36.0
 
-Minor release. A Director that turns on announces itself to the live worktree sessions, and each
-session re-verifies the Director on that announcement; `dv:closeout` probes again after a failed
-note send. `dv:director-mode`, `dv:manager-mode` and `dv:closeout` change. The other thirteen
-skills have no behaviour changes; their version moves to `0.36.0` only because the suite is
-released as one plugin.
+Minor release. The Director decides routine calls for David instead of relaying them one at a
+time, holds the few that are his until the end of the work without stopping it, and every ask that
+does reach him stands on its own. Three skills change: `dv:director-mode`, `dv:manager-mode` and
+`dv:groom`. The other thirteen skills have no behaviour changes; their version moves to `0.36.0`
+only because the suite is released as one plugin.
 
-Numbering: 0.36.0 follows 0.35.1, in which the Director stopped sending a SIGTERM to end a
-finished worktree session and asks you to close its chat in Orca instead. 0.36.0 keeps that
-change.
+Numbering: 0.36.0 follows 0.35.1, which had the Director ask David to close a finished worktree
+session's chat in Orca instead of sending a SIGTERM.
 
-Why: a restarted Director comes back under a new name and address, and a worktree session learned
-of it only when its next send to the old address failed. On 2026-11-25 in review-stack, one
-session's highlights went to a stale address, and another's PR hand-back waited about 5 minutes,
-held, with David unaware (VIL-1141).
+Why: on 2026-11-24 the dotfiles Director relayed about a dozen decisions to David, most of them
+whether to run a third, fourth or fifth MergeWren fix round or to decline a finding. He agreed with
+the Director's recommendation in nearly every case. The clear-cut grant of 2026-11-23 ruled those
+out ("never one about a merge, a delete or a MergeWren gate"), so every one reached him, often after
+he had stepped away, and several asks didn't say which option to pick (VIL-1034).
 
 ## Changed
 
-- **`dv:director-mode`, new "Announce yourself to the worktree sessions".** When the mode turns
-  on (not when it was already on), and only in the main checkout, the Director sends each live
-  worktree session one line that starts `Director announcement,` and asks for no reply. A live
-  worktree session is a ListAgents peer named after a linked worktree's folder, then `-`, then a
-  suffix with no `-` in it (the same test "Merge and clean up" uses). The on reply gains an
-  `Announced to:` line that names the sessions, any failed send, or why nothing was announced
-  (ListAgents or `git worktree list` failed, or Codex).
-- **`dv:director-mode`, "On, off, and standing" and "Answer a 'Director check' probe".** The on
-  bullet points at the announcement. The probe section says a probe follows each announcement and
-  that held highlights, questions and notes may follow the answer.
-- **`dv:manager-mode`, "Highlights".** A new paragraph: on a `Director announcement,` message, the
-  session probes its sender, even when a Director is already verified, an earlier result was
-  ambiguous or found none, or that sender was probed before. Only a sender whose name fits the
-  candidate name (the main checkout folder's basename, then `-`, then a suffix) is probed. When
-  its answer passes, it becomes the Director even if the one verified before still answers: the
-  latest announcer wins, and two passing answers are not ambiguous in that case. The held
-  highlights, each message whose send failed, and each held question then go to it (not a question
-  already asked of David). What the old Director still owes a reply to moves at the same time: a
-  question waiting for its answer, unless it has gone to David (same Qk, a new `Sent:` time and a
-  new 10-minute wait), and a PR handoff sent to it with no reply yet. From the switch on, the old
-  Director's answers no longer count. An announcer that answers with another path or stays silent
-  changes nothing and holds up no other check. The verification rules point at the announcement as
-  their one exception. A message whose send failed is now held for the next Director verified; a
-  failed question counts its 10 minutes from the failed send. Highlights are held, except under
-  Codex, while no Director can be verified; questions are not.
-  Last reviewed 2026-11-25.
-- **`dv:closeout`, "Deliver the note", step 5.** If the note's send fails (SendMessage returns an
-  error), the session probes again from scratch, steps 1 to 4, and sends the note to the Director
-  that passes. A second failed send stops: the note is reported not sent. After a send that
-  succeeded, neither the probe nor the note is resent. The outcomes list after step 5, and its copy in
-  "Step 5 — Reply", gain "send failed and probe sent again". The test notes record the two SendMessage
-  errors seen on 2026-11-25.
-- **A failed send is a failure, never silence** (all three skills). The rule is stated once, in
-  `dv:closeout`'s "Deliver the note", step 2: a SendMessage that returns an error was not
-  delivered, and a probe with no answer 10 minutes after it was sent has failed too. A candidate
-  whose probe failed leaves the candidates for that round, as if ListAgents had not listed it: it
-  doesn't count toward the three and isn't probed again in that round; with none left, nothing is
-  sent, and an answer that comes after its probe failed changes nothing. A background timer (such as `sleep 600`) brings a turn back after the 10 minutes, and is
-  stopped once every probe sent has an answer. Step 4's silence lasts at most 10 minutes. When
-  every probe's send failed, the reply says the note is not sent, with each error; otherwise it
-  names the probes sent and each failed send. A new round starts only after the note's send
-  fails. `dv:manager-mode` points at that rule for its probes (a round there is one
-  verification). A failed probe starts no new verification at once; when a verification ends
-  with no Director and at least one probe failed, a question held while it ran goes to you then,
-  and the next highlight or question starts a new verification, during which a question is held
-  as it is while any probe waits. No
-  candidate left counts as "no candidate", and an announcer whose probe fails changes nothing.
-  `dv:director-mode` names a failed announcement send without resending it and lists only the
-  sessions it reached on its `Announced to:` line. When a probe answer's send fails, it sends the
-  answer once more to the address ListAgents lists now for that session, then tells you in one
-  line if that fails too or the session isn't listed.
-- **README.** The version, and the `dv:manager-mode` and `dv:closeout` entries, which described
-  the old verification, waiting and outcome rules.
+- **`dv:director-mode`, "Answer a worktree session's question"** (was "Answer a clear-cut
+  question"). The one copy of the split David set on 2026-11-24:
+  - **The Director decides, without asking:** fix rounds past the session's own two, and the
+    declines it is asked about (another round, or declining a finding with a reason, once it has
+    read the finding and its code at the PR's head; past the two-round budget in dotfiles
+    `docs/agents/code-review.md`, the open list comes to the Director, not David). Rounds 1 and 2
+    stay the session's own call under that file's triage rule; merges (after MergeWren and the unresolved-threads check, as before); deletes (only
+    the kinds the global standing approvals cover, by their guarded procedures; no new kind of
+    delete); cutting scope (reported to David as a highlight); and any other question that is
+    clear-cut, under the old conditions less the ones the named kinds replace.
+  - **Held for David, never in the way of progress:** declining a high or critical finding on code
+    that deletes, handles secrets or sits on another safety boundary, and anything that spends
+    money or reaches outside. The Director names a way forward that doesn't need the decision yet
+    (fix the finding after all, move the risky part to its own ticket and out of the PR, or park it
+    behind a flag that stays off), the rest of the work keeps moving, and the held items go to
+    David together once the ticket's other work is done: the session asks them in one interview
+    and the Director relays them as one message. With no Director's answer, the session takes a
+    way forward that needs no one's yes (fix the finding; don't spend or reach outside yet).
+  - The forks `dv:groom` sends straight to David (a split as grooming's verdict, a target, a pull
+    condition, a new milestone) stay his.
+  - A new reply, `Held for David, VIL-N, Qk: <the way forward>`, beside `Answer` and `Ask David`.
+- **`dv:director-mode`, "Every ask that reaches me stands on its own"** (new). Every ask names the
+  chat it is in (ticket id and PR), the option to pick by its number and label, one line of why,
+  and the opposing view in one line. The Director reads the session's dialog first
+  (`orca agent list --worktree "path:<worktree path>"`, then `orca agent read <session id>`) and
+  says whether a custom answer is needed. The relay of a decision highlight, closeout `WAITING ON`
+  items and the Director's fuller reports use it.
+- **`dv:director-mode` description** is 1,011 characters by VIL-1143's measure (was 1,027), under
+  the Agent Skills spec's 1,024 limit. It now names the routine calls the Director decides, and
+  drops the stale-PR hiring sentence, which the body still states.
+- **`dv:manager-mode`, "Questions go to the Director first"** (was "Clear-cut questions go to the
+  Director first"). Points at the director-mode split instead of restating it. The question
+  carries the PR and numbered options. On a fix round, a decline, a merge, a delete or cutting
+  scope, the session accepts whichever option the Director names; a decline of a high or critical
+  finding on a safety boundary counts as held. A `Held for David` reply: the session takes the way
+  forward, keeps working, and asks David every held question together at the end, with one
+  decision highlight to the Director; a held question moved to its own ticket is also written on
+  that ticket as an open decision. Any reply other than `Answer` or `Held for David` counts as
+  "ask David", except that a held kind with no Director's answer (`too late`, `Ask David`, no
+  reply, no Director) takes a way forward that needs no one's yes and waits for the end. The "Limits" bullet says the Director decides inside the
+  merge rules, the standing approvals and the MergeWren gates, and changes none of them.
+- **`dv:manager-mode`, "Decisions and escalation".** Drops "cutting scope is never clear-cut".
+  After two fix rounds, each open finding goes to a verified Director as a question, where
+  code-review.md's "Fix rounds" says to bring David the list (that text changes in dotfiles
+  separately, VIL-1058); with no verified Director the list still goes to David. Declining a high
+  or critical finding on safety-boundary code is held in any round.
+- **`dv:manager-mode`, "Every ask to me stands on its own"** (new bullet). The session's own asks
+  to David follow director-mode's self-contained form.
+- **`dv:groom`, "From a worktree session: forks go to the Director first"** (was "clear-cut forks
+  go …"). Drops "cutting scope never is": cutting scope is the Director's call. A fork the Director
+  holds is recorded under Decisions as open and doesn't stop grooming. A split, a target, a pull
+  condition or a new milestone still comes straight to David.
+- **"Maintaining this text".** `dv:manager-mode` last reviewed 2026-11-25.
+- **README.** The `dv:manager-mode`, `dv:director-mode` and `dv:groom` entries state the new split.
 
 ## Decisions
 
-- No ListAgents check before every send to the Director: a send to a stale address already fails
-  (David Villavicencio, 2026-11-25).
-- After an announcement, the latest announcer whose probe answer passes is the Director, even if
-  the one verified before still answers (David Villavicencio, 2026-11-25).
+- High or critical declines on safety-boundary code, and spending money or reaching outside, go to
+  David but must not stop progress; route around them and present them together at the end.
+  Merges and deletes: the Director decides. Cutting scope: the Director decides and informs David
+  (David Villavicencio, 2026-11-24).
+- Every relayed ask names the chat and the exact option to pick (David Villavicencio, 2026-11-24).
+- The director-mode description fix (VIL-1143) rides in this release (David, relayed by the
+  Director, 2026-11-25).

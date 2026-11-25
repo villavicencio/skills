@@ -6,8 +6,9 @@ note send. `dv:director-mode`, `dv:manager-mode` and `dv:closeout` change. The o
 skills have no behaviour changes; their version moves to `0.36.0` only because the suite is
 released as one plugin.
 
-Numbering: 0.36.0 follows 0.35.0, which let the Director sweep stale In Progress and In Review
-tickets at session start.
+Numbering: 0.36.0 follows 0.35.1, in which the Director stopped sending a SIGTERM to end a
+finished worktree session and asks you to close its chat in Orca instead. 0.36.0 keeps that
+change.
 
 Why: a restarted Director comes back under a new name and address, and a worktree session learned
 of it only when its next send to the old address failed. On 2026-11-25 in review-stack, one

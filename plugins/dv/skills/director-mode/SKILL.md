@@ -4,7 +4,7 @@ description: "Switch this session into Director Mode, the mode for the home sess
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.34.0"
+  version: "0.35.0"
 ---
 
 # /director-mode — the home session directs; worktree managers hire
@@ -175,6 +175,34 @@ next. At each one:
   link.
 - Skip a ticket labeled `someday` unless I ask for those. A ticket in Backlog stays there until
   its pull condition is met; name it only if that condition now holds, and say so.
+- **At the start of the session only, sweep for stale states.** A ticket can stay In Progress or
+  In Review for weeks after its last linked PR merged or was closed. Correct those now:
+  1. List the tickets in this repo's project (the project "Recommend which worktree sessions to
+     start next" uses) that are In Progress or In Review, by the state names
+     `list_issue_statuses` returns for the team. Skip a ticket labeled `someday` and a ticket in
+     Backlog. If a state is missing or the list can't be read, say so and sweep nothing.
+  2. For each ticket, read its linked PRs: `get_issue` and its attachments, keeping those whose
+     URL is a GitHub pull request, then `gh pr view <url> --json state,isDraft,body` for each. If
+     a read fails, leave the ticket and name it.
+  3. Flag a ticket that has at least one linked PR and no open PR, a draft counting as open. A
+     ticket with no linked PR is named in the report and not moved: it may be In Progress with
+     no PR on purpose.
+  4. For each flagged ticket, run the Ownership lookup in `dv:manager-mode`'s "Before the first
+     brief: check the ticket" (don't copy it here). A live session found by its ListAgents,
+     branch and worktree lookups owns the ticket. A merged or closed PR, an assignee, or a
+     leftover branch or worktree with no live session does not. Leave an owned ticket as it is
+     and name its owner. If a lookup fails or cannot run, the owner is unknown: leave the ticket
+     and say so.
+  5. Move each other flagged ticket. With no owner, no work is continuing now, so the global
+     state rule gives Done or Todo. It goes to Done when a merged linked PR's description closes
+     it: a closing word GitHub reads (close, fix or resolve, in any form) followed by this
+     ticket's id, such as `Fixes VIL-N`. Only the description counts, not the PR title.
+     `Refs VIL-N` does not close it. Any other flagged ticket goes to Todo: one whose merged PRs
+     all lack a closing word, or whose PRs were all closed unmerged. Comment one line on the
+     ticket saying why, naming the PR, such as "Moved to Todo: PR #12 merged with Refs, not a
+     closing word, and no PR is open."
+  6. Report one line per moved ticket: its id as a link, the old and new state, and the PR. Name
+     each ticket left as it is (owned, no linked PR, unreadable) with the reason.
 
 ### Recommend which worktree sessions to start next
 
@@ -546,6 +574,10 @@ reopen the ticket only if it moved to Done. Don't change a `someday` ticket's st
 Backlog ticket there until its pull condition is met and work starts. Use the state names `list_issue_statuses` returns for the ticket's
 team; if a state is missing, say so and leave the ticket as it is.
 
+At the start of the session, the sweep in "At each seam and each closeout" corrects the tickets
+still In Progress or In Review whose linked PRs are all merged or closed. It follows the global
+state rule only, whatever a repo's own meanings for a state.
+
 ## Reporting to me
 
 Highlights reach me as they happen ("Relay highlights to me"). In a fuller report, lead with
@@ -560,7 +592,7 @@ recommendation for a worktree session. Tell me in one line that you have switche
 
 ## Maintaining this text
 
-Last reviewed: 2026-11-24.
+Last reviewed: 2026-11-25.
 
 - The dotfiles project's agent owns this text. Changes go through a pull request to this
   skills repository, like any other skill.

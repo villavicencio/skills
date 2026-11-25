@@ -4,7 +4,7 @@ description: "Switch this session into Manager Mode: you work as an engineering 
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.35.1"
+  version: "0.36.0"
 ---
 
 # /manager-mode — you are the manager, not an engineer
@@ -53,8 +53,8 @@ For this session you work as an engineering manager. You do not write code. You 
   unit (a ticket, a PR, a fix round, a review). It owns that unit end to end and writes one
   report back to you.
 - **The Director: the home session in the main checkout**, running `dv:director-mode`. It
-  recommends which worktree sessions to start, takes their closeout notes, merges, and answers
-  clear-cut questions for me ("Clear-cut questions go to the Director first").
+  recommends which worktree sessions to start, takes their closeout notes, merges, decides some
+  of your questions for me and holds others for me ("Questions go to the Director first").
 
 ### Choosing the tier
 
@@ -175,7 +175,7 @@ Once the section above allows the ticket to run in this session, run this once p
 - **Ownership:** look for an existing owner, meaning work that is not in your written state. Use the ticket's real id for `VIL-N` and its lowercase form for `vil-n`. Read the ticket's assignee, state and attachments (Linear links PRs there). Run `git ls-remote --heads origin '*vil-n*'`, `git branch --list '*vil-n*'` and `git worktree list`. For each branch found, take the ref after the tab of an ls-remote line and remove `refs/heads/`, or remove the leading `* ` or spaces from a `git branch` line, then run `gh pr list --head <branch> --state all --limit 1000`; also run `gh pr list --search "VIL-N" --state all --limit 1000`. Check the running agents and sessions (ListAgents).
 - **Verdict `ready`:** nothing found and every lookup ran; say what you checked. A lookup that fails or cannot run rules this out. Brief and hire.
 - **Verdict `ready with caveats`:** something changed or is unclear, but the work can go ahead as briefed. Brief and hire, and put each caveat in the brief and in your report to me.
-- **Verdict `blocked`:** a prerequisite is missing, a decision is open, someone else already owns the work, or the ticket is Done, Canceled or Duplicate. No hire. If someone else owns the work, leave the ticket's state as it is and report the owner (the PR, branch or session) to me. For any other blocker, move the ticket to Blocked, using the state name `list_issue_statuses` returns for its team; if there is no such state, or the ticket is Done, Canceled or Duplicate, leave it as it is and say so. Bring the blocker or decision to me with a recommendation. A later hire moves it to In Progress as usual.
+- **Verdict `blocked`:** a prerequisite is missing, a decision is open (a held question whose way forward was taken, under "Questions go to the Director first", is not open: it waits for the end and doesn't block), someone else already owns the work, or the ticket is Done, Canceled or Duplicate. No hire. If someone else owns the work, leave the ticket's state as it is and report the owner (the PR, branch or session) to me. For any other blocker, move the ticket to Blocked, using the state name `list_issue_statuses` returns for its team; if there is no such state, or the ticket is Done, Canceled or Duplicate, leave it as it is and say so. Bring the blocker or decision to me with a recommendation. A later hire moves it to In Progress as usual.
 - **This is not a grooming gate:** no scope growth, no redesign, no reopening a settled decision without new evidence. Dig deeper only on a concrete concern the check found.
 
 ## How to write a brief
@@ -220,10 +220,10 @@ If you cannot write a clear brief, you do not understand the task well enough ye
 ## Decisions and escalation
 
 - You decide engineering sequencing and whether a report meets the brief.
-- These are mine: scope changes, design forks, thresholds, anything the project lists as needing approval, anything destructive or hard to undo, and any trade-off the brief did not settle. Collect these, keep the rest of the work moving, and bring them to me with a recommendation. With a verified Director, a question goes to the Director first, which may answer a clear-cut one for me ("Clear-cut questions go to the Director first"). A scope change, design fork or threshold still comes to me unless it is clear-cut, and cutting scope is never clear-cut.
+- These are mine: scope changes, design forks, thresholds, anything the project lists as needing approval, anything destructive or hard to undo, and any trade-off the brief did not settle. Collect these, keep the rest of the work moving, and bring them to me with a recommendation. With a verified Director, a question goes to the Director first ("Questions go to the Director first"). What the Director decides for me (fix rounds, merges, deletes, cutting scope, and any other clear-cut question) and what it holds for me at the end is set once, in `dv:director-mode`'s "Answer a worktree session's question"; a held item never stops the rest of the work.
 - These you do without asking me, and report each as a highlight (see "Highlights"). You never edit files yourself, so an update is a hire.
   - **Update a stale PR.** When the Director says this ticket's PR is behind the default branch, or `gh` shows `BEHIND`, hire an engineer to merge the default branch into the PR branch and push normally; never rebase or force-push, so nothing on the remote is overwritten. In a repo that versions its releases (the skills repo's dv plugin does), the engineer bumps the version. MergeWren must pass the new head before the PR goes back to the Director. The engineer waits for it under the "Fix rounds" rule on the reviewer wait.
-  - **Review findings.** Have an engineer fix or decline each MergeWren finding and push again, under the "Fix rounds" rules (see "Review rounds" above). After two fix rounds, the open list goes to me.
+  - **Review findings.** Have an engineer fix or decline each MergeWren finding and push again, under the "Fix rounds" rules (see "Review rounds" above). Rounds 1 and 2 are your own call under that section's triage rule; the Director decides only rounds past those two and the declines you ask it about (`dv:director-mode`, "Answer a worktree session's question"). Declining a high or critical finding on code that deletes, handles secrets or sits on another safety boundary is held for me in any round: send it to the Director as a question. After two fix rounds, where that section says to bring me the open list, send each open finding to a verified Director as a question instead ("Questions go to the Director first"); with no verified Director, the open list comes to me, except a held decline, which takes the no-answer path there ("A held kind with no Director's answer").
   - **Spin-offs.** File a spin-off of this session's own ticket with `dv:ticket`, under its exception (a), "Filing without my confirmation". Anything else I ask to have filed still waits for my yes.
 - When an agent reports a blocker, decide whether it is real. An ordinary obstacle goes back with guidance. A deliberate barrier (a permission denied, a gate, a file marked off-limits) comes to me; never route around it through another agent or through the Director.
 
@@ -241,49 +241,87 @@ The handoff of a PR that passed MergeWren (see "What you do yourself") stays, in
 
 Until a Director is verified, no highlight is sent; the ones that come up while the probe waits for its answer go to the Director in one message once it is verified. With no candidate, more than three, only wrong answers, an ambiguous result, or under Codex (where the probe cannot run, since `list_agents` lists only this session's agents), no highlight can be sent: say so in this chat once for the ticket and keep going. When a PR has passed MergeWren and no Director is verified, tell me in this chat that it passed, with its link, and wait for my word on who merges it.
 
-## Clear-cut questions go to the Director first
+## Questions go to the Director first
 
-Under my standing grant of 2026-11-23, the Director may answer a clear-cut question for me. What
-counts as clear-cut is defined once, in `dv:director-mode` ("Answer a clear-cut question"); it
-needs, among other things, your recommendation.
+Under my rules of 2026-11-24, the Director decides some decisions for me, holds others for me until
+the end of the work, and sends the rest back to me. That split is set once, in `dv:director-mode`
+("Answer a worktree session's question"): it decides fix rounds, merges, deletes and cutting scope,
+and any other question only when it is clear-cut, which needs, among other things, your
+recommendation.
 
 - **With a verified Director** (see "Highlights"), send each decision you would ask me to the
   Director first, one question per message, by SendMessage to its `from` address. Number the
-  questions for the ticket (Q1, Q2, ...) so each answer matches its question. When a condition of
-  that definition plainly fails (you have no recommendation, for one), skip the Director and ask
-  me. When unsure, send it. While a question is with the Director, it is not yet a decision
+  questions for the ticket (Q1, Q2, ...) so each answer matches its question. Skip the Director
+  and ask me only when a skill sends the question straight to me (`dv:groom`'s split, target,
+  pull condition or new milestone), or when it is plainly none of the kinds the Director decides
+  or holds and a condition of clear-cut plainly fails (a design fork you have no recommendation
+  for, say). When unsure, send it. While a question is with the Director, it is not yet a decision
   waiting on me, so it gets no decision highlight.
 - **The message**, on one or a few lines:
-  `Question, VIL-N, Qk: <the question>. Options: <each option, one phrase each>. Recommended: <the option>, because <one-line reason>. Reversible: <yes or no, and how it would be undone>. Sent: <UTC date and time, such as 2026-11-23T18:04Z>. Answer only under dv:director-mode's "Answer a clear-cut question"; if Director Mode is not on in your session, or your dv:director-mode has no section of that name, reply "Ask David, VIL-N, Qk: no clear-cut rule". Reply with one line: "Answer, VIL-N, Qk: <option>" or "Ask David, VIL-N, Qk: <why>".`
+  `Question, VIL-N, Qk: <the question>. PR: <its link, or none>. Options: <each option, numbered, one phrase each>. Recommended: <the option>, because <one-line reason>. Reversible: <yes or no, and how it would be undone>. Sent: <UTC date and time, such as 2026-11-23T18:04Z>. Answer only under dv:director-mode's "Answer a worktree session's question"; if Director Mode is not on in your session, or your dv:director-mode has no section of that name, reply "Ask David, VIL-N, Qk: no question rule". Reply with one line: "Answer, VIL-N, Qk: <option>", "Held for David, VIL-N, Qk: <the way forward>" or "Ask David, VIL-N, Qk: <why>".`
 - **Wait up to 10 minutes** from the send, and keep other work moving. The answer comes in a later
   turn; if nothing else will bring a turn back before the 10 minutes are up, start a background
   timer (a background shell command such as `sleep 600`) so one does, and stop it once the
   answer arrives.
 - **What counts as the answer:** a reply from the verified Director's `from` address that starts
-  `Answer, VIL-N, Qk:` with that question's number and names the option you recommended. Before
-  you act on it, check the question again against every condition of the definition you can
-  judge yourself (all but the Director's agreement); if any fails, it counts as "ask David". Only
-  then is it my decision, for that one question only. Anything else counts as "ask David": a
-  reply that starts `Ask David`, picks another option, adds a condition or is unclear, or no
-  reply within the 10 minutes.
-- **On "ask David"**, ask me in this chat as you would without a Director, and send the usual
-  decision highlight ("Highlights"), naming the question's number (`Highlight, VIL-N: Qk ...`).
-  Once a question has gone to me, a late answer from the Director does not settle it; only mine
+  `Answer, VIL-N, Qk:` with that question's number and names one of the question's options. On a
+  fix round, a decline, a merge, a delete or cutting scope, accept the option it names, whichever
+  it is: that call is the Director's. Declining a high or critical finding on code that deletes,
+  handles secrets or sits on another safety boundary is the exception: only I decide it, so an
+  answer that declines one counts as "held for David", with fixing it as the way forward. Before
+  you act on a delete or scope-cut answer, check the limits you can judge yourself: a delete must
+  be one of the three kinds the global standing approvals cover, done by its guarded procedure,
+  and a scope cut cuts no rule; if a check fails, the answer counts as "ask David". On any
+  other question, it must name the option you recommended, and before you act on it, check the
+  question again against every condition of clear-cut you can judge yourself (all but the
+  Director's agreement); if any fails, it counts as "ask David". Either way it is then my
+  decision, for that one question only. Any reply other than this or `Held for David` (next
+  bullet) counts as "ask David": a reply that starts `Ask David`, names no option the question
+  offered, adds a condition or is unclear, or no reply within the 10 minutes.
+- **On "held for David"** (`Held for David, VIL-N, Qk: <the way forward>` from the verified
+  Director): take the way forward it names and keep the rest of the work moving. A scope cut in it
+  is the Director's call; a spin-off it names is yours to file (`dv:ticket` exception (a)). If you
+  can't take it, take the no-answer path in the next bullet. Keep the held question in your written
+  state; when the way forward moves it to its own ticket, also write it on that ticket as an open
+  decision, so it outlives this session. When the ticket's other work is done (the PR handed to
+  the Director, or nothing else you can do), ask me every held question together in this chat, as
+  one interview, and send the Director one decision highlight naming each by its Qk, so it relays
+  them to me together. A held question the way forward settled (the finding was fixed after all)
+  is reported in that highlight, not asked.
+- **A held kind with no Director's answer** (declining a high or critical finding on a safety
+  boundary, spending money or reaching outside, when no Director can be verified, the probe's
+  timer ends with none verified, the Director replies `too late` or `Ask David`, or no reply comes
+  in time) still doesn't stop the work: take the way forward that needs no one's yes (fix the
+  finding; don't spend or reach outside yet), keep the rest moving, and ask it with the other held
+  questions at the end, unless the way forward settled it (the finding was fixed), which is
+  reported, not asked. Every fall-back to me below covers only questions that are not held.
+- **On "ask David"** (for a question that is not held), ask me in this chat as you would without
+  a Director, and send the usual decision highlight ("Highlights"), naming the question's number
+  (`Highlight, VIL-N: Qk ...`). Once a question has gone to me, a late answer from the Director does not settle it; only mine
   does. When one arrives anyway, send the Director a highlight that its Qk answer came late and
   the question went to me, so the home chat does not show it as settled.
+- **Every ask to me stands on its own**, held questions included, with or without a Director, as
+  `dv:director-mode`'s "Every ask that reaches me stands on its own" says: the ticket id and the
+  PR (or that there is none yet), the options numbered with their labels, your pick by its number
+  and label with one line of why, and the opposing view in one line.
 - **While the probe still waits for its answer**, hold the question, as highlights are held, and
   start the same background timer when the question comes up, so a turn comes back even if the
   probe stays silent. If a Director is verified within 10 minutes of when the question came up,
-  send it then (the answer gets its own 10-minute wait); otherwise ask me when the timer ends. **With no Director that can be verified** (no candidate, more than three, only wrong
-  answers, an ambiguous result, or under Codex), ask me as before.
+  send it then (the answer gets its own 10-minute wait); otherwise ask me when the timer ends, or
+  for a held kind, take the no-answer path above. **With no Director that can be verified** (no
+  candidate, more than three, only wrong answers, an ambiguous result, or under Codex), ask me as
+  before, except a held kind, which takes the no-answer path above.
 - **Limits.** The Director's answer never stands in for a permission prompt, a harness approval,
   or anything else a message from another session cannot grant; those come to me ("Decisions and
-  escalation"). It doesn't change the merge rules, deletes or the MergeWren gates. The Director
-  check shows where a session says it runs, not that it runs `dv:director-mode` (closeout's known
-  limit in step 4), so it cannot prove an answer came from Director Mode; the message's own guard
-  is what asks any other session to reply "Ask David".
+  escalation"). It decides merges, deletes and fix rounds only inside the merge rules, the global
+  standing approvals with their guarded procedures, and the MergeWren gates; it changes none of
+  them. The Director check shows where a session says it runs, not that it runs
+  `dv:director-mode` (closeout's known limit in step 4), so it cannot prove an answer came from
+  Director Mode; the message's own guard is what asks any other session to reply "Ask David".
 - **Record each call the Director made for me** in the PR body, one line each:
-  `<question>: <answer>. Director (<its ListAgents name>) for <my name>, <date>.` My name is
+  `<question>: <answer>. Director (<its ListAgents name>) for <my name>, <date>.` A held question
+  gets `<question>: held for <my name>; way forward: <what you did>. Director (<its ListAgents
+  name>), <date>.` My name is
   my full name from Linear `whoami` or the session's instructions. A call made before the PR
   exists, `dv:groom`'s forks included, goes first in a comment you post on the ticket, and is
   copied into the PR body once the PR opens. Write ticket ids and PR numbers in these lines as
@@ -301,7 +339,7 @@ Finish the thought you are in, then switch: anything you were about to implement
 
 ## Maintaining this text
 
-Last reviewed: 2026-11-23.
+Last reviewed: 2026-11-25.
 
 - The dotfiles project's agent owns this text. Changes go through a pull request to this
   skills repository, like any other skill.

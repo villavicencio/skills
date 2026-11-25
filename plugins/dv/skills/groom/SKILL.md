@@ -4,7 +4,7 @@ description: "Groom one Linear ticket before anyone works it. Checks it against 
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.35.0"
+  version: "0.36.0"
 ---
 
 # /groom — groom a Linear ticket before work starts
@@ -80,14 +80,17 @@ the ticket already records the same verdict; for a ticket pointed 13 it is my an
 instead (step 4). Each is a verdict, not a field left as it was. A routine call that settles a
 Decisions line marked open replaces that line, as step 6 says for an answer.
 
-**From a worktree session: clear-cut forks go to the Director first.** When this runs in a
+**From a worktree session: forks go to the Director first.** When this runs in a
 worktree session with `dv:manager-mode` on, send each fork to the Director that manager-mode
-verifies (its "Highlights") before asking me, as manager-mode's "Clear-cut questions go to the
-Director first" says: its skip rule, its message format, one fork per message, its 10-minute
-wait, what counts as an answer, its hold while the Director check is pending, and its fall-back
-to me. The Director answers only a clear-cut fork (`dv:director-mode`, "Answer a clear-cut
-question"); cutting scope never is, and a split, a target, a pull condition or a fork that offers a
-new milestone (step 3, "Milestone"), which only I can settle, comes straight to me. Run no Director
+verifies (its "Highlights") before asking me, as manager-mode's "Questions go to the Director
+first" says: its skip rule, its message format, one fork per message, its 10-minute wait, what
+counts as an answer, its hold while the Director check is pending, and its fall-back to me. The
+Director decides a fork only under `dv:director-mode`'s "Answer a worktree session's question":
+cutting scope is its call, any other fork only when it is clear-cut, and a split, a target, a pull
+condition or a fork that offers a new milestone (step 3, "Milestone"), which only I can settle,
+comes straight to me. A fork it holds for me (`Held for David`) does not stop grooming: record it
+under Decisions as open, take the way forward the reply names, and manager-mode asks it at the end
+of the work with its other held questions. Run no Director
 probe of your own; if manager-mode has not sent its probe yet, it sends it before the first fork
 goes out. With no Director that can be verified, or for each fork whose answer doesn't count, ask
 me as step 6 says. Grooming goes on in the turn the last answer arrives.
@@ -421,8 +424,8 @@ the two are one unit, filed and edited in step 7 without a second approval.
 **Forks-only mode.** Give the findings list as above, and mark each routine call in it with the
 option you took. Then ask only the forks, in rounds of at most 4 questions, each starting with its
 finding in one sentence; from a worktree session, each fork goes to the Director first ("From a
-worktree session: clear-cut forks go to the Director first", under "Forks-only mode"), and only
-those it does not answer are asked here. If there are no forks, say so in one line, ask nothing
+worktree session: forks go to the Director first", under "Forks-only mode"), and only
+those it neither answers nor holds for me are asked here. If there are no forks, say so in one line, ask nothing
 and go to step 7. Each answer to a fork is recorded in the default form, or in the Director form
 when the Director answered it. Each routine call that "Recording" (under "Forks-only mode")
 says to record is recorded in the "Decided by dv:groom (forks-only)" form, and no other is. Your

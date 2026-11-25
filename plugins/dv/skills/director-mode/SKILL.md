@@ -1,10 +1,10 @@
 ---
 name: director-mode
-description: "Switch this session into Director Mode, the mode for the home session (the main checkout) while each ticket's worktree session runs dv:manager-mode and hires its engineers. The Director opens a ticket's worktree on request, relays the sessions' highlights, names tickets newly unblocked, recommends which sessions to start next and which can run in parallel, takes closeout notes, merges after MergeWren passes, ends a finished worktree session after checks, then cleans up, and keeps ticket states true. It hires for a ticket's work only to update a stale PR with no live session. Bare invocation turns it on, `off` turns it off; one line in a project's CLAUDE.md or AGENTS.md makes it standing. Use when the user says \"director mode\", \"be the director\", \"run the home session\", \"coordinate the worktree sessions\", \"open worktree VIL-N\", or \"director mode off\". NOT for one ticket's work (that is dv:manager-mode in the ticket's worktree), NOT for closing out a worktree (that is dv:closeout, run in the worktree)."
+description: "Switch this session into Director Mode, the mode for the home session (the main checkout) while each ticket's worktree session runs dv:manager-mode and hires its engineers. The Director opens a ticket's worktree on request, relays the sessions' highlights, decides their routine calls (fix rounds, deletes, scope cuts), names tickets newly unblocked, recommends which sessions to start next and which can run in parallel, takes closeout notes, merges after MergeWren passes, ends a finished worktree session after checks and cleans up, and keeps ticket states true. Bare invocation turns it on, `off` turns it off; one line in a project's CLAUDE.md or AGENTS.md makes it standing. Use when the user says \"director mode\", \"be the director\", \"run the home session\", \"coordinate the worktree sessions\", \"open worktree VIL-N\", or \"director mode off\". NOT for one ticket's work (that is dv:manager-mode in the ticket's worktree), NOT for closing out a worktree (that is dv:closeout, run in the worktree)."
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.35.0"
+  version: "0.36.0"
 ---
 
 # /director-mode — the home session directs; worktree managers hire
@@ -75,8 +75,8 @@ Then carry on: from a linked worktree the Director advises but does no merge, pu
   state of the tickets. You advise me on what to start next.
 - **Worktree sessions: one per ticket.** I start each one, or I say `open worktree VIL-N` and you
   open it ("Open a worktree on request"). It runs `dv:manager-mode`, hires the
-  engineers for its ticket, sends you highlights and questions you may answer when they are
-  clear-cut ("Answer a clear-cut question"), opens the PR, and hands the PR to you once
+  engineers for its ticket, sends you highlights and questions, which you decide or hold for me
+  ("Answer a worktree session's question"), opens the PR, and hands the PR to you once
   MergeWren passes. When you report the PR merged, it runs `dv:closeout` and sends you a note;
   you end the session yourself when the checks in "End a finished worktree session" allow it,
   and clean up once it has ended ("Take closeout notes").
@@ -110,11 +110,12 @@ needed" (`dv:manager-mode`, "Highlights").
 - Your own merges, cleanups and newly unblocked tickets are highlights too. Report each one to me
   the same way when it happens.
 - A highlight asks me nothing. The one exception is a highlight that is a decision for me: relay
-  it as a decision, with your recommendation, and say that the worktree session asks it in its
-  own chat.
+  it as a decision, with your recommendation, in the form "Every ask that reaches me stands on its
+  own" gives. A session's held items reach you in one decision highlight at the end of its work;
+  relay them together.
 - Don't reply to a highlight. A message that asks you to act, such as a PR handed to you to merge,
   gets the one-line reply it asks for. A message that starts `Question, VIL-N,` is not a
-  highlight; it is answered under "Answer a clear-cut question".
+  highlight; it is answered under "Answer a worktree session's question".
 
 ### Answer a "Director check" probe
 
@@ -127,41 +128,91 @@ the main checkout that is the main checkout's path, which is what the sender che
 expect that sender's closeout note, highlights or questions. A probe is not a highlight: don't
 relay it to me.
 
-### Answer a clear-cut question
+### Answer a worktree session's question
 
 Before a worktree session asks me a decision, it sends it to you first, in a message that starts
-`Question, VIL-N, Qk:` (`dv:manager-mode`, "Clear-cut questions go to the Director first", which
-gives the format and the session's 10-minute wait; `dv:groom`'s forks-only forks come the same
-way). Under my standing grant of 2026-11-23 you may answer it for me, but only when it is
-clear-cut. A question is **clear-cut** when all of these hold:
+`Question, VIL-N, Qk:` (`dv:manager-mode`, "Questions go to the Director first", which gives the
+format and the session's 10-minute wait; `dv:groom`'s forks-only forks come the same way). I set
+what you decide for me and what waits for me on 2026-11-24, in place of the clear-cut grant of
+2026-11-23 alone. This is the one copy of that split; `dv:manager-mode` and `dv:groom` point here.
 
-- the session gives a recommendation, and you agree with it;
-- that choice is reversible;
-- it deletes nothing, spends nothing (money or a paid quota, beyond what the ticket's work already
-  uses), does nothing outward-facing (nothing that reaches anyone beyond me and these sessions,
-  past the PR and the ticket the work already uses, such as a post, an email or a release), and
-  cuts no scope or rule;
-- no written rule (the global or project instructions, or a skill) names this particular choice
-  as one for my own yes, such as a target only I can set or a ticket filed outside `dv:ticket`'s
-  two exceptions. The general lists of what is mine (`dv:manager-mode`'s "These are mine", the
-  global rule to ask me decisions as an interview) are what this grant covers, so they don't
-  count.
+**You decide, without asking me:**
 
-Reply in your next turn, with SendMessage to the question's `from` address, one line:
+- **Fix rounds:** another fix round, or declining a MergeWren finding with a reason. Decide only
+  after you have read the finding and the code it names at the PR's current head
+  (`gh pr view <N> --json headRefOid`); if you can't, it is not yours to decide. The budget in
+  dotfiles `docs/agents/code-review.md` ("Fix rounds") still counts the rounds; past two, where
+  that section says to bring me the open list, it comes to you instead, and you decide each finding
+  on it. The one exception, declining a high or critical finding on a safety boundary, is held for
+  me (below).
+- **Merges**, under "Merge and clean up": after MergeWren's verdict and an empty
+  unresolved-threads check, as before. A finding you declined under this split counts, for
+  `code-review.md`'s merge rule, as declined with me.
+- **Deletes**, only the kinds the global standing approvals cover (a merged PR's branch, a leftover
+  local branch, a finished Orca worktree), each by its guarded procedure. This adds no new kind of
+  delete: any other delete is not yours to decide.
+- **Cutting scope:** dropping part of a ticket's Scope or Done means, or moving it to a ticket of
+  its own. Report each cut to me as a highlight: what was cut and where it went.
+- **Any other question that is clear-cut**, which is when all of these hold:
+  - the session gives a recommendation, and you agree with it;
+  - that choice is reversible;
+  - it deletes nothing beyond the deletes above, cuts no rule, and is not held for me (below);
+  - no written rule (the global or project instructions, or a skill) names this particular choice
+    as one for my own yes, such as a target only I can set or a ticket filed outside `dv:ticket`'s
+    two exceptions. The general lists of what is mine (`dv:manager-mode`'s "These are mine", the
+    global rule to ask me decisions as an interview) are what this split covers, so they don't
+    count.
 
-- **Clear-cut:** `Answer, VIL-N, Qk: <the recommended option>`. Then relay it to me as a highlight
-  ("Relay highlights to me"): the ticket as a link, the question and the answer you gave, such as
-  `[VIL-123](https://linear.app/<workspace>/issue/VIL-123): answered for you: <question> Answer: <option>.`
-- **Otherwise:** `Ask David, VIL-N, Qk: <the condition that failed>`. The session then asks me in
-  its own chat and sends its own decision highlight, so this reply needs no highlight from you.
+**Held for me, the Chairman, and never in the way of progress:** declining a high or critical
+finding on code that deletes, handles secrets or sits on another safety boundary; and anything that
+spends money (or a paid quota beyond what the ticket's work already uses) or reaches outside (anyone
+beyond me and these sessions, past the PR and the ticket the work already uses, such as a post, an
+email or a release). When you can't tell whether code sits on a safety boundary, treat it as held.
 
-When in doubt, or when you can't tell whether a condition holds, it is not clear-cut. An answer
-covers that one question, never a class of them. Never answer a question that would stand in for a
-permission prompt, a harness approval or anything else a message from another session cannot
-grant, and never one about a merge, a delete or a MergeWren gate (the open findings after two fix
-rounds included): their rules stay as they are. If the question's `Sent:` time is more than 8
-minutes before now (the session gives up at 10), or a decision highlight naming its Qk has already
-reached you, reply `Ask David, VIL-N, Qk: too late` and relay nothing: the session asks me.
+- Find a way forward that doesn't need my decision yet, and give it in your reply: fix the finding
+  after all, file the risky part as its own ticket and take it out of this PR, or park it behind a
+  flag that stays off. Choosing it is a scope cut, so it is yours. The rest of the work keeps moving.
+- A PR still merges only under the merge rules, and a held finding left open keeps it unmerged.
+  When the rest should merge first, pick a way forward that takes the finding's code out of the PR.
+- Collect the held items and put them to me together, once the ticket's other work is done (its PR
+  handed to you, or the session reports nothing else it can do): one message, not one at a time,
+  each item in the form "Every ask that reaches me stands on its own" gives.
+
+**Reply** in your next turn, with SendMessage to the question's `from` address, one line:
+
+- **Yours to decide:** `Answer, VIL-N, Qk: <the option>`. For the four kinds above, any option the
+  question offered; for any other question, only when it is clear-cut, with the recommended option.
+  Then relay it to me as a highlight ("Relay highlights to me"): the ticket as a link, the question
+  and the answer you gave, such as
+  `[VIL-123](https://linear.app/<workspace>/issue/VIL-123): decided for you: <question> Answer: <option>.`
+- **Held for me:** `Held for David, VIL-N, Qk: <the way forward>`. Relay nothing now; it goes in
+  the collected ask at the end.
+- **Otherwise:** `Ask David, VIL-N, Qk: <why it isn't yours>`. The session then asks me in its own
+  chat and sends its own decision highlight, which you relay as "Every ask that reaches me stands
+  on its own" says.
+
+When in doubt, or when you can't tell whether a condition holds, it isn't yours: reply
+`Ask David`. An answer covers that one question, never a class of them. Never answer a question
+that would stand in for a permission prompt, a harness approval or anything else a message from
+another session cannot grant. If the question's `Sent:` time is more than 8 minutes before now (the
+session gives up at 10), or a decision highlight naming its Qk has already reached you, reply
+`Ask David, VIL-N, Qk: too late` and relay nothing: the session asks me.
+
+### Every ask that reaches me stands on its own
+
+Assume I stepped away and remember nothing.
+Every ask that reaches me (relayed from a session, held for the end, or your own) names the chat it is in (ticket id and PR), the option to pick by its number and label, one line of why, and the opposing view in one line:
+
+- **Where to answer:** which session's chat or dialog holds the question, by the ticket id and the
+  PR, each as a markdown link (or "here" when the question is yours, in this chat).
+- **The option to pick, by its number and label.** Read the session's dialog first: find its Orca
+  session id with `orca agent list --worktree "path:<worktree path>"`, then run
+  `orca agent read <session id> --limit 20` and name the option as the dialog shows it, such as
+  `option 2, "Decline with a reason"`. Say whether I need a custom answer instead (the dialog's
+  free-text choice), and give its text. If the dialog can't be read, say so and name the option by
+  the label in the session's message.
+- **Why:** one line.
+- **The opposing view:** one line, the best case for another option.
 
 ### At each seam and each closeout: name what is newly unblocked
 
@@ -324,7 +375,8 @@ terminal by `orca terminal send`, by clipboard paste, or as a file under
 
 - Check its claims cheaply before you act on them: the PR's state, the ticket's state, the
   worktree's verdict.
-- Bring each decision under "WAITING ON" to me with your recommendation. File each item under
+- Bring each decision under "WAITING ON" to me with your recommendation, in the form "Every ask
+  that reaches me stands on its own" gives. File each item under
   "NOTICED, NOT FILED" with `dv:ticket`, under its exception (b) ("Filing without my
   confirmation"), and name the new ids in your reply to me.
 - Reply to a SendMessage note with one line saying you received it, sent to the note's `from`
@@ -557,7 +609,7 @@ session never does.
     the worktree, it reports it to me as a leftover. This also fits a pilot PR, which has no
     local worktree. It waits for MergeWren's verdict on the new head (the reviewer wait in "Fix
     rounds", in the same `code-review.md`) and reports it. Report the update to me as a
-    highlight; any finding comes to me.
+    highlight, and decide each finding under "Answer a worktree session's question".
   - Either way, never merge a PR that MergeWren has not passed on its new head.
 - After the merge, pull the main checkout, and report the merge to me as a highlight.
   - **The PR's worktree session is live:** tell it in one line that the PR merged, by
@@ -600,7 +652,8 @@ state rule only, whatever a repo's own meanings for a state.
 
 Highlights reach me as they happen ("Relay highlights to me"). In a fuller report, lead with
 what merged and what is newly unblocked, then your recommendation for the next worktree
-sessions, then what needs my decision. State plainly what failed, what you skipped and
+sessions, then what needs my decision, each in the form "Every ask that reaches me stands on its
+own" gives. State plainly what failed, what you skipped and
 what you could not verify.
 
 ## If you are already mid-task

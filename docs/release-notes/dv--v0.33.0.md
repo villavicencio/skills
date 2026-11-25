@@ -1,8 +1,9 @@
 # dv — v0.33.0
 
 Minor release. `dv:groom` in `forks-only` mode now records a routine call under Decisions only
-when the call changes the ticket or settles an open decision. A call that leaves something as it
-was (a title, priority, label, section or line kept as it is) gets no Decisions line. The other
+when the call changes the ticket or settles an open decision, a keep that settles one included. A
+call that only keeps something no step 3 check or open Decisions line put in question (a title,
+priority, label, section or line kept as it is) gets no Decisions line. The other
 fifteen skills have no behaviour changes; their version moves to `0.33.0` only because the suite
 is released as one plugin.
 
@@ -28,7 +29,9 @@ overrule, which is what the Decisions lines are for (VIL-927).
   - A routine call that settles a Decisions line marked open replaces that line.
 - **`dv:groom`, step 6 and the report.** Step 6's forks-only paragraph and the report's "Decided
   without asking" list follow the same rule: they cover the routine calls that "Recording" says to
-  record, so the list and the Decisions lines stay the same set.
+  record, so the list and the Decisions lines stay the same set whenever the ticket's text is
+  edited. When its text is left unchanged (the last Rules bullet), the calls are listed in the
+  report and not recorded, as before.
 - **README.** The `dv:groom` entry says which routine calls get a Decisions line, and the plugin
   table shows `0.33.0`.
 

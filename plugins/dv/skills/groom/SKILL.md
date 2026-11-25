@@ -425,8 +425,8 @@ worktree session: clear-cut forks go to the Director first", under "Forks-only m
 those it does not answer are asked here. If there are no forks, say so in one line, ask nothing
 and go to step 7. Each answer to a fork is recorded in the default form, or in the Director form
 when the Director answered it. Each routine call that "Recording" (under "Forks-only mode")
-says to record is recorded in the "Decided by dv:groom (forks-only)" form; one that leaves
-something as it was is not. Your call to file a
+says to record is recorded in the "Decided by dv:groom (forks-only)" form, and no other is. Your
+call to file a
 spin-off stands as the approval to create it with what the proposal showed (folding one in is a
 fork and is asked), subject to step 5's
 rule that a spin-off with an incomplete duplicate search is not filed. A spin-off whose duplicate

@@ -360,8 +360,11 @@ its importance. Take them from this table, so they stay comparable across sessio
 | 2 | a small change with one test |
 | 3 | a change across a few files, with tests |
 | 5 | a feature-sized change in one repo |
-| 8 | a change that touches several modules or two repos |
+| 8 | a large change across several modules, with a lot of work in many files |
 | 13 | too big to run as one ticket |
+
+Points follow the amount of work, not the number of repos or PRs. Needing PRs in more than one repo
+that can merge on their own is a split signal (see Split verdict).
 
 As a guide and not a rule, small is typically 1 to 3 points, medium 5, large 8 to 13. With a
 range for size, give the points for each end ("small, 2; medium, 5, if step 5 finds something"),
@@ -528,7 +531,7 @@ removes existing text. It covers:
   `estimate` field (a number), the Decisions lines from the interview, and the no-split line.
   Setting an estimate where there was none is an add item; changing one is a replace item. Linear
   can store a different number from the one sent, with no error: a team whose scale stops at 8
-  stores 13 as 8 (team VIL, 2026-11-23). So compare the estimate each `save_issue` returns, for this
+  stores 13 as 8. So compare the estimate each `save_issue` returns, for this
   ticket and for each child, with its points. When they differ, clear that estimate
   (`estimate: null`) so the wrong number is not counted, keep the points in the Size section, and
   say so under Needs you with both numbers: that ticket is not ready until its points are stored, by

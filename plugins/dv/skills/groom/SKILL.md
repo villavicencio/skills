@@ -4,7 +4,7 @@ description: "Groom one Linear ticket before anyone works it. Checks it against 
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.37.1"
+  version: "0.38.0"
 ---
 
 # /groom — groom a Linear ticket before work starts
@@ -314,8 +314,8 @@ its importance. Take them from this table, so they stay comparable across sessio
 | 8 | a large change across several modules, with a lot of work in many files |
 | 13 | too big to run as one ticket |
 
-Points follow the amount of work, not the number of repos or PRs. Needing PRs in more than one repo
-that can merge on their own is a split signal (see Split verdict).
+Points follow the amount of work, not the number of repos or PRs. Needing more than one PR, PRs in
+more than one repo that can merge on their own included, is a split signal (see Split verdict).
 
 As a guide and not a rule, small is typically 1 to 3 points, medium 5, large 8 to 13. With a
 range for size, give the points for each end ("small, 2; medium, 5, if step 5 finds something"),
@@ -326,20 +326,26 @@ estimate field (step 7).
 **Split verdict.** Say "no split" with the reason, or propose a split. Propose one when any of
 these holds:
 
-- the ticket needs PRs in more than one repo that can merge on their own;
+- the ticket needs more than one PR, PRs in more than one repo that can merge on their own
+  included (the format's rule: a ticket is sized to one PR, so the split files one child ticket
+  per PR);
 - it mixes a mechanical change with a design choice;
 - part of it is blocked and part is not;
 - it is large;
 - it is pointed above 8 (13);
 - one part is risky and the rest is not.
 
-Do not split when the parts must land together to be correct. A proposed split names each child: a
-title in the format, its Done means lines taken from the parent, its size word and points from the
-table with one sentence on what drives them, its order, what blocks what, and one line with its
-project, milestone (the parent's as the approved edit list leaves it, a new one included, or none
-when it is finished), state and labels (`groomed` added once the split is complete, if the child
-passes the ready test and its team has an active `groomed` label; step 7, "Order of writes" item
-5).
+Do not split when the parts must land together to be correct. Any ticket left whole that still needs
+more than one PR, by this rule (two repos that must merge together) or by my answer to the split
+question, gets a line in Agent notes under "For the engineer": each partial PR links the ticket with
+`Refs`, not a closing keyword, as the format's "Linking a PR to a ticket without closing it" says,
+so the first merge does not close it, and the PR that completes the ticket uses a closing keyword. A
+proposed split names each child: a title in the format, its Done means lines taken from the parent,
+its size word and points from the table with one sentence on what drives them, its order, what
+blocks what, and one line with its project, milestone (the parent's as the approved edit list leaves
+it, a new one included, or none when it is finished), state and labels (`groomed` added once the
+split is complete, if the child passes the ready test and its team has an active `groomed` label;
+step 7, "Order of writes" item 5).
 It also says what happens to the parent: it becomes the first child, or it stays as the parent with
 the children under it (`parentId`). When it stays as the parent, write its full replacement
 description: Why, a Scope that names the children, Done means, Decisions, and Size ("Split: the
@@ -405,10 +411,13 @@ each spin-off's title, reason, project, milestone and any duplicate match.
 Then ask every open decision, in rounds of at most 4 questions:
 
 - each open decision from step 3, with what happens today as one option where it applies;
-- the split: approve it as shown, change it, or no split. When the parent stays as the parent, the
-  question says that approving covers both the split and the parent's replacement description
-  shown above. Approving a split alone never authorizes removing parent text. For a ticket pointed
-  13, the question says that "no split" keeps it at 13 (step 4);
+- the split: approve it as shown, change it, or no split. When the split is proposed because the
+  ticket needs more than one PR, the question says so and that each child is one PR, and that a
+  ticket left whole closes on its first PR's merge unless each partial PR uses `Refs` (the PR that
+  completes it uses a closing keyword). When the parent stays as the parent, the question says that
+  approving covers both the split and the parent's replacement description shown above. Approving
+  a split alone never authorizes removing parent text. For a ticket pointed 13, the question says
+  that "no split" keeps it at 13 (step 4);
 - each spin-off: file a separate ticket, fold it into this ticket, or drop it. A duplicate match is
   named in the question with its id and state;
 - each target that only I can set (step 3).

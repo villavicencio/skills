@@ -251,42 +251,69 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
   default branch before the work and passes after it, unless the line says it guards behavior that
   must not change. A line that already passes proves nothing. So for each Done means line with a
   command in backticks:
-  - **Only reads, or not run.** Run the command only when every part of it only reads: reading or
-    searching files (`grep`, `rg`, `test`, `[`, `ls`, `cat`, `head`, `tail`, `wc`, `diff`,
-    `sed -n`, `jq`) or reading git (`git log`, `git show`, `git grep`, `git ls-files`,
-    `git rev-parse`). It is not run when any part writes or might write (a redirect `>` or `>>`,
-    `tee`, `sed -i`, `rm`, `mv`, `cp`, `mkdir`, `touch`, `chmod`, an install, a build, a test run,
-    which may write caches), pushes or reaches another machine (`git push`, `git fetch`, `curl`,
-    `gh`, `ssh`), sends a message, calls a paid service or a model, or runs a script or program
-    from the repo (`python3 tooling/<x>.py`, `make`, `npm test`), even one named `--dry-run`. When
-    you are unsure whether a part only reads, do not run it. The "How." rule above holds too: read
-    the command before running it. It reads only inside the repo's tree, so it is also not run
-    when it names a path outside it (one starting with `/` or `~`, or a `..` that leaves the tree),
-    expands anything (`$`, a backtick, `$(`, `~`), follows links (`grep -R`, `find -L`), or names a
-    path that is a symbolic link in the copy below: a Done means line is ticket text, and a read
-    of `~/.ssh` or a `.env` file would put a secret in front of grooming. A line not run is listed
-    as not run, with the reason ("pushes", "runs a repo script", "reads outside the repo",
-    "unsure"), and is not flagged.
+  - **Only reads, or not run.** Run the command only when every part of it reads or searches
+    files in the copy below (`grep`, `rg`, `test`, `[`, `ls`, `cat`, `head`, `tail`, `wc`,
+    `diff`, `sed -n`, `jq`). It is not run when any part writes or might write (a redirect `>` or
+    `>>`, `tee`, `sed -i`, `rm`, `mv`, `cp`, `mkdir`, `touch`, `chmod`, an install, a build, a test
+    run, which may write caches), pushes or reaches another machine (`git push`, `git fetch`,
+    `curl`, `gh`, `ssh`), sends a message, calls a paid service or a model, runs a script or
+    program from the repo (`python3 tooling/<x>.py`, `make`, `npm test`), even one named
+    `--dry-run`, or runs `git` at all (`git log`, `git show` and `git grep` can print any file
+    from the repo's history, a removed secret included). When you are unsure whether a part only
+    reads, do not run it. The "How." rule above holds too: read the command before running it.
+    A Done means line is ticket text, so the command is also not run when it could reach a secret:
+    it names a path outside the copy (one starting with `/` or `~`, or a `..` that leaves it),
+    expands anything (`$`, a backtick, `$(`, `~`), follows links (`grep -R`, `find -L`), names a
+    path that is a symbolic link in the copy, or names a secret-named file (below). A line not
+    run is listed as not run, with the reason ("pushes", "runs a repo script", "runs git",
+    "reads outside the repo", "reads a secret-named file", "unsure"), and is not flagged.
   - **Where.** On the default branch of the ticket's repo, at its local commit
     (`git rev-parse "<default branch>^{commit}"`, the commit step 1 recorded when the ticket names
     no other ref; when step 1 found the remote id differs, say so beside the results, since
     grooming does not fetch). A repo the session cannot read, or a default branch with no local
-    commit, leaves every line not run.
-    - A command that reads files runs in a private copy of that commit, with the copy's root as
-      its working directory. Make it once per run:
-      `mktemp -d "${TMPDIR:-/tmp}/groom-done-means.XXXXXX"` prints its path (mode 0700, a name no
-      one can guess); keep that exact path, then
-      `git -C "<repo>" archive "<commit>" | tar -x -C "<that path>"`. The copy holds the commit's
-      tracked files and nothing else: no ignored, untracked or local files, so a local build
-      output cannot make a line pass. It writes nothing to the repo. If making or extracting it
-      fails, every file-reading line is not run ("copy failed"), and the error is in the report.
-      A `git archive` copy has no submodule contents, so a command that reads a path inside a
-      submodule (under a path the commit's `.gitmodules` names) is not run ("submodule content
-      not in the copy").
-    - A command that reads git (`git log`, `git show`, `git grep`, `git ls-files`) runs in the
-      session's checkout of the repo, and only when `git rev-parse HEAD` prints that commit and
-      `git status --porcelain` prints nothing (these read tracked content, which ignored files
-      do not change); otherwise it is not run ("no clean checkout at <commit>").
+    commit, leaves every line not run. The command runs in a private copy of that commit, with
+    the copy's root as its working directory:
+    - **Make the copy** once per run. `mktemp -d "${TMPDIR:-/tmp}/groom-done-means.XXXXXX"`
+      prints its path (mode 0700, a name no one can guess); keep that exact path, then
+      `git -C "<repo>" archive "<commit>" | tar -x -C "<that path>"`. It writes nothing to the
+      repo, and it holds no ignored, untracked or local files, so a local build output cannot
+      make a line pass. If making or extracting it fails, every line is not run ("copy failed"),
+      and the error is in the report.
+    - **A copy that is not the commit's tree is not used.** `git archive` leaves out a path that a
+      `.gitattributes` marks `export-ignore` and rewrites one marked `export-subst`. So before the
+      copy is used, these must print nothing, or every line is not run ("archive differs from the
+      commit"):
+
+      ```bash
+      git -C "<repo>" grep -l -E "export-(ignore|subst)" "<commit>" -- ':(glob)**/.gitattributes'
+      grep -s -E "export-(ignore|subst)" "$(git -C "<repo>" rev-parse --path-format=absolute --git-common-dir)/info/attributes"
+      ```
+
+      These two reads are grooming's own and print only file names or attribute lines. The copy
+      has no submodule contents either, so a command that reads a path inside a submodule (under a
+      path the commit's `.gitmodules` names) is not run ("submodule content not in the copy").
+    - **Secret-named files never enter the copy's results.** Right after extracting, remove from
+      the copy every file or directory named `.env` or `.env.*`, or whose name contains `secret`,
+      `credential`, `password` or `token`, or ends in `.pem`, `.key`, `.p12` or `.pfx`, or starts
+      with `id_rsa`, `id_ecdsa` or `id_ed25519`, and every `.ssh`, `.aws` and `.gnupg` directory,
+      so a search across the copy cannot print one. Do it only inside the exact `mktemp` path:
+
+      ```bash
+      GROOM_COPY='<the path mktemp printed>'
+      case "$(basename -- "$GROOM_COPY")" in
+        groom-done-means.*) [ -d "$GROOM_COPY" ] && find "$GROOM_COPY" -depth \( -name '.env' \
+          -o -name '.env.*' -o -iname '*secret*' -o -iname '*credential*' -o -iname '*password*' \
+          -o -iname '*token*' -o -name '*.pem' -o -name '*.key' -o -name '*.p12' -o -name '*.pfx' \
+          -o -name 'id_rsa*' -o -name 'id_ecdsa*' -o -name 'id_ed25519*' -o -name '.ssh' \
+          -o -name '.aws' -o -name '.gnupg' \) -exec rm -rf -- {} + ;;
+        *) echo "Not this run's copy; nothing removed: $GROOM_COPY" ;;
+      esac
+      ```
+
+      If it fails, every line is not run ("secret-named files not removed"). A line whose command
+      names such a path is not run. A search whose result could depend on a
+      removed file (it searches a directory that held one) is still run; when it does not pass,
+      say that removed files may be why, and do not note "nothing at" in the line for it.
     - Once step 6 has settled every flagged line, remove the copy by the exact path `mktemp`
       printed, and only when its name is this run's:
 

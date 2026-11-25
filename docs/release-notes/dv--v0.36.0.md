@@ -48,6 +48,17 @@ held, with David unaware (VIL-1141).
   succeeded, neither the probe nor the note is resent. The outcomes list after step 5, and its copy in
   "Step 5 — Reply", gain "send failed and probe sent again". The test notes record the two SendMessage
   errors seen on 2026-11-25.
+- **A failed send is a failure, never silence** (all three skills). The rule is stated once, in
+  `dv:closeout`'s "Deliver the note", step 2: a SendMessage that returns an error was not
+  delivered. A candidate whose probe's send fails leaves the candidates for that round, as if
+  ListAgents had not listed it: it doesn't count toward the three and isn't probed again in that
+  round; with none left, nothing is sent. Step 4 says a failed probe is not silence, the
+  end-of-turn reply names the probes sent and each failed send, and a new round starts only after
+  the note's send fails. `dv:manager-mode` points at that rule for its probes (a round there is one
+  verification, and a failed probe starts no new one); no candidate left counts as "no
+  candidate", and an announcer whose probe's send fails changes nothing. `dv:director-mode`
+  names a failed announcement send without resending it, lists only the sessions it reached on
+  its `Announced to:` line, and does not resend a probe answer whose send failed.
 - **README.** The version, and the `dv:manager-mode` and `dv:closeout` entries, which described
   the old verification and outcome rules.
 

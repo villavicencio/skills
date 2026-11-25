@@ -133,9 +133,9 @@ otherwise learn of it only when its next send to the old address fails.
   and clean up"). The name proves nothing; the session's probe is what checks you.
 - Send each of them this one line, once, with SendMessage:
   `Director announcement, <main checkout path>: Director Mode is on in this session, the home session in the main checkout. No reply needed; send me your Director check.`
-- After the on line and any warning lines, add one line: `Announced to: <the session names>.`,
-  or `Announced to: none.` when no live worktree session is listed. Name each send that failed,
-  with its error. If ListAgents or `git worktree list` fails, or under Codex (where `list_agents`
+- After the on line and any warning lines, add one line: `Announced to: <the sessions whose send
+  succeeded>.`, or `Announced to: none.` when no send succeeded. Name each send that failed, with
+  its error, and don't resend it; that session verifies you when it next sends. If ListAgents or `git worktree list` fails, or under Codex (where `list_agents`
   lists only this session's own agents), say so on that line and announce nothing.
 - Each session that gets the announcement probes you (`dv:manager-mode`, "Highlights"). Answer
   each probe as the next section says.
@@ -148,7 +148,9 @@ Director with a probe that starts `Director check,` (`dv:closeout`, "Deliver the
 your announcement soon after it. Answer each probe, a repeat included, with SendMessage to the
 probe's `from` address. The answer is one line, the absolute path of the directory this session
 runs in (`git rev-parse --show-toplevel`), and nothing else: no greeting, quotes or backticks. In
-the main checkout that is the main checkout's path, which is what the sender checks for. Then
+the main checkout that is the main checkout's path, which is what the sender checks for. If that
+send fails, don't resend it: the session has gone or moved, and probes again if it still needs
+you. Then
 expect that sender's closeout note, highlights or questions, including any it held while it had
 no Director. A probe is not a highlight: don't relay it to me.
 

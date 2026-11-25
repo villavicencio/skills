@@ -273,25 +273,57 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
     grooming does not fetch). A repo the session cannot read, or a default branch with no local
     commit, leaves every line not run. The command runs in a private copy of that commit, with
     the copy's root as its working directory:
-    - **Make the copy** once per run. `mktemp -d "${TMPDIR:-/tmp}/groom-done-means.XXXXXX"`
-      prints its path (mode 0700, a name no one can guess); keep that exact path, then
-      `git -C "<repo>" archive "<commit>" | tar -x -C "<that path>"`. It writes nothing to the
-      repo, and it holds no ignored, untracked or local files, so a local build output cannot
-      make a line pass. If making or extracting it fails, every line is not run ("copy failed"),
-      and the error is in the report.
-    - **A copy that is not the commit's tree is not used.** `git archive` leaves out a path that a
-      `.gitattributes` marks `export-ignore` and rewrites one marked `export-subst`. So before the
-      copy is used, these must print nothing, or every line is not run ("archive differs from the
-      commit"):
+    - **Make the copy** once per run. Each check below stops on failure: every line is then not
+      run, with the reason and the error in the report, and nothing more is extracted.
+      1. `mktemp -d "${TMPDIR:-/tmp}/groom-done-means.XXXXXX"` must exit 0; it prints the copy's
+         path (mode 0700, a name no one can guess). Keep that exact path. If it fails: "copy
+         failed".
+      2. The copy must be outside the repo. Resolve the copy's path, the repo's top level
+         (`git -C "<repo>" rev-parse --show-toplevel`; skip it when
+         `git -C "<repo>" rev-parse --is-bare-repository` prints `true`) and its git directory
+         (`git -C "<repo>" rev-parse --path-format=absolute --git-common-dir`) each with
+         `( cd "<path>" && pwd -P )`, a subshell, so the shell's working directory stays put. If
+         the copy's resolved path equals either of the other two, or starts with either followed
+         by `/` (a `TMPDIR` inside the repo), remove the new empty directory with `rmdir` on its
+         exact path and stop: "temporary directory inside the repo". If a resolve fails, remove it
+         the same way and stop: "could not check the copy's location".
+      3. Extract with both commands' exit status checked, in one shell call (`pipefail` works in
+         bash and zsh). `GIT_ATTR_NOSYSTEM=1` and `-c core.attributesFile=/dev/null` keep the
+         system and global attribute files out of the archive, so only the two files check 4
+         reads can change it:
 
-      ```bash
-      git -C "<repo>" grep -l -E "export-(ignore|subst)" "<commit>" -- ':(glob)**/.gitattributes'
-      grep -s -E "export-(ignore|subst)" "$(git -C "<repo>" rev-parse --path-format=absolute --git-common-dir)/info/attributes"
-      ```
+         ```bash
+         ( set -o pipefail
+           GIT_ATTR_NOSYSTEM=1 git -c core.attributesFile=/dev/null -C "<repo>" archive "<commit>" \
+             | tar -x -C "<the copy's path>" )
+         echo "extract rc=$?"
+         ```
 
-      These two reads are grooming's own and print only file names or attribute lines. The copy
-      has no submodule contents either, so a command that reads a path inside a submodule (under a
-      path the commit's `.gitmodules` names) is not run ("submodule content not in the copy").
+         A non-zero exit, from `git archive` or from `tar`: "copy failed".
+      4. The copy must be the commit's tree. `git archive` leaves out a path that a
+         `.gitattributes` marks `export-ignore` and rewrites one marked `export-subst`, so check
+         for both, telling "no such attribute" apart from a read that failed:
+
+         ```bash
+         git -C "<repo>" grep -l -E "export-(ignore|subst)" "<commit>" -- ':(glob)**/.gitattributes'
+         echo "gitattributes rc=$?"
+         INFO_ATTR='<git directory from check 2>/info/attributes'
+         if [ -e "$INFO_ATTR" ]; then
+           grep -E "export-(ignore|subst)" "$INFO_ATTR"; echo "info rc=$?"
+         else
+           echo "info/attributes absent"
+         fi
+         ```
+
+         Exit 1 from a search means no such attribute, and so does an absent `info/attributes`.
+         Exit 0 means the archive differs from the commit: stop ("archive differs from the
+         commit"). Any other exit, or a read that printed neither an `rc=` line nor the `absent`
+         line, is a failed read: stop ("attribute check failed"). These reads are grooming's own
+         and print only file names or attribute lines.
+      The copy has no submodule contents either, so a command that reads a path inside a
+      submodule (under a path the commit's `.gitmodules` names) is not run ("submodule content
+      not in the copy"). The copy holds no ignored, untracked or local files, so a local build
+      output cannot make a line pass, and making it writes nothing to the repo.
     - **Secret-named files never enter the copy's results.** Right after extracting, remove from
       the copy every file or directory named `.env` or `.env.*`, or whose name contains `secret`,
       `credential`, `password` or `token`, or ends in `.pem`, `.key`, `.p12` or `.pfx`, or starts
@@ -440,17 +472,17 @@ these holds:
 - it is pointed above 8 (13);
 - one part is risky and the rest is not.
 
-Do not split when the parts must land together to be correct. Any ticket left whole that still
-needs more than one PR, by this rule (two repos that must merge together) or by my answer to the
-split question, gets a line in Agent notes under "For the engineer": each partial PR links the
-ticket with `Refs`, not a closing keyword, as the format says, so the first merge does not close
-it. A split for more than one PR has one child per PR. A proposed split names each child: a title
-in the format, its Done means lines taken from the parent, its size word and points from the table
-with one sentence on what drives them, its order, what blocks what, and one line with its project,
-milestone (the parent's as the approved edit list leaves it, a new one included, or none
-when it is finished), state and labels (`groomed` added once the split is complete, if the child
-passes the ready test and its team has an active `groomed` label; step 7, "Order of writes" item
-5).
+Do not split when the parts must land together to be correct. Any ticket left whole that still needs
+more than one PR, by this rule (two repos that must merge together) or by my answer to the split
+question, gets a line in Agent notes under "For the engineer": each partial PR links the ticket with
+`Refs`, not a closing keyword, as the format says, so the first merge does not close it, and the PR
+that completes the ticket uses a closing keyword. A split for more than one PR has one child per PR.
+A proposed split names each child: a title in the format, its Done means lines taken from the
+parent, its size word and points from the table with one sentence on what drives them, its order,
+what blocks what, and one line with its project, milestone (the parent's as the approved edit list
+leaves it, a new one included, or none when it is finished), state and labels (`groomed` added once
+the split is complete, if the child passes the ready test and its team has an active `groomed`
+label; step 7, "Order of writes" item 5).
 It also says what happens to the parent: it becomes the first child, or it stays as the parent with
 the children under it (`parentId`). When it stays as the parent, write its full replacement
 description: Why, a Scope that names the children, Done means, Decisions, and Size ("Split: the
@@ -522,7 +554,8 @@ Then ask every open decision, in rounds of at most 4 questions:
   shown), mark it as a guard of unchanged behavior, keep it with a reason, or drop it;
 - the split: approve it as shown, change it, or no split. When the split is proposed because the
   ticket needs more than one PR, the question says so and that each child is one PR, and that a
-  ticket left whole closes on its first PR's merge unless each PR uses `Refs`. When the parent
+  ticket left whole closes on its first PR's merge unless each partial PR uses `Refs` (the PR that
+  completes it uses a closing keyword). When the parent
   stays as the parent, the question says that approving covers both the split and the parent's
   replacement description shown above. Approving a split alone never authorizes removing parent
   text. For a ticket pointed 13, the question says that "no split" keeps it at 13 (step 4);

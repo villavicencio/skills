@@ -18,24 +18,26 @@ for one to three weeks after their PRs merged, and one In Review for eight weeks
   1. List the repo project's tickets that are In Progress or In Review, using the state names
      `list_issue_statuses` returns. A `someday` ticket and a Backlog ticket are skipped.
   2. Find each ticket's linked PRs: the GitHub pull request URLs among its `get_issue`
-     attachments, plus the PRs the `gh pr list` commands of the Ownership lookup find for the
-     ticket (pointed at, not copied). Read each with `gh pr view <url> --json state,isDraft,body`.
-     If any of these calls fails, the ticket is unreadable: it keeps its state and is named.
+     attachments (Linear attaches a PR whose branch name or description names the ticket).
+     Read each with `gh pr view <url> --json state,isDraft,body`. If `get_issue` or a
+     `gh pr view` fails, the ticket is unreadable: it keeps its state and is named.
   3. Flag a ticket with at least one linked PR and no open PR, a draft counting as open. A ticket
      with no linked PR is named and not moved, since it may be In Progress with no PR on purpose.
   4. Run the Ownership lookup in `dv:manager-mode`'s "Before the first brief: check the ticket"
      (pointed at, not copied) for each flagged ticket. A ticket a live session owns keeps its
-     state and is named. When a lookup can't run, or the session can't see other sessions (under
-     Codex, `list_agents` lists only its own agents), the owner is unknown: the ticket keeps its
-     state and is named.
+     state and is named. The lookup's `gh pr list` results are a guard only: an open or draft PR
+     they find leaves the ticket as it is and named, even when that PR is not an attachment. A
+     lookup result does not flag or move a ticket. When a lookup can't run, or the session can't
+     see other sessions (under Codex, `list_agents` lists only its own agents), the owner is
+     unknown: the ticket keeps its state and is named.
   5. Move the rest by the global state rule: Done when a merged linked PR's description has a
      closing word from the list in dotfiles `docs/agents/tickets.md`, "Linking a PR to a ticket
      without closing it", followed by the ticket's id, such as `Fixes VIL-N`; the PR title does
      not count. Otherwise Todo (a non-closing word such as `Refs VIL-N`, or all PRs closed
-     unmerged). Just before each write the ticket's state and PRs are read again and the
-     Ownership lookup is run again; if the state or a PR changed since step 2, or the lookup now
-     finds an owner or can't run, the ticket keeps its state and is named. Each move gets a one-line
-     comment naming the PR.
+     unmerged). Just before each write the ticket's state and attached PRs are read again and
+     the Ownership lookup is run again; if the state or an attached PR changed since step 2, or
+     the lookup now finds an owner or an open or draft PR, or can't run, the ticket keeps its
+     state and is named. Each move gets a one-line comment naming the PR.
   6. The session-start report has one line per moved ticket, and names each ticket left as it is
      with the reason.
 - **"Keep ticket states true".** Points at the sweep, and says it follows the global state rule

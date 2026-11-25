@@ -182,12 +182,9 @@ next. At each one:
      `list_issue_statuses` returns for the team. Skip a ticket labeled `someday` and a ticket in
      Backlog. If a state is missing or the list can't be read, say so and sweep nothing.
   2. For each ticket, find its linked PRs: the GitHub pull request URLs among its `get_issue`
-     attachments, plus the PRs that the `gh pr list` commands of the Ownership lookup in
-     `dv:manager-mode`'s "Before the first brief: check the ticket" find for the ticket (its
-     per-branch `--head` and its `--search` commands; run them here, and don't copy them into
-     this skill). Then read each PR with `gh pr view <url> --json state,isDraft,body`. If any of
-     these calls fails (`get_issue`, a `gh pr list`, a `gh pr view`), the ticket is unreadable:
-     leave it and name it.
+     attachments. Linear attaches a PR whose branch name or description names the ticket, so an
+     attachment is an exact link. Read each with `gh pr view <url> --json state,isDraft,body`. If
+     `get_issue` or a `gh pr view` fails, the ticket is unreadable: leave it and name it.
   3. Flag a ticket that has at least one linked PR and no open PR, a draft counting as open. A
      ticket with no linked PR is named in the report and not moved: it may be In Progress with
      no PR on purpose.
@@ -195,9 +192,11 @@ next. At each one:
      brief: check the ticket" (don't copy it here). A live session found by its ListAgents,
      branch and worktree lookups owns the ticket. A merged or closed PR, an assignee, or a
      leftover branch or worktree with no live session does not. Leave an owned ticket as it is
-     and name its owner. If a lookup fails or cannot run, or this session cannot see other
-     sessions (under Codex, `list_agents` lists only its own agents), the owner is unknown:
-     leave the ticket and say so.
+     and name its owner. The lookup's `gh pr list` results are a guard only: if they include an
+     open or draft PR, leave the ticket and name that PR, even when it is not an attachment. A
+     lookup result does not flag or move a ticket. If a lookup fails or cannot run, or this
+     session cannot see other sessions (under Codex, `list_agents` lists only its own agents),
+     the owner is unknown: leave the ticket and say so.
   5. Move each other flagged ticket. With no owner, no work is continuing now, so the global
      state rule gives Done or Todo. It goes to Done when a merged linked PR's description closes
      it: a closing word on the list in dotfiles `docs/agents/tickets.md`, "Linking a PR to a
@@ -205,13 +204,14 @@ next. At each one:
      id, such as `Fixes VIL-N`. Only the description counts, not the PR title. A non-closing
      word such as `Refs VIL-N` does not close it. Any other flagged ticket goes to Todo: one
      whose merged PRs all lack a closing word, or whose PRs were all closed unmerged. Just
-     before each write, read the ticket's state and its PRs again and run the Ownership lookup
-     again. If the state or a PR changed since step 2 (a PR opened or went to draft, or the
-     state moved), or the lookup now finds an owner or cannot run, leave the ticket and name it.
+     before each write, read the ticket's state and its attached PRs again and run the
+     Ownership lookup again. If the state or an attached PR changed since step 2 (a PR opened
+     or went to draft, or the state moved), or the lookup now finds an owner or an open or draft
+     PR, or cannot run, leave the ticket and name it.
      Comment one line on the ticket saying why, naming the PR, such as "Moved to Todo: PR #12
      merged with Refs, not a closing word, and no PR is open."
   6. Report one line per moved ticket: its id as a link, the old and new state, and the PR. Name
-     each ticket left as it is (owned, owner unknown, no linked PR, unreadable, changed or newly owned before the write)
+     each ticket left as it is (owned, an open PR found by the lookup, owner unknown, no linked PR, unreadable, changed before the write)
      with the reason.
 
 ### Recommend which worktree sessions to start next

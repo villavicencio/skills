@@ -54,8 +54,8 @@ overrule it.
 - a prerequisite that the shared rules' "Prerequisites" sends to a question (step 3; no relation
   is set on a guess);
 - a new milestone, a ticket whose goal no longer fits the milestone it has or that sits in a
-  finished one (move it, or keep it), and a ticket whose Decisions records "No milestone" but that
-  has one (step 3, "Milestone").
+  finished one (move it, put it in a new milestone, or keep it), and a ticket whose Decisions
+  records "No milestone" but that has one (step 3, "Milestone").
 
 **Routine calls:** every other open decision, such as wording, ordering, Size and points, Done
 means phrasing, filing or dropping a spin-off, settling an `[assumed]` marker you verified,
@@ -80,11 +80,11 @@ verifies (its "Highlights") before asking me, as manager-mode's "Clear-cut quest
 Director first" says: its skip rule, its message format, one fork per message, its 10-minute
 wait, what counts as an answer, its hold while the Director check is pending, and its fall-back
 to me. The Director answers only a clear-cut fork (`dv:director-mode`, "Answer a clear-cut
-question"); cutting scope never is, and a split, a target, a pull condition or a new milestone,
-which only I can set, comes straight to me. Run no Director probe of your own; if manager-mode has
-not sent its probe yet, it sends it before the first fork goes out. With no Director that can be
-verified, or for each fork whose answer doesn't count, ask me as step 6 says. Grooming goes on in
-the turn the last answer arrives.
+question"); cutting scope never is, and a split, a target, a pull condition or a fork that offers a
+new milestone (step 3, "Milestone"), which only I can settle, comes straight to me. Run no Director
+probe of your own; if manager-mode has not sent its probe yet, it sends it before the first fork
+goes out. With no Director that can be verified, or for each fork whose answer doesn't count, ask
+me as step 6 says. Grooming goes on in the turn the last answer arrives.
 
 ## Before anything else
 
@@ -273,7 +273,9 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
     created only on my yes.
   - Its goal no longer fits the milestone it has, or that milestone is finished: an open
     decision, to move it (to the milestone that fits, or out of milestones, which records "No
-    milestone") or keep it. Grooming never moves a ticket out of a milestone as a routine call.
+    milestone"), to put it in a new milestone when no other one fits (its name and one line on
+    what done means; created only on my yes), or to keep it. Grooming never moves a ticket out of
+    a milestone as a routine call.
   - It fits the milestone it has: nothing to do.
 - **Other open decisions.** Also collect: a reason in the ticket that checking suggests may be
   false, a Decisions line marked open, an unanswered question in a comment, a missing pull
@@ -319,9 +321,9 @@ these holds:
 Do not split when the parts must land together to be correct. A proposed split names each child:
 a title in the format, its Done means lines taken from the parent, its size word and points from the
 table with one sentence on what drives them, its order, what blocks what, and one line with its
-project, milestone (the parent's), state and labels (`groomed` added once the split is complete,
-if the child passes the ready test and its team has an active `groomed` label; step 7, "Order of
-writes" item 5).
+project, milestone (the parent's, or none when it is finished), state and labels (`groomed` added
+once the split is complete, if the child passes the ready test and its team has an active `groomed`
+label; step 7, "Order of writes" item 5).
 It also says what happens to the parent: it becomes the first child, or it stays as the parent with
 the children under it (`parentId`). When it stays as the parent, write its full replacement
 description: Why, a Scope that names the children, Done means, Decisions, and Size ("Split: the
@@ -355,10 +357,10 @@ command's output, a ticket id). Three kinds:
   edit-list items.
 - **Spin-offs:** work the ticket suggests but should not carry: a helper, a follow-up measurement,
   a neighbor with the same flaw. Each is one line: a title in the format, why, the Linear project
-  it would go in (found live, as in `dv:ticket` File step 1), its milestone (the groomed
-  ticket's, or none when it has none; in another project, an existing one that fits there, or
-  none), and its state and labels (never `groomed`: a spin-off is
-  drafted, not groomed). Before offering one, run
+  it would go in (found live, as in `dv:ticket` File step 1), its milestone (the groomed ticket's,
+  or none when it has none or a finished one; in another project, an existing one that fits there,
+  or none), and its state and labels (never `groomed`: a spin-off is drafted, not groomed). Before
+  offering one, run
   File step 3's duplicate search for it, reading every page and keeping a tally as step 1's
   overlap search does, and keep any match, with its id and state. A spin-off whose duplicate
   search is incomplete is offered with that said, and is not filed in step 7 until the search
@@ -458,8 +460,9 @@ removes existing text. It covers:
   parent, as for a failed filing ("Order of writes", item 2);
 - links to comments that hold evidence a Scope step depends on;
 - the milestone (step 3), set with `save_issue`'s `milestone` field: an add item when the ticket
-  has none, a replace item when my answer moves it, and a new milestone I said yes to, to create
-  first (shared rules, "Milestones");
+  has none; a replace item when my answer moves it, or a remove item when it takes it out (which
+  also adds the "No milestone" Decisions line); a keep that replaces a "No milestone" line; and a
+  new milestone I said yes to, to create first (shared rules, "Milestones");
 - for a split, the children to file and the parent's change (its estimate included), exactly as
   approved;
 - Agent notes, which opens with the grooming line ("Groomed <date> <time> <zone> against

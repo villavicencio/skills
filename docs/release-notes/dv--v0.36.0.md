@@ -31,7 +31,11 @@ he had stepped away, and several asks didn't say which option to pick (VIL-1034)
     money or reaches outside. The Director names a way forward that doesn't need the decision yet
     (fix the finding after all, move the risky part to its own ticket and out of the PR, or park it
     behind a flag that stays off), the rest of the work keeps moving, and the held items go to
-    David together once the ticket's other work is done.
+    David together once the ticket's other work is done: the session asks them in one interview
+    and the Director relays them as one message. With no Director's answer, the session takes a
+    way forward that needs no one's yes (fix the finding; don't spend or reach outside yet).
+  - The forks `dv:groom` sends straight to David (a split as grooming's verdict, a target, a pull
+    condition, a new milestone) stay his.
   - A new reply, `Held for David, VIL-N, Qk: <the way forward>`, beside `Answer` and `Ask David`.
 - **`dv:director-mode`, "Every ask that reaches me stands on its own"** (new). Every ask names the
   chat it is in (ticket id and PR), the option to pick by its number and label, one line of why,
@@ -50,7 +54,9 @@ he had stepped away, and several asks didn't say which option to pick (VIL-1034)
   scope, the session accepts whichever option the Director names; a decline of a high or critical
   finding on a safety boundary counts as held. A `Held for David` reply: the session takes the way
   forward, keeps working, and asks David every held question together at the end, with one
-  decision highlight to the Director. The "Limits" bullet says the Director decides inside the
+  decision highlight to the Director; a held question moved to its own ticket is also written on
+  that ticket as an open decision. Any reply other than `Answer` or `Held for David` counts as
+  "ask David". The "Limits" bullet says the Director decides inside the
   merge rules, the standing approvals and the MergeWren gates, and changes none of them.
 - **`dv:manager-mode`, "Decisions and escalation".** Drops "cutting scope is never clear-cut".
   After two fix rounds, each open finding goes to a verified Director as a question, where

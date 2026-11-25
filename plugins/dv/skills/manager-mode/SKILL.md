@@ -252,9 +252,10 @@ recommendation.
 - **With a verified Director** (see "Highlights"), send each decision you would ask me to the
   Director first, one question per message, by SendMessage to its `from` address. Number the
   questions for the ticket (Q1, Q2, ...) so each answer matches its question. Skip the Director
-  and ask me only when the question is plainly none of the kinds it decides or holds and a
-  condition of clear-cut plainly fails (a design fork you have no recommendation for, say). When
-  unsure, send it. While a question is with the Director, it is not yet a decision
+  and ask me only when a skill sends the question straight to me (`dv:groom`'s split, target,
+  pull condition or new milestone), or when it is plainly none of the kinds the Director decides
+  or holds and a condition of clear-cut plainly fails (a design fork you have no recommendation
+  for, say). When unsure, send it. While a question is with the Director, it is not yet a decision
   waiting on me, so it gets no decision highlight.
 - **The message**, on one or a few lines:
   `Question, VIL-N, Qk: <the question>. PR: <its link, or none>. Options: <each option, numbered, one phrase each>. Recommended: <the option>, because <one-line reason>. Reversible: <yes or no, and how it would be undone>. Sent: <UTC date and time, such as 2026-11-23T18:04Z>. Answer only under dv:director-mode's "Answer a worktree session's question"; if Director Mode is not on in your session, or your dv:director-mode has no section of that name, reply "Ask David, VIL-N, Qk: no question rule". Reply with one line: "Answer, VIL-N, Qk: <option>", "Held for David, VIL-N, Qk: <the way forward>" or "Ask David, VIL-N, Qk: <why>".`
@@ -270,16 +271,24 @@ recommendation.
   answer that declines one counts as "held for David", with fixing it as the way forward. On any
   other question, it must name the option you recommended, and before you act on it, check the
   question again against every condition of clear-cut you can judge yourself (all but the
-  Director's agreement); if any fails, it counts as "ask David". Either way it is then my decision, for that one question only. Anything else
-  counts as "ask David": a reply that starts `Ask David`, names no option the question offered,
-  adds a condition or is unclear, or no reply within the 10 minutes.
+  Director's agreement); if any fails, it counts as "ask David". Either way it is then my
+  decision, for that one question only. Any reply other than this or `Held for David` (next
+  bullet) counts as "ask David": a reply that starts `Ask David`, names no option the question
+  offered, adds a condition or is unclear, or no reply within the 10 minutes.
 - **On "held for David"** (`Held for David, VIL-N, Qk: <the way forward>` from the verified
   Director): take the way forward it names and keep the rest of the work moving. A scope cut in it
   is the Director's call; a spin-off it names is yours to file (`dv:ticket` exception (a)). If you
   can't take it, the question counts as "ask David". Keep the held question in your written
-  state. When the ticket's other work is done (the PR handed to the Director, or nothing else you
-  can do), ask me every held question together in this chat, as one interview, and send the
-  Director one decision highlight naming each by its Qk, so it relays them to me together.
+  state; when the way forward moves it to its own ticket, also write it on that ticket as an open
+  decision, so it outlives this session. When the ticket's other work is done (the PR handed to
+  the Director, or nothing else you can do), ask me every held question together in this chat, as
+  one interview, and send the Director one decision highlight naming each by its Qk, so it relays
+  them to me together. A held question the way forward settled (the finding was fixed after all)
+  is reported in that highlight, not asked.
+- **A held kind with no Director's answer** (no verified Director, a `too late` reply, or no reply
+  in time) still doesn't stop the work: take the way forward that needs no one's yes (fix the
+  finding; don't spend or reach outside yet), keep the rest moving, and ask it with the other held
+  questions at the end.
 - **On "ask David"**, ask me in this chat as you would without a Director, and send the usual
   decision highlight ("Highlights"), naming the question's number (`Highlight, VIL-N: Qk ...`).
   Once a question has gone to me, a late answer from the Director does not settle it; only mine

@@ -295,9 +295,9 @@ recommendation.
   does. When one arrives anyway, send the Director a highlight that its Qk answer came late and
   the question went to me, so the home chat does not show it as settled.
 - **Every ask to me stands on its own**, held questions included, with or without a Director, as
-  `dv:director-mode`'s "Every ask that reaches me stands on its own" says: the ticket id and PR,
-  the options numbered with their labels, your pick by its number and label with one line of why,
-  and the opposing view in one line.
+  `dv:director-mode`'s "Every ask that reaches me stands on its own" says: the ticket id and the
+  PR (or that there is none yet), the options numbered with their labels, your pick by its number
+  and label with one line of why, and the opposing view in one line.
 - **While the probe still waits for its answer**, hold the question, as highlights are held, and
   start the same background timer when the question comes up, so a turn comes back even if the
   probe stays silent. If a Director is verified within 10 minutes of when the question came up,

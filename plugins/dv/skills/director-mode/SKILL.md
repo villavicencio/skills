@@ -208,7 +208,8 @@ Assume I stepped away and remember nothing.
 Every ask that reaches me (relayed from a session, held for the end, or your own) names the chat it is in (ticket id and PR), the option to pick by its number and label, one line of why, and the opposing view in one line:
 
 - **Where to answer:** which session's chat or dialog holds the question, by the ticket id and the
-  PR, each as a markdown link (or "here" when the question is yours, in this chat).
+  PR, each as a markdown link (or "here" when the question is yours, in this chat). Before a PR
+  exists (a grooming fork, say), name the ticket and say there is no PR yet.
 - **The option to pick, by its number and label.** Read the session's dialog first: find its Orca
   session id with `orca agent list --worktree "path:<worktree path>"`, then run
   `orca agent read <session id> --limit 20` and name the option as the dialog shows it, such as

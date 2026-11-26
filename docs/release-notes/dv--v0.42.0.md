@@ -26,6 +26,7 @@ sent still counts. The README's closeout entry states the new rule.
   worktree after the session ends, naming the command.
 - With no Director: a headless closeout in the same lab found no candidate, sent nothing, and
   ended with "Remove this worktree now?".
+- Both checks ran twice, on the first wording and on the final one, with the same outcome.
 - Not exercised: a real Director session's removal, a terminal send, "safe once you accept
   losing", and a yes given before the note was sent.
 

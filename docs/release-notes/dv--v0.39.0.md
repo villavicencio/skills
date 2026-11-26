@@ -6,6 +6,7 @@ CEO's 1% reaches David, through him, unless the Director replies `Ask David`, an
 `dv:closeout`'s own reply, which still asks David until VIL-1191. With no Director that can be
 verified, a session sends its question straight to the Head under the same Qk, and keeps it
 pending, asking David nothing, if that send can't be verified.
+The routing to the Head is in place, but his answers are advisory for now: A Head's mailed answer is advisory until verified Head decision delivery ships (VIL-1193). Head-only choices stay pending, and reserved choices need the person's authenticated original approval.
 Two exceptions need David's explicit yes, relayed by the Head and verified by the acting session against his own words: keeping a 13-point ticket whole (`dv:groom` step 4), and creating a new milestone (`dv:groom` step 3, "Milestone"). These routing changes apply only when a project names a
 Head. Three changes apply always: an answer with a short note, mail before a question card, and
 a kickoff that counts a ticket as groomed only by its `groomed` label (VIL-993).
@@ -21,12 +22,11 @@ schedule time in a dialog, and the dialog kept the Director's reply from reachin
   address and Linear handle. This repo's names the Head of Skills.
 - **`dv:director-mode`.** New section "The Head and the CEO's 1%": the one copy of the routing
   rule, the CEO's 1% and what no default decides. The Director forwards to the Head what it
-  doesn't decide and relays his answers. Each question sent to the Head has one record on its
+  doesn't decide and relays his answers as advice; it decides the routine matters delegated to it
+  as its own, taking his advice into account. Each question sent to the Head has one record on its
   ticket, keyed by the ticket, the asking session's ID and its Qk, and claimed before the send. A
-  default goes out only after both that record and mail show no answer; a failed read or answers
-  that differ keep the question pending. A failed, unclear or interrupted send is never sent again: the
-  record gets the Head's Linear mention, his reply there settles it, and the question never falls
-  back to David.
+  failed, unclear or interrupted send is never sent again: the record gets the Head's Linear
+  mention, and the question never falls back to David.
 - **`dv:manager-mode`.** With a Head, the session sends every question to the Director, keeps
   working while the Head decides, and asks David nothing outside the CEO's 1% (apart from
   `dv:closeout`'s own reply until VIL-1191), unless the Director replies `Ask David`. With no
@@ -35,8 +35,8 @@ schedule time in a dialog, and the dialog kept the Director's reply from reachin
 - **`dv:groom`.** With a Head, in forks-only mode from a worktree session, its David-only forks
   go through the Director to the Head; keeping a 13 whole and creating a new milestone still need
   David's explicit yes, which the Head relays and the session verifies against his own words.
-  Anything no default decides stays a gap for the ready test. A Head answer on a ticket counts
-  only with matching mail from his bot address.
+  Anything no default decides stays a gap for the ready test, and the forks only the Head decides
+  stay pending while his answers are advisory.
 - **`dv:closeout`.** Unchanged apart from the version: its note reaches the
   Director as before, and with a Head the Director forwards the note's open items, the CEO's 1%
   included, to him. Closeout's own reply, delivery and Head routing are unchanged until VIL-1191.

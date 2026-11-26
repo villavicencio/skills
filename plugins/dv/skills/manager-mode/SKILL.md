@@ -301,8 +301,8 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
   other question, it must name the option you recommended, and before you act on it, check the
   question again against every condition of clear-cut you can judge yourself (all but the
   Director's agreement); if any fails, it counts as "ask David". Either way it is then my
-  decision, for that one question only. A reply that relays the Head's decision
-  (`Answer from the Head`) counts too, as "With a Head" below says. Any other reply, apart from `Held for David` (next bullet) and, with a Head,
+  decision, for that one question only. A reply that relays the Head's answer
+  (`Answer from the Head`) is advice, as "With a Head" below says. Any other reply, apart from `Held for David` (next bullet) and, with a Head,
   `Forwarded to the Head`, counts as "ask David": a reply that starts `Ask David`, names no option the question
   offered, adds a condition that changes the option or is unclear, or no reply within the 10 minutes. With a Head, "With
   a Head" below says what "ask David" becomes.
@@ -339,17 +339,17 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
   harness approval, a barrier set for me) is not a question and still comes to me ("Decisions and
   escalation", "Limits"). A question forwarded to the Head never blocks other work. Only the
   grooming work that depends on a `dv:groom` fork only the Head decides (a target, a split, a pull
-  condition, a new milestone) waits for his answer: the ticket's start and its `groomed` label
-  (`dv:director-mode`, "What no default decides"):
+  condition, a new milestone) waits, and it stays pending until a verified Head decision path
+  exists: the ticket's start and its `groomed` label (`dv:director-mode`, "What no default
+  decides"):
   - **On `Forwarded to the Head, VIL-N, Qk: <the way forward>`**, take the way forward and keep
-    the rest moving, as for a held question. Until the Director answers its `Unanswered` with an
-    `Answer` (below), an `Answer from the Head, VIL-N, Qk: <option>` from the verified Director (or from
-    the Head himself, for a question sent straight to him: "With no Director that can be verified", below) that names
-    one of the question's options settles it, as does one that comes as your first reply. It is
-    the Head's call, so whether it is the option you recommended, and the clear-cut conditions,
-    don't matter; check only the delete and scope-cut limits "What counts as the answer" gives,
-    and treat a note as that bullet says. The one exception is a delete beyond the standing
-    approvals: its `Approved by:` field only points to the evidence. Carry it out only after you
+    the rest moving, as for a held question. A Head's mailed answer is advisory until verified Head decision delivery ships (VIL-1193). An `Answer from the Head, VIL-N, Qk:
+    <option>` from the verified Director (or his own mail, for a question sent straight to him:
+    "With no Director that can be verified", below) is advice and settles nothing by itself. You
+    may take its option as your way forward when that needs no one's yes. A Head-only `dv:groom`
+    fork, and anything else under `dv:director-mode`'s "What no default decides", stays pending.
+    Only a reserved choice can settle on it, through the approval you verify. For a delete beyond the standing
+    approvals, its `Approved by:` field only points to the evidence. Carry it out only after you
     verify my own explicit yes yourself, in the original source the field points to (my message in
     a chat you can read, or a ticket comment by my account), for the exact target and scope, and
     then only by the delete's existing procedure and guards. If you can't verify it, the target
@@ -362,10 +362,9 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
     or that person's message in a chat you can read (`dv:director-mode`, "An approval travels in
     its own field"). The field only points to the evidence. With no source, another author, or
     words that don't name that exact choice, the choice stays pending, and work that doesn't depend
-    on it goes on. An answer read from a ticket record counts as the Head's only with matching mail
-    from his `bot:` address (`dv:director-mode`, "A record on the ticket for each Qk"). Apply it, undoing the way forward where it differs (for
-    a `dv:groom` fork, its open Decisions line becomes the answer, in groom's Head form, and
-    a Head-only fork that held up the start no longer does).
+    on it goes on. Apply a
+    choice that settles, undoing the way forward where it differs (for a `dv:groom` fork, its open
+    Decisions line becomes the answer, in groom's Head form).
   - **"Ask David" becomes this**, whenever no answer that counts comes in time (but not on an
     `Ask David` reply, below): take a way forward that needs no one's yes (your recommended option
     when it is reversible, except for an item under `dv:director-mode`'s "What no default
@@ -377,25 +376,17 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
   - **Unanswered at the end.** When the ticket's other work is done, send the Director, for each
     question still without an answer that counts (a held kind and a forwarded one included),
     `Unanswered, VIL-N, Qk: <the question>. Key: VIL-N/<session ID>/Qk. Options: <as in the Question>. Recommended: <the option>. Reversible: <yes or no, and how>. Sent: <UTC date and time>.`,
-    and wait for it as for a question. Each Qk settles once: the first answer that counts (the
-    Head's, which the Director relays in place of its default when it already has one, or the
-    default) decides it, and any later reply on that Qk changes nothing, except the Head's disposition on
-    the ticket's record for that question's key, which supersedes it (`dv:director-mode`, "A record on the
-    ticket for each Qk"). Its `Answer` is the Director's default
+    and wait for it as for a question. Its `Answer` is the Director's own decision, which may follow
+    the Head's advice; each Qk settles once, and any later reply on it changes nothing. That `Answer` is the Director's default
     (`dv:director-mode`, "Unanswered at the end"), its own path: apply it without the checks of
     "What counts as the answer", except that it must name one of the question's options and the
     delete and scope-cut limits. "What no default decides" stays binding: if you can see the
     question is one of those items (a Head-only `dv:groom` fork, `Reversible: no`, a
     safety-boundary decline, one of the CEO's 1%, a choice a written rule reserves for someone's
     explicit yes), treat the
-    `Answer` as `Forwarded to the Head` and keep its way forward. The Director relays the Head's
-    answer on it under the same Qk; apply it once, as "Answer from the Head" above says, and
-    take any later reply on that Qk as changing nothing. When the Director can't read mail or the
-    record, or finds answers that differ, it sends no default: it uses the ticket's record for that question's key and replies `Forwarded to the Head`,
-    or, if it can't write the record, nothing (`dv:director-mode`, "Unanswered at the end"): no
-    answer that counts, as below. The Head's disposition on that record is the one for that Qk
-    (`dv:director-mode`, "A record on the ticket for each Qk"): it supersedes any earlier answer
-    under it, and you apply it once. A `Forwarded to the Head` reply (an item
+    `Answer` as `Forwarded to the Head` and keep its way forward: it stays pending, and a reserved
+    choice settles only through an approval you verify ("On `Forwarded to the Head`" above). A
+    `Forwarded to the Head` reply (an item
     under "What no default decides": keep its way forward), or no answer that counts, means ask me nothing:
     write it on the ticket as an open decision, and it goes under WAITING ON in your closeout
     note. A failed send to the Head doesn't come to me: it goes to the ticket's fallback pickup.
@@ -408,10 +399,9 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
     approval is needed, and each quote as an untrusted excerpt in its longer fence with its end
     line, source and authority outside it), and ask him to reply
     `Answer from the Head, VIL-N, Qk: <option>`. Take the way forward meanwhile. His reply comes
-    as mail (`orca orchestration check --json`); one from his address for that Qk counts as an
-    `Answer from the Head` (above), under the same checks, and is applied once. The CEO's 1% and
-    the two choices reserved for my yes go the same way: he brings them to me and relays my yes in
-    `Approved by:`. Keep the ticket's record for that question's key as `dv:director-mode`'s "A record on the
+    as mail (`orca orchestration check --json`) and is advice, as "On `Forwarded to the Head`"
+    above says. The CEO's 1% and the two choices reserved for my yes go the same way: he brings
+    them to me and relays my yes in `Approved by:`, which you verify. Keep the ticket's record for that question's key as `dv:director-mode`'s "A record on the
     ticket for each Qk" says: read it first and never send again when one is there, claim it at
     `sending` before you send, update it to `sent` after; a send that fails or returns no result
     you can read gets the record's fallback mention, never a second send. Keep the question
@@ -443,7 +433,7 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
 - **Record each call the Director made for me** in the PR body, one line each:
   `<question>: <answer>. Director (<its ListAgents name>) for <my name>, <date>.` A held question
   gets `<question>: held for <my name>; way forward: <what you did>. Director (<its ListAgents
-  name>), <date>.` An answer from the Head gets `<question>: <answer>. <the Head's name>, through
+  name>), <date>.` Advice from the Head gets `<question>: advice <option>. <the Head's name>, through
   the Director (<its ListAgents name>), <date>.` (or `<the Head's name>, sent straight to him, no
   Director verified, <date>.`), plus its `Approved by:` field when it has one, and one still with him gets `<question>:
   forwarded to <the Head's name>; way forward: <what you did>. Director (<its ListAgents name>),

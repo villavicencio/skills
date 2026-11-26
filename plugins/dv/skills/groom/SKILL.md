@@ -76,8 +76,8 @@ leaves something as it was is not recorded, even when you weighed changing it: a
 label, section or line you kept, that no step 3 check or Decisions line put in question, gets no
 Decisions line (not "Title keeps its [scratch] prefix"). A fork keeps the default form, whatever
 the answer, a keep included: "<decision>. <my name>, <date>". A fork the Director answered for me
-(below) names both: "<decision>. Director (<its ListAgents name>) for <my name>, <date>". One the
-Head answered (below) is the Head form: "<decision>. <the Head's name>, through the Director (<its
+(below) names both: "<decision>. Director (<its ListAgents name>) for <my name>, <date>". One settled
+by an approval the Head relayed (below) is the Head form: "<decision>. <the Head's name>, through the Director (<its
 ListAgents name>), <date>", plus its `Approved by:` field when it has one. Size and
 its points are recorded when they are set or changed. So is the no-split verdict (step 4), unless
 the ticket already records the same verdict; for a ticket pointed 13 it is my answer to a fork
@@ -91,25 +91,24 @@ first" says: its skip rule, its message format, one fork per message, its 10-min
 counts as an answer, its hold while the Director check is pending, and its fall-back to me. The
 Director decides a fork only under `dv:director-mode`'s "Answer a worktree session's question":
 cutting scope is its call, any other fork only when it is clear-cut. An answer that adds a short
-note, or that relays the Head's decision, counts as manager-mode's "What counts as the answer"
-says. A split, a target, a pull
+note counts as manager-mode's "What counts as the answer" says; one that relays the Head's
+answer is advice (below). A split, a target, a pull
 condition or a fork that offers a new milestone (step 3, "Milestone") is never the Director's.
 When the project has a Head, the Head of <department> (`dv:director-mode`, "The Head and the CEO's 1%"), it goes to the
-Director like any other fork, and the Director forwards it to the Head, whose call it is. Two
-exceptions still need my explicit yes, relayed in his answer's `Approved by:` field and verified
-by this session against my own words in the source it names, as manager-mode's check on an
-`Answer from the Head` says:
-- Keeping a ticket pointed 13 whole (step 4). The Head may approve its split, but his "no split"
-  settles it only when that verified yes is for that ticket.
+Director like any other fork, and the Director forwards it to the Head. A Head's mailed answer is advisory until verified Head decision delivery ships (VIL-1193). So a fork only
+the Head decides (a target, a split, splitting a ticket pointed 13, a pull condition, a new
+milestone's other options) stays pending, whatever he answers: the ticket isn't ready and gets no
+`groomed` label. Two choices settle on my explicit yes instead, relayed in his answer's
+`Approved by:` field and verified by this session against my own words in the source it names, as
+manager-mode's check on an `Answer from the Head` says:
+- Keeping a ticket pointed 13 whole (step 4): only when that verified yes is for that ticket.
 - Creating a new milestone (step 3, "Milestone"). The Director forwards the proposal (its name and
-  one line on what done means) to the Head. His answer that creates it settles the fork only when
-  that verified yes is for that milestone, by name. A specific yes I gave earlier
+  one line on what done means) to the Head. It is created only when that verified yes is for that
+  milestone, by name. A specific yes I gave earlier
   for that milestone counts, with its source, and he relays it; when there is none, he asks me
   once. Where the shared rules' "Milestones" would ask me again (the milestone finished or gone
   since the draft, a name conflict at creation), that ask goes the same way and creating still
-  needs my relayed yes. His answer that picks another option (leave it with none, keep it out of
-  milestones) settles it as usual, and choosing an existing milestone follows the cases in step 3,
-  unchanged.
+  needs my relayed yes. Choosing an existing milestone follows the cases in step 3, unchanged.
 
 Until that yes comes, the fork stays pending: nothing is created, the ticket is not ready and gets
 no `groomed` label, and its Decisions line, once settled, records my yes, relayed by the Head,
@@ -483,7 +482,7 @@ finding in one sentence; from a worktree session, each fork goes to the Director
 worktree session: forks go to the Director first", under "Forks-only mode"), and only
 those that section sends to me are asked here. If there are no forks, say so in one line, ask nothing
 and go to step 7. Each answer to a fork is recorded in the default form, or in the Director form
-when the Director answered it, or in the Head form when the Head did. Each routine call that "Recording" (under "Forks-only mode")
+when the Director answered it, or in the Head form when an approval the Head relayed settled it. Each routine call that "Recording" (under "Forks-only mode")
 says to record is recorded in the "Decided by dv:groom (forks-only)" form, and no other is. Your
 call to file a
 spin-off stands as the approval to create it with what the proposal showed (folding one in is a

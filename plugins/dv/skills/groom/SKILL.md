@@ -94,7 +94,12 @@ note, or that relays the Head's decision, counts as manager-mode's "What counts 
 says. A split, a target, a pull
 condition or a fork that offers a new milestone (step 3, "Milestone") is never the Director's.
 When the project has a Head, the Head of <department> (`dv:director-mode`, "The Head and the CEO's 1%"), it goes to the
-Director like any other fork, and the Director forwards it to the Head, whose call it is; with no
+Director like any other fork, and the Director forwards it to the Head, whose call it is. The one
+exception is keeping a ticket pointed 13 whole, which still needs my explicit yes (step 4): the
+Head may approve its split, but his "no split" settles it only when it carries my explicit yes for
+that ticket, as manager-mode's check on an `Answer from the Head` says. Until then the unsplit 13
+is not ready and gets no `groomed` label, and its Decisions line, once settled, records my yes as
+relayed by the Head. With no
 Head, only I can settle it, and it comes straight to me. A fork the Director forwards to the Head
 (`Forwarded to the Head`) or holds for me (`Held for David`) does not stop grooming: record it
 under Decisions as open, take the way forward the reply names, and manager-mode settles it as its

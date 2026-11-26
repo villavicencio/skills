@@ -268,11 +268,18 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
   (AskUserQuestion) blocks this session's turn, Orca has no command to answer or dismiss one, and
   mail to and from the session queues behind it (`orca orchestration send` warns "Queued behind an
   open prompt"; SendMessage queues too). So in any turn, send every message to the Director or the
-  Head, highlights included, before you open a card to me; and never open a card while a question
-  to the Director (or, through it, the Head) still waits for its answer: wait for the answer or
-  its 10 minutes first. With a Head, the CEO's 1% goes to him by mail through the Director and
-  never in a card. `dv:groom` and `dv:director-mode` point here.
-- **Wait up to 10 minutes** from the send, and keep other work moving. The answer comes in a later
+  Head, highlights included, before you open a card to me, and open no card while any question
+  you sent the Director (or, through it, the Head) is still open. A question is open until an
+  answer that counts settles it, or, with no Head, until it comes to me ("On 'ask David'"). With a
+  Head, its 10 minutes passing doesn't close it: it stays pending on its way forward ("With a
+  Head"), you go on with work that doesn't depend on it, and a later answer settles it under the
+  same Qk. An ask to me that falls due while a question is open goes to me as plain text in this
+  chat, standing on its own the same way ("Every ask to me stands on its own"), and my typed
+  reply answers it; open a card only once no question is open. With a Head, the CEO's 1% goes to
+  him by mail through the Director and never to me in this chat. `dv:groom` and
+  `dv:director-mode` point here.
+- **Wait up to 10 minutes** from the send, and keep other work moving. With a Head, the 10
+  minutes end only the wait, not the question ("Mail before a card"). The answer comes in a later
   turn; if nothing else will bring a turn back before the 10 minutes are up, start a background
   timer (a background shell command such as `sleep 600`) so one does, and stop it once the
   answer arrives.

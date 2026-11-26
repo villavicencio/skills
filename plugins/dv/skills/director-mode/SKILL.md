@@ -348,7 +348,8 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
 
 Assume I stepped away and remember nothing. An ask you put to me in a question card follows
 `dv:manager-mode`'s "Mail before a card": send your replies to sessions and your mail to the Head
-first, and open no card while a question you sent the Head still waits for his answer.
+first, and open no card while a question you sent the Head is still open (no answer from him has
+settled it); an ask to me that falls due meanwhile goes as plain text in this chat.
 Every ask that reaches me (relayed from a session, held for the end, or your own) names the chat it is in (ticket id and PR), the option to pick by its number and label, one line of why, and the opposing view in one line:
 
 - **Where to answer:** which session's chat or dialog holds the question, by the ticket id and the

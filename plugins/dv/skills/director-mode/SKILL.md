@@ -815,9 +815,11 @@ terminal by `orca terminal send`, by clipboard paste, or as a file under
   questions to me, not to the Head, except that once its note has reached you through its probe
   and its verdict is safe to delete (or a standing yes of mine covers the losses I accepted
   before the note) it asks no removal question and says you remove the worktree after its session
-  ends if your checks pass (a handoff archive it could not confirm makes the note's verdict
-  `not confirmed safe`, which check 1 under "End a finished worktree session" refuses, so you
-  don't ask me to close that session or release it on that note). File each item under
+  ends if your checks pass (it writes the note after its handoff archive step, and where the
+  verdict would otherwise be safe, an archive it could not confirm or has not run makes it
+  `not confirmed safe`, with no removal command in the note, which check 1 under "End a finished
+  worktree session" refuses, so you don't ask me to close that session or release it on that
+  note). File each item under
   "NOTICED, NOT FILED" with `dv:ticket`, under its exception (b) ("Filing without my
   confirmation"), and name the new ids in your reply to me.
 - Reply to a SendMessage note with one line saying you received it, sent to the note's `from`

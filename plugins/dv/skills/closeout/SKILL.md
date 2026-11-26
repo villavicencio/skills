@@ -1,6 +1,6 @@
 ---
 name: closeout
-description: "Close out a finished worktree session and brief the parent session in the main checkout. Verifies from git, gh and the tracker (not from memory) the ticket, the session's PRs, what the worktree holds that is uncommitted, only here or not on the default branch, and the main checkout against its upstream; a check that cannot run makes the verdict 'not confirmed safe'. Writes a plain-text note for the parent (what shipped, tickets filed or changed, things noticed and not filed, decisions waiting, cleanup, whether to reply), attempts to copy it to the clipboard and sends it to the parent once it can reach and verify it, says whether the worktree is safe to delete and what would be lost if not, and when it is safe archives the session's handoff. Never removes the worktree without a yes. Use when the user says \"close out this worktree\", \"is this worktree safe to delete\" or \"wrap up this worktree\". NOT for work that continues in a later session (that is dv:handoff), NOT for merging a PR or deleting a merged branch."
+description: "Close out a finished worktree session and brief the parent session in the main checkout. Verifies from git, gh and the tracker (not from memory) the ticket, the session's PRs, what the worktree holds that is uncommitted, only here or not on the default branch, and the main checkout against its upstream; a check that cannot run makes the verdict 'not confirmed safe'. Archives the session's handoff when safe, then writes a plain-text note for the parent (what shipped, tickets filed or changed, things noticed and not filed, decisions waiting, cleanup, whether to reply), attempts to copy it to the clipboard and sends it to the parent once it can reach and verify it, and says whether the worktree is safe to delete and what would be lost if not. Never removes the worktree without a yes. Use when the user says \"close out this worktree\", \"is this worktree safe to delete\" or \"wrap up this worktree\". NOT for work that continues in a later session (that is dv:handoff), NOT for merging a PR or deleting a merged branch."
 license: Apache-2.0
 metadata:
   author: villavicencio
@@ -38,6 +38,17 @@ mention. Bare invocation takes none. "I" and "me" in this skill mean the user.
   followed by a digit everywhere in this file.
 
 ## Steps
+
+Run the steps in this order: Step 1, Step 2, Step 4, Step 3, Step 5. They keep their numbers,
+and the sections below are in that run order. Step 4 (the handoff archive) runs before Step 3
+writes and saves the note, so the note is written once, after the archive, and its Worktree
+verdict and CLEANUP carry this turn's Step 4 result. When Step 4 is skipped (Step 2 did not say
+safe to delete, or the losses it lists wait on my yes), Step 3 follows Step 2 and the note
+records that the archive has not run. Run the first block under "Optional: Orca delivery and
+removal" before Step 3 as well (it only reads, and says when there is no Orca CLI): the removal
+command Step 5 picks, which a cleared note names in CLEANUP, depends on it. Writing the note
+again later (after my yes, after a recheck that found a change, or before the note's send) runs
+Steps 1 and 2 again first, then Step 4 when its gate allows it, in the same order.
 
 ### Step 1 — Verify the worktree, its PRs and the main checkout
 
@@ -520,105 +531,16 @@ verdict is **not confirmed safe**, with the check that is missing.
 An open or unmerged PR, or a ticket that is not in a finished state, does not by itself put files
 at risk, but the work is not finished. Say so first, and suggest `/handoff` if it will continue.
 
-### Step 3 — Write the parent note and copy it
-
-Write the note as plain text, no markdown, for a reader who was not in this session. Include only
-what the parent needs to act on or to avoid redoing. Every state in it comes from Steps 1 and 2.
-Use these headings in this order, and write "none" under one with nothing to say:
-
-```
-CLOSEOUT NOTE from <branch or "detached"> at <worktree path>, <date and time with zone>
-Worktree: <safe to delete | safe once you accept losing: <each build-output line as name, entry count, directory count and fingerprint; reflog-only commits with count and list id> | NOT safe to delete: what would be lost, each nested git repo by path | not confirmed safe: what is unverified>, by these checks
-Not checked: <the fixed list from Step 2>
-
-WHAT SHIPPED
-<ticket id, title and state now; each PR with number, merge state and link; releases and tags>
-
-TICKETS FILED OR CHANGED
-<id, what changed>
-
-NOTICED, NOT FILED
-<things seen along the way that nobody has written down anywhere else>
-
-WAITING ON <the user's name>
-<decisions only they can make, each with a recommendation>
-
-CLEANUP THE PARENT OWNS
-<pull the main checkout if it is behind; remove this worktree with the command from Step 5; anything else>
-
-REPLY NEEDED: <no | yes: the question>
-```
-
-**A sent note's Worktree line and Step 4.** A note that is sent (by `terminal send` or
-SendMessage, "Deliver the note") may keep a `safe to delete` or `safe once you accept losing`
-verdict only when, in the turn it is sent, Step 4 ran after that turn's Step 1 and Step 2 and
-confirmed the archive (Step 4's two success lines). Otherwise, for a note whose verdict is one of
-those two, before the send write its Worktree line as `not confirmed safe: handoff archive
-incomplete or not confirmed (<what Step 4 printed, or "Step 4 has not run", naming the losses it
-waits on>), by these checks`, and save the note again with the block below. A `NOT safe to
-delete` or `not confirmed safe` verdict stays as it is. In the first turn Step 3 runs before
-Step 4, so when Step 4 does not confirm the archive, the copy saved first is replaced by a new
-one: the block saves it under a new `<branch slug>.<YYYYMMDDTHHMMSSZ>.txt` name (with `-<n>` on a
-clash), the send uses that path, and the reply shows that copy and names its path. The Director
-reads the saved copy, and its check on the note (`dv:director-mode`, "End a finished worktree
-session", check 1) refuses `not confirmed safe`, so it leaves the worktree and tells me instead
-of asking me to close the session or releasing it. Known limit (VIL-1209): if the session ends
-anyway, director-mode's later removal runs the global removal procedure's checks, which do not
-read the note.
-
-Leave out secrets, credentials and tokens. Then save the note and attempt to copy it, with the note's text
-in place of the placeholder line:
-
-```bash
-if git rev-parse --git-dir >/dev/null 2>&1; then
-  GCD=$(git rev-parse --git-common-dir) && D="$(cd "$GCD" && pwd -P)/closeouts"
-  B=$(git branch --show-current)
-  SLUG=$(printf '%s' "${B:-detached-$(git rev-parse HEAD 2>/dev/null)}" | sed -e 's/%/%25/g' -e 's#/#%2F#g')
-  BASEN="$D/$SLUG.$(date -u +%Y%m%dT%H%M%SZ)"; NOTE="$BASEN.txt"; n=0
-  while [ -e "$NOTE" ]; do n=$((n+1)); NOTE="$BASEN-$n.txt"; done
-  # set -C refuses to overwrite a file that appeared after the check above.
-  if mkdir -p "$D" && ( set -C; cat > "$NOTE" ) <<'CLOSEOUT_NOTE_END'
-[the note]
-CLOSEOUT_NOTE_END
-  then
-    echo "note saved: $NOTE"
-    COPY_HELPER=""; COPY_ACCEPTED=""
-    if command -v pbcopy >/dev/null 2>&1; then COPY_HELPER=pbcopy; pbcopy < "$NOTE" && COPY_ACCEPTED=1
-    elif command -v wl-copy >/dev/null 2>&1; then COPY_HELPER=wl-copy; wl-copy < "$NOTE" && COPY_ACCEPTED=1
-    elif command -v xclip >/dev/null 2>&1; then COPY_HELPER=xclip; xclip -selection clipboard < "$NOTE" && COPY_ACCEPTED=1
-    elif command -v xsel >/dev/null 2>&1; then COPY_HELPER=xsel; xsel --clipboard --input < "$NOTE" && COPY_ACCEPTED=1
-    elif command -v clip.exe >/dev/null 2>&1; then COPY_HELPER=clip.exe; clip.exe < "$NOTE" && COPY_ACCEPTED=1
-    fi
-    if [ -n "$COPY_ACCEPTED" ]; then
-      echo "clipboard command accepted the note ($COPY_HELPER); clipboard copy unconfirmed — paste from the reply if needed"
-    elif [ -n "$COPY_HELPER" ]; then
-      echo "!! clipboard command failed ($COPY_HELPER); clipboard copy unconfirmed — paste from the reply"
-    else
-      echo "(no clipboard command found — copy not attempted; paste from the reply)"
-    fi
-  else
-    echo "!! the note could NOT be saved to $NOTE — nothing was copied; paste it from the reply"
-  fi
-fi
-```
-
-The saved copy lives in the repo's shared git directory (`<git-common-dir>/closeouts/`), so it
-survives the worktree's removal and the parent session can read it by path. A clipboard command's
-exit status only shows whether it accepted the note, not whether it reached the clipboard I paste from. This
-also applies outside Orca: the command may run on another machine or in a different clipboard
-context. A same-shell readback (`pbpaste` or `osascript`) does not confirm my paste either.
-Report command accepted / copy unconfirmed, command failed / copy unconfirmed, or no command /
-copy not attempted, as the block printed. Only say the clipboard copy is confirmed if I have
-verified pasting this note in my UI. Always include the full note in the reply's code block,
-whatever the clipboard status.
-
 ### Step 4 — Archive the handoff (only when safe to delete)
 
-Run this only when Step 2 said safe to delete, or said safe once I accept losing the listed
-build-output lines and reflog-only commits and I have said yes to that. It moves this session's handoff out of the shared
-store into `handoffs/_done/`, the way `/pickup` does for a branch whose PR merged, so `/pickup` in
-other worktrees stops listing a closed session. It also covers a detached worktree, which
-`/pickup` never archives: the handoff is found by the worktree path it records, and archived
+Run this right after Step 2, before Step 3 writes the note, and only when Step 2 said safe to
+delete, or said safe once I accept losing the listed build-output lines and reflog-only commits
+and I have said yes to that in this session (my answer to Step 5's question, which a standing yes
+does not replace), with Step 5's recheck matching the lines I accepted word for word. A changed
+"safe once you accept losing" verdict waits on a new yes. It moves this session's handoff out of
+the shared store into `handoffs/_done/`, the way `/pickup` does for a branch whose PR merged, so
+`/pickup` in other worktrees stops listing a closed session. It also covers a detached worktree,
+which `/pickup` never archives: the handoff is found by the worktree path it records, and archived
 under the name `/pickup` looks for. Nothing is deleted and no earlier archive is overwritten.
 
 ```bash
@@ -749,12 +671,134 @@ checkout`, no output at all (the block stopped early), or Step 4 not run. Step 1
 this block, decides the verdict; the block's own `git status` only guards the archive. Then offer and name no removal: the session would stay listed by `/pickup`, and a
 handoff copy that exists only in the worktree would go with it. The `HANDOFF.md` in the worktree is left in place; it goes with the worktree. When Step 2 did not
 say safe (or I have not yet accepted the listed losses), skip this step and say the handoff was
-left where it is.
+left where it is. Either way, Step 3 comes next and writes this result into the note (Step 3,
+"The note follows Step 4").
+
+### Step 3 — Write the parent note and copy it
+
+Run this after Step 4, in the same turn, or right after Step 2 when Step 4 is skipped. Write the
+note as plain text, no markdown, for a reader who was not in this session. Include only what the
+parent needs to act on or to avoid redoing. Every state in it comes from Steps 1, 2 and 4 as run
+in this turn. Use these headings in this order, and write "none" under one with nothing to say:
+
+```
+CLOSEOUT NOTE from <branch or "detached"> at <worktree path>, <date and time with zone>
+Worktree: <safe to delete | safe once you accept losing: <each build-output line as name, entry count, directory count and fingerprint; reflog-only commits with count and list id> | NOT safe to delete: what would be lost, each nested git repo by path | not confirmed safe: what is unverified>, by these checks
+Not checked: <the fixed list from Step 2>
+
+WHAT SHIPPED
+<ticket id, title and state now; each PR with number, merge state and link; releases and tags>
+
+TICKETS FILED OR CHANGED
+<id, what changed>
+
+NOTICED, NOT FILED
+<things seen along the way that nobody has written down anywhere else>
+
+WAITING ON <the user's name>
+<decisions only they can make, each with a recommendation>
+
+CLEANUP THE PARENT OWNS
+<pull the main checkout if it is behind; the removal command only where "The note follows Step 4" allows it, otherwise "no removal command" and why; anything else>
+
+REPLY NEEDED: <no | yes: the question>
+```
+
+**The note follows Step 4.** The Worktree line and CLEANUP say what Step 4 printed in this
+turn. Only the first case names a removal command:
+
+1. Step 2 said safe to delete, or said safe once you accept losing and I have said yes to those
+   losses (the recheck matching, Step 5), and Step 4's last line in this turn is one of its two
+   success lines: the Worktree line is Step 2's verdict word for word, with nothing added to it
+   (the Director's recheck compares it word for word; say who accepted which losses elsewhere in
+   the note), and CLEANUP names the removal command Step 5 gives (with an initialized submodule,
+   the guarded procedure Step 5 names instead of a command).
+2. Step 2 said either of those, but in this turn Step 4 printed anything else (`ARCHIVE
+   INCOMPLETE`, `uncommitted changes`, the main-checkout line, or nothing) or did not run: the
+   Worktree line is `not confirmed safe: handoff archive not confirmed (Step 4 printed "<its last
+   line>", or "Step 4 has not run in this turn"), by these checks`.
+3. Step 2 said safe once you accept losing and I have not said yes to those losses: Step 4 has
+   not run, since it waits on that yes. The Worktree line is `not confirmed safe: losing <each
+   build-output line and the reflog-only commits, as Step 2's verdict lists them> waits on <the
+   user's name>'s yes, and the handoff archive (Step 4) has not run, by these checks`, and
+   CLEANUP says there is no removal command until those losses are accepted and Step 4 confirms
+   the archive. After my yes, the turn that acts on it rechecks (Step 5), runs Step 4 and writes
+   the note again with this step, as a new copy that follows case 1 or case 2.
+4. Step 2 said NOT safe to delete or not confirmed safe: Step 4 did not run, and the Worktree
+   line is Step 2's verdict as it is.
+
+Outside case 1 no removal command appears anywhere in the note: CLEANUP says `no removal command`
+and why removal is blocked (what would be lost, the check that did not run, the archive not
+confirmed, or the losses waiting on my yes), and, when Step 4 did not run, that the handoff was
+left where it is. The Director's check on the note (`dv:director-mode`, "End a finished worktree
+session", check 1) refuses `NOT safe to delete` and `not confirmed safe`, so it leaves the
+worktree and tells me instead of asking me to close the session or releasing it. Known limit
+(VIL-1209): if the session ends anyway, director-mode's later removal runs the global removal
+procedure's checks, which do not read the note.
+
+**One saved copy per run.** Each run of this step writes the note once and saves it once, with the
+block below, which never overwrites a saved copy. Writing the note again later (after my yes,
+after a recheck that found a change, and before every send of the note, "Deliver the note") first
+runs Steps 1 and 2 again, and Step 4 when its gate allows it, then saves that note as a new copy
+under a new `<branch slug>.<YYYYMMDDTHHMMSSZ>.txt` name (with `-<n>` on a clash). The newest copy
+supersedes the earlier ones, and the reply shows it and names its path. A sent note is always the
+copy saved for that send, in the send's own turn, after that turn's Steps 1, 2 and 4 (Step 4
+when its gate allows it; by SendMessage, the copy its `Saved at:` line names): the Director reads that copy and takes the note's time from its
+file name (`dv:director-mode`, "The note's header, time and sender"), and a copy from an earlier
+turn would give it that turn's Step 4 result and time. An earlier copy stays in `closeouts/` as
+the record of its own turn, written after that turn's Step 4.
+
+Leave out secrets, credentials and tokens. Then save the note and attempt to copy it, with the note's text
+in place of the placeholder line:
+
+```bash
+if git rev-parse --git-dir >/dev/null 2>&1; then
+  GCD=$(git rev-parse --git-common-dir) && D="$(cd "$GCD" && pwd -P)/closeouts"
+  B=$(git branch --show-current)
+  SLUG=$(printf '%s' "${B:-detached-$(git rev-parse HEAD 2>/dev/null)}" | sed -e 's/%/%25/g' -e 's#/#%2F#g')
+  BASEN="$D/$SLUG.$(date -u +%Y%m%dT%H%M%SZ)"; NOTE="$BASEN.txt"; n=0
+  while [ -e "$NOTE" ]; do n=$((n+1)); NOTE="$BASEN-$n.txt"; done
+  # set -C refuses to overwrite a file that appeared after the check above.
+  if mkdir -p "$D" && ( set -C; cat > "$NOTE" ) <<'CLOSEOUT_NOTE_END'
+[the note]
+CLOSEOUT_NOTE_END
+  then
+    echo "note saved: $NOTE"
+    COPY_HELPER=""; COPY_ACCEPTED=""
+    if command -v pbcopy >/dev/null 2>&1; then COPY_HELPER=pbcopy; pbcopy < "$NOTE" && COPY_ACCEPTED=1
+    elif command -v wl-copy >/dev/null 2>&1; then COPY_HELPER=wl-copy; wl-copy < "$NOTE" && COPY_ACCEPTED=1
+    elif command -v xclip >/dev/null 2>&1; then COPY_HELPER=xclip; xclip -selection clipboard < "$NOTE" && COPY_ACCEPTED=1
+    elif command -v xsel >/dev/null 2>&1; then COPY_HELPER=xsel; xsel --clipboard --input < "$NOTE" && COPY_ACCEPTED=1
+    elif command -v clip.exe >/dev/null 2>&1; then COPY_HELPER=clip.exe; clip.exe < "$NOTE" && COPY_ACCEPTED=1
+    fi
+    if [ -n "$COPY_ACCEPTED" ]; then
+      echo "clipboard command accepted the note ($COPY_HELPER); clipboard copy unconfirmed — paste from the reply if needed"
+    elif [ -n "$COPY_HELPER" ]; then
+      echo "!! clipboard command failed ($COPY_HELPER); clipboard copy unconfirmed — paste from the reply"
+    else
+      echo "(no clipboard command found — copy not attempted; paste from the reply)"
+    fi
+  else
+    echo "!! the note could NOT be saved to $NOTE — nothing was copied; paste it from the reply"
+  fi
+fi
+```
+
+The saved copy lives in the repo's shared git directory (`<git-common-dir>/closeouts/`), so it
+survives the worktree's removal and the parent session can read it by path. A clipboard command's
+exit status only shows whether it accepted the note, not whether it reached the clipboard I paste from. This
+also applies outside Orca: the command may run on another machine or in a different clipboard
+context. A same-shell readback (`pbpaste` or `osascript`) does not confirm my paste either.
+Report command accepted / copy unconfirmed, command failed / copy unconfirmed, or no command /
+copy not attempted, as the block printed. Only say the clipboard copy is confirmed if I have
+verified pasting this note in my UI. Always include the full note in the reply's code block,
+whatever the clipboard status.
 
 ### Step 5 — Reply, and leave the removal to me
 
-Name the removal command for the tool that made the worktree, to be run from the main checkout
-after this session has ended. Do not run it.
+When the removal is cleared (the bullet "Removal cleared", below), name the removal command for
+the tool that made the worktree, to be run from the main checkout after this session has ended.
+Do not run it.
 
 - A worktree under `<main checkout>/.claude/worktrees/<topic>`, where `wt` is on PATH:
   `wt done <topic>`.
@@ -764,39 +808,43 @@ after this session has ended. Do not run it.
   replaces this command; otherwise keep the command above.
 - While the note waits for the probe answers ("Deliver the note", below), say that removing the
   worktree ends this session, and the note is then not sent.
-- **Removal cleared.** Name a removal command only when Step 2 said safe to delete, or it said
-  safe once I accept losing and I accepted those build-output lines and reflog-only commits (the
-  recheck below still matching), and Step 4 confirmed the archive (its two success lines, Step 4).
-  Otherwise, with or without a verified Director, name no command and don't say the Director
-  removes it: say why removal is blocked (what would be lost, the check that did not run, or the
-  archive not confirmed), and for losses not yet accepted ask the question in the paragraph below.
+- **Removal cleared.** Name a removal command, in the reply or the note, only when Step 2 said
+  safe to delete, or it said safe once I accept losing and I accepted those build-output lines and
+  reflog-only commits (the recheck below still matching), and Step 4's latest run confirmed the
+  archive (its two success lines, Step 4), before Step 3 wrote the latest note (Step 3, "The note
+  follows Step 4"). Otherwise, with or without a verified Director, name no command and don't say
+  the Director removes it: say why removal is blocked (what would be lost, the check that did not
+  run, or the archive not confirmed or not yet run), and for losses not yet accepted ask the
+  question in the paragraph below.
 - **The Director removes it.** When the removal is cleared, the note has been sent to a Director
   its probe verified ("Deliver the note", steps 4 and 5) with Step 4's archive confirmed in that
-  send's turn (its Worktree line was not turned into `not confirmed safe` under "A sent note's
-  Worktree line and Step 4"), and either Step 2 said safe to delete or a standing yes of mine (in
-  the global instructions, this project's instructions or memory) covers every accepted loss and
-  my acceptance came before the note that was sent, say that the Director removes this worktree
-  after this session ends if its checks pass, and still name the command for me; "Offer the
-  removal", below, then asks nothing. Losses I accepted only in this session fail the Director's
-  check on the note (`dv:director-mode`, "End a finished worktree session", check 1), and an
-  acceptance after the note is a message from me after it (check 3), so in either case the removal
-  stays mine, as without a Director. Those checks hold while the Director ends this session
-  itself; if the session ends another way, its later removal does not read the note (known
-  limit, VIL-1209).
-- **Initialized submodules.** If Step 1 printed "initialized submodules" above 0, `wt done`,
-  `git worktree remove` and a plain `orca worktree rm` all refuse this worktree. Say so, and point
-  to the guarded procedure instead of a plain command: `dv:orca-setup` Step 5 (`orca worktree rm
-  --force`, after its submodule checks) or dotfiles `docs/agents/code-review.md`, "Worktrees with
-  submodules are detached, not removed". Do not offer `--force` yourself.
+  send's turn (so the note sent says safe: Step 3, "The note follows Step 4", case 1), and either
+  Step 2 said safe to delete or a standing yes of mine (in the global instructions, this project's
+  instructions or memory) covers every accepted loss and my acceptance came before the note that
+  was sent, say that the Director removes this worktree after this session ends if its checks
+  pass, and still name the command for me; "Offer the removal", below, then asks nothing. Losses I
+  accepted only in this session fail the Director's check on the note (`dv:director-mode`, "End a
+  finished worktree session", check 1), and an acceptance after the note is a message from me
+  after it (check 3), so in either case the removal stays mine, as without a Director. Those
+  checks hold while the Director ends this session itself; if the session ends another way, its
+  later removal does not read the note (known limit, VIL-1209).
+- **Initialized submodules.** When the removal is cleared and Step 1 printed "initialized
+  submodules" above 0, `wt done`, `git worktree remove` and a plain `orca worktree rm` all refuse
+  this worktree. Say so, and point to the guarded procedure instead of a plain command:
+  `dv:orca-setup` Step 5 (`orca worktree rm --force`, after its submodule checks) or dotfiles
+  `docs/agents/code-review.md`, "Worktrees with submodules are detached, not removed". Do not
+  offer `--force` yourself.
 
 When the worktree is not safe, or not confirmed safe, name no removal command and offer none.
-When it is safe once I accept losing (never while a nested git repo is listed: that is not safe),
-end the reply with one plain question that names what would be lost: each build-output line with
-its name, entry count, directory count and fingerprint (for example
+When Step 2 said safe once I accept losing (never while a nested git repo is listed: that is not
+safe) and I have not said yes yet, the note says the losses wait on my yes (Step 3, "The note
+follows Step 4", case 3); end the reply with one plain question that names what would be lost:
+each build-output line with its name, entry count, directory count and fingerprint (for example
 `__pycache__/ (any depth): 666 entries in 87 directories; fingerprint 3f9a0c1e2b7d`), and the
-reflog-only commits with their count and list id. Accept losing them? On my yes, recheck first (below), then run Step 4, then,
-only if Step 4 confirmed the archive, name the removal command (or make the Orca offer below);
-otherwise say why removal is blocked (the bullet "Removal cleared").
+reflog-only commits with their count and list id. Accept losing them? On my yes, recheck first
+(below), then run Step 4, then write the note again with Step 3 (a new copy that follows this
+Step 4), then, only if Step 4 confirmed the archive, name the removal command (or make the Orca
+offer below); otherwise say why removal is blocked (the bullet "Removal cleared").
 
 **Recheck in every later turn.** A yes arrives in a later turn, and the worktree may have changed
 since the verdict. Before acting on any yes (accepting losses, archiving, removing), run the Step 1
@@ -808,20 +856,25 @@ contents or a symlink's target, so a build-output file edited, replaced or renam
 symlink pointed elsewhere, changes it even when every count stays the same; file modes and times
 are not part of it. A fingerprint that reads `unknown` comes with a check that did not run, so
 the verdict is not the same. The reflog-only commit count and list id must be the same too, and
-no nested git repo may be listed. If anything changed, act on nothing: report the new verdict, update the saved note if it no longer holds, and
-ask again.
+no nested git repo may be listed. If anything changed, act on nothing: report the new verdict,
+write the note again with Step 3 if the saved one no longer holds (a new copy, after Step 4 only
+when the new verdict is safe to delete; a changed "safe once you accept losing" verdict waits on
+a new yes, Step 3's case 3), and ask again.
 
 Reply in this order, short:
 
-1. One line: safe to delete; safe once you accept losing (each build-output line with its name,
+1. One line: the verdict as the note's Worktree line gives it (Step 3, "The note follows
+   Step 4"): safe to delete; safe once you accept losing (each build-output line with its name,
    entry count, directory count and fingerprint, and the reflog-only commits); not safe to delete (and what
    would be lost, each nested git repo by path); or not confirmed safe (and which check is
-   missing). Then the Not checked list from Step 2.
+   missing, that the handoff archive is not confirmed, or that the listed losses wait on my yes).
+   Then the Not checked list from Step 2.
 2. **Needs you:** decisions waiting on me, and anything still owed on the ticket that this
    session could not close. Leave it out if there is none.
 3. The verified facts, one line each: the ticket and its state; each PR and its merge state; what
    the worktree holds beyond the default branch; the main checkout against its remote (behind,
-   ahead, dirty); where the handoff went, or that it was left; where the note was saved and
+   ahead, dirty); where the handoff went, or that it was left; where this turn's copy of the note
+   was saved (when an earlier turn saved one, that this copy supersedes it) and
    the clipboard attempt status from Step 3 (unconfirmed unless I verified pasting this note);
    what happened with the Director, as one of the outcomes in "Deliver the note" (not sent and why, probe sent and the note waiting for the answers, send
    failed and probe sent again with the note waiting for the answers, answered but not verified
@@ -875,9 +928,9 @@ authorizes a release or `worker_done`. Wait for the Director's reply (the outcom
 replied") before `dv:manager-mode` lets the session send `worker_done`. Every other session
 routes as the bullets say.
 
-- Exactly one qualifying terminal (not for a supervised session): send the saved note from
-  Step 3, written under "A sent note's Worktree line and Step 4" (so a new copy when Step 4 did
-  not confirm the archive), once, with the CLI path the block printed in place of `<orca CLI>`, kept inside the quotes (no variable from that block survives to this call):
+- Exactly one qualifying terminal (not for a supervised session): send the copy Step 3 saved in
+  this turn (in a later turn, run Steps 1, 2, 4 and 3 again first, Step 3's "One saved copy per
+  run"), once, with the CLI path the block printed in place of `<orca CLI>`, kept inside the quotes (no variable from that block survives to this call):
   `"<orca CLI>" terminal send --terminal <handle> --text "$(cat "<note path>")" --enter --wait-submit 20 --json`
   Report what the result says (`input_accepted`, and whether a turn was seen to start), not
   "delivered". Do not resend on a timeout. After a transport error, reissue the same command with
@@ -933,12 +986,12 @@ routes as the bullets say.
      is taken for the Director. I accepted this on 2026-11-23: every session is one of my own
      agents on one machine, and the note holds nothing secret.
   5. The note. Send the note once, with SendMessage to the Director's answer's `from` address.
-     The answer arrives in a later turn, so first run the Step 1 block
-     again, apply Step 2, run Step 4 again when Step 2 allows it (safe to delete, or safe once I
-     accept losing and I accepted those losses), and write the note again from those facts with
-     Step 3, under "A sent note's Worktree line and Step 4", which saves a new copy and attempts
-     to copy it to the clipboard. Send that copy; `<note path>` is the `note saved:` path
-     Step 3 printed in this turn. The receiver sees only the first line until it expands the
+     The answer arrives in a later turn, so first run Steps 1, 2 and 4 again in the run order
+     (Step 4 when its own gate allows it: safe to delete, or safe once I accept losing with those
+     very losses accepted and the recheck matching them), then Step 3, which writes the note from this turn's results, saves it once as
+     a new copy and attempts to copy it to the clipboard (Step 3, "The note follows Step 4" and
+     "One saved copy per run"). Send that copy; `<note path>` is the `note saved:` path Step 3
+     printed in this turn. The receiver sees only the first line until it expands the
      message, so the first line must say what the message is:
 
      ```
@@ -951,7 +1004,9 @@ routes as the bullets say.
      If the note's send fails (SendMessage returns an error, such as "socket path is stale" for
      a session that has ended, or "No agent named ... is reachable"), the Director may have
      restarted under a new name. Probe again from scratch, steps 1 to 4, with the candidates
-     ListAgents lists now, and send the note to the Director that passes, by this step. If that
+     ListAgents lists now, and send the note to the Director that passes, by this step: in the
+     turn of that send, Steps 1, 2 and 4 run again and Step 3 saves a new copy, which is the one
+     sent. If that
      second note send fails too, send nothing more and report the note not sent. After a send that
      succeeded, resend neither the probe nor the note.
 
@@ -982,7 +1037,8 @@ tested: a socket file left behind by a session that crashed.
 
 **Offer the removal.** Only when the worktree lives in Orca, the block printed an Orca CLI, and
 the removal is cleared (Step 5's bullet "Removal cleared"), end the reply with one question. Before running the removal on my yes,
-recheck as Step 5 says; if the verdict changed, do not remove. While the note waits for the
+recheck as Step 5 says and run Step 4 again; if the verdict changed, or Step 4 does not print one
+of its two success lines, do not remove: report it and write the note again with Step 3. While the note waits for the
 probe answers, say so before the question: the removal ends this session, and the note is
 then not sent. The question is: remove this worktree now? Run the removal only after my yes, in a later turn, as the last action
 of the session, because it stops this worktree's sessions:
@@ -992,9 +1048,10 @@ of the session, because it stops this worktree's sessions:
 **When the Director removes it, ask nothing.** This applies only where this question would be
 asked (above) and Step 5's bullet "The Director removes it" holds: the removal is cleared (Step 4
 confirmed the archive), the note has been sent to a Director its probe verified ("Deliver the
-note", steps 4 and 5) with its safe verdict kept under "A sent note's Worktree line and Step 4",
-and Step 2 said safe to delete or a standing yes of mine covers every accepted loss and my
-acceptance came before the note that was sent. When the removal is not cleared there is no
+note", steps 4 and 5) with a safe verdict, which Step 3 writes only after Step 4 confirmed the
+archive in the send's turn ("The note follows Step 4", case 1), and Step 2 said safe to delete
+or a standing yes of mine covers every accepted loss and my acceptance came before the note that
+was sent. When the removal is not cleared there is no
 question and no command: say why removal is blocked (Step 5). Where it applies, from the turn the
 note is sent, in that turn and every later one, end the reply without this question, whether or
 not the Director has replied (the outcomes "note sent with no reply yet" and "note sent and
@@ -1013,8 +1070,8 @@ send`), losses I accepted only in this session, or an acceptance after the note 
 this question never stands in for my consent to losing data that exists nowhere else: while Step 2
 says safe once you accept losing, Step 5's question still asks it, and nothing treats the worktree
 as safe before my yes. A yes I already gave to this question, asked before the note was sent,
-still counts: recheck and remove as above, as the session's last action, without waiting for the
-Director's reply.
+still counts: recheck, run Step 4 again and remove as above, as the session's last action,
+without waiting for the Director's reply.
 
 The command can return `ok: true` with `removing: true` before the removal has finished
 (`dv:orca-setup` Step 5). Before reporting it done, check from the main checkout that the path is
@@ -1025,8 +1082,8 @@ failed, with what each check showed. (Orca's list hides worktrees under `.claude
 
 Use the `path:` selector (`current` and `active` are refused). Add no `--force` and no
 `--delete-branch`: if the removal is refused, report the refusal and stop. With an initialized
-submodule, do not offer this command at all (Step 5). Without my yes, name
-this command in the reply instead and leave it to me.
+submodule, do not offer this command at all (Step 5). When the removal is cleared but I have not
+said yes, name this command in the reply instead and leave it to me.
 
 ## Notes
 

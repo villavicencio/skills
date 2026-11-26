@@ -12,15 +12,19 @@ a message from David to the session after the note. If the session ends another 
 Director's later removal runs the global removal procedure's checks, which do not read the note,
 so those items do not hold the worktree then (known limit, VIL-1209).
 
-The removal command itself keeps Step 5's guard. Closeout names one only when the worktree is
-safe to delete, or is safe once David accepts losing and he has accepted its build-output lines
-and reflog-only commits, and Step 4 confirmed the handoff archive. Otherwise it names none, says
-why removal is blocked, and never says the Director removes it. The question stays as before
-with no verified Director (no note sent, the note waiting for the probe answers, an answer not
-verified, or a note sent only by `terminal send`), when the losses were accepted only in the
-session, and when the acceptance came after the note was sent, since the Director's checks on
-the note then fail while it ends the session itself (if the session ends another way, its later
-removal does not read the note; known limit, VIL-1209).
+The removal command itself keeps Step 5's guard. Closeout names one, in its reply or its note,
+only when the worktree is safe to delete, or is safe once David accepts losing and he has
+accepted its build-output lines and reflog-only commits, and Step 4 confirmed the handoff
+archive in its latest run, before the note was written. Otherwise it names none, says why
+removal is blocked, and never says the Director removes it. On a yes to the removal question it
+runs Step 4 again along with the recheck, and removes nothing unless Step 4 prints one of its
+two success lines. Step 4 runs for "safe once you accept losing" only after David's yes in the
+session (a standing yes does not replace that question), with the recheck matching the lines he
+accepted. The question stays as before with no verified Director (no note sent, the note waiting
+for the probe answers, an answer not verified, or a note sent only by `terminal send`), when the
+losses were accepted only in the session, and when the acceptance came after the note was sent,
+since the Director's checks on the note then fail while it ends the session itself (if the
+session ends another way, its later removal does not read the note; known limit, VIL-1209).
 
 Step 4 now ends with an explicit success line, `archive complete: this session's handoff is in
 <store>/_done`, beside the existing `(no handoff for this session — nothing to archive)`; only
@@ -46,14 +50,26 @@ Step 1 and the Orca block also status-check their reads of the main checkout's p
 its reads of the worktree's path, HEAD and branch): a failure makes the verdict `not confirmed
 safe` in Step 1 and skips the Orca steps in that block.
 
-A note closeout sends (by SendMessage or `terminal send`) keeps a safe verdict only when Step 4
-confirmed the archive after Steps 1 and 2 in the turn of the send; the SendMessage path reruns
-Step 4 before rewriting the note when Step 2 allows it. Otherwise the sent note's Worktree line
-reads `not confirmed safe: handoff archive incomplete or not confirmed (…)`, saved as a new copy
-under the usual time-stamped name, and the Director's check on the note refuses it, so the
-Director does not ask David to close or release that session on that note. Known limit,
-VIL-1209: if the session ends by other means, director-mode's later removal runs the global
-removal procedure's checks, which do not read the note.
+Closeout now runs its steps in the order 1, 2, 4, 3, 5, keeping their numbers: the handoff
+archive (Step 4) runs before Step 3 writes and saves the note, so the note carries Step 4's
+result from the same turn. Where the verdict would otherwise be safe, the note says so, and
+names the removal command in its CLEANUP, only when Step 4 printed one of its two success lines.
+Where the verdict would otherwise be safe and Step 4 printed anything else, or did not run in
+that turn, the note's Worktree line reads `not confirmed safe: handoff archive not confirmed
+(…)`; a `NOT safe to delete` or `not confirmed safe` verdict from the checks stays as it is.
+When the verdict is "safe once you accept losing" and David has not yet said yes, Step 4 waits
+on that yes and the note reads `not confirmed safe: losing … waits on David's yes, and the
+handoff archive (Step 4) has not run`; the turn that acts on the yes rechecks, runs Step 4 and
+writes the note again. Outside the confirmed case no removal command appears anywhere in the
+note. Each run of Step 3 writes the note once and saves one copy, never overwriting an earlier
+one. Writing the note again (after a yes, after a recheck that found a change when the saved
+note no longer holds, and before every send of the note, a re-send after a failed send included)
+reruns Steps 1 and 2 first, and Step 4 where its own gate allows it, and saves a new copy, and
+the note sent is the copy saved for that send, in its own turn, named on the message's `Saved
+at:` line, since the Director takes the note's time from that file's name. The Director's check
+on the note refuses `not confirmed safe`, so it does not ask David to close or release that
+session on that note. Known limit, VIL-1209: if the session ends by other means, director-mode's
+later removal runs the global removal procedure's checks, which do not read the note.
 
 Skipping the question never stands in for consent to losing data: while the verdict is "safe
 once you accept losing", Step 5's question still asks it, and nothing treats the worktree as
@@ -63,23 +79,40 @@ description of closeout's reply says the same.
 
 ## Verification
 
-- With a stub Director: an interactive closeout session in a linked worktree of a throwaway
-  clone, with a stub Orca CLI that lists the worktree and refuses every removal and send, and a
-  stub peer session in the clone's main checkout that answered the probe with that path. Turn 1
-  (probe sent, note waiting) still asked "Remove this worktree now?"; turn 2 (note sent, no
-  reply yet) and turn 3 (note sent and replied) asked nothing and said the Director removes the
-  worktree after the session ends, naming the command.
-- With no Director: a headless closeout in the same lab found no candidate, sent nothing, and
-  ended with "Remove this worktree now?".
-- Both checks ran twice before MergeWren's review, on the first wording and on the second, with
-  the same outcome.
-- After the archive change, the Director check ran three more times. With a handoff in the store,
-  Step 4 printed `archive complete: …` in turn 1 and again when rerun before the note's send,
-  and the note went out as `safe to delete` with no question after it. With no handoff, Step 4
-  printed the no-handoff line, with the same outcome. With the archive made to fail (`_done` a
-  plain file), Step 4 printed `ARCHIVE INCOMPLETE` twice, the note went out as `not confirmed
-  safe: handoff archive incomplete or not confirmed (…)` from a new saved copy, and no turn named
-  a removal command or said the Director removes the worktree.
+Live runs used a throwaway clone with linked worktrees and a stub Orca CLI that lists the
+worktrees and refuses every removal and send.
+
+- On the final run order (Step 4 before Step 3), 2026-11-26, with a stub `pbcopy` as well:
+  - With a stub Director (an interactive closeout session and a stub peer in the clone's main
+    checkout that answered the probe with that path) and a handoff in the store, run twice, the
+    second time after the pre-push review fixes: Step 4 printed `archive complete: …` before
+    each of the two saved copies (the first, saved before the probe, and the one saved for the
+    send after Steps 1, 2 and 4 ran again). Both copies say `safe to delete` and name the
+    removal command; the copy sent is the second, named on the message's `Saved at:` line. While
+    the note waited for the probe's answer, the reply still asked "Remove this worktree now?"
+    (in the first run the answer arrived before that turn ended, so there was no such reply).
+    The replies after the send ("note sent with no reply yet", "note sent and replied") asked no
+    removal question and said the Director removes the worktree, naming the command.
+  - The same with the archive made to fail (`_done` a plain file), also run twice: Step 4
+    printed `ARCHIVE INCOMPLETE` before each copy, every copy says `not confirmed safe: handoff
+    archive not confirmed (Step 4 printed "…")`, and no note or reply names a removal command,
+    says the Director removes the worktree, or asks the removal question (the first run's
+    replies asked whether to move `_done` aside; the second asked nothing).
+  - With no Director (headless): a safe worktree (run twice, the second time after the pre-push
+    review fixes) archived its handoff, saved one copy saying `safe to delete` with the command, and
+    ended with "Remove this worktree now?". A worktree with an untracked file saved one copy
+    saying `NOT safe to delete`, with no command and the handoff left in the store. A "safe once
+    you accept losing" worktree saved one copy saying `not confirmed safe: losing … waits on
+    David's yes, and the handoff archive (Step 4) has not run`, with no command, and asked
+    "Accept losing …?". After the yes, the recheck matched; in that turn the lab's headless
+    permission check refused the Step 4 block, and the copy saved said `not confirmed safe:
+    handoff archive not confirmed (Step 4 has not run in this turn)` with no command. In the
+    next turn Step 4, run unchanged from a file, printed `archive complete: …`, and the copy
+    saved then gave the "safe once you accept losing" verdict and named the command. Each pass
+    through the steps saved exactly one copy.
+- Earlier wordings were run the same way (the removal question with a stub Director and with no
+  Director, twice each; then, after the archive change, a handoff in the store, no handoff, and
+  the archive made to fail), with the same removal-question outcomes.
 - The final Step 4 block, run on its own in bash and in zsh (`-f`) in a scratch repo, 50 cases
   each, with PATH shims that make one command fail: no handoff, a store handoff, a rerun after
   archiving, a matching `HANDOFF.md`, a store handoff with an identical `HANDOFF.md` (and its
@@ -100,7 +133,10 @@ description of closeout's reply says the same.
   failing printed `ARCHIVE INCOMPLETE`; the same failure in Step 1 listed the read under the
   checks that did not run (so the verdict is not confirmed safe), and in the Orca block skipped
   the Orca steps.
-- Not exercised: a real Director session's checks and removal, a terminal send, "safe once you
-  accept losing", and a yes given before the note was sent.
+- The Step 3 save block, run on its own in bash and zsh: one run saves exactly one copy; a second
+  run adds a new copy and leaves the first unchanged; a name clash in the same second takes a
+  `-<n>` name and overwrites nothing.
+- Not exercised: a real Director session's checks and removal, a terminal send, a "safe once you
+  accept losing" note sent to a Director, and a yes given before the note was sent.
 
 Refs VIL-932.

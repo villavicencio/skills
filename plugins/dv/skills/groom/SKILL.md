@@ -178,13 +178,13 @@ Call `get_issue` for the ticket with relations included, and `list_comments` for
 following the cursor until there are no more pages. Read both in full.
 
 **Neighbors.** Collect every related, blocking and blocked-by ticket, the parent and children, and
-each ticket or PR id the description or comments name. Read the current state of each: `get_issue`
-with relations for a ticket, `gh pr view <N> -R <owner>/<repo> --json state,mergedAt,title,url`
-for a PR. Read at most 10, in this order: blockers and blocked tickets, then those the ticket says
-something about ("rebase after", "wait for", "replaces"), then the rest. If there were more, say how
-many were skipped. Note each neighbor whose state contradicts what the ticket says about it:
-"rebase after PR N merges" when PR N has merged, "blocked by VIL-N" when VIL-N is Done, a named
-ticket that was canceled.
+each ticket or PR id the description or comments name. In this scan, read the state of at most 10
+neighbors. Use `get_issue` with relations for a ticket and
+`gh pr view <N> -R <owner>/<repo> --json state,mergedAt,title,url` for a PR. Read blockers and blocked
+tickets first, then those the ticket says something about ("rebase after", "wait for", "replaces"),
+then the rest. If the scan skipped any, report the count. Note each neighbor whose state contradicts
+what the ticket says about it, such as "rebase after PR N merges" when PR N has merged,
+"blocked by VIL-N" when VIL-N is Done, or a named ticket that was canceled.
 
 **Overlapping work.** Run two or three `list_issues` searches across the team, completed tickets
 included, with the main words of the Scope steps (not the title alone). Read each search to its
@@ -308,7 +308,8 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
 - **Comment evidence.** When a Scope step depends on evidence that sits in a comment, link to that
   comment from the description (its url from `list_comments`) instead of copying the evidence in.
 - **Prerequisites.** Apply the shared rules, "Prerequisites", to each wait found in step 1 and
-  each existing blocked-by. Then:
+  each existing blocked-by. Reuse the state reads from step 1 where they suffice. Make any remaining
+  focused reads the shared rules require, including for prerequisites skipped in that scan. Then:
   - Each unclear prerequisite the shared rules send to "Ask" is an open decision, including in
     forks-only mode. Keep its existing blocked-by while the answer is open or keeps the wait.
     Make a `removeBlockedBy` item (Canceled, Duplicate or a PR closed without merging are

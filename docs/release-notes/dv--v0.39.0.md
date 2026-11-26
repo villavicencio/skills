@@ -1,7 +1,7 @@
 # dv — v0.39.0
 
-Minor release. When a project names a department Head, `dv:director-mode`, `dv:manager-mode`,
-`dv:groom` and `dv:closeout` send the escalations that went to David to that Head, and only the
+Minor release. When a project names a department Head, `dv:director-mode`, `dv:manager-mode` and
+`dv:groom` send the escalations that went to David to that Head, and only the
 CEO's 1% reaches David, through him, unless no Director can be verified or the Director replies
 `Ask David`. These routing changes apply only when a project names a
 Head. Two changes apply always: an answer with a short note, and mail before a question card.
@@ -23,7 +23,9 @@ schedule time in a dialog, and the dialog kept the Director's reply from reachin
   Director can be verified or the Director replies `Ask David`.
 - **`dv:groom`.** With a Head, in forks-only mode from a worktree session, its David-only forks
   go through the Director to the Head.
-- **`dv:closeout`.** With a Head, the note's `WAITING ON` goes to the Head through the Director.
+- **`dv:closeout`.** Unchanged apart from the version and one pointer: its note reaches the
+  Director as before, and with a Head the Director forwards the note's open items that aren't the
+  CEO's 1% to him. Closeout's own Head routing comes in VIL-1191.
 - **Always on: an answer with a short note counts.** An `Answer` that names an offered option
   and adds a `. Note:` counts, unless the note changes what the option does.
 - **Always on: mail before a question card.** A session sends its mail to the Director or the

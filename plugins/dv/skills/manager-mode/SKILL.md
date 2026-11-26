@@ -271,7 +271,7 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
   Head, highlights included, before you open a card to me; and never open a card while a question
   to the Director (or, through it, the Head) still waits for its answer: wait for the answer or
   its 10 minutes first. With a Head, the CEO's 1% goes to him by mail through the Director and
-  never in a card. `dv:groom`, `dv:director-mode` and `dv:closeout` point here.
+  never in a card. `dv:groom` and `dv:director-mode` point here.
 - **Wait up to 10 minutes** from the send, and keep other work moving. The answer comes in a later
   turn; if nothing else will bring a turn back before the 10 minutes are up, start a background
   timer (a background shell command such as `sleep 600`) so one does, and stop it once the

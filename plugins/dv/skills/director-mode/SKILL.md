@@ -271,7 +271,7 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
   here, never by a way forward, a fallback, the `Unanswered` default or your pick. Until then each
   stays open, its way forward needs no one's yes, and the rest of the work goes on. The other
   skills point here.
-  - One of the CEO's 1%, a closeout's losses to accept included: only an answer that says it
+  - One of the CEO's 1%: only an answer that says it
     carries my decision. Its way forward: don't spend, reach outside or delete.
   - `dv:groom`'s Head-only forks (a target, a split, a pull condition, a new milestone): only the
     Head's answer. Until it comes, the ticket isn't ready: no `groomed` label and no start.
@@ -285,6 +285,7 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
   grant (a permission prompt, a harness approval, a barrier set for me) and what only my hands can
   do (closing a chat in Orca) are not questions and still come to me; so does a check on a request
   I just made in this chat, such as `open worktree VIL-N` on a ticket that fails its checks.
+  `dv:closeout` doesn't follow this rule yet (VIL-1191): its own reply still asks me as before.
 - **Forward** in the turn you reply, before the reply, with a body file outside the repo:
   `orca orchestration send --to "<his address>" --chat new --type question --subject "<VIL-N Qk: the question, in one line>" --body-file "<file>" --json`.
   The body is the question as the session sent it (or your own, in that form), in the form
@@ -308,11 +309,8 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
   his answer to the session no more; relay it to me as a highlight. An item you answered there
   with `Forwarded to the Head` (one no default decides) stays open for him: send his answer as
   above whenever it comes, and if the session has ended, write it on the ticket as a comment
-  instead, so the item isn't stuck. For an item from a closeout note's `WAITING ON`,
-  write his answer on the ticket as a comment, then send the session
-  `WAITING ON answered, VIL-N: <the item>: <his answer>` (`dv:closeout`, Step 5, "With a Head");
-  for one of the CEO's 1%, the losses to accept included, only when it says it carries my
-  decision.
+  instead, so the item isn't stuck. For an item from a closeout note's `WAITING ON`, write his
+  answer on the ticket as a comment.
 - **Unanswered at the end.** When the session's other work is done, it sends you each question
   still without an answer that counts, as `Unanswered, VIL-N, Qk: …` (`dv:manager-mode`, "With a
   Head"). It carries the options, the recommended option and the `Reversible:` line, as a
@@ -504,8 +502,9 @@ terminal by `orca terminal send`, by clipboard paste, or as a file under
 - Check its claims cheaply before you act on them: the PR's state, the ticket's state, the
   worktree's verdict.
 - Bring each decision under "WAITING ON" to me with your recommendation, in the form "Every ask
-  that reaches me stands on its own" gives; with a Head, forward each to him instead ("The Head
-  and the CEO's 1%"). File each item under
+  that reaches me stands on its own" gives; with a Head, forward each that isn't one of the
+  CEO's 1% to him instead ("The Head and the CEO's 1%"). `dv:closeout` itself is unchanged until
+  VIL-1191: its note reaches you as before. File each item under
   "NOTICED, NOT FILED" with `dv:ticket`, under its exception (b) ("Filing without my
   confirmation"), and name the new ids in your reply to me.
 - Reply to a SendMessage note with one line saying you received it, sent to the note's `from`
@@ -566,12 +565,9 @@ carries no session id or more than one, ends nothing.
 1. **The note.** Its closeout note reached you, and the header names this worktree's path. Its
    Worktree verdict is `safe to delete`, or `safe once you accept losing: …` with every listed
    loss covered by a standing yes of mine (in the global instructions, this project's
-   instructions or memory), or, with a Head, by my explicit approval of that exact list of
-   losses, traceable to me: relayed by the Head in my words, or recorded in a comment on the
-   ticket. Nothing broader counts. `NOT safe to delete` and `not confirmed safe` fail the check. The
+   instructions or memory). `NOT safe to delete` and `not confirmed safe` fail the check. The
    section under its `WAITING ON` heading is `none`, and its `REPLY NEEDED` line reads
-   `REPLY NEEDED: no` (with a Head, the note the session sends again once what his answers call
-   for is done and verified, Step 5 of `dv:closeout`). A decision waiting on me or the Head, or a question waiting for a reply, fails the
+   `REPLY NEEDED: no`. A decision waiting on me or the Head, or a question waiting for a reply, fails the
    check: the session may still be waiting for the answer, so do not ask me to close it, and tell me.
 2. **Idle after the note.** Your reply to the note went with `notify_when_idle: true`, so the
    session takes a turn to read it and the notice comes when that turn ends. The check holds

@@ -33,9 +33,6 @@ mention. Bare invocation takes none. "I" and "me" in this skill mean the user.
   read, say which fact is unverified. The worktree is then "not confirmed safe", never "safe".
 - **Nothing is removed without my yes.** This skill never merges a PR, never deletes a branch and
   never removes the worktree on its own.
-- **Mail before a card.** In a turn that sends a probe or the note, send it before any question
-  to me, and open no question card while a probe or a question to the Director still waits
-  (`dv:manager-mode`, "Mail before a card").
 - **Every block is self-contained.** Shell state does not survive between tool calls. The blocks
   take no positional parameters, and awk reads the whole line as `$(0)`: Claude Code replaces `$`
   followed by a digit everywhere in this file.
@@ -362,8 +359,8 @@ Then complete the picture from the systems, not from memory:
 - **The ticket beside its PRs.** Show the ticket's Linear state beside the state of its linked PRs.
   Take the PRs from the ticket's Linear PR attachments (`get_issue`), and read each with
   `gh pr view <url> --json state,isDraft,mergedAt`; this comparison uses no GitHub search. Flag a
-  mismatch, such as a ticket in Todo beside an open PR, under WAITING ON in the note, and in the
-  reply's **Needs you:** when the project has no Head (Step 5), recommending the move the Linear rules give.
+  mismatch, such as a ticket in Todo beside an open PR, in the reply's **Needs you:** and under
+  WAITING ON in the note, recommending the move the Linear rules give.
   What to do about it is in the Linear rules in the global instructions (dotfiles `claude/CLAUDE.md`,
   "Linear"); this skill moves nothing.
 - **Releases and tags** the session made, if any: `gh release view <tag>` or `git ls-remote --tags origin <tag>`.
@@ -462,21 +459,18 @@ TICKETS FILED OR CHANGED
 NOTICED, NOT FILED
 <things seen along the way that nobody has written down anywhere else>
 
-WAITING ON <the Head's name when the project has a Head, otherwise the user's name>
-<decisions only they can make, each with a recommendation; with a Head, the CEO's 1% marked as such>
+WAITING ON <the user's name>
+<decisions only they can make, each with a recommendation>
 
 CLEANUP THE PARENT OWNS
 <pull the main checkout if it is behind; remove this worktree with the command from Step 5; anything else>
 
-REPLY NEEDED: <no | yes: the question, for the parent>
+REPLY NEEDED: <no | yes: the question>
 ```
 
-A project has a Head, the Head of <department>, exactly when `dv:director-mode`'s "The Head and
-the CEO's 1%" says (a `Head:` line with a `bot:` address in its `AGENTS.md` or `CLAUDE.md`); the
-parent routes WAITING ON to him then. With a Head, WAITING ON also holds what the reply's **Needs
-you:** would hold and the losses to accept (Step 5, "With a Head"), and marks each of the CEO's 1%. Leave out secrets,
-credentials and tokens. Then save the note and copy it, with the note's text in place of the
-placeholder line:
+When the project has a department Head, the parent routes the note's open items
+onward (`dv:director-mode`, "The Head and the CEO's 1%"). Leave out secrets, credentials and tokens. Then save the note and copy it, with the note's text
+in place of the placeholder line:
 
 ```bash
 if git rev-parse --git-dir >/dev/null 2>&1; then
@@ -597,21 +591,6 @@ its name, entry count and directory count (for example
 count and list id. Accept losing them? On my yes, recheck first (below), then run Step 4, then
 name the removal command (or make the Orca offer below).
 
-**With a Head** (Step 3), the reply asks me nothing. Put what **Needs you:** would hold under
-WAITING ON instead, and leave Needs you out; put the losses to accept under WAITING ON as one of
-the CEO's 1% (deleting my data); make no removal offer (the Director removes the worktree,
-`dv:director-mode`, "Take closeout notes"); and with more than one parent terminal ("Deliver the
-note"), take the chat path instead of asking me which. Only the Director reaches the Head, so if
-the note ends up not sent (no Director verified, or its sends failed), give me then, in that turn,
-the Needs you and the questions as with no Head. The Head's answers come back by the Director, one
-line each, `WAITING ON answered, VIL-N: <the item>: <his answer>`, and it records them on the
-ticket. An answer alone doesn't clear an item: it stays under WAITING ON, marked pending, until
-what the answer calls for is done and you have verified it (for example, the ticket's state read
-back as moved). For the losses, that is: accepted by an answer that says it carries my decision
-(only that counts as my yes: `dv:director-mode`, "What no default decides"), then the recheck
-below passes and Step 4 runs. Whenever items have been cleared this way, write and send the note
-again (Step 3, "Deliver the note" step 5) without them.
-
 **Recheck in every later turn.** A yes arrives in a later turn, and the worktree may have changed
 since the verdict. Before acting on any yes (accepting losses, archiving, removing), run the Step 1
 block again and apply Step 2 to its output. Act only if the verdict is the same and, for "safe
@@ -629,7 +608,7 @@ Reply in this order, short:
    would be lost, each nested git repo by path); or not confirmed safe (and which check is
    missing). Then the Not checked list from Step 2.
 2. **Needs you:** decisions waiting on me, and anything still owed on the ticket that this
-   session could not close. Leave it out if there is none, or with a Head ("With a Head" above).
+   session could not close. Leave it out if there is none.
 3. The verified facts, one line each: the ticket and its state; each PR and its merge state; what
    the worktree holds beyond the default branch; the main checkout against its remote (behind,
    ahead, dirty); where the handoff went, or that it was left; where the note was saved and
@@ -677,7 +656,7 @@ would be run as commands, so never send to one.
   Report what the result says (`input_accepted`, and whether a turn was seen to start), not
   "delivered". Do not resend on a timeout. After a transport error, reissue the same command with
   the `--retry-request` id the error reports.
-- More than one: ask me which, as a plain question, before sending (with a Head, see Step 5).
+- More than one: ask me which, as a plain question, before sending.
 - None, or the Orca steps were skipped: the parent may run as an Orca chat, which is not a
   terminal, or outside Orca, and a chat is never sent a note through `terminal send`. Look for
   the Director with ListAgents instead, and send the note only after it answers a probe with the
@@ -769,7 +748,7 @@ candidates, and a full closeout run end to end. A send to a stale address fails 
 socket path, and "No agent named ... is reachable" for a name ListAgents no longer lists. Not
 tested: a socket file left behind by a session that crashed.
 
-**Offer the removal.** Only when Step 5's "With a Head" allows it, the worktree lives in Orca, the block printed an Orca CLI, and
+**Offer the removal.** Only when the worktree lives in Orca, the block printed an Orca CLI, and
 Step 2 said safe to delete (or I have accepted the listed
 build-output lines and reflog-only commits), end the reply with one question. Before running the removal on my yes,
 recheck as Step 5 says; if the verdict changed, do not remove. While the note waits for the

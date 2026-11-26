@@ -49,7 +49,10 @@ overrule it.
 - a design choice between real alternatives, including picking a side where step 3 found
   conflicting rules (Current rules);
 - anything destructive or hard to undo;
-- a target only I can set (step 3, Targets), or a missing pull condition only I can supply;
+- a target only I can set (step 3, Targets), or a missing pull condition only I can supply (with
+  a Head, these and the split and new milestone below go to him and stay pending while his answers
+  are advisory, though keeping a 13 whole and creating a milestone settle on my yes, relayed by him
+  and verified: "From a worktree session");
 - a split, with the parent's replacement description when it stays as the parent;
 - a prerequisite that the shared rules' "Prerequisites" sends to a question (step 3; no relation
   is set on a guess);
@@ -74,7 +77,9 @@ leaves something as it was is not recorded, even when you weighed changing it: a
 label, section or line you kept, that no step 3 check or Decisions line put in question, gets no
 Decisions line (not "Title keeps its [scratch] prefix"). A fork keeps the default form, whatever
 the answer, a keep included: "<decision>. <my name>, <date>". A fork the Director answered for me
-(below) names both: "<decision>. Director (<its ListAgents name>) for <my name>, <date>". Size and
+(below) names both: "<decision>. Director (<its ListAgents name>) for <my name>, <date>". One settled
+by an approval the Head relayed (below) is the Head form: "<decision>. <the Head's name>, through the Director (<its
+ListAgents name>), <date>", plus its `Approved by:` field when it has one. Size and
 its points are recorded when they are set or changed. So is the no-split verdict (step 4), unless
 the ticket already records the same verdict; for a ticket pointed 13 it is my answer to a fork
 instead (step 4). Each is a verdict, not a field left as it was. A routine call that settles a
@@ -86,23 +91,56 @@ verifies (its "Highlights") before asking me, as manager-mode's "Questions go to
 first" says: its skip rule, its message format, one fork per message, its 10-minute wait, what
 counts as an answer, its hold while the Director check is pending, and its fall-back to me. The
 Director decides a fork only under `dv:director-mode`'s "Answer a worktree session's question":
-cutting scope is its call, any other fork only when it is clear-cut, and a split, a target, a pull
-condition or a fork that offers a new milestone (step 3, "Milestone"), which only I can settle,
-comes straight to me. A fork it holds for me (`Held for David`) does not stop grooming: record it
-under Decisions as open, take the way forward the reply names, and manager-mode asks it at the end
-of the work with its other held questions. Run no Director
+cutting scope is its call, any other fork only when it is clear-cut. An answer that adds a short
+note counts as manager-mode's "What counts as the answer" says; one that relays the Head's
+answer is advice (below). A split, a target, a pull
+condition or a fork that offers a new milestone (step 3, "Milestone") is never the Director's.
+When the project has a Head, the Head of <department> (`dv:director-mode`, "The Head and the CEO's 1%"), it goes to the
+Director like any other fork, and the Director forwards it to the Head. A Head's mailed answer is advisory until verified Head decision delivery ships (VIL-1193). So a fork only
+the Head decides (a target, a split, splitting a ticket pointed 13, a pull condition, a new
+milestone's other options) stays pending, whatever he answers: the ticket isn't ready and gets no
+`groomed` label. Two choices settle on my explicit yes instead, relayed in his answer's
+`Approved by:` field and verified by this session against my own words in the source it names, as
+manager-mode's check on an `Answer from the Head` says:
+- Keeping a ticket pointed 13 whole (step 4): only when that verified yes is for that ticket as
+  it now stands, its current scope and points.
+- Creating a new milestone (step 3, "Milestone"). The Director forwards the proposal (its name and
+  one line on what done means) to the Head. It is created only when that verified yes is for that
+  milestone's current name and definition (what done means). A specific yes I gave earlier for it
+  counts, with its source, when it matches that name and definition, and he relays it; when there
+  is none, he asks me once. Where the shared rules' "Milestones" would ask me again (the milestone finished or gone
+  since the draft, a name conflict at creation), that ask goes the same way and creating still
+  needs my relayed yes. Choosing an existing milestone follows the cases in step 3, unchanged.
+
+When the scope, the points, the milestone's name or its definition changed materially since my
+yes, that yes no longer counts: the choice stays pending, and the Head asks me once.
+
+Until that yes comes, the fork stays pending: nothing is created, the ticket is not ready and gets
+no `groomed` label, and its Decisions line, once settled, records my yes, relayed by the Head,
+with the source that field gives. With no Head, only I can settle either, and it comes straight
+to me. A fork the Director forwards to the Head
+(`Forwarded to the Head`) or holds for me (`Held for David`) does not stop grooming: record it
+under Decisions as open, take the way forward the reply names, and manager-mode settles it as its
+"Questions go to the Director first" says. With a Head, a fork on its way forward is not a gap
+for the ready test (step 8), except anything under `dv:director-mode`'s "What no default decides"
+(a fork only the Head decides, a choice that can't be undone, a safety-boundary decline, one of
+the CEO's 1%, a choice a written rule reserves): until its required answer comes it is a gap, and
+its way forward never settles it. Run no Director
 probe of your own; if manager-mode has not sent its probe yet, it sends it before the first fork
 goes out. With no Director that can be verified, or for each fork whose answer doesn't count, ask
 me as step 6 says, except a held kind (spending money, reaching outside, or declining a high or
 critical finding on a safety boundary): under manager-mode's "A held kind with no Director's
 answer", record it under Decisions as open, take the way forward that needs no one's yes, and
-leave it for the end. Grooming goes on in the turn the last answer arrives.
+leave it for the end. With a Head, a fork with no answer that counts, or with no Director that can
+be verified, takes manager-mode's "With a Head" path instead (straight to the Head when no Director
+can be verified), recorded under Decisions as open, and is asked here only where that path
+falls back to me. Grooming goes on in the turn the last answer arrives.
 
 ## Before anything else
 
 1. **Linear tools.** Load in one ToolSearch call if they are deferred: `get_issue`,
    `list_comments`, `list_issues`, `list_projects`, `list_teams`, `list_issue_labels`,
-   `list_issue_statuses`, `list_milestones`, `whoami`, `save_issue` and `save_milestone`. If they
+   `list_issue_statuses`, `list_milestones`, `get_milestone`, `whoami`, `save_issue` and `save_milestone`. If they
    are not there, say so in one line and stop. PRs are read with `gh pr view`; if `gh` is missing,
    PR states are not checked and the report says so.
 2. **Shared rules.** Read `references/ticket-format.md` in the `ticket` skill's directory, which
@@ -115,7 +153,11 @@ leave it for the end. Grooming goes on in the turn the last answer arrives.
 3. **Interview rounds.** The interview rules in that file hold, with three additions for grooming.
    A round has at most 4 questions; when there are more decisions, hold another round after the
    answers, as many as it takes. Never leave a decision for the closing report. Each question
-   starts with its finding in one sentence, since I may see only the dialog.
+   starts with its finding in one sentence, since I may see only the dialog. Before each round,
+   follow `dv:manager-mode`'s "Mail before a card" (under "Questions go to the Director first"):
+   send any message to the Director or the Head first, and open no round while any question sent
+   to the Director (or, through it, the Head) is still open, as that rule defines it; a round that
+   falls due meanwhile is asked as plain text in the chat, as it says.
 4. **Settled by a rule.** A choice that a written rule already settles (the format, a repo's
    `AGENTS.md` or `CLAUDE.md`, the global instructions) is applied and reported, not asked. Name
    the rule.
@@ -136,13 +178,13 @@ Call `get_issue` for the ticket with relations included, and `list_comments` for
 following the cursor until there are no more pages. Read both in full.
 
 **Neighbors.** Collect every related, blocking and blocked-by ticket, the parent and children, and
-each ticket or PR id the description or comments name. Read the current state of each: `get_issue`
-with relations for a ticket, `gh pr view <N> -R <owner>/<repo> --json state,mergedAt,title,url`
-for a PR. Read at most 10, in this order: blockers and blocked tickets, then those the ticket says
-something about ("rebase after", "wait for", "replaces"), then the rest. If there were more, say how
-many were skipped. Note each neighbor whose state contradicts what the ticket says about it:
-"rebase after PR N merges" when PR N has merged, "blocked by VIL-N" when VIL-N is Done, a named
-ticket that was canceled.
+each ticket or PR id the description or comments name. In this scan, read the state of at most 10
+neighbors. Use `get_issue` with relations for a ticket and
+`gh pr view <N> -R <owner>/<repo> --json state,mergedAt,title,url` for a PR. Read blockers and blocked
+tickets first, then those the ticket says something about ("rebase after", "wait for", "replaces"),
+then the rest. If the scan skipped any, report the count. Note each neighbor whose state contradicts
+what the ticket says about it, such as "rebase after PR N merges" when PR N has merged,
+"blocked by VIL-N" when VIL-N is Done, or a named ticket that was canceled.
 
 **Overlapping work.** Run two or three `list_issues` searches across the team, completed tickets
 included, with the main words of the Scope steps (not the title alone). Read each search to its
@@ -258,17 +300,28 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
   ticket or with each other, look for when each changed (`git log -1 --format=%ci -- <file>` in a
   repo you can read) against the ticket's creation date. A conflict is an open decision: do not
   quietly prefer the ticket or one of the files. If you cannot tell when a rule changed, say so.
-- **Targets.** A numeric threshold or target (a time, a count, a size) is mine to set. Do not
+- **Targets.** A numeric threshold or target (a time, a count, a size) is mine to set, or, in
+  forks-only mode with a Head, his ("From a worktree session", under "Forks-only mode"). Do not
   confirm one for me, and do not make up one for a check you propose. Bring it to the interview
   with any measured figures beside it. Only when I decline to set it, or say I cannot yet, write it
   as "proposed, not confirmed" and list it under Needs you in the report.
 - **Comment evidence.** When a Scope step depends on evidence that sits in a comment, link to that
   comment from the description (its url from `list_comments`) instead of copying the evidence in.
-- **Prerequisites.** Apply the shared rules, "Prerequisites", to each one found in step 1. Then:
-  - Each one the shared rules send to a question ("Ask") is an open decision.
-  - A missing relation is an add item (`blockedBy`). A stale one, whose blocker is Done or whose
-    stated PR has merged, or one that names a ticket that is only an example, is a remove item
-    (`removeBlockedBy`), with the evidence.
+- **Prerequisites.** Apply the shared rules, "Prerequisites", to each wait found in step 1 and
+  each existing blocked-by. Reuse the state reads from step 1 where they suffice. Make any remaining
+  focused reads the shared rules require, including for prerequisites skipped in that scan. Then:
+  - Each unclear prerequisite the shared rules send to "Ask" is an open decision, including in
+    forks-only mode. Keep its existing blocked-by while the answer is open or keeps the wait.
+    Make a `removeBlockedBy` item (Canceled, Duplicate or a PR closed without merging are
+    examples) when the answer drops or moves the wait. Include the evidence and the answer, and
+    include the `blockedBy` add for the replacement issue when the wait moves.
+  - A missing relation for a clearly mapped, unmet prerequisite is an add item (`blockedBy`). An
+    existing blocked-by whose blocker is Done, whose stated PR has merged, or whose ticket is
+    only a reference is a remove item (`removeBlockedBy`), with the evidence. This rule applies
+    after the unclear cases above.
+  - In each remove item, include a `relatedTo` add for the former blocker when its reference is
+    wanted under the shared rules (for example, the ticket builds on its work). A sample or test
+    id, or a link I declined, gets no add.
 - **Milestone.** Apply the shared rules, "Milestones": call `list_milestones` for the ticket's
   project and read the milestone `get_issue` gives. Then take the first case that applies:
   - It is Done, Canceled or a Duplicate: leave the field as it is and propose nothing.
@@ -282,11 +335,11 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
   - It has no milestone and none fits: leave the field empty, and the report says so. A new
     milestone (its name and one line on what done means) is an open decision, with "leave it
     with none" and "keep it out of milestones" (which records "No milestone") as options. It is
-    created only on my yes.
+    created only on my yes (with a Head, relayed by him: "From a worktree session").
   - Its goal no longer fits the milestone it has, or that milestone is finished: an open
     decision, to move it (to the milestone that fits, or out of milestones, which records "No
     milestone"), to put it in a new milestone when no other one fits (its name and one line on
-    what done means; created only on my yes), or to keep it. Grooming never moves a ticket out of
+    what done means; created only on my yes, relayed by the Head when there is one), or to keep it. Grooming never moves a ticket out of
     a milestone as a routine call.
   - It fits the milestone it has: nothing to do.
 - **Other open decisions.** Also collect: a reason in the ticket that checking suggests may be
@@ -322,6 +375,9 @@ range for size, give the points for each end ("small, 2; medium, 5, if step 5 fi
 and the estimate takes the higher number; when that is 13, the 13 rule below applies. Points go in
 the edit list beside Size, not asked: they are written into the Size section and set in Linear's
 estimate field (step 7).
+
+When an already split parent has its work and points on its children, keep its historical Size.
+Propose no new estimate or split. List any estimate still on that parent for clearing in step 7.
 
 **Split verdict.** Say "no split" with the reason, or propose a split. Propose one when any of
 these holds:
@@ -363,9 +419,11 @@ answers may change it, and step 6 settles it. A "no split" verdict becomes an ad
 Decisions: "No split: <reason>. Groomed, <date>."
 
 **Forks-only mode:** a proposed split is a fork and is asked, so a ticket pointed 13 always comes
-to me. The "no split" line reads "No split: <reason>. Decided by dv:groom (forks-only), <date>."
-For a ticket pointed 13, "no split" is my answer to that fork, not a routine call, and is recorded
-in the fork form.
+to me, or, with a Head and from a worktree session, to him through the Director, where keeping it
+whole still needs my explicit
+yes ("From a worktree session"). The "no split" line reads "No split: <reason>. Decided by dv:groom
+(forks-only), <date>." For a ticket pointed 13, "no split" is my answer to that fork, not a routine
+call, and is recorded in the fork form (with a Head, my yes as relayed by the Head).
 
 ## 5. Scout
 
@@ -440,9 +498,9 @@ the two are one unit, filed and edited in step 7 without a second approval.
 option you took. Then ask only the forks, in rounds of at most 4 questions, each starting with its
 finding in one sentence; from a worktree session, each fork goes to the Director first ("From a
 worktree session: forks go to the Director first", under "Forks-only mode"), and only
-those it neither answers nor holds for me are asked here. If there are no forks, say so in one line, ask nothing
+those that section sends to me are asked here. If there are no forks, say so in one line, ask nothing
 and go to step 7. Each answer to a fork is recorded in the default form, or in the Director form
-when the Director answered it. Each routine call that "Recording" (under "Forks-only mode")
+when the Director answered it, or in the Head form when an approval the Head relayed settled it. Each routine call that "Recording" (under "Forks-only mode")
 says to record is recorded in the "Decided by dv:groom (forks-only)" form, and no other is. Your
 call to file a
 spin-off stands as the approval to create it with what the proposal showed (folding one in is a
@@ -468,10 +526,13 @@ removes existing text. It covers:
 - a new title (set with the `title` field, not a patch) and section renames;
 - new Scope steps and Done means lines from step 3, and in-ticket improvements from step 5;
 - removed conditional steps and whatever hung on them;
-- relations to add (`blockedBy`, `relatedTo`) and to remove (`removeBlockedBy`), with the evidence;
-- relations the text itself creates: an item whose text names a ticket id the ticket is not yet
-  related to says so ("and relates VIL-N"), since Linear relates any id written in a description
-  (shared rules, "Ticket ids in text");
+- relations to add (`blockedBy`, `relatedTo`) and to remove (`removeBlockedBy`), with the evidence
+  from step 3. Number a removal with any replacement blocker and any wanted `relatedTo` as one
+  item. Say that the related link is added only if absent after removal. When the former blocker
+  is an unwanted reference named by id or link in the description, include its text edit in that
+  item too. Use its PR, repo or title in place of the id or link, as "Ticket ids in text" says;
+- relations the text itself creates: an item whose text names a ticket id with no existing
+  relation says so ("and relates VIL-N"), as the shared rules' "Ticket ids in text" explains;
 - Size with its points (step 4; for a parent that becomes the first child, that child's size and
   points from the split), written in the Size section and set as the estimate with `save_issue`'s
   `estimate` field (a number), the Decisions lines from the interview, and the no-split line.
@@ -484,6 +545,16 @@ removes existing text. It covers:
   a change to the team's scale (mine) or a split. For a child just filed, clear it with one more
   `save_issue` on that child and read the reply; if the clear fails, stop before changing the
   parent, as for a failed filing ("Order of writes", item 2);
+- clearing a stale estimate (`estimate: null`) on an already split parent whose work and points
+  sit on its children. Keep its historical Size text and the existing split. In the numbered item,
+  record the parent's exact estimate, the full set of child ids and each child's points, and where
+  the work sits. Just before saving or retrying, read the parent, its full list of children and
+  the children again. Compare the estimate, split membership, and evidence that the children hold
+  the work and points with the item as approved. If anything changed or the read is incomplete,
+  leave the estimate intact, say what changed or what evidence is missing, and ask for fresh
+  approval of any revised clear item once it can be verified. A change can still land between the
+  read and the write. After the save, even after an error, confirm the empty estimate with
+  `get_issue` before deciding whether to add `groomed`. Report an unconfirmed clear as a gap;
 - links to comments that hold evidence a Scope step depends on;
 - the milestone (step 3), set with `save_issue`'s `milestone` field: an add item when the ticket
   has none; a replace item when my answer moves it, or a remove item when it takes it out (which
@@ -534,9 +605,14 @@ may offer this instead of patches: show the complete new description, say that t
 in Linear's history, and ask one plain question to replace the whole description. Relations, the
 title, the `groomed` label and filings stay numbered items beside it. A no leaves the description
 exactly as it was.
+When an unwanted-link removal needs a text edit, use a patch if "Patches" gives it a safe anchor.
+In default mode, when "Patches" allows a whole-description replacement, you may show the complete
+replacement and say the old text stays in Linear's history. Put that replacement and the removals
+that depend on it in one numbered item. A yes to a question naming that item approves both.
 Just before saving, read the ticket again; if its description is no longer the one the
 replacement was built from, do not save: say what changed and ask again.
-Patches stay the default; three changed sections allow the offer and do not decide it.
+Patches stay the default. For other descriptions with headings, three changed sections allow the
+offer.
 
 **Order of writes.**
 
@@ -553,8 +629,9 @@ retry once for that save.
 The milestone step 3 settled (the one the groomed ticket will have after the approved edit list:
 kept, set or none) is checked again under the shared rules' "Re-read before the save": just before
 the first save below that uses it, the first child or spin-off filed with it (item 2), and again
-just before item 4's save, each time before any new milestone is created. If that rule sends it
-back to me, stop as above: write nothing more, list under Needs you the tickets already filed and
+just before item 4's save, each time before any new milestone is created. Use `get_milestone` for
+an existing milestone and re-read the groomed ticket as that rule says. If that rule stops the
+run or sends it back to me, write nothing more, list under Needs you the tickets already filed and
 the items not applied, and leave the `groomed` label off (item 5).
 
 1. **A split never loses work.** Linear cannot create several tickets and edit another in one
@@ -600,7 +677,7 @@ the items not applied, and leave the `groomed` label off (item 5).
    doing anything else, because a save can land even when the reply is an error: if the change is
    there, go on; if not, retry once; if it still is not there, stop and say under Needs you that
    the children exist and the parent still carries their work. Then apply the rest of the approved
-   items.
+   items, with blocked-by removals after the text edits, as below.
 5. **The `groomed` label goes on last, and only on a ticket grooming left ready.** If step 7 stopped
    before this item for any reason (items 1, 2 including a failed estimate clear, or 4, or a patch
    that could not be placed), leave the label off every ticket and say so in the report. Otherwise
@@ -637,6 +714,26 @@ headings (plain text, or only an Agent notes block) has no safe place to anchor 
 show me the sections you would add as text, and say I will edit it in Linear (or offer the
 whole-description replacement). Other approved edits, such as the title, still apply.
 
+**Blocked-by removals.** Finish approved text edits before these relation writes. Make each
+write below a separate `save_issue` with only its relation change. Before applying a remove
+item, read the groomed ticket's description and relations with `get_issue`. Check the affected
+pairs and the evidence for removing the old blocker. Stop if the read is incomplete or the
+evidence or relations have changed in a way the item does not cover. If the description still
+links to an unwanted former blocker or names its id, hold that remove item and report it under
+Needs you. Name that ticket by PR, repo or title in any subsequent edits. When moving a wait,
+set the approved replacement `blockedBy` and confirm it before removing the old one. Use `removeBlockedBy`
+only for a pair still blocked by the old issue. Re-read the pair and restore a wanted `relatedTo`
+as the shared rules' "One relation per pair" says.
+
+Read the affected pairs with relations after each of these `save_issue` calls, even after an
+error. Start with the same read-back if resuming after an interrupted call. If the expected
+change is confirmed, continue. Retry that call at most once, and only when
+a complete read shows the affected pairs as they were before the call and the edit's evidence
+still holds. If the read fails, is incomplete, or shows an unexpected relation, or the retry does
+not confirm the expected change, stop before further writes or a `groomed` label. Report the pairs
+as last confirmed, the unconfirmed items and any wanted link that still needs to be restored under
+Needs you.
+
 Relations go on `save_issue` with `blockedBy`, `relatedTo` and `removeBlockedBy`. Do not change the
 state, labels, project, milestone, priority or assignee unless I ask, or unless I chose that change
 in an interview answer. The milestone also changes as its approved edit-list item (in forks-only
@@ -645,7 +742,7 @@ labels is `groomed`: on the groomed ticket as its edit-list item, approved with 
 forks-only mode, applied with them), and on a split's children, in both cases only as "Order of
 writes" item 5's ready test allows; every other label change still needs my request or an interview
 answer. Set the estimate only to the points in the edit list (step 4) or as the approved split sets
-it, and clear it only when Linear stored a different number (the edit list). Change labels with
+it. Clear it only as the split or the estimate rules in the edit list direct. Change labels with
 `addLabels` and `removeLabels`, since `labels` replaces the whole set.
 
 ## 8. Report
@@ -659,7 +756,9 @@ reply-format rules when the session's instructions give any:
 1. **Ready or not.** Name the ticket as a markdown link (the url from `get_issue`; the bare id if
    none came back). Ready means no gaps, Done means lines that can be proved, nothing it waits on,
    every overlap search finished (step 1), no needed fix declined or not landed, no duplicate search
-   left unfinished, no target unconfirmed, and the team's backlog or ready-to-start state as
+   left unfinished, no target unconfirmed (with a Head, a fork on its way forward counts as
+   settled, except anything under `dv:director-mode`'s "What no default decides": "From a worktree
+   session"), and the team's backlog or ready-to-start state as
    `list_issue_statuses` names them. A started, finished or canceled ticket is not ready to start.
    After a split, name the child that is ready and the one that comes first, as links; do not call
    the parent ready when the work is in its children. A ticket whose points Linear did not store
@@ -670,10 +769,12 @@ reply-format rules when the session's instructions give any:
    not approve that still matters, a repo the session could not read, an overlap or duplicate search
    that did not finish (with its words, so it can be run again), a ticket item 5 meant to label that
    lacks `groomed` after the read-back, a ticket that already had `groomed` but is not ready now
-   (step 7, "Order of writes" item 5). Left out when empty.
+   (step 7, "Order of writes" item 5). Left out when empty. With a Head, in forks-only mode from
+   a worktree session, this list reports only: what needs a decision goes to the Director, as
+   "From a worktree session" says.
 3. One line each: size and points, with the estimate `get_issue` now shows; the milestone as
    `get_issue` now shows it, or "no milestone" with why; split verdict; what
-   changed in the ticket ("text unchanged" when only the label landed, "nothing changed" when
+   changed in the ticket ("text unchanged" when only non-text edits landed, "nothing changed" when
    nothing did); the `groomed` label as read back: added, already there, or not added and why (not
    approved, the team has no active `groomed` label, step 7 stopped before it, the ticket is not
    ready and the gap that keeps it so, or the write failed); spin-offs and children filed, as links,
@@ -701,13 +802,11 @@ when there were none, "Decided without asking: none."
   other ticket; a follow-up on a neighbor goes under "After the merge" or becomes a spin-off.
 - No file edits, branches or commits: grooming reads repos and writes only to Linear.
 - Do not put secrets or credentials in a ticket.
-- A ticket with nothing stale, open or missing, that already has its Size with points and an
-  estimate that matches them (a parent whose points sit on its children has none, and is not
-  pointed), and is not pointed 13 without a recorded yes to keeping it unsplit, keeps its text as it
-  is: say in one line that its text needs no edits, and propose an edit list that holds only the
-  `groomed` label item (step 7) and, when step 3 sets one, the milestone item, asked and applied as
-  step 7 says, the label under item 5's ready test (in forks-only mode, applied without the
-  question). When that leaves the list empty (the ticket has the label or the team has none, and
-  step 3 sets no milestone), propose no edits and go to step 8. The no-split line and the
-  grooming line in Agent notes are added only alongside other edits to the text; the label and
-  milestone items alone do not bring them in.
+- When the ticket needs no text edits and its estimate is current, keep its text as it is. For a
+  split parent whose points sit on its children, the estimate must be empty. For any other ticket,
+  Size must give points that match its estimate, with approval to stay unsplit if pointed 13.
+  Say in one line that its text needs no edits and list any relation or milestone items from step 3
+  and the `groomed` label item. Apply them as step 7 says, with the label under item 5's ready test
+  (in forks-only mode, apply without the question).
+  When that leaves the list empty, propose no edits and go to step 8. The no-split line and the
+  grooming line in Agent notes are added only alongside other edits to the text.

@@ -7,8 +7,10 @@ that turn and every later one, whether or not the Director has replied, the repl
 Director removes the worktree after the session ends if its checks pass (`dv:director-mode`,
 "Take closeout notes" and "End a finished worktree session"), and names the removal command for
 David, to run after the session ends. The skill names cases where the Director keeps the
-worktree instead: anything under WAITING ON or REPLY NEEDED, or a message from David to the
-session after the note.
+worktree instead when it ends the session itself: anything under WAITING ON or REPLY NEEDED, or
+a message from David to the session after the note. If the session ends another way, the
+Director's later removal runs the global removal procedure's checks, which do not read the note,
+so those items do not hold the worktree then (known limit, VIL-1209).
 
 The removal command itself keeps Step 5's guard. Closeout names one only when the worktree is
 safe to delete, or is safe once David accepts losing and he has accepted its build-output lines
@@ -16,28 +18,33 @@ and reflog-only commits, and Step 4 confirmed the handoff archive. Otherwise it 
 why removal is blocked, and never says the Director removes it. The question stays as before
 with no verified Director (no note sent, the note waiting for the probe answers, an answer not
 verified, or a note sent only by `terminal send`), when the losses were accepted only in the
-session, and when the acceptance came after the note was sent, since the Director's checks then
-fail.
+session, and when the acceptance came after the note was sent, since the Director's checks on
+the note then fail while it ends the session itself (if the session ends another way, its later
+removal does not read the note; known limit, VIL-1209).
 
 Step 4 now ends with an explicit success line, `archive complete: this session's handoff is in
 <store>/_done`, beside the existing `(no handoff for this session — nothing to archive)`; only
 those two confirm the archive. The block fails closed: it prints `!! ARCHIVE INCOMPLETE: <what
 failed>` instead of either success line when a command whose failure could look like success
 fails (`git rev-parse`, `git worktree list`, `git branch --show-current`, `git status`, `date`,
-`find` of the store or of `_done`, `sort`, the `sed` calls that read the main checkout, the
-handoff name and a handoff's front matter, `mkdir`, `cp` with a byte-for-byte check, `mv` with
-the source gone and the destination present, `cd` into the common git directory (its output,
-such as a shell hook's, kept out of the path), and `cmp` in the duplicate check, where exit 1
-means different and exit 2 or more fails the block; the clean-tree filter is done in the shell,
-not by `grep`, and all three here-docs that decide a result (the clean-tree check, the handoff
-list and the duplicate check against `_done`) end with a sentinel line, so one that could not be
-read to its end, such as one zsh could not write, fails the block), when the store or `_done`
-exists but is not a directory or `HANDOFF.md` exists but is not a regular file, when a
-`HANDOFF.md` in the worktree does not name this branch and worktree, when outside a git
+`find` of the store or of `_done`, `sort`, the `sed` calls (status-checked) that read the main
+checkout, the handoff name and a handoff's front matter, `mkdir`, `cp` with a byte-for-byte
+check, `mv` with the source gone and the destination present, `cd` into the common git directory
+(its output, such as a shell hook's, kept out of the path), and `cmp` in the duplicate check,
+where exit 1 means different and exit 2 or more fails the block; the clean-tree filter is done
+in the shell, not by `grep`, and all three here-docs that decide a result (the clean-tree check,
+the handoff list and the duplicate check against `_done`) end with a sentinel line, so one that
+could not be read to its end, such as one zsh could not write, fails the block), when the store
+or `_done` exists but is not a directory or `HANDOFF.md` exists but is not a regular file, when
+a `HANDOFF.md` in the worktree does not name this branch and worktree, when outside a git
 repository, and when this session's store file is still there afterwards. Before this release a
 failed listing of the store or of `_done` read as "no handoff". The uncommitted-changes and
 main-checkout lines, no output, or Step 4 not run also leave the archive not confirmed. Step 1's
 recheck stays the source of the verdict; Step 4's own `git status` only guards the archive.
+
+Step 1 and the Orca block also status-check their reads of the main checkout's path (and Step 1
+its reads of the worktree's path, HEAD and branch): a failure makes the verdict `not confirmed
+safe` in Step 1 and skips the Orca steps in that block.
 
 A note closeout sends (by SendMessage or `terminal send`) keeps a safe verdict only when Step 4
 confirmed the archive after Steps 1 and 2 in the turn of the send; the SendMessage path reruns
@@ -73,7 +80,7 @@ description of closeout's reply says the same.
   plain file), Step 4 printed `ARCHIVE INCOMPLETE` twice, the note went out as `not confirmed
   safe: handoff archive incomplete or not confirmed (…)` from a new saved copy, and no turn named
   a removal command or said the Director removes the worktree.
-- The final Step 4 block, run on its own in bash and in zsh (`-f`) in a scratch repo, 49 cases
+- The final Step 4 block, run on its own in bash and in zsh (`-f`) in a scratch repo, 50 cases
   each, with PATH shims that make one command fail: no handoff, a store handoff, a rerun after
   archiving, a matching `HANDOFF.md`, a store handoff with an identical `HANDOFF.md` (and its
   rerun), a store handoff under another name with quoted front matter, and a detached HEAD's
@@ -89,7 +96,10 @@ description of closeout's reply says the same.
   which falls back, archived for real. Each result-deciding here-doc made unreadable on its own,
   and `cmp` exiting 2 in the duplicate check, printed `ARCHIVE INCOMPLETE`; `cmp` forced to exit
   1 there led to a new verified copy and a success line, and a zsh `chpwd` hook that prints on
-  `cd` no longer bends the store path.
+  `cd` no longer bends the store path. The main-checkout `sed` printing the path and then
+  failing printed `ARCHIVE INCOMPLETE`; the same failure in Step 1 listed the read under the
+  checks that did not run (so the verdict is not confirmed safe), and in the Orca block skipped
+  the Orca steps.
 - Not exercised: a real Director session's checks and removal, a terminal send, "safe once you
   accept losing", and a yes given before the note was sent.
 

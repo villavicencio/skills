@@ -50,13 +50,16 @@ NL='
 if ! git rev-parse --git-dir >/dev/null 2>&1; then
   echo "(not a git repo — nothing to close out)"
 else
-  TOP=$(git rev-parse --show-toplevel); HEAD_SHA=$(git rev-parse HEAD)
-  MAIN=$(git worktree list --porcelain | sed -n 's/^worktree //p' | head -1)
-  B=$(git branch --show-current)
+  # Each read is checked: one that fails makes the verdict "not confirmed safe".
+  TOP=$(git rev-parse --show-toplevel) && [ -n "$TOP" ] || FAILS="$FAILS- git rev-parse --show-toplevel failed: the worktree's path is unknown$NL"
+  HEAD_SHA=$(git rev-parse HEAD) && [ -n "$HEAD_SHA" ] || FAILS="$FAILS- git rev-parse HEAD failed: this worktree's commit is unknown$NL"
+  if WTL=$(git worktree list --porcelain) && MAIN=$(printf '%s\n' "$WTL" | sed -n '/^worktree /{s/^worktree //p;q;}') && [ -n "$MAIN" ]; then :
+  else MAIN=""; FAILS="$FAILS- reading the main checkout's path failed: every comparison with the main checkout is unknown$NL"; fi
+  BOK=1; B=$(git branch --show-current) || { BOK=""; FAILS="$FAILS- git branch --show-current failed: the branch is unknown$NL"; }
   echo "=== Session ==="
-  echo "worktree: $TOP"
-  echo "branch: ${B:-(detached)} @ $(git rev-parse --short HEAD)"
-  echo "main checkout: $MAIN"
+  echo "worktree: ${TOP:-(unknown)}"
+  if [ -n "$BOK" ]; then echo "branch: ${B:-(detached)} @ $(git rev-parse --short HEAD)"; else echo "branch: (unknown)"; fi
+  echo "main checkout: ${MAIN:-(unknown)}"
   [ "$TOP" = "$MAIN" ] && echo "!! this IS the main checkout, not a linked worktree: never report it safe to delete"
   [ -n "$B" ] && echo "ticket id in the branch name (a hint, confirm it): $(printf '%s' "$B" | grep -o -i -E '[a-z]{2,10}-[0-9]+' | head -1 | tr '[:lower:]' '[:upper:]')"
 
@@ -384,26 +387,30 @@ UNMERGED_END
   else FAILS="$FAILS- git stash list failed$NL"; fi
 
   echo "=== Main checkout vs its own upstream ==="
-  MB=$(git -C "$MAIN" branch --show-current)
-  if MS=$(git -C "$MAIN" status --porcelain); then
-    echo "branch: ${MB:-(detached)}; uncommitted entries: $(printf '%s' "$MS" | grep -c .)"
-  else FAILS="$FAILS- git status in the main checkout failed$NL"; fi
-  MR=""; [ -n "$MB" ] && MR=$(git -C "$MAIN" config "branch.$MB.remote")
-  if [ -z "$MR" ] || [ "$MR" = "." ]; then
-    FAILS="$FAILS- the main checkout's branch has no remote upstream: level with the remote is unknown$NL"
+  # An unknown main checkout path would make git -C "" read this worktree instead, so skip.
+  if [ -z "$MAIN" ]; then echo "(not checked: the main checkout's path is unknown, see the checks that did not run)"
   else
-    # Ask the remote for the upstream branch's tip itself, so a narrow fetch refspec or a stale
-    # tracking ref cannot stand in for it. A missing object is fetched by name with an empty
-    # --refmap, which turns off the configured mapping, so no remote-tracking ref is updated.
-    # Both run in the main checkout, so its own remote configuration applies.
-    MM=$(git -C "$MAIN" config "branch.$MB.merge"); RS=""
-    if [ -n "$MM" ] && LSU=$(git -C "$MAIN" ls-remote "$MR" "$MM"); then RS=$(printf '%s\n' "$LSU" | awk -v r="$MM" '$(2)==r {print $(1)}')
-    fi
-    if [ -n "$RS" ] && { git cat-file -e "$RS^{commit}" 2>/dev/null || git -C "$MAIN" fetch --quiet --refmap= "$MR" "$MM" 2>/dev/null; } \
-       && git cat-file -e "$RS^{commit}" 2>/dev/null && LR=$(git -C "$MAIN" rev-list --left-right --count "$RS...HEAD"); then
-      echo "upstream: $MR $MM, tip $(git rev-parse --short "$RS") per the remote now; behind it: $(printf '%s' "$LR" | cut -f1); ahead of it: $(printf '%s' "$LR" | cut -f2)"
+    MB=$(git -C "$MAIN" branch --show-current)
+    if MS=$(git -C "$MAIN" status --porcelain); then
+      echo "branch: ${MB:-(detached)}; uncommitted entries: $(printf '%s' "$MS" | grep -c .)"
+    else FAILS="$FAILS- git status in the main checkout failed$NL"; fi
+    MR=""; [ -n "$MB" ] && MR=$(git -C "$MAIN" config "branch.$MB.remote")
+    if [ -z "$MR" ] || [ "$MR" = "." ]; then
+      FAILS="$FAILS- the main checkout's branch has no remote upstream: level with the remote is unknown$NL"
     else
-      FAILS="$FAILS- the main checkout's upstream ($MR ${MM:-?}) could not be read from the remote or counted: level with the remote is unknown$NL"
+      # Ask the remote for the upstream branch's tip itself, so a narrow fetch refspec or a stale
+      # tracking ref cannot stand in for it. A missing object is fetched by name with an empty
+      # --refmap, which turns off the configured mapping, so no remote-tracking ref is updated.
+      # Both run in the main checkout, so its own remote configuration applies.
+      MM=$(git -C "$MAIN" config "branch.$MB.merge"); RS=""
+      if [ -n "$MM" ] && LSU=$(git -C "$MAIN" ls-remote "$MR" "$MM"); then RS=$(printf '%s\n' "$LSU" | awk -v r="$MM" '$(2)==r {print $(1)}')
+      fi
+      if [ -n "$RS" ] && { git cat-file -e "$RS^{commit}" 2>/dev/null || git -C "$MAIN" fetch --quiet --refmap= "$MR" "$MM" 2>/dev/null; } \
+         && git cat-file -e "$RS^{commit}" 2>/dev/null && LR=$(git -C "$MAIN" rev-list --left-right --count "$RS...HEAD"); then
+        echo "upstream: $MR $MM, tip $(git rev-parse --short "$RS") per the remote now; behind it: $(printf '%s' "$LR" | cut -f1); ahead of it: $(printf '%s' "$LR" | cut -f2)"
+      else
+        FAILS="$FAILS- the main checkout's upstream ($MR ${MM:-?}) could not be read from the remote or counted: level with the remote is unknown$NL"
+      fi
     fi
   fi
 
@@ -623,8 +630,8 @@ if ! git rev-parse --git-dir >/dev/null 2>&1; then
 else
   PFAIL=""; TOP=""; MAIN=""; STORE=""; B=""; SLUG=""
   TOP=$(git rev-parse --show-toplevel) && [ -d "$TOP" ] || PFAIL="$PFAIL; the worktree's top could not be read"
-  if WTL=$(git worktree list --porcelain); then MAIN=$(printf '%s\n' "$WTL" | sed -n '/^worktree /{s/^worktree //p;q;}'); fi
-  [ -n "$MAIN" ] || PFAIL="$PFAIL; the main checkout could not be read"
+  if WTL=$(git worktree list --porcelain) && MAIN=$(printf '%s\n' "$WTL" | sed -n '/^worktree /{s/^worktree //p;q;}') && [ -n "$MAIN" ]; then :
+  else MAIN=""; PFAIL="$PFAIL; the main checkout could not be read"; fi
   # cd's own output (a shell hook that prints on cd) stays out of GA.
   if GCD=$(git rev-parse --git-common-dir) && GA=$(cd "$GCD" >/dev/null 2>&1 && pwd -P) && [ -d "$GA" ]; then STORE="$GA/handoffs"
   else PFAIL="$PFAIL; the handoff store could not be resolved"; fi
@@ -773,7 +780,9 @@ after this session has ended. Do not run it.
   removal", below, then asks nothing. Losses I accepted only in this session fail the Director's
   check on the note (`dv:director-mode`, "End a finished worktree session", check 1), and an
   acceptance after the note is a message from me after it (check 3), so in either case the removal
-  stays mine, as without a Director.
+  stays mine, as without a Director. Those checks hold while the Director ends this session
+  itself; if the session ends another way, its later removal does not read the note (known
+  limit, VIL-1209).
 - **Initialized submodules.** If Step 1 printed "initialized submodules" above 0, `wt done`,
   `git worktree remove` and a plain `orca worktree rm` all refuse this worktree. Say so, and point
   to the guarded procedure instead of a plain command: `dv:orca-setup` Step 5 (`orca worktree rm
@@ -836,18 +845,21 @@ C="${ORCA_CLI_COMMAND:-}"
 if [ -z "$C" ]; then if [ "$(uname -s)" = Linux ]; then C=orca-ide; else C=orca; fi; fi
 if ! command -v "$C" >/dev/null 2>&1; then
   echo "Orca steps skipped: no Orca CLI on PATH"
-elif git rev-parse --git-dir >/dev/null 2>&1; then
-  MAIN=$(git worktree list --porcelain | sed -n 's/^worktree //p' | head -1)
+elif ! git rev-parse --git-dir >/dev/null 2>&1; then
+  echo "Orca steps skipped: not a git repository"
+elif ! { WTL=$(git worktree list --porcelain) && MAIN=$(printf '%s\n' "$WTL" | sed -n '/^worktree /{s/^worktree //p;q;}') && [ -n "$MAIN" ]; }; then
+  echo "Orca steps skipped: the main checkout's path could not be read"
+else
   echo "Orca CLI: $C"
   echo "Main checkout: $MAIN"
   "$C" terminal list --worktree "path:$MAIN" --json
 fi
 ```
 
-If the block printed "Orca steps skipped", add the line "Orca steps skipped: no Orca CLI on PATH"
-to the reply, skip the terminal send and the removal offer, and go to the chat path in "Deliver
-the note" (the "None" case, steps 1 to 5). (On Linux a bare `orca` is usually the GNOME
-screen reader, which is why the block does not try it there.)
+If the block printed "Orca steps skipped", add that line as printed to the reply, skip the
+terminal send and the removal offer, and go to the chat path in "Deliver the note" (the "None"
+case, steps 1 to 5). (On Linux a bare `orca` is usually the GNOME screen reader, which is why the
+block does not try it there.)
 
 **Deliver the note.** A parent terminal qualifies only when its entry has an `agentIdentity`
 field: that marks a running agent. A terminal without it is a plain shell, and a note sent there
@@ -983,24 +995,26 @@ confirmed the archive), the note has been sent to a Director its probe verified 
 note", steps 4 and 5) with its safe verdict kept under "A sent note's Worktree line and Step 4",
 and Step 2 said safe to delete or a standing yes of mine covers every accepted loss and my
 acceptance came before the note that was sent. When the removal is not cleared there is no
-question and no command: say why removal is blocked (Step 5).
-Where it applies, from the turn the note is sent, in that turn and every later one, end the reply
-without this question, whether or not the Director has replied (the outcomes "note sent with no
-reply yet" and "note sent and replied"). Say instead that the Director removes this worktree
-after this session ends if its checks pass (`dv:director-mode`, "Take closeout notes" and "End a
-finished worktree session"), and name the command above for me, to run from the main checkout
-after this session ends (with an initialized submodule, the guarded procedure Step 5 names
-instead). The Director keeps the worktree and tells me which check failed when, for example, the
-note has anything under WAITING ON or a REPLY NEEDED question, or I message this session after
-the note. In every other case the question stays as above: no verified Director (no note sent, a
+question and no command: say why removal is blocked (Step 5). Where it applies, from the turn the
+note is sent, in that turn and every later one, end the reply without this question, whether or
+not the Director has replied (the outcomes "note sent with no reply yet" and "note sent and
+replied"). Say instead that the Director removes this worktree after this session ends if its
+checks pass (`dv:director-mode`, "Take closeout notes" and "End a finished worktree session"), and
+name the command above for me, to run from the main checkout after this session ends (with an
+initialized submodule, the guarded procedure Step 5 names instead). When the Director ends this
+session itself, it keeps the worktree and tells me which check failed when, for example, the note
+has anything under WAITING ON or a REPLY NEEDED question, or I message this session after the
+note. If the session ends another way, its later removal runs the global removal procedure's
+checks, which do not read the note, so those items do not hold the worktree then (known limit,
+VIL-1209). In every other case the question stays as above: no verified Director (no note sent, a
 second note send that failed included; the note waiting for the probe answers, the outcome "send
 failed and probe sent again" included; an answer not verified; a note sent only by `terminal
-send`), losses I accepted only in this session, or an acceptance after the note was sent.
-Skipping this question never stands in for my consent to losing data that exists nowhere else:
-while Step 2 says safe once you accept losing, Step 5's question still asks it, and nothing treats
-the worktree as safe before my yes. A yes I already gave to this question, asked before the note
-was sent, still counts: recheck and remove as above, as the session's last action, without
-waiting for the Director's reply.
+send`), losses I accepted only in this session, or an acceptance after the note was sent. Skipping
+this question never stands in for my consent to losing data that exists nowhere else: while Step 2
+says safe once you accept losing, Step 5's question still asks it, and nothing treats the worktree
+as safe before my yes. A yes I already gave to this question, asked before the note was sent,
+still counts: recheck and remove as above, as the session's last action, without waiting for the
+Director's reply.
 
 The command can return `ok: true` with `removing: true` before the removal has finished
 (`dv:orca-setup` Step 5). Before reporting it done, check from the main checkout that the path is

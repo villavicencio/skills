@@ -4,7 +4,7 @@ description: "Groom one Linear ticket before anyone works it. Checks it against 
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.39.1"
+  version: "0.39.2"
 ---
 
 # /groom — groom a Linear ticket before work starts
@@ -140,7 +140,7 @@ falls back to me. Grooming goes on in the turn the last answer arrives.
 
 1. **Linear tools.** Load in one ToolSearch call if they are deferred: `get_issue`,
    `list_comments`, `list_issues`, `list_projects`, `list_teams`, `list_issue_labels`,
-   `list_issue_statuses`, `list_milestones`, `whoami`, `save_issue` and `save_milestone`. If they
+   `list_issue_statuses`, `list_milestones`, `get_milestone`, `whoami`, `save_issue` and `save_milestone`. If they
    are not there, say so in one line and stop. PRs are read with `gh pr view`; if `gh` is missing,
    PR states are not checked and the report says so.
 2. **Shared rules.** Read `references/ticket-format.md` in the `ticket` skill's directory, which
@@ -629,8 +629,9 @@ retry once for that save.
 The milestone step 3 settled (the one the groomed ticket will have after the approved edit list:
 kept, set or none) is checked again under the shared rules' "Re-read before the save": just before
 the first save below that uses it, the first child or spin-off filed with it (item 2), and again
-just before item 4's save, each time before any new milestone is created. If that rule sends it
-back to me, stop as above: write nothing more, list under Needs you the tickets already filed and
+just before item 4's save, each time before any new milestone is created. Use `get_milestone` for
+an existing milestone and re-read the groomed ticket as that rule says. If that rule stops the
+run or sends it back to me, write nothing more, list under Needs you the tickets already filed and
 the items not applied, and leave the `groomed` label off (item 5).
 
 1. **A split never loses work.** Linear cannot create several tickets and edit another in one

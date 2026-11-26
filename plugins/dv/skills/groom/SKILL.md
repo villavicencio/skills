@@ -62,15 +62,16 @@ overrule it.
   finished one (move it, put it in a new milestone, or keep it), and a ticket whose Decisions
   records "No milestone" but that has one (step 3, "Milestone").
 
-**Routine calls:** every other open decision, such as wording, ordering, Size and points, Done
-means phrasing, filing or dropping a spin-off, settling an `[assumed]` marker you verified,
-adding or removing a relation that step 3 maps clearly, closing a conditional step by removing it or
-making it unconditional (step 3), putting a ticket that has no milestone in the existing milestone
-that fits it (step 3, "Milestone"), rewording or adding a Done means line that proves the
-existing scope, and rewriting a Done means line that already passes so it fails first, or marking
-it as a guard of unchanged behavior, where step 3 ("Done means lines that already pass") says
-each fits. Decide each one yourself: take the option you would have marked "(Recommended)" had you asked. When you
-cannot tell whether a call is a fork, treat it as one and ask.
+**Routine calls:** every other open decision, such as wording, ordering, Size and points, Done means
+phrasing, filing or dropping a spin-off, settling an `[assumed]` marker you verified, adding or
+removing a relation that step 3 maps clearly, closing a conditional step by removing it or making it
+unconditional (step 3), putting a ticket that has no milestone in the existing milestone that fits
+it (step 3, "Milestone"), rewording or adding a Done means line that proves the existing scope,
+rewriting a Done means line that already passes so it fails first, or marking it as a guard of
+unchanged behavior, where step 3 ("Done means lines that already pass") says each fits, and flipping
+the `!` of a line that expects failure (step 3). Decide each one yourself: take the option you would
+have marked "(Recommended)" had you asked. When you cannot tell whether a call is a fork, treat it
+as one and ask.
 
 **Recording.** A routine call is recorded only when it changes the ticket or settles an open
 decision: one that step 3 collects, a spin-off, or the split. Such a call becomes an add item
@@ -361,7 +362,8 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
     1. A count, a line number, an exit code other than 0, any output, or two statements that
        disagree: "not run: stated result unclear".
     2. Only the command, or "exits 0", "succeeds" or "passes": the line passes on exit 0.
-    3. "Fails" or "exits non-zero": it passes on a non-zero exit.
+    3. "Fails" or "exits non-zero": "expects failure", whatever the test gives now, since the
+       format wants the command itself to fail before the work and pass after it.
     4. Anything else: "not run: stated result unclear".
   - **Results.** Each Done means line gets one of these results. They go, with the commit's short
     id (or "commit not verified"), in step 6's findings and step 8's report, the lines not run
@@ -369,6 +371,8 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
     - "already passes": flagged (below). For a line with `!` whose path is missing in the tracked
       files, the interview also says that a build or another local step could create the path,
       which this check does not see;
+    - "expects failure": flagged (below). The rewrite flips the line's `!` (adds one, or removes
+      the one it has) so the command itself fails first, and is checked the same way;
     - "fails in the tracked files at the commit": the format's rule holds for what the commit
       tracks (untracked and generated files are not seen);
     - "guard, passes": the line says it guards unchanged behavior and passes, as expected, so it
@@ -383,13 +387,14 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
   - **A flagged line is an open decision** (step 6): rewrite it so it fails first and still proves
     the scope (show the rewrite, with this check's result for it, or "not run" and why), or keep it
     as a guard of unchanged behavior, with the reason written into the line. Recommend the guard
-    only when the ticket says that behavior must not change, and a rewrite otherwise. Dropping it
-    is a change to scope. A flagged line left as it is counts against ready (step 7, "Order of
-    writes" item 5, and step 8); a line not run does not.
+    only when the ticket says that behavior must not change, and a rewrite otherwise. For a line
+    that expects failure, the rewrite flips its `!`. Dropping it is a change to scope. A flagged
+    line left as it is counts against ready (step 7, "Order of writes" item 5, and step 8); a line
+    not run does not.
     **Forks-only mode:** a rewrite that fails on the default branch (this check saw it fail, or it
-    names a file the work creates) is a routine call, and so is the guard mark when the ticket
-    says that behavior must not change. When neither fits, what to do with the line is a fork, and
-    dropping it always is ("Forks-only mode").
+    names a file the work creates) is a routine call, and so is the flip of a line that expects
+    failure, and the guard mark when the ticket says that behavior must not change. When none
+    fits, what to do with the line is a fork, and dropping it always is ("Forks-only mode").
 - **Conditional steps.** A Scope step of the form "check whether X; if so, do Y" is closed now when
   the check is one or two read-only commands in a place the session can read. Run it and record
   the result, with the command, under "Checked and current" in Agent notes. Then either remove the
@@ -565,12 +570,13 @@ When there is nothing, say "Scouting: nothing found." in one line, and do not pa
 First, in your reply, list what you found, shortest first: gaps, stale facts, settled `[assumed]`
 markers, the result for each Done means line (step 3, "Done means lines that already pass"; the
 lines not run apart from the lines that fail), neighbors and overlapping work, the milestone (step
-3), the size and points, the split verdict and the scouting items. The overlapping work opens with one tally per search, from step 1
-and step 5: its words, pages read and results (for example, "`groom pagination`: 2 pages, 263
-results"), with an incomplete search marked as such. Show the split proposal in full here (each
-child's title, Done means lines, size and points, milestone, labels, order and blockers, the
-parent's estimate, and the parent's full replacement description when it stays as the parent), and
-each spin-off's title, reason, project, milestone and any duplicate match.
+3), the size and points, the split verdict and the scouting items. The overlapping work opens with
+one tally per search, from step 1 and step 5: its words, pages read and results (for example,
+"`groom pagination`: 2 pages, 263 results"), with an incomplete search marked as such. Show the
+split proposal in full here (each child's title, Done means lines, size and points, milestone,
+labels, order and blockers, the parent's estimate, and the parent's full replacement description
+when it stays as the parent), and each spin-off's title, reason, project, milestone and any
+duplicate match.
 
 Then ask every open decision, in rounds of at most 4 questions:
 
@@ -793,16 +799,16 @@ the items not applied, and leave the `groomed` label off (item 5).
    sits in its children. A ticket fails the test when grooming left a gap: a needed fix I declined
    or that did not land (such as an item left for me to edit in Linear), an overlap or duplicate
    search that did not finish, a Done means line that cannot be proved, a Done means line found
-   already passing, or a guard line found failing, and left as it is (step 3), a target not
-   confirmed, or points Linear did not store. Add `groomed` with `addLabels` (File step 2 allows it
-   on a child) to each ticket that passes, when its team has an active `groomed` label, and to the
-   groomed ticket only when its edit-list item was approved (in forks-only mode, applied). A ticket
-   that fails keeps no new label, and the report names its gap. The label writes are separate calls,
-   so they can stop part way, and a call can land even when it returns an error. So after the label
-   writes, or after an error during them, read back with `get_issue` the groomed ticket and every
-   child this run filed, and report each one's labels as read (step 8). Name under Needs you each
-   ticket this item meant to label that lacks `groomed` after the read-back: `dv:director-mode`
-   skips grooming a ticket that has the label.
+   already passing or expecting failure, or a guard line found failing, and left as it is (step 3),
+   a target not confirmed, or points Linear did not store. Add `groomed` with `addLabels` (File step
+   2 allows it on a child) to each ticket that passes, when its team has an active `groomed` label,
+   and to the groomed ticket only when its edit-list item was approved (in forks-only mode,
+   applied). A ticket that fails keeps no new label, and the report names its gap. The label writes
+   are separate calls, so they can stop part way, and a call can land even when it returns an error.
+   So after the label writes, or after an error during them, read back with `get_issue` the groomed
+   ticket and every child this run filed, and report each one's labels as read (step 8). Name under
+   Needs you each ticket this item meant to label that lacks `groomed` after the read-back:
+   `dv:director-mode` skips grooming a ticket that has the label.
 
 **Patches.** Edit with `patch` operations on `save_issue` (`replace`, `insert_before`,
 `insert_after`, `replace_range`, and `append` for an empty description), not by sending the whole
@@ -863,10 +869,10 @@ reply-format rules when the session's instructions give any:
 1. **Ready or not.** Name the ticket as a markdown link (the url from `get_issue`; the bare id if
    none came back). Ready means no gaps, Done means lines that can be proved, nothing it waits on,
    every overlap search finished (step 1), no needed fix declined or not landed, no duplicate search
-   left unfinished, no Done means line found already passing, or guard line found failing, and
-   left as it is (step 3), no target unconfirmed (with a Head, a fork on its way forward counts as
-   settled, except anything under `dv:director-mode`'s "What no default decides": "From a worktree
-   session"), and the team's backlog or ready-to-start state as
+   left unfinished, no Done means line found already passing or expecting failure, or guard line
+   found failing, and left as it is (step 3), no target unconfirmed (with a Head, a fork on its way
+   forward counts as settled, except anything under `dv:director-mode`'s "What no default decides":
+   "From a worktree session"), and the team's backlog or ready-to-start state as
    `list_issue_statuses` names them. A started, finished or canceled ticket is not ready to start.
    After a split, name the child that is ready and the one that comes first, as links; do not call
    the parent ready when the work is in its children. A ticket whose points Linear did not store
@@ -888,9 +894,9 @@ reply-format rules when the session's instructions give any:
    ready and the gap that keeps it so, or the write failed); spin-offs and children filed, as links,
    each child with the estimate its `save_issue` returned and its labels as read back, or "not
    labelled" with the same reasons; the Done means check (step 3), with the commit's short id or
-   "commit not verified": the lines that already pass, fail, are guards (passing or failing) or are
-   observations, and each line not run with its reason; what was not checked; the branch to work it
-   on.
+   "commit not verified": the lines that already pass, expect failure, fail, are guards (passing
+   or failing) or are observations, and each line not run with its reason; what was not checked;
+   the branch to work it on.
 
 Do not ask whether to start the work and do not start it: starting is a separate request from me.
 

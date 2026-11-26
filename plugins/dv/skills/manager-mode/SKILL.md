@@ -365,16 +365,16 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
     decides", whose way forward that bullet gives), keep the rest moving, and take a later reply from the verified
     Director as if it had come in time, unless your way forward already settled the question.
   - **The CEO's 1%** comes back as `Forwarded to the Head`, like any other: the Head brings it to
-    me, so it is not asked of me at the end. A `Held for David` means the Director's send to him
-    failed: ask that one at the end as with no Head.
+    me, so it is not asked of me at the end. A send to him that fails goes to the ticket's
+    fallback pickup (`dv:director-mode`, "A record on the ticket for each Qk"), not to me.
   - **Unanswered at the end.** When the ticket's other work is done, send the Director, for each
     question still without an answer that counts (a held kind and a forwarded one included),
     `Unanswered, VIL-N, Qk: <the question>. Options: <as in the Question>. Recommended: <the option>. Reversible: <yes or no, and how>. Sent: <UTC date and time>.`,
     and wait for it as for a question. Each Qk settles once: the first answer that counts (the
     Head's, which the Director relays in place of its default when it already has one, or the
-    default) decides it, and any later reply on that Qk changes nothing, except the Head's reply on
-    a pending entry for that Qk, which supersedes it (`dv:director-mode`, "A pending entry on the
-    ticket"). Its `Answer` is the Director's default
+    default) decides it, and any later reply on that Qk changes nothing, except the Head's disposition on
+    the ticket's record for that Qk, which supersedes it (`dv:director-mode`, "A record on the
+    ticket for each Qk"). Its `Answer` is the Director's default
     (`dv:director-mode`, "Unanswered at the end"), its own path: apply it without the checks of
     "What counts as the answer", except that it must name one of the question's options and the
     delete and scope-cut limits. "What no default decides" stays binding: if you can see the
@@ -383,16 +383,15 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
     explicit yes), treat the
     `Answer` as `Forwarded to the Head` and keep its way forward. The Director relays the Head's
     answer on it under the same Qk; apply it once, as "Answer from the Head" above says, and
-    take any later reply on that Qk as changing nothing. When the Director's mail check fails and
-    it can't verify the question reached the Head, it posts the ticket's pending entry for that Qk
-    and sends no reply (`dv:director-mode`, "Unanswered at the end"): no answer that counts, as
-    below, and no default. The Head's reply on that entry is the one disposition for that Qk
-    (`dv:director-mode`, "A pending entry on the ticket"): it supersedes any earlier answer under
-    it, and you apply it once. A `Forwarded to the Head` reply (an item
+    take any later reply on that Qk as changing nothing. When the Director's mail check fails, it
+    sends no default: it uses the ticket's record for that Qk and replies `Forwarded to the Head`,
+    or, if it can't write the record, nothing (`dv:director-mode`, "Unanswered at the end"): no
+    answer that counts, as below. The Head's disposition on that record is the one for that Qk
+    (`dv:director-mode`, "A record on the ticket for each Qk"): it supersedes any earlier answer
+    under it, and you apply it once. A `Forwarded to the Head` reply (an item
     under "What no default decides": keep its way forward), or no answer that counts, means ask me nothing:
     write it on the ticket as an open decision, and it goes under WAITING ON in your closeout
-    note. A `Held for David` reply to it is the one case that comes to me now: the Director's
-    send to the Head failed, so ask me as with no Head.
+    note. A failed send to the Head doesn't come to me: it goes to the ticket's fallback pickup.
   - **With no Director that can be verified** (no candidate, more than three, only wrong answers,
     an ambiguous result, the probe's timer ended with none verified, or under Codex), send each
     question, held ones included, straight to the Head under its own Qk instead of asking me:
@@ -405,14 +404,16 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
     as mail (`orca orchestration check --json`); one from his address for that Qk counts as an
     `Answer from the Head` (above), under the same checks, and is applied once. The CEO's 1% and
     the two choices reserved for my yes go the same way: he brings them to me and relays my yes in
-    `Approved by:`. A send that returns an error, or no result you can read, is not a verified
-    delivery: don't send it again; post the ticket's pending entry for that Qk (`dv:director-mode`,
-    "A pending entry on the ticket"), keep the question pending on its way forward, go on with work that doesn't depend
+    `Approved by:`. Keep the ticket's record for that Qk as `dv:director-mode`'s "A record on the
+    ticket for each Qk" says: read it first and never send again when one is there, claim it at
+    `sending` before you send, update it to `sent` after; a send that fails or returns no result
+    you can read gets the record's fallback mention, never a second send. Keep the question
+    pending on its way forward, go on with work that doesn't depend
     on it, ask me nothing and open no card. At the end, a question still pending is written on the
     ticket as an open decision and goes under WAITING ON in your closeout note; there is no
     `Unanswered` without a Director.
-  - **Falls back to me as before** on an `Ask David` reply (the Head unreachable, or a session with
-    no question rule).
+  - **Falls back to me as before** on an `Ask David` reply from a session with no question rule;
+    a failed send to the Head never does.
 - **Every ask to me stands on its own**, held questions included, with or without a Director, as
   `dv:director-mode`'s "Every ask that reaches me stands on its own" says: the ticket id and the
   PR (or that there is none yet), the options numbered with their labels, your pick by its number

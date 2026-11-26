@@ -21,9 +21,10 @@ schedule time in a dialog, and the dialog kept the Director's reply from reachin
   address and Linear handle. This repo's names the Head of Skills.
 - **`dv:director-mode`.** New section "The Head and the CEO's 1%": the one copy of the routing
   rule, the CEO's 1% and what no default decides. The Director forwards to the Head what it
-  doesn't decide and relays his answers. A question whose delivery to the Head fails or is
-  unclear is not re-sent: it gets one pending Linear entry on the ticket that mentions the Head,
-  and his reply there settles it.
+  doesn't decide and relays his answers. Each question sent to the Head has one record on its
+  ticket, claimed before the send. A failed, unclear or interrupted send is never sent again: the
+  record gets the Head's Linear mention, his reply there settles it, and the question never falls
+  back to David.
 - **`dv:manager-mode`.** With a Head, the session sends every question to the Director, keeps
   working while the Head decides, and asks David nothing outside the CEO's 1% (apart from
   `dv:closeout`'s own reply until VIL-1191), unless the Director replies `Ask David`. With no

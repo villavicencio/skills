@@ -3,11 +3,13 @@
 `dv:closeout` no longer asks "remove this worktree now?" once its note has been sent to a
 Director its probe verified. From the turn the note is sent, in that turn and every later one,
 whether or not the Director has replied, the reply says the Director removes the worktree after
-the session ends, by its own checks (`dv:director-mode`, "Take closeout notes" and "End a
-finished worktree session"), and names the removal command for David in case the Director keeps
-the worktree and leaves the removal to him. With no verified Director (no note sent, the note
-waiting for the probe answers, an answer not verified, or a note sent only by `terminal send`)
-the question stays as before.
+the session ends if its checks pass (`dv:director-mode`, "Take closeout notes" and "End a
+finished worktree session"), and names the removal command for David, to run after the session
+ends. The skill names cases where the Director keeps the worktree instead: a verdict that needs
+David's yes to losses no standing yes covers, anything under WAITING ON or REPLY NEEDED, or a
+message from David to the session after the note. With no verified Director (no note sent, the
+note waiting for the probe answers, an answer not verified, or a note sent only by `terminal
+send`) the question stays as before.
 
 Skipping the question never stands in for consent to losing data: while the verdict is "safe
 once you accept losing", Step 5's question still asks it, and nothing treats the worktree as

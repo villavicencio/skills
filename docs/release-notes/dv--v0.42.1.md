@@ -22,8 +22,9 @@ Director's checks. No supported Orca command reads that setting (Orca 1.4.277).
   passes as `--surface chat`. Orca 1.4.277 has no such option, so every start there takes the
   ordinary start (2b) for now. Don't read Orca's settings files to decide.
 - **A 2a start that came up as a terminal anyway** is replaced at once, before the setup block,
-  on that start's own dispatch only: `orca orchestration worker-stop` stops that dispatch's
-  terminal session, and `orca agent launch --surface chat` starts the session as an ordinary chat
+  on that start's own dispatch only. The block first checks that Orca shows the receipt's worktree
+  and waits, up to about two minutes, for the start's setup to finish; then
+  `orca orchestration worker-stop` stops that dispatch's terminal session, and `orca agent launch --surface chat` starts the session as an ordinary chat
   in the same worktree, with the kickoff prompt without its supervised line. The chat starts only
   when `worker-stop` answered `ok`, that dispatch, `state` `stopped` and `processAction`
   `closed_agent_terminal`, and `orca terminal list`, read whole, no longer lists the agent
@@ -73,5 +74,8 @@ clone:
   stood (setup block first): the setup block linked the ticket and wrote no record, `worker-stop`
   answered `stopped` with `closed_agent_terminal` for that dispatch only (`ctx_ea59f4994150`), and
   the launch gave a chat in the same worktree. The final stop block, which runs before the setup
-  block and also reads back the terminal list, was then run against a stand-in that replayed that
-  `worker-stop` reply and six failing answers: it launched only on the confirmed stop.
+  block, checks the worktree, waits for setup and reads back the terminal list, was then run
+  against stand-ins that replayed that `worker-stop` reply and failing answers: it launched only on
+  a confirmed stop, and stopped nothing for a worktree Orca didn't show or a setup that never
+  finished. The skill says plainly that the stop can cut short the session's first steps, which
+  the replacement chat starts again.

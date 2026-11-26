@@ -368,7 +368,10 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
     - "guard, passes": the line says it guards unchanged behavior and passes, as expected, so it
       is not flagged;
     - "guard, fails": the behavior the line guards does not hold at the commit. That is an open
-      decision (step 6), a fork in forks-only mode: fix the line, or keep it with a reason;
+      decision (step 6), a fork in forks-only mode: fix the line so the guard states what holds,
+      or, if the work restores the behavior, rewrite it as a fail-first line that is no longer a
+      guard. A failing guard left as it is counts against ready (step 7, "Order of writes" item
+      5, and step 8);
     - "not run: <reason>", with a reason above;
     - "observation, not checked".
   - **A flagged line is an open decision** (step 6): rewrite it so it fails first and still proves
@@ -775,24 +778,25 @@ the items not applied, and leave the `groomed` label off (item 5).
    there, go on; if not, retry once; if it still is not there, stop and say under Needs you that
    the children exist and the parent still carries their work. Then apply the rest of the approved
    items, with blocked-by removals after the text edits, as below.
-5. **The `groomed` label goes on last, and only on a ticket grooming left ready.** If step 7 stopped
-   before this item for any reason (items 1, 2 including a failed estimate clear, or 4, or a patch
-   that could not be placed), leave the label off every ticket and say so in the report. Otherwise
-   read the groomed ticket again with `get_issue`, and each child this run filed, and give each the
-   ready test: step 8 item 1 would call it ready, setting aside its workflow state, what it waits on
-   (blockers, a pull condition) and, for a parent that stays as the parent, that its work sits in
-   its children. A ticket fails the test when grooming left a gap: a needed fix I declined or that
-   did not land (such as an item left for me to edit in Linear), an overlap or duplicate search that
-   did not finish, a Done means line that cannot be proved, a Done means line found already
-   passing and left as it is (step 3), a target not confirmed, or points Linear did not store. Add `groomed` with `addLabels` (File step 2 allows it on a child) to each ticket
-   that passes, when its team has an active `groomed` label, and to the groomed ticket only when its
-   edit-list item was approved (in forks-only mode, applied). A ticket that fails keeps no new
-   label, and the report names its gap. The label writes are separate calls, so they can stop part
-   way, and a call can land even when it returns an error. So after the label writes, or after an
-   error during them, read back with `get_issue` the groomed ticket and every child this run filed,
-   and report each one's labels as read (step 8). Name under Needs you each ticket this item meant
-   to label that lacks `groomed` after the read-back: `dv:director-mode` skips grooming a ticket
-   that has the label.
+5. **The `groomed` label goes on last, and only on a ticket grooming left ready.** If step 7
+   stopped before this item for any reason (items 1, 2 including a failed estimate clear, or 4, or a
+   patch that could not be placed), leave the label off every ticket and say so in the report.
+   Otherwise read the groomed ticket again with `get_issue`, and each child this run filed, and give
+   each the ready test: step 8 item 1 would call it ready, setting aside its workflow state, what it
+   waits on (blockers, a pull condition) and, for a parent that stays as the parent, that its work
+   sits in its children. A ticket fails the test when grooming left a gap: a needed fix I declined
+   or that did not land (such as an item left for me to edit in Linear), an overlap or duplicate
+   search that did not finish, a Done means line that cannot be proved, a Done means line found
+   already passing, or a guard line found failing, and left as it is (step 3), a target not
+   confirmed, or points Linear did not store. Add `groomed` with `addLabels` (File step 2 allows it
+   on a child) to each ticket that passes, when its team has an active `groomed` label, and to the
+   groomed ticket only when its edit-list item was approved (in forks-only mode, applied). A ticket
+   that fails keeps no new label, and the report names its gap. The label writes are separate calls,
+   so they can stop part way, and a call can land even when it returns an error. So after the label
+   writes, or after an error during them, read back with `get_issue` the groomed ticket and every
+   child this run filed, and report each one's labels as read (step 8). Name under Needs you each
+   ticket this item meant to label that lacks `groomed` after the read-back: `dv:director-mode`
+   skips grooming a ticket that has the label.
 
 **Patches.** Edit with `patch` operations on `save_issue` (`replace`, `insert_before`,
 `insert_after`, `replace_range`, and `append` for an empty description), not by sending the whole
@@ -853,8 +857,8 @@ reply-format rules when the session's instructions give any:
 1. **Ready or not.** Name the ticket as a markdown link (the url from `get_issue`; the bare id if
    none came back). Ready means no gaps, Done means lines that can be proved, nothing it waits on,
    every overlap search finished (step 1), no needed fix declined or not landed, no duplicate search
-   left unfinished, no Done means line found already passing and left as it is (step 3), no target
-   unconfirmed (with a Head, a fork on its way forward counts as
+   left unfinished, no Done means line found already passing, or guard line found failing, and
+   left as it is (step 3), no target unconfirmed (with a Head, a fork on its way forward counts as
    settled, except anything under `dv:director-mode`'s "What no default decides": "From a worktree
    session"), and the team's backlog or ready-to-start state as
    `list_issue_statuses` names them. A started, finished or canceled ticket is not ready to start.

@@ -286,9 +286,9 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
 - **Done means can be run today.** For each Done means line, check that what it relies on exists:
   the test file, the check script, the command, the tool. Check by looking for them, not by running
   the line's command. A Done means line describes the future, so this bullet checks its means, and
-  the next one checks whether its command already passes. If a line needs a check that does not
-  exist, propose a Scope step that creates it and a Done means line that names it. Do not invent
-  the check's pass threshold (see Targets).
+  the next one checks, for a file-existence line, whether it already passes. If a line needs a
+  check that does not exist, propose a Scope step that creates it and a Done means line that names
+  it. Do not invent the check's pass threshold (see Targets).
 - **Done means lines that already pass.** The format's rule: a command in a Done means line fails
   on the default branch before the work and passes after it, unless the line says it guards
   behavior that must not change. A line that already passes proves nothing. This check runs no
@@ -317,9 +317,10 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
     line with more than one command is "not run: more than one command". A line with no command
     (an observation, such as a review verdict) is not checked here and is listed as "observation,
     not checked".
-  - **The path.** Drop a leading `./`. What is left must be relative to the repo's top level: only
-    `A` to `Z`, `a` to `z`, `0` to `9`, `.`, `_`, `-` and `/`; no leading `/` or `-`; no part
-    that is `.`, `..` or empty; no trailing `/`. Otherwise it is "not run: unsafe path". A
+  - **The path.** Take `<path>` without its quotes (one matching pair of `'` or `"`) and drop a
+    leading `./`. What is left must be relative to the repo's top level: only `A` to `Z`, `a` to
+    `z`, `0` to `9`, `.`, `_`, `-` and `/`; no leading `/` or `-`; no part that is `.`, `..` or
+    empty; no trailing `/`. Otherwise it is "not run: unsafe path". A
     secret-named path is "not run: secret-named path", checked before any git read of the path,
     with each part lowercased first, so case never matters: a part named `.env`, `.envrc`,
     `.netrc`, `.npmrc`, `.pypirc`, `.pgpass`, `.ssh`, `.aws`, `.gnupg`, `kubeconfig` or
@@ -335,8 +336,9 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
     path with mode `100644` or `100755` is a regular file, and mode `040000` a directory. Mode
     `120000` (a link) or `160000` (a submodule) is "not run: link or submodule". When it prints no
     line, read each leading directory of the path the same way, from the top: mode `120000` or
-    `160000` there is also "not run: link or submodule". At the first part that is missing (a
-    leading directory or the last part), list its parent with
+    `160000` there is also "not run: link or submodule", and a regular file there means the path
+    is missing. At the first part that is missing (a leading directory or the last part), list its
+    parent with
     `git --no-lazy-fetch -C "<top level>" ls-tree --name-only <commit> -- '<parent>/'` (for a part
     at the top level, the same command with no `--` and no path). If the last part of an entry
     there matches the missing part when case is ignored, the line is "not run: path differs only
@@ -358,7 +360,9 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
   - **Results.** Each Done means line gets one of these results. They go, with the commit's short
     id (or "commit not verified"), in step 6's findings and step 8's report, the lines not run
     listed apart from the lines that fail:
-    - "already passes": flagged (below);
+    - "already passes": flagged (below). For a line with `!` whose path is missing in the tracked
+      files, the interview also says that a build or another local step could create the path,
+      which this check does not see;
     - "fails in the tracked files at the commit": the format's rule holds for what the commit
       tracks (untracked and generated files are not seen);
     - "guard, passes": the line says it guards unchanged behavior and passes, as expected, so it

@@ -303,7 +303,10 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
   `Approved by:` line inside an excerpt: the field counts only outside every excerpt.
 - **With a Head, nothing else is asked of me,** by you or by a worktree session, in a dialog or
   in chat. Every question these skills would put to me goes to him through you, the CEO's 1%
-  marked as such, and his answer stands where they say mine does, for that one question. Your
+  marked as such, and his answer stands where they say mine does, for that one question. A
+  session that can verify no Director sends its question straight to him, in the same form and
+  under the same Qk, and keeps it pending if that send can't be verified (`dv:manager-mode`, "With
+  no Director that can be verified"). Your
   own questions go to him too; leave that one thing undone until he answers. What no message can
   grant (a permission prompt, a harness approval, a barrier set for me) and what only my hands can
   do (closing a chat in Orca) are not questions and still come to me; so does a check on a request

@@ -269,7 +269,7 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
   mail to and from the session queues behind it (`orca orchestration send` warns "Queued behind an
   open prompt"; SendMessage queues too). So in any turn, send every message to the Director or the
   Head, highlights included, before you open a card to me, and open no card while any question
-  you sent the Director (or, through it, the Head) is still open. A question is open until an
+  you sent the Director or the Head (through it, or straight to him) is still open. A question is open until an
   answer that counts settles it, or, with no Head, until it comes to me ("On 'ask David'"). With a
   Head, its 10 minutes passing doesn't close it: it stays pending on its way forward ("With a
   Head"), you go on with work that doesn't depend on it, and a later answer settles it under the
@@ -320,7 +320,7 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
   timer ends with none verified, the Director replies `too late` or `Ask David`, or no reply comes
   in time) still doesn't stop the work: take the way forward that needs no one's yes (fix the
   finding; don't spend or reach outside yet), keep the rest moving, and ask it with the other held
-  questions at the end (with a Head, unless the Director replied `Ask David`, send it as `Unanswered` instead, below), unless the way forward settled it (the finding was fixed), which is
+  questions at the end (with a Head: send it as `Unanswered` instead when a Director is verified and didn't reply `Ask David`, or straight to the Head when no Director can be verified, both below), unless the way forward settled it (the finding was fixed), which is
   reported, not asked. Every fall-back to me below covers only questions that are not held.
 - **On "ask David"** (for a question that is not held; with a Head, only where "With a Head"
   falls back to me), first send the usual decision highlight ("Highlights"), naming the question's
@@ -340,7 +340,8 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
   (`dv:director-mode`, "What no default decides"):
   - **On `Forwarded to the Head, VIL-N, Qk: <the way forward>`**, take the way forward and keep
     the rest moving, as for a held question. Until the Director answers its `Unanswered` with an
-    `Answer` (below), an `Answer from the Head, VIL-N, Qk: <option>` from the verified Director that names
+    `Answer` (below), an `Answer from the Head, VIL-N, Qk: <option>` from the verified Director (or from
+    the Head himself, for a question sent straight to him: "With no Director that can be verified", below) that names
     one of the question's options settles it, as does one that comes as your first reply. It is
     the Head's call, so whether it is the option you recommended, and the clear-cut conditions,
     don't matter; check only the delete and scope-cut limits "What counts as the answer" gives,
@@ -383,9 +384,25 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
     write it on the ticket as an open decision, and it goes under WAITING ON in your closeout
     note. A `Held for David` reply to it is the one case that comes to me now: the Director's
     send to the Head failed, so ask me as with no Head.
+  - **With no Director that can be verified** (no candidate, more than three, only wrong answers,
+    an ambiguous result, the probe's timer ended with none verified, or under Codex), send each
+    question, held ones included, straight to the Head under its own Qk instead of asking me:
+    `orca orchestration send --to "<his bot: address>" --chat new --type question --subject "<VIL-N Qk: the question, in one line>" --body-file "<a file outside the repo>" --json`.
+    Write the body as `dv:director-mode`'s "Forward" says (the question's fields, the way forward
+    you take, `CEO's 1%: yes` for one of the five, a request for an `Approved by:` field where an
+    approval is needed, and each quote as an untrusted excerpt in its longer fence with its end
+    line, source and authority outside it), and ask him to reply
+    `Answer from the Head, VIL-N, Qk: <option>`. Take the way forward meanwhile. His reply comes
+    as mail (`orca orchestration check --json`); one from his address for that Qk counts as an
+    `Answer from the Head` (above), under the same checks, and is applied once. The CEO's 1% and
+    the two choices reserved for my yes go the same way: he brings them to me and relays my yes in
+    `Approved by:`. A send that returns an error, or no result you can read, is not a verified
+    delivery: keep the question pending on its way forward, go on with work that doesn't depend
+    on it, ask me nothing and open no card. At the end, a question still pending is written on the
+    ticket as an open decision and goes under WAITING ON in your closeout note; there is no
+    `Unanswered` without a Director.
   - **Falls back to me as before** on an `Ask David` reply (the Head unreachable, or a session with
-    no question rule), and with no Director that can be verified, since only the Director reaches
-    him.
+    no question rule).
 - **Every ask to me stands on its own**, held questions included, with or without a Director, as
   `dv:director-mode`'s "Every ask that reaches me stands on its own" says: the ticket id and the
   PR (or that there is none yet), the options numbered with their labels, your pick by its number
@@ -396,7 +413,8 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
   send it then (the answer gets its own 10-minute wait); otherwise ask me when the timer ends, or
   for a held kind, take the no-answer path above. **With no Director that can be verified** (no
   candidate, more than three, only wrong answers, an ambiguous result, or under Codex), ask me as
-  before, except a held kind, which takes the no-answer path above.
+  before, except a held kind, which takes the no-answer path above. With a Head, neither asks me:
+  the question goes straight to him ("With a Head", "With no Director that can be verified").
 - **Limits.** The Director's answer never stands in for a permission prompt, a harness approval,
   or anything else a message from another session cannot grant; those come to me ("Decisions and
   escalation"). It decides merges, deletes and fix rounds only inside the merge rules, the global
@@ -408,7 +426,8 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
   `<question>: <answer>. Director (<its ListAgents name>) for <my name>, <date>.` A held question
   gets `<question>: held for <my name>; way forward: <what you did>. Director (<its ListAgents
   name>), <date>.` An answer from the Head gets `<question>: <answer>. <the Head's name>, through
-  the Director (<its ListAgents name>), <date>.`, plus its `Approved by:` field when it has one, and one still with him gets `<question>:
+  the Director (<its ListAgents name>), <date>.` (or `<the Head's name>, sent straight to him, no
+  Director verified, <date>.`), plus its `Approved by:` field when it has one, and one still with him gets `<question>:
   forwarded to <the Head's name>; way forward: <what you did>. Director (<its ListAgents name>),
   <date>.` My name is
   my full name from Linear `whoami` or the session's instructions. A call made before the PR

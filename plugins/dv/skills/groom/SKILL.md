@@ -546,9 +546,15 @@ removes existing text. It covers:
   `save_issue` on that child and read the reply; if the clear fails, stop before changing the
   parent, as for a failed filing ("Order of writes", item 2);
 - clearing a stale estimate (`estimate: null`) on an already split parent whose work and points
-  sit on its children. Keep its historical Size text and the existing split. Read back the empty
-  estimate with `get_issue` before deciding whether to add `groomed`. Report a clear that did not
-  land as a gap;
+  sit on its children. Keep its historical Size text and the existing split. In the numbered item,
+  record the parent's exact estimate, the full set of child ids and each child's points, and where
+  the work sits. Just before saving or retrying, read the parent, its full list of children and
+  the children again. Compare the estimate, split membership, and evidence that the children hold
+  the work and points with the item as approved. If anything changed or the read is incomplete,
+  leave the estimate intact, say what changed or what evidence is missing, and ask for fresh
+  approval of any revised clear item once it can be verified. A change can still land between the
+  read and the write. After the save, even after an error, confirm the empty estimate with
+  `get_issue` before deciding whether to add `groomed`. Report an unconfirmed clear as a gap;
 - links to comments that hold evidence a Scope step depends on;
 - the milestone (step 3), set with `save_issue`'s `milestone` field: an add item when the ticket
   has none; a replace item when my answer moves it, or a remove item when it takes it out (which

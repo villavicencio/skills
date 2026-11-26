@@ -344,7 +344,13 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
     one of the question's options settles it, as does one that comes as your first reply. It is
     the Head's call, so whether it is the option you recommended, and the clear-cut conditions,
     don't matter; check only the delete and scope-cut limits "What counts as the answer" gives,
-    and treat a note as that bullet says. On one of the CEO's 1%, or a choice a written rule
+    and treat a note as that bullet says. The one exception is a delete beyond the standing
+    approvals: its `Approved by:` field only points to the evidence. Carry it out only after you
+    verify my own explicit yes yourself, in the original source the field points to (my message in
+    a chat you can read, or a ticket comment by my account), for the exact target and scope, and
+    then only by the delete's existing procedure and guards. If you can't verify it, the target
+    has changed or a guard fails, it stays pending and the data is kept (`dv:director-mode`, "What
+    no default decides"). On one of the CEO's 1%, or a choice a written rule
     reserves for a named person's explicit yes (`dv:director-mode`, "What no default decides"), it
     settles only when its
     `Approved by:` field names that person and that choice, with their own words or a traceable

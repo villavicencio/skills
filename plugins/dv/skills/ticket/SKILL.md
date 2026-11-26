@@ -4,7 +4,7 @@ description: "File a Linear ticket in the agreed format. Filing turns a rough re
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.40.2"
+  version: "0.41.0"
 ---
 
 # /ticket — file a Linear ticket

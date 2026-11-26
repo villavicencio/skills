@@ -105,13 +105,14 @@ else
       # in each directory above it, up to the worktree; the repo is then listed once, by path.
       # Git lists nothing at all for a repo it cannot open that holds only its .git folder,
       # ignored or not, so a find also looks for every .git (file or folder) below the worktree's
-      # top, as well as directories holding both objects/ and refs/ (including unopenable bare repos).
+      # top, as well as candidate objects entries whose parent also holds refs/ (including
+      # unopenable bare repos). Checking only those candidates avoids a process per directory.
       # Each one is listed as a nested repo, except an initialized submodule's (those have
       # their own checks below); one git already listed is listed once.
       # The case patterns open with "(" so bash 3.2 parses them inside the command substitution.
       NRF=""; SUBP=""
       if [ "$TOP" != "$MAIN" ]; then
-        if NRF=$(mktemp 2>/dev/null) && find "$TOP" -mindepth 1 \( -name .git -prune -print0 -o -type d \( -exec test -d '{}/objects' \; -exec test -d '{}/refs' \; -print0 \) \) > "$NRF"; then :
+        if NRF=$(mktemp 2>/dev/null) && find "$TOP" -mindepth 1 \( -name .git -prune -print0 -o -name objects -print0 \) > "$NRF"; then :
         else FAILS="$FAILS- finding nested repositories below the worktree failed: a nested repo git does not list may be missed$NL"; fi
         if [ -f "$TOP/.gitmodules" ]; then
           SUBP=$(git -C "$TOP" submodule foreach --quiet --recursive 'printf "%s\n" "$displaypath"') \
@@ -142,7 +143,12 @@ else
         printf '%s\t%s\n' "$k" "$p"
       done < "$IGNF"
       [ -n "$NRF" ] && while IFS= read -r -d '' g; do
-        p=${g#"$TOP"/}; case "$p" in (.git) continue ;; (*/.git) p=${p%/.git} ;; esac
+        p=${g#"$TOP"/}
+        case "$p" in
+          (.git|objects) continue ;;
+          (*/.git) p=${p%/.git} ;;
+          (*/objects) [ -d "$g" ] && [ -d "${g%/objects}/refs" ] || continue; p=${p%/objects} ;;
+        esac
         case "$p" in (*"$NL"*) ;; (*) [ -n "$SUBP" ] && printf '%s\n' "$SUBP" | grep -q -x -F -e "$p" && continue ;; esac
         case "$p" in (*"$NL"*) p=$(printf '%s' "$p" | tr '\n' '?') ;; esac
         printf 'nested-repo\t%s/\n' "$p"

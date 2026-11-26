@@ -26,10 +26,14 @@ main repo and a linked worktree made here:
   i. nested repos in an untracked folder that is not ignored (one git cannot open, holding only
      .git, which git status does not list at all; one valid) are listed by path as nested-repo
   j. an initialized submodule is not a nested repo
+  k. bare repos without HEAD, including paths with spaces or newlines and symlinked marker
+     directories, are detected; the worktree root and an objects-only folder are not repos
+  l. a failed find reports that repository discovery did not run
 
 Step 1 also calls gh and git fetch. A gh shim that always fails keeps the run off the network
 (the block then lists "gh missing" among the checks that did not run, which these checks
-ignore), and the scratch repo has no origin. Every repo is made in a temp dir created and
+ignore), and the scratch repo has no origin. A failing external test shim guards against launching test for
+every directory; shell builtins still work. Every repo is made in a temp dir created and
 removed here. The block runs under bash, and under zsh when it is installed, each with the
 system awk, plus gawk and mawk through a PATH shim when they are installed and are not the
 system awk. On a Mac the system awk is BSD awk; the ubuntu CI runner has no zsh and runs the
@@ -117,7 +121,8 @@ def ignored_section(stdout: str) -> list[str] | None:
 def run_case(shell: str, path_env: str, block: str, main_files: dict[str, str],
              wt_files: dict[str, str], wt_repos: tuple[str, ...] = (),
              wt_broken: tuple[str, ...] = (), wt_bare_git: tuple[str, ...] = (),
-             submodule: bool = False, bare_repos: tuple[str, ...] = ()) -> tuple[list[str] | None, str]:
+             submodule: bool = False, bare_repos: tuple[str, ...] = (),
+             bare_links: bool = False) -> tuple[list[str] | None, str]:
     with tempfile.TemporaryDirectory(prefix="vil869-") as work:
         root = Path(work).resolve()
         home = root / "home"
@@ -174,6 +179,16 @@ def run_case(shell: str, path_env: str, block: str, main_files: dict[str, str],
             (wt / rel).mkdir(parents=True, exist_ok=True)
             git(env, wt / rel, "init", "--bare", "-q")
             (wt / rel / "HEAD").unlink()  # still detected when Git cannot open it
+        if bare_links:
+            # Both marker directories may be symlinks; the root itself is never nested.
+            (root / "objects-target").mkdir()
+            (root / "refs-target").mkdir()
+            (wt / ".venv/src/links").mkdir(parents=True, exist_ok=True)
+            (wt / ".venv/src/links/objects").symlink_to(root / "objects-target")
+            (wt / ".venv/src/links/refs").symlink_to(root / "refs-target")
+            (wt / "objects").mkdir()
+            (wt / "refs").mkdir()
+            (wt / ".venv/src/not-a-repo/objects").mkdir(parents=True)
         p = subprocess.run([shell, "-c", block], cwd=wt, env=env, capture_output=True,
                            text=True, timeout=120)
         return ignored_section(p.stdout), f"rc={p.returncode} stdout={p.stdout!r} stderr={p.stderr!r}"
@@ -190,9 +205,9 @@ def scenario(shell: str, awk_label: str, path_env: str, block: str) -> None:
     def section(name: str, main_files: dict[str, str], wt_files: dict[str, str],
                 wt_repos: tuple[str, ...] = (), wt_broken: tuple[str, ...] = (),
                 wt_bare_git: tuple[str, ...] = (), submodule: bool = False,
-                bare_repos: tuple[str, ...] = ()):
+                bare_repos: tuple[str, ...] = (), bare_links: bool = False):
         sec, detail = run_case(shell, path_env, block, main_files, wt_files, wt_repos, wt_broken,
-                               wt_bare_git, submodule, bare_repos)
+                               wt_bare_git, submodule, bare_repos, bare_links)
         if sec is None:
             failures.append(f"{tag} {name}: no 'Ignored entries' section in the output\n     {detail}")
         return sec, detail
@@ -329,11 +344,14 @@ def scenario(shell: str, awk_label: str, path_env: str, block: str) -> None:
 
     # k. Bare repositories, even without HEAD, are never build output.
     sec, detail = section("k", {}, {".venv/lib/ok.py": "x\n"},
-                          bare_repos=(".venv/src/demo.git", "scratch/bare"))
+                          bare_repos=(".venv/src/demo.git", "scratch/bare", ".venv/src/my bare",
+                                      ".venv/src/line\nbreak"), bare_links=True)
     if sec is not None:
         examples = sorted(EXAMPLE.match(l).groups() for l in sec if EXAMPLE.match(l))
         check(f"{tag} k. bare repos listed by path", examples == [
-            ("nested-repo", ".venv/src/demo.git/"), ("nested-repo", "scratch/bare/")], detail)
+            ("nested-repo", ".venv/src/demo.git/"), ("nested-repo", ".venv/src/line?break/"),
+            ("nested-repo", ".venv/src/links/"), ("nested-repo", ".venv/src/my bare/"),
+            ("nested-repo", "scratch/bare/")], detail)
         check(f"{tag} k. ordinary build output remains",
               "  .venv/ (any depth): 1 entry in 1 directory: 0 same as the main checkout, "
               "1 only here, 0 different, 0 not examined" in sec, detail)
@@ -356,6 +374,11 @@ def main() -> int:
         with open(gh, "w") as f:
             f.write("#!/bin/sh\nexit 1\n")
         os.chmod(gh, 0o755)
+        # find must not need an external test process per traversed directory.
+        test = os.path.join(gh_dir, "test")
+        with open(test, "w") as f:
+            f.write("#!/bin/sh\nexit 1\n")
+        os.chmod(test, 0o755)
         awks = [("system", gh_dir + os.pathsep + base)]
         for name in ("gawk", "mawk"):
             found = shutil.which(name)
@@ -367,6 +390,16 @@ def main() -> int:
         for shell in shells:
             for label, path_env in awks:
                 scenario(shell, label, path_env, block)
+        fail_dir = os.path.join(shim_root, "failed-find")
+        os.mkdir(fail_dir)
+        find = os.path.join(fail_dir, "find")
+        with open(find, "w") as f:
+            f.write("#!/bin/sh\nexit 1\n")
+        os.chmod(find, 0o755)
+        _, detail = run_case(shells[0], fail_dir + os.pathsep + gh_dir + os.pathsep + base,
+                             block, {}, {".venv/ordinary.py": "x\n"})
+        check("failed discovery makes safety unconfirmed",
+              "finding nested repositories below the worktree failed" in detail, detail)
     finally:
         shutil.rmtree(shim_root, ignore_errors=True)
 

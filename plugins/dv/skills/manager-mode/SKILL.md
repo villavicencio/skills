@@ -353,9 +353,11 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
     `Unanswered, VIL-N, Qk: <the question>. Options: <as in the Question>. Recommended: <the option>. Reversible: <yes or no, and how>. Sent: <UTC date and time>.`,
     and wait for it as for a question. Its `Answer` is the Director's default
     (`dv:director-mode`, "Unanswered at the end"), its own path: apply it without the checks of
-    "What counts as the answer", except the delete and scope-cut limits. "What no default
-    decides" stays binding: if you can see the question is one of those items (a Head-only
-    `dv:groom` fork, `Reversible: no`, a safety-boundary decline, one of the CEO's 1%), treat the
+    "What counts as the answer", except that it must name one of the question's options and the
+    delete and scope-cut limits. "What no default decides" stays binding: if you can see the
+    question is one of those items (a Head-only `dv:groom` fork, `Reversible: no`, a
+    safety-boundary decline, one of the CEO's 1%, a choice a written rule reserves for someone's
+    explicit yes), treat the
     `Answer` as `Forwarded to the Head` and keep its way forward. A `Forwarded to the Head` reply (an item
     under "What no default decides": keep its way forward), or no answer that counts, means ask me nothing:
     write it on the ticket as an open decision, and it goes under WAITING ON in your closeout

@@ -349,7 +349,7 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
        part at the top level, the same command with no `--` and no path). If the last part of an
        entry there matches the missing part when case is ignored, the line is "not run: path
        differs only in case", since it can pass on a disk that ignores case. Otherwise the path is
-       missing at the commit.
+       not in the tracked files at the commit, and the check treats it as missing.
     2. A search, when read 1 found a regular file. First, whether a checkout would change the
        file's bytes, so that `grep` in a checkout would see other text than the commit holds:
        `git --no-lazy-fetch -C "<top level>" check-attr --source <commit> filter working-tree-encoding ident crlf eol -- '<path>'`,
@@ -367,7 +367,8 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
        match, exit 1 no match.
 
     Any other exit or output from a read is "not run: read failed". The reads see only the files
-    tracked at the commit, not untracked or generated ones. Do not print matched lines or file
+    tracked at the commit: this check does not see untracked or generated files, so a path that a
+    build or another local step creates is treated as missing. Do not print matched lines or file
     contents anywhere, in the reply, the report or Linear: a line gets a result, not output.
   - **Judge.** From the reads, the ticket's command on the default branch would: for a file test,
     exit 0 when `-f` found a regular file or `-e` found a regular file or a directory, and 1
@@ -382,13 +383,17 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
     4. For a search of a regular file, with no `!` and no `-q`: a statement that it prints or finds
        nothing, in any wording ("prints nothing", "no output", "finds no line", "no longer
        finds"), passes on no match. "Prints" or "finds" with a description of the lines passes on
-       a match, since a command that already prints cannot fail first, whatever it prints.
+       a match, since a command that already prints cannot fail first, whatever it prints. On a
+       match for such a statement, first run read 2's `git grep` again with `-I` added after `-q`:
+       exit 1 there means git takes the file for binary, where `grep` prints a binary-file notice
+       and not the lines, so the line is "not run: binary file".
     5. Anything else: "not run: stated result unclear".
   - **Results.** Each Done means line gets one of these results. They go, with the commit's short
     id (or "commit not verified"), in step 6's findings and step 8's report, the lines not run
     listed apart from the lines that fail:
     - "already passes": flagged (below);
-    - "fails on the default branch": the format's rule holds, as far as the tracked files show;
+    - "fails in the tracked files at the commit": the format's rule holds for what the commit
+      tracks (untracked and generated files are not seen);
     - "guard, passes": the line says it guards unchanged behavior and passes, as expected, so it
       is not flagged;
     - "guard, fails": the behavior the line guards does not hold at the commit. That is an open

@@ -26,11 +26,12 @@ outside the repo or a secret in each of four rounds. This one runs no command fr
   fetch. It runs no command from the ticket and no code from the repo, and it reports a result for
   each line, not file contents. A result note the author left in the line ("nothing at
   `abc1234`") is set aside.
-- **Results.** Each line gets one: "already passes" (flagged), "fails on the default branch" (as
-  far as the tracked files show), "guard, passes" (a line that says it guards unchanged behavior;
-  not flagged), "guard, fails" (an open decision), "not run: <reason>" (listed apart from the lines
-  that fail) or "observation, not checked". A line is not run when its command is in neither form
-  (a pipe, `;`, `&&`, `$`, a backtick, a glob, `-r` or another program, among others); when its
+- **Results.** Each line gets one: "already passes" (flagged), "fails in the tracked files at the
+  commit" (the check does not see untracked or generated files), "guard, passes" (a line that
+  says it guards unchanged behavior; not flagged), "guard, fails" (an open decision), "not run:
+  <reason>" (listed apart from the lines that fail) or "observation, not checked". A line is not
+  run when its command is in neither form (a pipe, `;`, `&&`, `$`, a backtick, a glob, `-r` or
+  another program, among others); when its
   path is not a plain repo-relative path or is secret-named, in any case (`.env`, `.netrc`, key
   files, `*.pem`, `id_rsa*`, names holding `secret`, `credential`, `password` or `token`, among
   others); when its
@@ -39,7 +40,9 @@ outside the repo or a secret in each of four rounds. This one runs no command fr
   differs only in case from a tracked one; when a checkout would change a searched file's bytes
   (a `filter`, `working-tree-encoding`, `ident` or `crlf` attribute, an `eol` other than `lf`,
   `core.autocrlf` set to anything but `input` or false, `core.eol` set to anything but `lf` or
-  `native`, or a groomer on Windows; Git LFS and CRLF line endings are such cases); when a read
+  `native`, or a groomer on Windows; Git LFS and CRLF line endings are such cases); when the line
+  states printed output and git takes the searched file for binary (`git grep -q -I` finds no
+  match where `git grep -q` does), since `grep` then prints a binary-file notice; when a read
   fails; or when what the line says passing looks like is unclear.
 - **A flagged line is an open decision:** rewrite it so it fails first, or keep it as a guard of
   unchanged behavior with the reason in the line. In `forks-only` mode a rewrite that fails is a

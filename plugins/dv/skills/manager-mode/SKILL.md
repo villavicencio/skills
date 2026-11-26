@@ -4,7 +4,7 @@ description: "Switch this session into Manager Mode: you work as an engineering 
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.39.4"
+  version: "0.40.0"
 ---
 
 # /manager-mode — you are the manager, not an engineer
@@ -460,6 +460,43 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
   plain text with no closing keyword next to them. You don't edit repository files, so give the
   lines to the engineer who opens the PR, or, once it is open, read its body (`gh pr view --json
   body`) and add the lines to it with `gh pr edit`, keeping the rest of the body as it was.
+
+## A supervised session
+
+The Director can start this session as a supervised Orca worker (`dv:director-mode`, "Open a
+worktree on request", step 2a). Its first message then opens with Orca's worker preamble, which
+names a task ID and a dispatch ID and asks for one `worker_done` when the task is finished. Once
+you send it, the Director releases this chat through Orca: `worker_done` means nothing more needs
+this chat, not that the PR is done.
+
+- **Send `worker_done` once, as your last act,** with the command the preamble gives and
+  `--outcome succeeded`, and only when all of these hold: the Director reported the PR merged;
+  `dv:closeout` ran and its note was sent and replied (its outcome "note sent and replied"),
+  sent by SendMessage on `dv:closeout`'s chat path even when the Director has a qualifying agent
+  terminal (`dv:closeout`, "Deliver the note", skips the terminal send for a supervised session),
+  and you waited for the Director's reply to that note; a terminal input receipt such as
+  `input_accepted` is not a reply and never counts; the
+  note's `WAITING ON` is `none` and its `REPLY NEEDED` line reads `REPLY NEEDED: no`; no question
+  to me, the Director, the Head or anyone else still waits for an answer that counts; and no
+  agent you hired is still running. With a Head, a question still pending on its way forward, or
+  written on the ticket as an open decision, still waits ("With a Head"); a timeout or his advice
+  doesn't settle it. `dv:closeout`'s own offer to remove the worktree is not such a question: the
+  Director removes it ("End a finished worktree session"). Never earlier: not when the PR opens,
+  passes review or merges.
+- **If the work ends any other way** (handed to a later session, blocked, abandoned, a decision
+  still waiting on me, the Director or the Head, or the note not sent or not replied), don't send
+  `worker_done`, and say so in this chat and to the Director. I then close the chat myself, as
+  for an ordinary one. If everything that waited settles while this chat is still open, run
+  `dv:closeout` again; its new note, once replied with nothing waiting, meets the conditions above.
+- **After `worker_done`, start nothing new.** If a message comes in after it anyway, answer it,
+  and in the same turn tell the Director that this session worked again after `worker_done`, so
+  that it asks me to close the chat instead of releasing it.
+- **The preamble's limits are Orca's defaults for any worker; the kickoff prompt sets this task.**
+  It asks for this skill: hire as it says, route each question as it says (to the Director, with
+  a Head through it to him, and to me in this chat only where this skill says so), and reach the
+  Director as it says (by SendMessage, with highlights, questions, the PR handoff and the closeout
+  note). Use `orca orchestration` only for `worker_done` and, with a Head, for the mail "With a
+  Head" sends him and the replies `orca orchestration check` reads.
 
 ## Reporting to me
 

@@ -1,8 +1,8 @@
 # dv — v0.42.1
 
 Patch release. `dv:director-mode`'s "Open a worktree on request" starts a ticket's worktree session
-as a supervised Orca worker only when Orca can show, before anything is created, that the worker
-will be a chat; everywhere else it opens an ordinary chat, which David closes. Only
+as a supervised Orca worker only when Orca shows, before anything is created, that `worker-start`
+can be asked for a chat; everywhere else it opens an ordinary chat, which David closes. Only
 `dv:director-mode` changes. The other fifteen skills have no behaviour changes; their version moves
 to `0.42.1` only because the suite is released as one plugin.
 
@@ -67,6 +67,7 @@ clones:
   line, and it answered the start, `worker-show` and `worktree set`/`show` with replies saved from
   a real terminal start (ids rewritten), on scratch ticket VIL-1211. The probe printed
   `START: 2a`, the start passed `--surface chat` and got `"mode":"terminal"`, and the Director ran
-  the setup block (it printed the replayed `LINK: VIL-1211 linked …` and wrote no record) and reported the session as a terminal
-  for David to close, with its dispatch id and the `startOptions.mode.detail` reason. Its call log
-  has no `worker-stop`, `worker-release`, send or launch.
+  the setup block (it printed the replayed `LINK: VIL-1211 linked …` and wrote no record) and
+  reported the session as a terminal for David to close, with its dispatch id and the
+  `startOptions.mode.detail` reason. Its call log has no `worker-stop`, `worker-release`, send or
+  launch.

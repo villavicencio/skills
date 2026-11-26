@@ -325,11 +325,12 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
   - **What the ticket supplies.** Drop a leading `./` from `<path>`. What is left must be relative
     to the repo's top level: only `A` to `Z`, `a` to `z`, `0` to `9`, `.`, `_`, `-` and `/`; no
     leading `/` or `-`; no part that is `.`, `..` or empty; no trailing `/`. Otherwise it is "not
-    run: unsafe path". A secret-named path is "not run: secret-named path": a part named `.env`,
+    run: unsafe path". A secret-named path is "not run: secret-named path", checked before any git
+    read of the path, with each part lowercased first, so case never matters: a part named `.env`,
     `.envrc`, `.netrc`, `.npmrc`, `.pypirc`, `.pgpass`, `.ssh`, `.aws`, `.gnupg`, `kubeconfig` or
     `auth.json`; a part starting with `.env.`, `id_rsa`, `id_dsa`, `id_ecdsa` or `id_ed25519`; a
     part ending in `.pem`, `.key`, `.p12`, `.pfx`, `.jks`, `.keystore`, `.kdbx` or `.tfvars`; or a
-    part holding `secret`, `credential`, `password`, `passwd` or `token` in any case. Inside its
+    part holding `secret`, `credential`, `password`, `passwd` or `token`. Inside its
     quotes, `<pattern>` is "not run: unsafe pattern" when it is empty, starts with `-`, or holds a
     single quote, a double quote, `$`, a backtick, a backslash or a line break (a backslash reads
     differently inside double quotes, and between `grep` and `git grep`). The path and the pattern
@@ -356,9 +357,10 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
        `git -C "<top level>" config --get core.eol` (each prints nothing and exits 1 when unset).
        The line is "not run: a checkout changes the file" when `filter`, `working-tree-encoding`,
        `ident` or `crlf` has a value other than `unspecified`, `eol` has one other than
-       `unspecified` or `lf`, `core.autocrlf` is `true`, or `core.eol` is `crlf`, and for every
-       search on Windows, where line endings default to CRLF (Git LFS and CRLF line endings are
-       such cases). Then
+       `unspecified` or `lf`, `core.autocrlf` is set to anything but `input` or a false value
+       (`false`, `no`, `off`, `0`), or `core.eol` is set to anything but `lf` or `native`, each
+       config value compared in any case; and for every search on Windows, where line endings
+       default to CRLF (Git LFS and CRLF line endings are such cases). Then
        `git --no-lazy-fetch -C "<top level>" grep -q <matcher> -e '<pattern>' <commit> -- '<path>'`,
        with `<matcher>` `-F` or `-E` when the line has it and `-G` otherwise, so git config
        cannot change the pattern syntax, plus `-i` and `-w` when the line has them. Exit 0 is a

@@ -31,14 +31,16 @@ outside the repo or a secret in each of four rounds. This one runs no command fr
   not flagged), "guard, fails" (an open decision), "not run: <reason>" (listed apart from the lines
   that fail) or "observation, not checked". A line is not run when its command is in neither form
   (a pipe, `;`, `&&`, `$`, a backtick, a glob, `-r` or another program, among others); when its
-  path is not a plain repo-relative path or is secret-named (`.env`, `.netrc`, key files, `*.pem`,
-  `id_rsa*`, names holding `secret`, `credential`, `password` or `token`, among others); when its
+  path is not a plain repo-relative path or is secret-named, in any case (`.env`, `.netrc`, key
+  files, `*.pem`, `id_rsa*`, names holding `secret`, `credential`, `password` or `token`, among
+  others); when its
   pattern is empty, starts with `-`, or holds a quote, `$`, a backtick, a backslash or a line
   break; when the path, or a directory on its way, is a link or a submodule; when a missing path
   differs only in case from a tracked one; when a checkout would change a searched file's bytes
   (a `filter`, `working-tree-encoding`, `ident` or `crlf` attribute, an `eol` other than `lf`,
-  `core.autocrlf` set to `true`, `core.eol` set to `crlf`, or a groomer on Windows; Git LFS and
-  CRLF line endings are such cases); when a read fails; or when what the line says passing looks like is unclear.
+  `core.autocrlf` set to anything but `input` or false, `core.eol` set to anything but `lf` or
+  `native`, or a groomer on Windows; Git LFS and CRLF line endings are such cases); when a read
+  fails; or when what the line says passing looks like is unclear.
 - **A flagged line is an open decision:** rewrite it so it fails first, or keep it as a guard of
   unchanged behavior with the reason in the line. In `forks-only` mode a rewrite that fails is a
   routine call, and so is the guard mark when the ticket says the behavior must not change; when

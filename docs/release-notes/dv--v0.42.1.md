@@ -56,20 +56,17 @@ ownership of a chat Orca started, so that `worker-release` closes it.
 
 ## Checked live
 
-On hal, 2026-11-26, Orca 1.4.277, with the setting for new agent tabs terminal, in a disposable
-clone:
+On hal, 2026-11-26, Orca 1.4.277, with the setting for new agent tabs terminal, in disposable
+clones:
 
 - A test Director in an ordinary Orca chat followed this text for `open worktree` on a scratch
   ticket (VIL-1210). The probe printed `START: 2b`, and `orca agent list --worktree` listed the
   worktree session with `"kind":"chat"`.
-- A second test Director, with a stand-in Orca CLI whose `worker-start --help` listed
-  `--surface chat|terminal` and which dropped that option before calling Orca, ran 2a on another
-  scratch ticket (VIL-1211), got `"mode":"terminal"`, and followed the terminal case as it then
-  stood (setup block first): the setup block linked the ticket and wrote no record, `worker-stop`
-  answered `stopped` with `closed_agent_terminal` for that dispatch only (`ctx_ea59f4994150`), and
-  the launch gave a chat in the same worktree. The final stop block, which runs before the setup
-  block, checks the worktree, waits for setup and reads back the terminal list, was then run
-  against stand-ins that replayed that `worker-stop` reply and failing answers: it launched only on
-  a confirmed stop, and stopped nothing for a worktree Orca didn't show or a setup that never
-  finished. The skill says plainly that the stop can cut short the session's first steps, which
-  the replacement chat starts again.
+- A second test Director ran headless (`claude -p`) in another disposable clone, with a stand-in
+  Orca CLI that never called Orca: its `worker-start --help` added a `--surface chat|terminal`
+  line, and it answered the start, `worker-show` and `worktree set`/`show` with replies saved from
+  a real terminal start (ids rewritten), on scratch ticket VIL-1211. The probe printed
+  `START: 2a`, the start passed `--surface chat` and got `"mode":"terminal"`, and the Director ran
+  the setup block (it printed the replayed `LINK: VIL-1211 linked …` and wrote no record) and reported the session as a terminal
+  for David to close, with its dispatch id and the `startOptions.mode.detail` reason. Its call log
+  has no `worker-stop`, `worker-release`, send or launch.

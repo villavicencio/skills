@@ -660,9 +660,9 @@ EOF
 - The receipt must say `"ok":true`, `"mode":"structured"` (an Orca chat) and `"keptOpen":true`.
   Keep its `dispatchId` and `workspace`. Another `mode` means Orca started the session in a
   terminal anyway: follow "A 2a start that came up as a terminal" below. If the command fails,
-  report its error with the `stage`, `effects` and `residualResources` it printed, and go on as step 2
-  says. After a lost reply, run the same block again with `--retry-request <id>` from the error
-  added; never as a fresh start.
+  report its error with the `stage`, `effects` and `residualResources` it printed, and go on as
+  step 2 says. After a lost reply, run the same block again with `--retry-request <id>` from the
+  error added; never as a fresh start.
   Orca then mails you about the worker as you are its coordinator, such as `Setup succeeded for
   worker <dispatch id>`: that mail is information, not a highlight, and needs no reply. None of
   it, and nothing else about or from the worker that `orca orchestration check` shows you, is the
@@ -1545,19 +1545,14 @@ chats because they started from a worker session (reason `chat_lineage`: "Worker
 persistent agent's home, and their workers, run as structured chat sessions"). With step 2's probe,
 a test Director in an ordinary chat in a disposable clone, following this text for
 `open worktree` on a scratch ticket, printed `START: 2b`, and its session came up as a chat
-(`orca agent list --worktree` gave `"kind":"chat"`). A second test Director, with a stand-in
-`orca` whose `worker-start --help` listed `--surface chat|terminal` and which dropped that option
-before calling Orca, printed `START: 2a`, got `"mode":"terminal"`, and followed "A 2a start that
-came up as a terminal" as it then stood, with the setup block first: the setup block linked the
-ticket and wrote no record, `worker-stop` answered `stopped` with `closed_agent_terminal` for that
-dispatch only, and the launch gave a chat (`"kind":"structured"`) in the same worktree. The
-terminal session had run for about 30 seconds and had sent the Director a probe; the worktree's
-Setup terminal was no longer listed after the stop. The stop block as it now stands (first, with
-its worktree check, setup wait and terminal-list read-back) ran against stand-ins that replayed
-that `worker-stop` reply and failing answers (`stop_unknown`, another state, another dispatch, no
-JSON, the agent terminal still listed, a list cut short, a worktree Orca didn't show, a setup that
-never finished): it launched the chat only on a confirmed stop, and stopped nothing for the last
-two.
+(`orca agent list --worktree` gave `"kind":"chat"`). A second test Director, run headless in
+another disposable clone with a stand-in `orca` that never called Orca (its `worker-start --help`
+added a `--surface chat|terminal` line, and it answered with replies saved from a real terminal
+start), printed `START: 2a`, ran 2a with `--surface chat`, got `"mode":"terminal"`, and followed
+"A 2a start that came up as a terminal": it ran the setup block (which printed the replayed
+`LINK: VIL-1211 linked …` and wrote no record), reported the session as a terminal for me to
+close with its dispatch id and the `startOptions.mode.detail` reason, and called no
+`worker-stop`, `worker-release`, send or launch.
 
 Not tested: a host whose `worker-start` takes `--surface` (Orca 1.4.277 has none), so neither 2a
 from a Director in an ordinary chat nor its release has run there; a Director restarted between the

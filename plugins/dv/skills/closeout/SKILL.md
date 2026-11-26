@@ -726,15 +726,25 @@ screen reader, which is why the block does not try it there.)
 field: that marks a running agent. A terminal without it is a plain shell, and a note sent there
 would be run as commands, so never send to one.
 
-- Exactly one qualifying terminal: send the saved note from Step 3, once, with the CLI path the
-  block printed in place of `<orca CLI>`, kept inside the quotes (no variable from that block survives to this call):
+A supervised session (`dv:manager-mode`, "A supervised session": its first message opened with
+Orca's worker preamble, naming a task ID and a dispatch ID) skips both terminal bullets below and
+takes the chat path (the "None" case, steps 1 to 5), even when the parent has exactly one
+qualifying terminal. The Director releases that session's chat only on a note sent by
+SendMessage, whose `from` address names this session's `claude` process, and only once it has
+replied; a terminal input receipt (`input_accepted`, a turn seen to start) is neither, and never
+authorizes a release or `worker_done`. Wait for the Director's reply (the outcome "note sent and
+replied") before `dv:manager-mode` lets the session send `worker_done`. Every other session
+routes as the bullets say.
+
+- Exactly one qualifying terminal (not for a supervised session): send the saved note from
+  Step 3, once, with the CLI path the block printed in place of `<orca CLI>`, kept inside the quotes (no variable from that block survives to this call):
   `"<orca CLI>" terminal send --terminal <handle> --text "$(cat "<note path>")" --enter --wait-submit 20 --json`
   Report what the result says (`input_accepted`, and whether a turn was seen to start), not
   "delivered". Do not resend on a timeout. After a transport error, reissue the same command with
   the `--retry-request` id the error reports.
-- More than one: ask me which, as a plain question, before sending.
-- None, or the Orca steps were skipped: the parent may run as an Orca chat, which is not a
-  terminal, or outside Orca, and a chat is never sent a note through `terminal send`. Look for
+- More than one (not for a supervised session): ask me which, as a plain question, before sending.
+- None, the Orca steps were skipped, or a supervised session: the parent may run as an Orca
+  chat, which is not a terminal, or outside Orca, and a chat is never sent a note through `terminal send`. Look for
   the Director with ListAgents instead, and send the note only after it answers a probe with the
   main checkout's path:
   1. Candidates. A candidate is a peer session in ListAgents, other than this one, whose name is

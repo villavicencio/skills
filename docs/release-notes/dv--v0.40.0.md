@@ -1,15 +1,17 @@
 # dv — v0.40.0
 
 Minor release. The Director releases a finished worktree session's chat itself when it started
-that session as a supervised Orca worker, so David no longer closes those chats in Orca. Only
-`dv:director-mode` and `dv:manager-mode` change. The other fourteen skills have no behaviour
-changes; their version moves to `0.40.0` only because the suite is released as one plugin.
+that session as a supervised Orca worker, so David no longer closes those chats in Orca.
+`dv:director-mode` and `dv:manager-mode` change, and `dv:closeout` gains one rule for a
+supervised session's note. The other thirteen skills have no behaviour changes; their version
+moves to `0.40.0` only because the suite is released as one plugin.
 
 Numbering: 0.40.0 follows 0.39.4 and carries everything released through it. It is built on
 0.39.0, which routes escalations to a department's Head; where the two meet, the Head routing
 wins: a session with anything still pending with the Head is not released. 0.39.1 to 0.39.4
 (`dv:groom`, `dv:ticket` and `dv:closeout` fixes, among them 0.39.4's build-output fingerprint,
-which director-mode's closeout recheck compares) are unchanged here.
+which director-mode's closeout recheck compares) are unchanged here, apart from that one
+`dv:closeout` rule.
 
 Why: Orca 1.4.277 has no command to close an ordinary chat, but `orca orchestration
 worker-release` closes a settled chat that one of its own dispatches owns. On hal on 2026-11-26 it
@@ -85,7 +87,10 @@ as they were (VIL-1156, VIL-1190).
 - **`dv:director-mode`, "The Head and the CEO's 1%".** Closing a chat stays David's only for an
   ordinary chat, or a supervised one the release doesn't close.
 - **`dv:manager-mode`, new "A supervised session".** Send `worker_done` once, as the last act,
-  only after the PR merged, closeout's note was sent and replied, nothing waits on David, the
+  only after the PR merged, closeout's note was sent and replied (by SendMessage even when the
+  Director has a qualifying agent terminal: `dv:closeout`'s "Deliver the note" now skips the
+  terminal send for a supervised session, and a terminal input receipt never authorizes the
+  release), nothing waits on David, the
   Director or the Head (a question pending with the Head, or written on the ticket as an open
   decision, still waits) and no hired agent runs. `dv:closeout`'s own offer to remove the worktree
   doesn't count as waiting, since the Director removes it. Work that ends any other way sends no

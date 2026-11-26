@@ -471,7 +471,11 @@ this chat, not that the PR is done.
 
 - **Send `worker_done` once, as your last act,** with the command the preamble gives and
   `--outcome succeeded`, and only when all of these hold: the Director reported the PR merged;
-  `dv:closeout` ran and its note was sent and replied (its outcome "note sent and replied"); the
+  `dv:closeout` ran and its note was sent and replied (its outcome "note sent and replied"),
+  sent by SendMessage on `dv:closeout`'s chat path even when the Director has a qualifying agent
+  terminal (`dv:closeout`, "Deliver the note", skips the terminal send for a supervised session),
+  and you waited for the Director's reply to that note; a terminal input receipt such as
+  `input_accepted` is not a reply and never counts; the
   note's `WAITING ON` is `none` and its `REPLY NEEDED` line reads `REPLY NEEDED: no`; no question
   to me, the Director, the Head or anyone else still waits for an answer that counts; and no
   agent you hired is still running. With a Head, a question still pending on its way forward, or

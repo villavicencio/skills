@@ -38,8 +38,10 @@ it, this start and the ordinary fallback all run the same executable,
 `"${ORCA_CLI_COMMAND:-orca}"`) once the kickoff prompt was
 written whole, links the ticket and reads the link back, and only then records its dispatch,
 chat and workspace instance in `<git-common-dir>/orca-supervised/`. The session sends
-`worker_done` only as its last act, after the Director replied to its closeout note with nothing
-waiting on anyone, a department Head included (`dv:manager-mode`, "A supervised session"). The
+`worker_done` only as its last act, after the Director replied to its closeout note (sent by
+SendMessage even when the Director has an agent terminal, since a terminal input receipt never
+authorizes the release; `dv:closeout`, "Deliver the note") with nothing waiting on anyone, a
+department Head included (`dv:manager-mode`, "A supervised session"). The
 Director then releases that one chat
 through Orca (`worker-release`) once its closeout checks pass and the record, the note's sender,
 the settled owned dispatch and the live workspace instance all match, and only while no terminal

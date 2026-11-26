@@ -4,7 +4,7 @@ description: "Groom one Linear ticket before anyone works it. Checks it against 
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.38.0"
+  version: "0.39.0"
 ---
 
 # /groom — groom a Linear ticket before work starts
@@ -49,7 +49,10 @@ overrule it.
 - a design choice between real alternatives, including picking a side where step 3 found
   conflicting rules (Current rules);
 - anything destructive or hard to undo;
-- a target only I can set (step 3, Targets), or a missing pull condition only I can supply;
+- a target only I can set (step 3, Targets), or a missing pull condition only I can supply (with
+  a Head, these and the split and new milestone below go to him and stay pending while his answers
+  are advisory, though keeping a 13 whole and creating a milestone settle on my yes, relayed by him
+  and verified: "From a worktree session");
 - a split, with the parent's replacement description when it stays as the parent;
 - a prerequisite that the shared rules' "Prerequisites" sends to a question (step 3; no relation
   is set on a guess);
@@ -74,7 +77,9 @@ leaves something as it was is not recorded, even when you weighed changing it: a
 label, section or line you kept, that no step 3 check or Decisions line put in question, gets no
 Decisions line (not "Title keeps its [scratch] prefix"). A fork keeps the default form, whatever
 the answer, a keep included: "<decision>. <my name>, <date>". A fork the Director answered for me
-(below) names both: "<decision>. Director (<its ListAgents name>) for <my name>, <date>". Size and
+(below) names both: "<decision>. Director (<its ListAgents name>) for <my name>, <date>". One settled
+by an approval the Head relayed (below) is the Head form: "<decision>. <the Head's name>, through the Director (<its
+ListAgents name>), <date>", plus its `Approved by:` field when it has one. Size and
 its points are recorded when they are set or changed. So is the no-split verdict (step 4), unless
 the ticket already records the same verdict; for a ticket pointed 13 it is my answer to a fork
 instead (step 4). Each is a verdict, not a field left as it was. A routine call that settles a
@@ -86,17 +91,50 @@ verifies (its "Highlights") before asking me, as manager-mode's "Questions go to
 first" says: its skip rule, its message format, one fork per message, its 10-minute wait, what
 counts as an answer, its hold while the Director check is pending, and its fall-back to me. The
 Director decides a fork only under `dv:director-mode`'s "Answer a worktree session's question":
-cutting scope is its call, any other fork only when it is clear-cut, and a split, a target, a pull
-condition or a fork that offers a new milestone (step 3, "Milestone"), which only I can settle,
-comes straight to me. A fork it holds for me (`Held for David`) does not stop grooming: record it
-under Decisions as open, take the way forward the reply names, and manager-mode asks it at the end
-of the work with its other held questions. Run no Director
+cutting scope is its call, any other fork only when it is clear-cut. An answer that adds a short
+note counts as manager-mode's "What counts as the answer" says; one that relays the Head's
+answer is advice (below). A split, a target, a pull
+condition or a fork that offers a new milestone (step 3, "Milestone") is never the Director's.
+When the project has a Head, the Head of <department> (`dv:director-mode`, "The Head and the CEO's 1%"), it goes to the
+Director like any other fork, and the Director forwards it to the Head. A Head's mailed answer is advisory until verified Head decision delivery ships (VIL-1193). So a fork only
+the Head decides (a target, a split, splitting a ticket pointed 13, a pull condition, a new
+milestone's other options) stays pending, whatever he answers: the ticket isn't ready and gets no
+`groomed` label. Two choices settle on my explicit yes instead, relayed in his answer's
+`Approved by:` field and verified by this session against my own words in the source it names, as
+manager-mode's check on an `Answer from the Head` says:
+- Keeping a ticket pointed 13 whole (step 4): only when that verified yes is for that ticket as
+  it now stands, its current scope and points.
+- Creating a new milestone (step 3, "Milestone"). The Director forwards the proposal (its name and
+  one line on what done means) to the Head. It is created only when that verified yes is for that
+  milestone's current name and definition (what done means). A specific yes I gave earlier for it
+  counts, with its source, when it matches that name and definition, and he relays it; when there
+  is none, he asks me once. Where the shared rules' "Milestones" would ask me again (the milestone finished or gone
+  since the draft, a name conflict at creation), that ask goes the same way and creating still
+  needs my relayed yes. Choosing an existing milestone follows the cases in step 3, unchanged.
+
+When the scope, the points, the milestone's name or its definition changed materially since my
+yes, that yes no longer counts: the choice stays pending, and the Head asks me once.
+
+Until that yes comes, the fork stays pending: nothing is created, the ticket is not ready and gets
+no `groomed` label, and its Decisions line, once settled, records my yes, relayed by the Head,
+with the source that field gives. With no Head, only I can settle either, and it comes straight
+to me. A fork the Director forwards to the Head
+(`Forwarded to the Head`) or holds for me (`Held for David`) does not stop grooming: record it
+under Decisions as open, take the way forward the reply names, and manager-mode settles it as its
+"Questions go to the Director first" says. With a Head, a fork on its way forward is not a gap
+for the ready test (step 8), except anything under `dv:director-mode`'s "What no default decides"
+(a fork only the Head decides, a choice that can't be undone, a safety-boundary decline, one of
+the CEO's 1%, a choice a written rule reserves): until its required answer comes it is a gap, and
+its way forward never settles it. Run no Director
 probe of your own; if manager-mode has not sent its probe yet, it sends it before the first fork
 goes out. With no Director that can be verified, or for each fork whose answer doesn't count, ask
 me as step 6 says, except a held kind (spending money, reaching outside, or declining a high or
 critical finding on a safety boundary): under manager-mode's "A held kind with no Director's
 answer", record it under Decisions as open, take the way forward that needs no one's yes, and
-leave it for the end. Grooming goes on in the turn the last answer arrives.
+leave it for the end. With a Head, a fork with no answer that counts, or with no Director that can
+be verified, takes manager-mode's "With a Head" path instead (straight to the Head when no Director
+can be verified), recorded under Decisions as open, and is asked here only where that path
+falls back to me. Grooming goes on in the turn the last answer arrives.
 
 ## Before anything else
 
@@ -115,7 +153,11 @@ leave it for the end. Grooming goes on in the turn the last answer arrives.
 3. **Interview rounds.** The interview rules in that file hold, with three additions for grooming.
    A round has at most 4 questions; when there are more decisions, hold another round after the
    answers, as many as it takes. Never leave a decision for the closing report. Each question
-   starts with its finding in one sentence, since I may see only the dialog.
+   starts with its finding in one sentence, since I may see only the dialog. Before each round,
+   follow `dv:manager-mode`'s "Mail before a card" (under "Questions go to the Director first"):
+   send any message to the Director or the Head first, and open no round while any question sent
+   to the Director (or, through it, the Head) is still open, as that rule defines it; a round that
+   falls due meanwhile is asked as plain text in the chat, as it says.
 4. **Settled by a rule.** A choice that a written rule already settles (the format, a repo's
    `AGENTS.md` or `CLAUDE.md`, the global instructions) is applied and reported, not asked. Name
    the rule.
@@ -258,7 +300,8 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
   ticket or with each other, look for when each changed (`git log -1 --format=%ci -- <file>` in a
   repo you can read) against the ticket's creation date. A conflict is an open decision: do not
   quietly prefer the ticket or one of the files. If you cannot tell when a rule changed, say so.
-- **Targets.** A numeric threshold or target (a time, a count, a size) is mine to set. Do not
+- **Targets.** A numeric threshold or target (a time, a count, a size) is mine to set, or, in
+  forks-only mode with a Head, his ("From a worktree session", under "Forks-only mode"). Do not
   confirm one for me, and do not make up one for a check you propose. Bring it to the interview
   with any measured figures beside it. Only when I decline to set it, or say I cannot yet, write it
   as "proposed, not confirmed" and list it under Needs you in the report.
@@ -282,11 +325,11 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
   - It has no milestone and none fits: leave the field empty, and the report says so. A new
     milestone (its name and one line on what done means) is an open decision, with "leave it
     with none" and "keep it out of milestones" (which records "No milestone") as options. It is
-    created only on my yes.
+    created only on my yes (with a Head, relayed by him: "From a worktree session").
   - Its goal no longer fits the milestone it has, or that milestone is finished: an open
     decision, to move it (to the milestone that fits, or out of milestones, which records "No
     milestone"), to put it in a new milestone when no other one fits (its name and one line on
-    what done means; created only on my yes), or to keep it. Grooming never moves a ticket out of
+    what done means; created only on my yes, relayed by the Head when there is one), or to keep it. Grooming never moves a ticket out of
     a milestone as a routine call.
   - It fits the milestone it has: nothing to do.
 - **Other open decisions.** Also collect: a reason in the ticket that checking suggests may be
@@ -363,9 +406,11 @@ answers may change it, and step 6 settles it. A "no split" verdict becomes an ad
 Decisions: "No split: <reason>. Groomed, <date>."
 
 **Forks-only mode:** a proposed split is a fork and is asked, so a ticket pointed 13 always comes
-to me. The "no split" line reads "No split: <reason>. Decided by dv:groom (forks-only), <date>."
-For a ticket pointed 13, "no split" is my answer to that fork, not a routine call, and is recorded
-in the fork form.
+to me, or, with a Head and from a worktree session, to him through the Director, where keeping it
+whole still needs my explicit
+yes ("From a worktree session"). The "no split" line reads "No split: <reason>. Decided by dv:groom
+(forks-only), <date>." For a ticket pointed 13, "no split" is my answer to that fork, not a routine
+call, and is recorded in the fork form (with a Head, my yes as relayed by the Head).
 
 ## 5. Scout
 
@@ -440,9 +485,9 @@ the two are one unit, filed and edited in step 7 without a second approval.
 option you took. Then ask only the forks, in rounds of at most 4 questions, each starting with its
 finding in one sentence; from a worktree session, each fork goes to the Director first ("From a
 worktree session: forks go to the Director first", under "Forks-only mode"), and only
-those it neither answers nor holds for me are asked here. If there are no forks, say so in one line, ask nothing
+those that section sends to me are asked here. If there are no forks, say so in one line, ask nothing
 and go to step 7. Each answer to a fork is recorded in the default form, or in the Director form
-when the Director answered it. Each routine call that "Recording" (under "Forks-only mode")
+when the Director answered it, or in the Head form when an approval the Head relayed settled it. Each routine call that "Recording" (under "Forks-only mode")
 says to record is recorded in the "Decided by dv:groom (forks-only)" form, and no other is. Your
 call to file a
 spin-off stands as the approval to create it with what the proposal showed (folding one in is a
@@ -659,7 +704,9 @@ reply-format rules when the session's instructions give any:
 1. **Ready or not.** Name the ticket as a markdown link (the url from `get_issue`; the bare id if
    none came back). Ready means no gaps, Done means lines that can be proved, nothing it waits on,
    every overlap search finished (step 1), no needed fix declined or not landed, no duplicate search
-   left unfinished, no target unconfirmed, and the team's backlog or ready-to-start state as
+   left unfinished, no target unconfirmed (with a Head, a fork on its way forward counts as
+   settled, except anything under `dv:director-mode`'s "What no default decides": "From a worktree
+   session"), and the team's backlog or ready-to-start state as
    `list_issue_statuses` names them. A started, finished or canceled ticket is not ready to start.
    After a split, name the child that is ready and the one that comes first, as links; do not call
    the parent ready when the work is in its children. A ticket whose points Linear did not store
@@ -670,7 +717,9 @@ reply-format rules when the session's instructions give any:
    not approve that still matters, a repo the session could not read, an overlap or duplicate search
    that did not finish (with its words, so it can be run again), a ticket item 5 meant to label that
    lacks `groomed` after the read-back, a ticket that already had `groomed` but is not ready now
-   (step 7, "Order of writes" item 5). Left out when empty.
+   (step 7, "Order of writes" item 5). Left out when empty. With a Head, in forks-only mode from
+   a worktree session, this list reports only: what needs a decision goes to the Director, as
+   "From a worktree session" says.
 3. One line each: size and points, with the estimate `get_issue` now shows; the milestone as
    `get_issue` now shows it, or "no milestone" with why; split verdict; what
    changed in the ticket ("text unchanged" when only the label landed, "nothing changed" when

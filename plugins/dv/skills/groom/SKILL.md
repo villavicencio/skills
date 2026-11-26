@@ -599,11 +599,14 @@ may offer this instead of patches: show the complete new description, say that t
 in Linear's history, and ask one plain question to replace the whole description. Relations, the
 title, the `groomed` label and filings stay numbered items beside it. A no leaves the description
 exactly as it was.
-Use numbered patches when a removal item includes a text edit for an unwanted link, so both
-changes stay in one numbered item.
+When an unwanted-link removal needs a text edit, use a patch if the description has headings.
+In default mode, if the description has text but no headings, you may show the complete
+replacement and say the old text stays in Linear's history. Put that replacement and the removals
+that depend on it in one numbered item. A yes to a question naming that item approves both.
 Just before saving, read the ticket again; if its description is no longer the one the
 replacement was built from, do not save: say what changed and ask again.
-Patches stay the default; three changed sections allow the offer and do not decide it.
+Patches stay the default. For other descriptions with headings, three changed sections allow the
+offer.
 
 **Order of writes.**
 

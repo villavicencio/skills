@@ -659,9 +659,8 @@ EOF
   `worker_done`, so the chat stays open until you release it.
 - The receipt must say `"ok":true`, `"mode":"structured"` (an Orca chat) and `"keptOpen":true`.
   Keep its `dispatchId` and `workspace`. Another `mode` means Orca started the session in a
-  terminal anyway: follow "A 2a start that came up as a terminal" below at once, before the setup
-  block. If the command fails, report
-  its error with the `stage`, `effects` and `residualResources` it printed, and go on as step 2
+  terminal anyway: follow "A 2a start that came up as a terminal" below. If the command fails,
+  report its error with the `stage`, `effects` and `residualResources` it printed, and go on as step 2
   says. After a lost reply, run the same block again with `--retry-request <id>` from the error
   added; never as a fresh start.
   Orca then mails you about the worker as you are its coordinator, such as `Setup succeeded for
@@ -768,108 +767,23 @@ PY
   releases may not be the one that started it.
   The block writes the record only once every part held, just before it prints `RESULT: setup
   complete`. Any other outcome, no `RESULT:` line included, means the chat takes the manual close
-  (I close it, as for 2b): say so in step 4 with each `FAIL` line. A session that came up as a
-  terminal is instead replaced, as the next paragraph says. When its `LINK:` line reads
+  (I close it, as for 2b): say so in step 4 with each `FAIL` line. When its `LINK:` line reads
   `NOT LINKED`, the worktree runs without its ticket link: say that too, in those words.
 
-**A 2a start that came up as a terminal.** When the receipt's `mode` is not `structured`, Orca
-started the session in a terminal, for example because a chat could not open there. Neither of us
-can end that session safely: its `claude` has no `--session-id` and its wrapper is a login shell,
-so its closeout note ends nothing ("The note's header, time and sender"), and the release refuses
-it, as it has no record (VIL-1043). Replace it with a chat at once, before it gets far, acting only
-on this start's own dispatch. This is the one place you stop a session: the stop goes through
-Orca, to the dispatch you made this turn. The rules that you never signal or stop a session's
-process, and never end one with `worker-stop`, stand everywhere else.
+**A 2a start that came up as a terminal.** When the receipt's `mode` is not `structured`, or the
+setup block prints `FAIL the worker runs as '<mode>', not a structured chat`, Orca started the
+session in a terminal, for example because a chat could not open there. That session can be
+neither released nor closed through your checks (step 2), so leave it running and report it:
 
-No check can show the session idle, so the stop can cut short its first steps: the kickoff's
-skill loading, its reads, a first grooming write, or a "Director check" probe it already sent.
-The chat that replaces it starts the kickoff again on the ticket and worktree as they then stand,
-so it sees anything the stopped session wrote. Waiting would let that session go further, and it
-can never be ended safely, so the stop comes at once.
-
-1. At once, before the setup block, from the main checkout: check the receipt's worktree, wait
-   until the start's setup has finished, stop that dispatch's terminal session and, only once Orca
-   confirms the stop, start the session as a chat in that worktree, with the kickoff prompt
-   without its supervised line (step 3), held as in 2b. `<dispatch id>` is the receipt's
-   `dispatchId`, never another dispatch; `<agent terminal>` is the receipt's `terminal`;
-   `<workspace>` is the receipt's `workspace`, whole.
-
-```bash
-D="<dispatch id>"; H="<agent terminal>"; WS="<workspace>"; W="${WS#*::}"
-PROMPT=$(cat <<'EOF'
-<the kickoff prompt, without its supervised line>
-EOF
-) && [ -n "$PROMPT" ] || { echo "FAILED: building the kickoff prompt; nothing stopped or started"; exit 1; }
-python3 -I - "$D" "$H" "$WS" "$W" "${ORCA_CLI_COMMAND:-orca}" <<'PY' || { echo "STOP NOT CONFIRMED: nothing started"; exit 1; }
-import json, os, subprocess, sys, time
-D, H, WS, W, ORCA = sys.argv[1:6]
-def orca(args, show):
-    # Orca's result for a call that exited 0 with "ok": true, or None.
-    try: p = subprocess.run([ORCA] + args + ["--json"], capture_output=True, text=True, timeout=120)
-    except Exception as e: print("FAIL %s: %s" % (" ".join(args[:2]), e)); return None
-    if show: print(p.stdout.strip()[:1500])
-    try: d = json.loads(p.stdout)
-    except Exception: d = None
-    ok = p.returncode == 0 and isinstance(d, dict) and d.get("ok") is True and isinstance(d.get("result"), dict)
-    if not ok: print("FAIL %s exited %d: %s" % (" ".join(args[:2]), p.returncode, (p.stderr or p.stdout).strip()[:300]))
-    return d["result"] if ok else None
-def stop(why): print("FAIL", why, "(nothing stopped)" if phase == "before" else ""); sys.exit(1)
-phase = "before"
-if not D.startswith("ctx_") or not H or "::" not in WS or not W.startswith("/"): stop("the receipt gives no dispatch, agent terminal or workspace")
-wt = (orca(["worktree", "show", "--worktree", "path:" + W], False) or {}).get("worktree")
-if not isinstance(wt, dict) or wt.get("id") != WS or not os.path.isdir(W): stop("Orca shows no worktree %s at %s" % (WS, W))
-for _ in range(25):
-    s = orca(["orchestration", "worker-show", "--dispatch", D, "--full"], False)
-    st = ((s or {}).get("worker") or {}).get("setupState")
-    if st in ("succeeded", "failed", "not_applicable", "skipped"): break
-    time.sleep(5)
-else: stop("the start's setup has not finished (setupState %r)" % st)
-phase = "stop"
-r = orca(["orchestration", "worker-stop", "--dispatch", D], True)
-if r is None or (r.get("dispatchId"), r.get("state"), r.get("processAction")) != (D, "stopped", "closed_agent_terminal"):
-    stop("worker-stop did not confirm that it stopped %s and closed its agent terminal" % D)
-t = orca(["terminal", "list", "--limit", "100000"], False)
-rows = t.get("terminals") if t else None
-if not isinstance(rows, list) or t.get("truncated") is not False or t.get("totalCount") != len(rows):
-    stop("orca terminal list could not be read whole")
-if any(isinstance(x, dict) and x.get("handle") == H for x in rows): stop("the agent terminal %s is still listed" % H)
-print("STOPPED: %s; its agent terminal %s is no longer listed; setup %s" % (D, H, st))
-PY
-"${ORCA_CLI_COMMAND:-orca}" agent launch --agent claude --surface chat --worktree "path:$W" --prompt "$PROMPT" --json
-```
-
-2. Then run the setup block above, with the same `dispatchId`, to link the ticket. It writes no
-   record. Its `FAIL` lines include `FAIL the worker runs as 'terminal', not a structured chat`
-   and `FAIL worker-show names no structured chat: …`, and its `RESULT:` line says the chat takes
-   the manual close; for this session item 1 replaced that.
-
-- Before it stops anything, the block checks that Orca shows the receipt's worktree at that path
-  and waits, up to about two minutes, for the start's setup to finish (`worker-show`'s
-  `setupState`). A line ending `(nothing stopped)` means it stopped nothing: tell me, with what it
-  printed; the terminal session is then mine to handle.
-- The block launches the chat only when Orca confirmed the stop: `worker-stop` exited 0 with
-  `"ok":true`, that `dispatchId`, `state` `stopped` and `processAction` `closed_agent_terminal`,
-  and `orca terminal list`, read whole, no longer lists that agent terminal. `worker-stop` closes
-  the agent terminal Orca started for that dispatch, and its helpers, and keeps the worktree. Its
-  help says it keeps the Setup terminal too, but in the fixture run under "Release a supervised
-  Manager chat" that terminal, its setup already done, was gone after the stop. On any other
-  answer the block starts nothing: tell me the dispatch id and every line it printed. That
-  terminal is then mine to close, and the worktree has no chat.
-- The launch's reply must say `"kind":"structured"` under `result.outcome`; keep
-  `result.outcome.sessionId`. Another `kind` means Orca opened a terminal again: tell me, with
-  `result.receipt.detail`. If the launch fails, the session is stopped and the worktree has no
-  chat: tell me, with its error. After a lost launch reply, run the `PROMPT` part and the launch
-  line again in one shell call, with `--retry-launch <operationId>` from the error added; never
-  the stop. The chat is an ordinary session, which I close as for 2b: it has no record and no
-  worker preamble, so "A supervised session" under "End a finished worktree session" doesn't apply
-  to it.
-- Mail or messages from the stopped dispatch or its session (Orca's notices, a "Director check"
-  probe, a question it sent before the stop) are information: answer none of them, a probe
-  included (the one exception to "Answer a "Director check" probe"). The new chat sends its own
-  probe and asks again what it needs.
-- Never run `worker-stop`, `worker-release` or `orchestration reset` on any other dispatch or Run
-  for this, such as an older failed start's (VIL-1043's `ctx_15aea51ad296`, Run
-  `run_0e4bad297868`).
+- Don't stop it, release it or send it anything about its start, and start nothing more for the
+  ticket: no second start and no chat beside it. Otherwise it is a worktree session like any
+  other, which I close as for 2b.
+- Still run the setup block above with the receipt's `dispatchId`, so the ticket gets linked. It
+  writes no record: its `FAIL` lines include `FAIL the worker runs as 'terminal', not a structured
+  chat` and `FAIL worker-show names no structured chat: …`, and its `RESULT:` line says the chat
+  takes the manual close.
+- In step 4, say that the session is a terminal and takes my close, with its dispatch id and the
+  reason `worker-show --dispatch <id> --full` gives under `startOptions.mode.detail`.
 
 **2b. Ordinary start.** From the main checkout, with the kickoff prompt (step 3) held in a shell
 variable by a quoted heredoc, so its quotes and link reach `--prompt` as one argument without
@@ -888,8 +802,7 @@ EOF
   and `result.worktree.path`. Orca can still open a terminal instead when it can't check first
   that a chat can open there: another `kind`, or a reply with no `result.launch` (an older Orca),
   means the session may be a terminal. Tell me, with `result.launch.receipt.detail` if there is
-  one, since its closeout note can't be checked either. Don't stop or replace it: it is mine to
-  close.
+  one, since its closeout note can't be checked either. Don't stop it: it is mine to close.
 - If the command fails, report its error. After a lost agent launch reply, run the whole block
   again, prompt construction included, in one shell call from the same directory, with
   `--retry-launch <operationId>` from the error added to the create line (`PROMPT` doesn't carry
@@ -929,11 +842,10 @@ part of the receipt's `workspace` after `::` for 2a); if that has none, `orca wo
 --json` lists it. For 2b, add the chat's Orca session id, or, when the reply showed no chat, what
 it showed instead, with the `receipt.detail`. For a supervised start, add the dispatch, the chat's
 Orca session id and the workspace instance the setup block printed. If it printed anything but
-`RESULT: setup complete`, say so with each `FAIL` line: that chat I close myself, unless it came
-up as a terminal and was replaced. A `LINK: NOT LINKED` line means the worktree runs without its
-ticket link. For a 2a start that came up as a terminal, add its dispatch, what `worker-stop`
-printed and the new chat's Orca session id; or, when the stop wasn't confirmed, that its terminal
-is still open for me to close.
+`RESULT: setup complete`, say so with each `FAIL` line: that chat I close myself. A
+`LINK: NOT LINKED` line means the worktree runs without its ticket link. For a 2a start that came
+up as a terminal, say that the session is a terminal and takes my close, with its dispatch id and
+the `startOptions.mode.detail` reason.
 
 **Never,** with this command: write code, groom the ticket yourself, change the ticket's state
 (the worktree session does that), or open a worktree for more than the one ticket named.

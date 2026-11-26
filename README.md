@@ -38,9 +38,9 @@ option, `dv:director-mode`'s `open worktree VIL-N` starts the session as a super
 `--help` probe that picks it, this start and the ordinary start all run the same executable,
 `"${ORCA_CLI_COMMAND:-orca}"`). Orca 1.4.277 has no such option, and no supported command reads
 the setting for new agent tabs that `worker-start` follows, so there every start is the ordinary
-chat. A supervised start that still comes up as a terminal is stopped at once through Orca, on
-its own dispatch only, and once Orca confirms the stop the session starts as an ordinary chat in
-the same worktree. A supervised start runs only once the kickoff prompt was written whole; when
+chat. A supervised start that still comes up as a terminal is left running and reported with its
+dispatch id: the Director doesn't stop or release it, the setup still links the ticket, and you
+close it. A supervised start runs only once the kickoff prompt was written whole; when
 it comes up as a chat, the setup links the ticket and reads the link back, and only then records
 its dispatch, chat and workspace instance in `<git-common-dir>/orca-supervised/`. The session sends
 `worker_done` only as its last act, after the Director replied to its closeout note (sent by
@@ -60,10 +60,9 @@ a release refuses until that terminal is closed, and a terminal Orca can't date 
 release refuse while it is open (on hal on 2026-11-26, one in `/Users/david/Projects/axiom` held
 by Orca's older pty daemon). Afterwards it proves the chat gone, every other agent there and
 every terminal listed before still listed, the workspace's identity unchanged, and the worktree's
-directory still there with HEAD where it was; it compares no worktree file. An ordinary chat (the
-chat that replaces a terminal start included), a terminal start whose stop Orca didn't confirm, a
-start whose setup didn't complete, and any check before the release that fails or can't run still
-go to you to close in Orca, as the `dv:director-mode` entry
+directory still there with HEAD where it was; it compares no worktree file. An ordinary chat, a
+start Orca made in a terminal, a start whose setup didn't complete, and any check before the
+release that fails or can't run still go to you to close in Orca, as the `dv:director-mode` entry
 above says, and so does a chat Orca answers it kept (`retained`). If the release runs and its outcome is unknown
 (any other answer, an error or a timeout), or a check after it fails or can't run (`orca agent
 show` must give the chat no place or answer `agent_unknown`), the Director removes nothing and

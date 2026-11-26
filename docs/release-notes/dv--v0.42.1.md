@@ -21,27 +21,21 @@ Director's checks. No supported Orca command reads that setting (Orca 1.4.277).
   `worker-start --help` to list `--keep-open` and a `--surface chat|terminal` option, which 2a then
   passes as `--surface chat`. Orca 1.4.277 has no such option, so every start there takes the
   ordinary start (2b) for now. Don't read Orca's settings files to decide.
-- **A 2a start that came up as a terminal anyway** is replaced at once, before the setup block,
-  on that start's own dispatch only. The block first checks that Orca shows the receipt's worktree
-  and waits, up to about two minutes, for the start's setup to finish; then
-  `orca orchestration worker-stop` stops that dispatch's terminal session, and `orca agent launch --surface chat` starts the session as an ordinary chat
-  in the same worktree, with the kickoff prompt without its supervised line. The chat starts only
-  when `worker-stop` answered `ok`, that dispatch, `state` `stopped` and `processAction`
-  `closed_agent_terminal`, and `orca terminal list`, read whole, no longer lists the agent
-  terminal; otherwise nothing more starts and the Director tells David. The setup block then links
-  the ticket and writes no record.
-  This is the one place the Director stops a session, and only through Orca, on the dispatch it
-  made in the same turn; mail from the stopped session, its "Director check" probe included, is
-  information and goes unanswered.
+- **A 2a start that came up as a terminal anyway** is reported and left for David. The Director
+  doesn't stop it, release it or send it anything about its start, and starts nothing more for the
+  ticket. The setup block still runs, so the ticket gets linked; it writes no record. Step 4 says
+  the session is a terminal that David closes, with its dispatch id and Orca's
+  `startOptions.mode.detail` reason.
 - **2b** passes `--json` and checks that `result.launch.outcome.kind` is `structured` (a chat); any
   other answer is reported with Orca's `receipt.detail`, and that session is left for David to
   close.
-- **Step 4's reply** names the start that ran (the probe's `START:` line) and, for a replaced
-  terminal start, its dispatch, what `worker-stop` printed and the new chat's session id.
+- **Step 4's reply** names the start that ran (the probe's `START:` line) and, for a 2a start that
+  came up as a terminal, that David closes it, with its dispatch id.
 - **"Release a supervised Manager chat"**, the "Not tested" note: records the VIL-1043 and VIL-1206
   results and that a host whose `worker-start` takes `--surface` is not yet tested.
 - **README**: the plugin table reads `0.42.1`, and the `dv:director-mode` entry and "Supervised
-  worktree sessions" describe the probe, the ordinary-chat default and the terminal replacement.
+  worktree sessions" describe the probe, the ordinary-chat default, and that a terminal start is
+  reported and left for David.
 
 ## Tried and not used
 

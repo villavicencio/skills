@@ -3,7 +3,8 @@
 Minor release. When a project names a department Head, `dv:director-mode`, `dv:manager-mode` and
 `dv:groom` send the escalations that went to David to that Head, and only the
 CEO's 1% reaches David, through him, unless no Director can be verified or the Director replies
-`Ask David`, and apart from `dv:closeout`'s own reply, which still asks David until VIL-1191. These routing changes apply only when a project names a
+`Ask David`, and apart from `dv:closeout`'s own reply, which still asks David until VIL-1191.
+The one exception: keeping a 13-point ticket whole needs David's explicit yes, relayed by the Head (`dv:groom` step 4). These routing changes apply only when a project names a
 Head. Two changes apply always: an answer with a short note, and mail before a question card.
 David's role is renamed from the Chairman to the CEO. The other twelve skills have no behaviour
 changes; their version moves to `0.39.0` only because the suite is released as one plugin.

@@ -279,8 +279,8 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
     boundary: only the Head's answer (or mine). Their way forward: make no such change, and fix
     the finding.
   - A choice a written rule reserves for someone's explicit yes, such as filing a ticket outside
-    `dv:ticket`'s two exceptions: only that person's answer, or the Head's where his stands for
-    mine. Its way forward: don't make the choice; it stays pending for whoever may decide it.
+    `dv:ticket`'s two exceptions: only that person's explicit answer to that choice, which the
+    Head may relay. Its way forward: don't make the choice; it stays pending for whoever may decide it.
 - **With a Head, nothing else is asked of me,** by you or by a worktree session, in a dialog or
   in chat. Every question these skills would put to me goes to him through you, the CEO's 1%
   marked as such, and his answer stands where they say mine does, for that one question. Your

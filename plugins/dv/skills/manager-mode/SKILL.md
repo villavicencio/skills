@@ -337,7 +337,10 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
     one of the question's options settles it, as does one that comes as your first reply. It is
     the Head's call, so whether it is the option you recommended, and the clear-cut conditions,
     don't matter; check only the delete and scope-cut limits "What counts as the answer" gives,
-    and treat a note as that bullet says. Apply it, undoing the way forward where it differs (for
+    and treat a note as that bullet says. On a choice a written rule reserves for a named person's
+    explicit yes (`dv:director-mode`, "What no default decides"), it settles only when it carries
+    that person's explicit answer to that choice; otherwise the choice stays pending, and work
+    that doesn't depend on it goes on. Apply it, undoing the way forward where it differs (for
     a `dv:groom` fork, its open Decisions line becomes the answer, in groom's Head form, and
     a Head-only fork that held up the start no longer does).
   - **"Ask David" becomes this**, whenever no answer that counts comes in time (but not on an

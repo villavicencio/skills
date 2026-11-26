@@ -381,7 +381,10 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
     explicit yes), treat the
     `Answer` as `Forwarded to the Head` and keep its way forward. The Director relays the Head's
     answer on it under the same Qk; apply it once, as "Answer from the Head" above says, and
-    take any later reply on that Qk as changing nothing. A `Forwarded to the Head` reply (an item
+    take any later reply on that Qk as changing nothing. When the Director's mail check fails and
+    it can't verify the question reached the Head, it records the question on the ticket and sends
+    no reply (`dv:director-mode`, "Unanswered at the end"): no answer that counts, as below, and
+    no default. A `Forwarded to the Head` reply (an item
     under "What no default decides": keep its way forward), or no answer that counts, means ask me nothing:
     write it on the ticket as an open decision, and it goes under WAITING ON in your closeout
     note. A `Held for David` reply to it is the one case that comes to me now: the Director's

@@ -362,12 +362,18 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
   (recent mail, none of it marked read) and look for the Head's answer on that Qk. If one that
   counts ("His answer" above) is there, relay it as that bullet says, instead of the default. Only
   after a check that ran without error and found none, reply
-  `Answer, VIL-N, Qk: <its recommended option>`. If the check errors, send no default: reply
-  `Forwarded to the Head, VIL-N, Qk: <the session's way forward>`, and the question stays pending.
+  `Answer, VIL-N, Qk: <its recommended option>`. If the check errors, send no default. Reply
+  `Forwarded to the Head, VIL-N, Qk: <the session's way forward>` only once his delivery of that
+  Qk is verified: by your earlier forward's own send result for that Qk, without an error, or else
+  by sending it again now as "Forward" says, under the same Qk, and getting a result without an
+  error. If that send fails or its result is unclear, send the session no reply and ask me
+  nothing: write on the ticket, as a comment, the pending question with its Qk, its owner (the
+  Head) and when it will be retried (your next turn in which a send to him succeeds), and retry
+  then. The session keeps its way forward and goes on with what doesn't depend on it.
   An item under "What no default decides" gets no default either: for one of those reply
   `Forwarded to the Head, VIL-N, Qk: <the way forward that bullet gives>`, forwarding it to him
   first if he doesn't have it yet. A failed
-  send gives `Held for David`, which the session then asks me at once. Never `Ask David` here. A
+  send of such an item gives `Held for David`, which the session then asks me at once. Never `Ask David` here. A
   later answer from the Head changes nothing already done, except on an item under "What no
   default decides" ("His answer" above).
 

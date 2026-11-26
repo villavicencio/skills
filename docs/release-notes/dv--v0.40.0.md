@@ -62,7 +62,7 @@ as they were (VIL-1156, VIL-1190).
 
 ## Tested
 
-On hal, 2026-11-26, Orca 1.4.277, both runs started from a session that was itself an Orca
+On hal, 2026-11-26, Orca 1.4.277, all three runs started from a session that was itself an Orca
 worker, with the code blocks extracted from this release's `SKILL.md` and only the placeholders
 and the record directory replaced.
 
@@ -83,11 +83,44 @@ and the record directory replaced.
   Given the new note's timestamp, the block released it while a second supervised chat stayed
   listed in the same worktree; `GONE` passed, and check 4's removal-form scan failed on the second
   chat's `claude` process, so the worktree would have been kept.
+- **Third run, on the final text after merging 0.39.3** (a fresh scratch worktree cut from main at
+  394abbf; `dv:director-mode` and `dv:manager-mode` byte for byte as at this release's merge, so
+  every code block is the one the first two runs used). Orca stored the kickoff spec byte for
+  byte. The stand-in sent no `worker_done` while its first note listed a question pending with the
+  Head, and said why; the block refused it (worker `ready`, dispatch not `completed`), and agent
+  list, agent show, the worktree, HEAD, terminals and the sentinel read the same before and after.
+  Told that everything had settled, the same stand-in sent a second note, read the reply to it and
+  sent `worker_done` 12 seconds after that note. Given that note's timestamp, the block released
+  the same dispatch (`released`, `closed_agent_terminal`): the chat left `orca agent list`,
+  `orca agent show` gave it no place, and `GONE` passed for its wrapper and `claude` processes. A
+  sibling supervised chat in the same worktree stayed listed, and the workspace instance, HEAD and
+  a sentinel file of random content (inode, size, mtime and SHA-256) were unchanged. Check 4's
+  removal-form scan failed on the sibling's `claude` process, so the worktree would have been
+  kept.
+
+What stood in, in the second and third runs. The caller was a worker session in a worktree, not a
+Director in the main checkout, though every block ran from the main checkout; in the third run it
+was the worker integrating this release, and the workers it started joined its own coordinator's
+Run. The supervised session was an Orca worker told to invoke no skill, to follow the kickoff
+prompt's supervised line and the quoted "A supervised session", and to take as given that the PR
+had merged and `dv:closeout` had run: no real `dv:manager-mode`, grooming, PR or `dv:closeout`.
+Its closeout notes were one-line stand-ins sent by `orca orchestration ask`, and the Director's
+replies were `orca orchestration reply`, not SendMessage with `notify_when_idle`. The note's
+timestamp was Orca's message time, not a saved copy's file name, and the `claude` pid came from
+matching the chat's session id with `ps -E`, not from a `from` address, so checks 1 to 3 of "End a
+finished worktree session" never ran. No Head took part: "pending with the Head" was text in the
+note, and "settled" was the caller's reply. The ticket was fake, so `orca worktree set
+--linear-issue` didn't run, and the record directory was a scratch directory. The sibling had no
+record; after it sent `worker_done`, the caller released it with a direct `worker-release`,
+outside the block, as cleanup. In the third run Orca labeled the caller's mail with the caller's
+own dispatch rather than its session, and the sibling held back its "finish" once until told why.
+
+These runs are pre-merge fixtures. They don't stand in for the live check below.
 
 ## Not in this release
 
 - Not tested: a Director in an ordinary Orca chat (whether its starts come out structured follows
-  the Chat or CLI setting for new agent tabs; both runs started from a worker session, whose
+  the Chat or CLI setting for new agent tabs; all three runs started from a worker session, whose
   `structured` mode may come from that lineage), a Director restarted between the start and the
   release, a session that works again after `worker_done`, and a supervised session's own mail to
   a real Head.

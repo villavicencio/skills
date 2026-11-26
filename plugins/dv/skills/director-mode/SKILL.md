@@ -1194,8 +1194,17 @@ supervised chat in the same worktree stayed listed; the `GONE` check passed, and
 removal-form scan then failed on that second chat's `claude` process, so the worktree would have
 been kept.
 
+A third run, on the final text after dv 0.39.3 was merged in (same day, host and Orca, from a
+worker session, in a fresh scratch worktree), repeated the second with the same result, for the
+same dispatch: refused while a question was pending with the Head, with nothing changed; released
+after a new note and its reply, the chat absent from `orca agent list` and `orca agent show`,
+`GONE` passed, and a sibling chat, the workspace instance, HEAD and a sentinel file left as they
+were. In the second and third runs the notes and replies traveled by `orca orchestration` mail,
+not SendMessage, and no real `dv:closeout` or Head took part (dv 0.40.0's release notes list
+every stand-in).
+
 Not tested: a Director in an ordinary Orca chat (its starts follow my Chat or CLI setting for new
-agent tabs, so check the first receipt's `mode`; both runs started from a worker session, whose
+agent tabs, so check the first receipt's `mode`; all three runs started from a worker session, whose
 `structured` mode may come from that lineage), a Director restarted between the start and the
 release, a session that works again after `worker_done`, a supervised session's own mail to a
 real Head, and a real ticket from kickoff through merge and closeout (VIL-1043).

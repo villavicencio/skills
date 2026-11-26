@@ -303,7 +303,8 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
   state; when the way forward moves it to its own ticket, also write it on that ticket as an open
   decision, so it outlives this session. When the ticket's other work is done (the PR handed to
   the Director, or nothing else you can do), first send the Director one decision highlight
-  naming each held question by its Qk, so it relays them to me together, then ask me every held
+  naming each held question by its Qk, with its numbered options and your pick, so it relays them
+  to me together, then ask me every held
   question (with a Head, only those "With a Head" sends to me) together in this chat, as one
   interview ("Mail before a card"). A held question the way forward settled (the finding was fixed after all)
   is reported in that highlight, not asked.
@@ -315,8 +316,9 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
   questions at the end (with a Head, unless the Director replied `Ask David`, send it as `Unanswered` instead, below), unless the way forward settled it (the finding was fixed), which is
   reported, not asked. Every fall-back to me below covers only questions that are not held.
 - **On "ask David"** (for a question that is not held; with a Head, only where "With a Head"
-  falls back to me), ask me in this chat as you would without a Director, and send the usual decision highlight ("Highlights"), naming the question's number
-  (`Highlight, VIL-N: Qk ...`). Once a question has gone to me, a late answer from the Director does not settle it; only mine
+  falls back to me), first send the usual decision highlight ("Highlights"), naming the question's
+  number (`Highlight, VIL-N: Qk ...`), and any other mail due, then ask me in this chat as you
+  would without a Director ("Mail before a card"). Once a question has gone to me, a late answer from the Director does not settle it; only mine
   does. When one arrives anyway, send the Director a highlight that its Qk answer came late and
   the question went to me, so the home chat does not show it as settled.
 - **With a Head** (the Head of <department>, configured in this project's `AGENTS.md` or
@@ -333,7 +335,8 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
     the Head's call, so whether it is the option you recommended, and the clear-cut conditions,
     don't matter; check only the delete and scope-cut limits "What counts as the answer" gives,
     and treat a note as that bullet says. Apply it, undoing the way forward where it differs (for
-    a `dv:groom` fork, its open Decisions line becomes the answer, in groom's Head form).
+    a `dv:groom` fork, its open Decisions line becomes the answer, in groom's Head form, and
+    a target or pull condition that held up the start no longer does).
   - **"Ask David" becomes this**, whenever no answer that counts comes in time (but not on an
     `Ask David` reply, below): take a way forward that needs no one's yes (your recommended option
     when it is reversible, but never declining a high or critical finding on a safety boundary or
@@ -344,11 +347,11 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
     failed: ask that one at the end as with no Head.
   - **Unanswered at the end.** When the ticket's other work is done, send the Director, for each
     question still without an answer that counts (a held kind and a forwarded one included),
-    `Unanswered, VIL-N, Qk: <the question>. Recommended: <the option>. Sent: <UTC date and time>.`,
+    `Unanswered, VIL-N, Qk: <the question>. Options: <as in the Question>. Recommended: <the option>. Reversible: <yes or no, and how>. Sent: <UTC date and time>.`,
     and wait for it as for a question. Its `Answer` takes the recommended option; check it as
     "What counts as the answer" says and apply it. A `Forwarded to the Head` reply (one of the
-    CEO's 1%, or declining a finding on a safety boundary, which no default decides: keep the
-    way forward, such as fixing the finding), or no answer that counts, means ask me nothing:
+    CEO's 1%, declining a finding on a safety boundary, or a choice that isn't reversible, which
+    no default decides: keep the way forward, such as fixing the finding), or no answer that counts, means ask me nothing:
     write it on the ticket as an open decision, and it goes under WAITING ON in your closeout
     note. A `Held for David` reply to it is the one case that comes to me now: the Director's
     send to the Head failed, so ask me as with no Head.

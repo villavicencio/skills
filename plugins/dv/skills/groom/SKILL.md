@@ -99,7 +99,8 @@ Head, only I can settle it, and it comes straight to me. A fork the Director for
 (`Forwarded to the Head`) or holds for me (`Held for David`) does not stop grooming: record it
 under Decisions as open, take the way forward the reply names, and manager-mode settles it as its
 "Questions go to the Director first" says. With a Head, a fork on its way forward is not a gap
-for the ready test (step 8). Run no Director
+for the ready test (step 8), except a target or a pull condition: one still with the Head is a gap
+until his value arrives, so the ticket gets no `groomed` label and its work doesn't start on it. Run no Director
 probe of your own; if manager-mode has not sent its probe yet, it sends it before the first fork
 goes out. With no Director that can be verified, or for each fork whose answer doesn't count, ask
 me as step 6 says, except a held kind (spending money, reaching outside, or declining a high or
@@ -675,7 +676,7 @@ reply-format rules when the session's instructions give any:
    none came back). Ready means no gaps, Done means lines that can be proved, nothing it waits on,
    every overlap search finished (step 1), no needed fix declined or not landed, no duplicate search
    left unfinished, no target unconfirmed (with a Head, a fork on its way forward counts as
-   settled: "From a worktree session"), and the team's backlog or ready-to-start state as
+   settled, except a target or pull condition still with him: "From a worktree session"), and the team's backlog or ready-to-start state as
    `list_issue_statuses` names them. A started, finished or canceled ticket is not ready to start.
    After a split, name the child that is ready and the one that comes first, as links; do not call
    the parent ready when the work is in its children. A ticket whose points Linear did not store

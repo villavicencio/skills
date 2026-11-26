@@ -603,7 +603,11 @@ the CEO's 1% (deleting my data); make no removal offer (the Director removes the
 `dv:director-mode`, "Take closeout notes"); and with more than one parent terminal ("Deliver the
 note"), take the chat path instead of asking me which. Only the Director reaches the Head, so if
 the note ends up not sent (no Director verified, or its sends failed), give me then, in that turn,
-the Needs you and the questions as with no Head.
+the Needs you and the questions as with no Head. The Head's answers come back by the Director, one
+line each, `WAITING ON answered, VIL-N: <the item>: <his answer>`, and it records them on the
+ticket. Once every item has one, recheck as below, run Step 4 if the losses were accepted (that
+answer counts as my yes), and write and send the note again (Step 3, "Deliver the note" step 5)
+with those items out of WAITING ON.
 
 **Recheck in every later turn.** A yes arrives in a later turn, and the worktree may have changed
 since the verdict. Before acting on any yes (accepting losses, archiving, removing), run the Step 1

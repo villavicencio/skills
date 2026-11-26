@@ -2,7 +2,8 @@
 
 Minor release. `dv:director-mode`, `dv:manager-mode`, `dv:groom` and `dv:closeout` route every
 escalation that went to David to the department's Head, when the project has one, so only the
-CEO's 1% reaches David. David's role is renamed from the Chairman to the CEO. The other twelve
+CEO's 1% reaches David, except when the Head can't be reached (a failed send to him) or no
+Director can be verified, which fall back to asking David as before. David's role is renamed from the Chairman to the CEO. The other twelve
 skills have no behaviour changes; their version moves to `0.39.0` only because the suite is
 released as one plugin.
 
@@ -13,7 +14,8 @@ schedule time in a dialog, and the dialog kept the Director's reply from reachin
 
 - **A Head is configured by one line.** A project has a Head when its `AGENTS.md` or `CLAUDE.md`
   has a line that starts `Head:` and names him and his Orca address (`bot:<name>`). With no such
-  line, every skill behaves as in 0.38.0. This repo's `AGENTS.md` names the Head of Skills,
+  line, every skill behaves as in 0.38.0, except that an `Answer` with a `. Note:` now counts
+  (below). This repo's `AGENTS.md` names the Head of Skills,
   `bot:Head of Skills`.
 - **`dv:director-mode`, new section "The Head and the CEO's 1%".** The one copy of the routing
   rule and of the five items that still reach David, which the Head brings to him collected. With a

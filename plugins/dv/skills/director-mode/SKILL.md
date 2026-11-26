@@ -996,8 +996,12 @@ of these hold:
 - Step 1 lists no stash made on that branch.
 
 If the block can't run, or anything differs, keep the worktree, do not ask me to close it, and tell me. The
-recheck is only as good as closeout's inventory: it compares counts, not contents, so a file
-edited in place with every count unchanged is not caught (the open ticket VIL-868).
+recheck is only as good as closeout's inventory. The verdict line names each build-output line
+with the fingerprint Step 1 printed for it (a hash over its entries' paths, file contents and
+symlink targets), so a build-output file edited in place since the note changes that line and
+fails the check even when every count is the same. That line leaves out the per-kind counts, so a
+change only to the main checkout's copy of a build-output entry, which moves the entry between
+same, only here and different and leaves the fingerprint as it was, is not caught here.
 
 **Before asking me to close it.** Run the global removal procedure's step 2 checks on this
 worktree (the Git bullet "Remove a finished Orca worktree yourself…"), all of them; its "no

@@ -6,7 +6,7 @@ will be a chat; everywhere else it opens an ordinary chat, which David closes. O
 `dv:director-mode` changes. The other fifteen skills have no behaviour changes; their version moves
 to `0.42.1` only because the suite is released as one plugin.
 
-Numbering: 0.42.1 follows 0.41.0 (VIL-1169) and 0.42.0 (VIL-932), the two releases ahead of it.
+Numbering: 0.42.1 comes after 0.41.0 (VIL-1169) and leaves 0.42.0 to the open VIL-932 change, planned to merge first.
 
 Why: `orca orchestration worker-start` starts its agent as a chat or a terminal by the user's
 setting for new agent tabs, and has no option to choose. On hal that setting is terminal, so the
@@ -26,8 +26,12 @@ Director's checks. No supported Orca command reads that setting (Orca 1.4.277).
   worker-stop` stops that dispatch's terminal session, and `orca agent launch --surface chat` starts
   the session as an ordinary chat in the same worktree, with the kickoff prompt without its
   supervised line. When the stop isn't confirmed, nothing more starts and the Director tells David.
+  This is the one place the Director stops a session, and only through Orca, on the dispatch it
+  made in the same turn; mail from the stopped session, its "Director check" probe included, is
+  information and goes unanswered.
 - **2b** passes `--json` and checks that `result.launch.outcome.kind` is `structured` (a chat); any
-  other answer is reported with Orca's `receipt.detail`.
+  other answer is reported with Orca's `receipt.detail`, and that session is left for David to
+  close.
 - **Step 4's reply** names the start that ran (the probe's `START:` line) and, for a replaced
   terminal start, its dispatch, what `worker-stop` printed and the new chat's session id.
 - **"Release a supervised Manager chat"**, the "Not tested" note: records the VIL-1043 and VIL-1206

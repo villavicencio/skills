@@ -335,8 +335,8 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
     differently inside double quotes, and between `grep` and `git grep`). The path and the pattern
     reach the shell only inside the single quotes of the reads below.
   - **Reads.** Fixed commands, run as written with only the commit, the path, a parent directory
-    and the pattern filled in. They only read the repo's objects and attributes; none writes or
-    reaches the network (`--no-lazy-fetch` stops a partial clone from fetching a missing object:
+    and the pattern filled in. They only read the repo's objects, attributes and config; none
+    writes or reaches the network (`--no-lazy-fetch` stops a partial clone from fetching a missing object:
     the read fails instead), and none prints a file's contents.
     1. Every checked line: `git --no-lazy-fetch -C "<top level>" ls-tree <commit> -- '<path>'`.
        One line for exactly that path with mode `100644` or `100755` is a regular file, and mode
@@ -349,10 +349,16 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
        entry there matches the missing part when case is ignored, the line is "not run: path
        differs only in case", since it can pass on a disk that ignores case. Otherwise the path is
        missing at the commit.
-    2. A search, when read 1 found a regular file. First
-       `git --no-lazy-fetch -C "<top level>" check-attr --source <commit> filter working-tree-encoding -- '<path>'`:
-       a value other than `unspecified` for either is "not run: filtered file", since a checkout
-       holds other bytes than the commit (Git LFS is one case). Then
+    2. A search, when read 1 found a regular file. First, whether a checkout would change the
+       file's bytes, so that `grep` in a checkout would see other text than the commit holds:
+       `git --no-lazy-fetch -C "<top level>" check-attr --source <commit> filter working-tree-encoding ident crlf eol -- '<path>'`,
+       then `git -C "<top level>" config --get core.autocrlf` and
+       `git -C "<top level>" config --get core.eol` (each prints nothing and exits 1 when unset).
+       The line is "not run: a checkout changes the file" when `filter`, `working-tree-encoding`,
+       `ident` or `crlf` has a value other than `unspecified`, `eol` has one other than
+       `unspecified` or `lf`, `core.autocrlf` is `true`, or `core.eol` is `crlf`, and for every
+       search on Windows, where line endings default to CRLF (Git LFS and CRLF line endings are
+       such cases). Then
        `git --no-lazy-fetch -C "<top level>" grep -q <matcher> -e '<pattern>' <commit> -- '<path>'`,
        with `<matcher>` `-F` or `-E` when the line has it and `-G` otherwise, so git config
        cannot change the pattern syntax, plus `-i` and `-w` when the line has them. Exit 0 is a

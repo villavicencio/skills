@@ -376,6 +376,9 @@ and the estimate takes the higher number; when that is 13, the 13 rule below app
 the edit list beside Size, not asked: they are written into the Size section and set in Linear's
 estimate field (step 7).
 
+When an already split parent has its work and points on its children, keep its historical Size.
+Propose no new estimate or split. List any estimate still on that parent for clearing in step 7.
+
 **Split verdict.** Say "no split" with the reason, or propose a split. Propose one when any of
 these holds:
 
@@ -525,7 +528,9 @@ removes existing text. It covers:
 - removed conditional steps and whatever hung on them;
 - relations to add (`blockedBy`, `relatedTo`) and to remove (`removeBlockedBy`), with the evidence
   from step 3. Number a removal with any replacement blocker and any wanted `relatedTo` as one
-  item. Say that the related link is added only if absent after removal;
+  item. Say that the related link is added only if absent after removal. When the former blocker
+  is an unwanted reference named by id or link in the description, include its text edit in that
+  item too. Use its PR, repo or title in place of the id or link, as "Ticket ids in text" says;
 - relations the text itself creates: an item whose text names a ticket id with no existing
   relation says so ("and relates VIL-N"), as the shared rules' "Ticket ids in text" explains;
 - Size with its points (step 4; for a parent that becomes the first child, that child's size and
@@ -540,6 +545,10 @@ removes existing text. It covers:
   a change to the team's scale (mine) or a split. For a child just filed, clear it with one more
   `save_issue` on that child and read the reply; if the clear fails, stop before changing the
   parent, as for a failed filing ("Order of writes", item 2);
+- clearing a stale estimate (`estimate: null`) on an already split parent whose work and points
+  sit on its children. Keep its historical Size text and the existing split. Read back the empty
+  estimate with `get_issue` before deciding whether to add `groomed`. Report a clear that did not
+  land as a gap;
 - links to comments that hold evidence a Scope step depends on;
 - the milestone (step 3), set with `save_issue`'s `milestone` field: an add item when the ticket
   has none; a replace item when my answer moves it, or a remove item when it takes it out (which
@@ -590,6 +599,8 @@ may offer this instead of patches: show the complete new description, say that t
 in Linear's history, and ask one plain question to replace the whole description. Relations, the
 title, the `groomed` label and filings stay numbered items beside it. A no leaves the description
 exactly as it was.
+Use numbered patches when a removal item includes a text edit for an unwanted link, so both
+changes stay in one numbered item.
 Just before saving, read the ticket again; if its description is no longer the one the
 replacement was built from, do not save: say what changed and ask again.
 Patches stay the default; three changed sections allow the offer and do not decide it.
@@ -695,13 +706,14 @@ whole-description replacement). Other approved edits, such as the title, still a
 
 **Blocked-by removals.** Finish approved text edits before these relation writes. Make each
 write below a separate `save_issue` with only its relation change. Before applying a remove
-item, read the groomed ticket with `get_issue`, relations included. Check the affected pairs
-and the evidence for removing the old blocker. Stop if the read is incomplete or the evidence
-or relations have changed in a way the item does not cover. When moving a wait, set the
-approved replacement `blockedBy` and confirm it before removing
-the old one. Use `removeBlockedBy` only for a pair still blocked by the old issue. Re-read the pair
-and restore a wanted `relatedTo` as the shared rules' "One relation per pair" says. For a reference
-that is unwanted, save no further text naming its id.
+item, read the groomed ticket's description and relations with `get_issue`. Check the affected
+pairs and the evidence for removing the old blocker. Stop if the read is incomplete or the
+evidence or relations have changed in a way the item does not cover. If the description still
+links to an unwanted former blocker or names its id, hold that remove item and report it under
+Needs you. Name that ticket by PR, repo or title in any subsequent edits. When moving a wait,
+set the approved replacement `blockedBy` and confirm it before removing the old one. Use `removeBlockedBy`
+only for a pair still blocked by the old issue. Re-read the pair and restore a wanted `relatedTo`
+as the shared rules' "One relation per pair" says.
 
 Read the affected pairs with relations after each of these `save_issue` calls, even after an
 error. Start with the same read-back if resuming after an interrupted call. If the expected
@@ -720,7 +732,7 @@ labels is `groomed`: on the groomed ticket as its edit-list item, approved with 
 forks-only mode, applied with them), and on a split's children, in both cases only as "Order of
 writes" item 5's ready test allows; every other label change still needs my request or an interview
 answer. Set the estimate only to the points in the edit list (step 4) or as the approved split sets
-it, and clear it only when Linear stored a different number (the edit list). Change labels with
+it. Clear it only as the split or the estimate rules in the edit list direct. Change labels with
 `addLabels` and `removeLabels`, since `labels` replaces the whole set.
 
 ## 8. Report
@@ -780,10 +792,11 @@ when there were none, "Decided without asking: none."
   other ticket; a follow-up on a neighbor goes under "After the merge" or becomes a spin-off.
 - No file edits, branches or commits: grooming reads repos and writes only to Linear.
 - Do not put secrets or credentials in a ticket.
-- When the ticket needs no text edits, has its Size with matching points and estimate (or is a
-  parent whose points sit on its children), and has approval to stay unsplit if pointed 13, keep
-  its text as it is. Say in one line that its text needs no edits and list any relation or
-  milestone items from step 3 and the `groomed` label item (step 7), asked and applied as step 7
-  says, the label under item 5's ready test (in forks-only mode, applied without the question).
+- When the ticket needs no text edits and its estimate is current, keep its text as it is. For a
+  split parent whose points sit on its children, the estimate must be empty. For any other ticket,
+  Size must give points that match its estimate, with approval to stay unsplit if pointed 13.
+  Say in one line that its text needs no edits and list any relation or milestone items from step 3
+  and the `groomed` label item. Apply them as step 7 says, with the label under item 5's ready test
+  (in forks-only mode, apply without the question).
   When that leaves the list empty, propose no edits and go to step 8. The no-split line and the
   grooming line in Agent notes are added only alongside other edits to the text.

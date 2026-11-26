@@ -4,7 +4,7 @@ description: "Groom one Linear ticket before anyone works it. Checks it against 
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.38.0"
+  version: "0.39.1"
 ---
 
 # /groom — groom a Linear ticket before work starts
@@ -264,11 +264,20 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
   as "proposed, not confirmed" and list it under Needs you in the report.
 - **Comment evidence.** When a Scope step depends on evidence that sits in a comment, link to that
   comment from the description (its url from `list_comments`) instead of copying the evidence in.
-- **Prerequisites.** Apply the shared rules, "Prerequisites", to each one found in step 1. Then:
-  - Each one the shared rules send to a question ("Ask") is an open decision.
-  - A missing relation is an add item (`blockedBy`). A stale one, whose blocker is Done or whose
-    stated PR has merged, or one that names a ticket that is only an example, is a remove item
-    (`removeBlockedBy`), with the evidence.
+- **Prerequisites.** Apply the shared rules, "Prerequisites", to each wait found in step 1 and
+  each existing blocked-by. Then:
+  - Each unclear prerequisite the shared rules send to "Ask" is an open decision, including in
+    forks-only mode. Keep its existing blocked-by while the answer is open or keeps the wait.
+    Make a `removeBlockedBy` item (Canceled, Duplicate or a PR closed without merging are
+    examples) when the answer drops or moves the wait. Include the evidence and the answer, and
+    include the `blockedBy` add for the replacement issue when the wait moves.
+  - A missing relation for a clearly mapped, unmet prerequisite is an add item (`blockedBy`). An
+    existing blocked-by whose blocker is Done, whose stated PR has merged, or whose ticket is
+    only a reference is a remove item (`removeBlockedBy`), with the evidence. This rule applies
+    after the unclear cases above.
+  - In each remove item, include a `relatedTo` add for the former blocker when its reference is
+    wanted under the shared rules (for example, the ticket builds on its work). A sample or test
+    id, or a link I declined, gets no add.
 - **Milestone.** Apply the shared rules, "Milestones": call `list_milestones` for the ticket's
   project and read the milestone `get_issue` gives. Then take the first case that applies:
   - It is Done, Canceled or a Duplicate: leave the field as it is and propose nothing.
@@ -468,10 +477,11 @@ removes existing text. It covers:
 - a new title (set with the `title` field, not a patch) and section renames;
 - new Scope steps and Done means lines from step 3, and in-ticket improvements from step 5;
 - removed conditional steps and whatever hung on them;
-- relations to add (`blockedBy`, `relatedTo`) and to remove (`removeBlockedBy`), with the evidence;
-- relations the text itself creates: an item whose text names a ticket id the ticket is not yet
-  related to says so ("and relates VIL-N"), since Linear relates any id written in a description
-  (shared rules, "Ticket ids in text");
+- relations to add (`blockedBy`, `relatedTo`) and to remove (`removeBlockedBy`), with the evidence
+  from step 3. Number a removal with any replacement blocker and any wanted `relatedTo` as one
+  item. Say that the related link is added only if absent after removal;
+- relations the text itself creates: an item whose text names a ticket id with no existing
+  relation says so ("and relates VIL-N"), as the shared rules' "Ticket ids in text" explains;
 - Size with its points (step 4; for a parent that becomes the first child, that child's size and
   points from the split), written in the Size section and set as the estimate with `save_issue`'s
   `estimate` field (a number), the Decisions lines from the interview, and the no-split line.
@@ -600,7 +610,7 @@ the items not applied, and leave the `groomed` label off (item 5).
    doing anything else, because a save can land even when the reply is an error: if the change is
    there, go on; if not, retry once; if it still is not there, stop and say under Needs you that
    the children exist and the parent still carries their work. Then apply the rest of the approved
-   items.
+   items, with blocked-by removals after the text edits, as below.
 5. **The `groomed` label goes on last, and only on a ticket grooming left ready.** If step 7 stopped
    before this item for any reason (items 1, 2 including a failed estimate clear, or 4, or a patch
    that could not be placed), leave the label off every ticket and say so in the report. Otherwise
@@ -636,6 +646,25 @@ An empty description takes the new sections with `append`. A description that ha
 headings (plain text, or only an Agent notes block) has no safe place to anchor a patch: leave it,
 show me the sections you would add as text, and say I will edit it in Linear (or offer the
 whole-description replacement). Other approved edits, such as the title, still apply.
+
+**Blocked-by removals.** Finish approved text edits before these relation writes. Make each
+write below a separate `save_issue` with only its relation change. Before applying a remove
+item, read the groomed ticket with `get_issue`, relations included. Check the affected pairs
+and the evidence for removing the old blocker. Stop if the read is incomplete or the evidence
+or relations have changed in a way the item does not cover. When moving a wait, set the
+approved replacement `blockedBy` and confirm it before removing
+the old one. Use `removeBlockedBy` only for a pair still blocked by the old issue. Re-read the pair
+and restore a wanted `relatedTo` as the shared rules' "One relation per pair" says. For a reference
+that is unwanted, save no further text naming its id.
+
+Read the affected pairs with relations after each of these `save_issue` calls, even after an
+error. Start with the same read-back if resuming after an interrupted call. If the expected
+change is confirmed, continue. Retry that call at most once, and only when
+a complete read shows the affected pairs as they were before the call and the edit's evidence
+still holds. If the read fails, is incomplete, or shows an unexpected relation, or the retry does
+not confirm the expected change, stop before further writes or a `groomed` label. Report the pairs
+as last confirmed, the unconfirmed items and any wanted link that still needs to be restored under
+Needs you.
 
 Relations go on `save_issue` with `blockedBy`, `relatedTo` and `removeBlockedBy`. Do not change the
 state, labels, project, milestone, priority or assignee unless I ask, or unless I chose that change
@@ -673,7 +702,7 @@ reply-format rules when the session's instructions give any:
    (step 7, "Order of writes" item 5). Left out when empty.
 3. One line each: size and points, with the estimate `get_issue` now shows; the milestone as
    `get_issue` now shows it, or "no milestone" with why; split verdict; what
-   changed in the ticket ("text unchanged" when only the label landed, "nothing changed" when
+   changed in the ticket ("text unchanged" when only non-text edits landed, "nothing changed" when
    nothing did); the `groomed` label as read back: added, already there, or not added and why (not
    approved, the team has no active `groomed` label, step 7 stopped before it, the ticket is not
    ready and the gap that keeps it so, or the write failed); spin-offs and children filed, as links,
@@ -701,13 +730,10 @@ when there were none, "Decided without asking: none."
   other ticket; a follow-up on a neighbor goes under "After the merge" or becomes a spin-off.
 - No file edits, branches or commits: grooming reads repos and writes only to Linear.
 - Do not put secrets or credentials in a ticket.
-- A ticket with nothing stale, open or missing, that already has its Size with points and an
-  estimate that matches them (a parent whose points sit on its children has none, and is not
-  pointed), and is not pointed 13 without a recorded yes to keeping it unsplit, keeps its text as it
-  is: say in one line that its text needs no edits, and propose an edit list that holds only the
-  `groomed` label item (step 7) and, when step 3 sets one, the milestone item, asked and applied as
-  step 7 says, the label under item 5's ready test (in forks-only mode, applied without the
-  question). When that leaves the list empty (the ticket has the label or the team has none, and
-  step 3 sets no milestone), propose no edits and go to step 8. The no-split line and the
-  grooming line in Agent notes are added only alongside other edits to the text; the label and
-  milestone items alone do not bring them in.
+- When the ticket needs no text edits, has its Size with matching points and estimate (or is a
+  parent whose points sit on its children), and has approval to stay unsplit if pointed 13, keep
+  its text as it is. Say in one line that its text needs no edits and list any relation or
+  milestone items from step 3 and the `groomed` label item (step 7), asked and applied as step 7
+  says, the label under item 5's ready test (in forks-only mode, applied without the question).
+  When that leaves the list empty, propose no edits and go to step 8. The no-split line and the
+  grooming line in Agent notes are added only alongside other edits to the text.

@@ -3,9 +3,9 @@
 Minor release. `dv:groom` and `dv:ticket` no longer run a command taken from ticket or request
 text to check a fact. A fact stated as what a command does is checked only when the command is a
 file test that `dv:groom`'s fixed git reads can settle; any other is not checked (`dv:groom`) or
-marked `[assumed]` (`dv:ticket`). Only `dv:groom` and `dv:ticket` change. The other fourteen skills
-have no behaviour changes; their version moves to `0.43.0` only because the suite is released as
-one plugin.
+marked `[assumed]` (`dv:ticket`). Only `dv:groom` and `dv:ticket` change, with the rules file they
+share. The other fourteen skills have no behaviour changes; their version moves to `0.43.0` only
+because the suite is released as one plugin.
 
 Why: `dv:groom` step 3 ("How") and `dv:ticket` File step 5 let the session run a command from the
 ticket or the request once it had read the command and judged that it only reads. A crafted ticket
@@ -16,6 +16,19 @@ same rule.
 
 ## Changed
 
+- **Shared rules, "The format"** (`plugins/dv/skills/ticket/references/ticket-format.md`, read by
+  both skills). The format still wins on any difference with the skills, with one exception, a new
+  section "What a session runs", which wins over the format and holds whether or not the format
+  could be read. Neither skill runs a command taken from ticket or request text (the ticket, its
+  comments, the request, or a ticket, PR, file or page they point to), anywhere, in a copy or a
+  scratch directory included, or after judging it read-only, and neither runs a script, test or
+  build to check a fact. The format's fail-first run of a Done means command is done only through
+  `dv:groom` step 3's "Done means lines that already pass" check, whoever wrote the command; a line
+  that check lists as not run is listed with the reason apart from the line (`dv:ticket`: in the
+  Agent notes; `dv:groom`: in its findings and report). Where the format says grooming closes a
+  conditional step when read-only commands settle it, `dv:groom`'s "Conditional steps" holds
+  instead. The skill changes below rest on this exception, and both skills' "Before anything else"
+  lists name it.
 - **`dv:groom`, step 3, "How".** A command taken from the ticket, its comments, or a ticket, PR,
   file or page they point to is never run: not on this machine or any other, not in a copy or a
   scratch directory, and not after the session reads it and judges it read-only. No script, test or
@@ -50,17 +63,20 @@ same rule.
   every such fact when `dv:groom`'s file cannot be read.
 - **`dv:ticket`, the format's fail-first run.** The ticket format asks the author to run each Done
   means command on the default branch and note the result in the line ("A Done means command fails
-  first"). `dv:ticket` now runs none, whether the command came from the request or the session
-  wrote it: each line is checked with `dv:groom`'s "Done means lines that already pass", its
-  "fails" result noted in the line with the commit, and a line that check does not read is listed
-  as not run in the Agent notes, not in the line. The skill says this rule decides what the session
-  runs, so the format's precedence over the skill does not reach it.
-- **Values from ticket text.** Both skills' Rules sections say the boundary holds in every step, and
-  that a branch, tag, owner, repo, path or PR number taken from ticket or request text goes into a
-  command of the session's own only when it holds nothing but letters, digits, `.`, `_`, `-` and
-  `/` and does not start with `-` (a PR number: digits only); otherwise that read is not made.
-- **`dv:groom`, "Done means lines that already pass".** Its note on "How" now says "How" holds fact
-  checks to the same rule; the check itself is unchanged.
+  first"). Under the shared rules' exception above, `dv:ticket` now runs none, whether the command
+  came from the request or the session wrote it: each line is checked with `dv:groom`'s "Done means
+  lines that already pass", its "fails" result noted in the line with the commit, and a line that
+  check lists as not run is listed in the Agent notes, not in the line (every line, when
+  `dv:groom`'s file cannot be read).
+- **Values from ticket text.** Both skills' Rules sections say the boundary holds in every step
+  (pointing to the shared rules' exception), and that a branch, tag, owner, repo, path or PR number
+  taken from ticket or request text goes into a command of the session's own only when it holds
+  nothing but letters, digits, `.`, `_`, `-` and `/` and does not start with `-` (a PR number:
+  digits only); otherwise that read is not made.
+- **`dv:groom`, "Done means lines that already pass".** Its note on "How" now says the check is
+  the only way either skill does the format's fail-first run, and that "How" holds fact checks to
+  the same rule; the check itself is unchanged. Step 5's evidence is a read of the session's own,
+  and step 7's filings follow File step 5's checks.
 - **README.** The version, and the `dv:groom` and `dv:ticket` entries.
 
 ## Not in this release
@@ -72,4 +88,6 @@ same rule.
   the ticket without the file-test check's path rules (secret-named paths included), as before
   this release.
 - The ticket format itself (dotfiles `docs/agents/tickets.md`) still says to run a Done means
-  command on the default branch when writing a ticket; `dv:ticket` now overrides that for itself.
+  command on the default branch when writing a ticket, and that grooming closes a conditional step
+  when one or two read-only commands settle it. The shared rules' exception overrides both for the
+  two skills; changing the format is a dotfiles change.

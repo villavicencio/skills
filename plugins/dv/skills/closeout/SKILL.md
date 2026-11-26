@@ -47,7 +47,6 @@ mention. Bare invocation takes none. "I" and "me" in this skill mean the user.
 FAILS=""
 NL='
 '
-TAB=$(printf '\t')
 if ! git rev-parse --git-dir >/dev/null 2>&1; then
   echo "(not a git repo — nothing to close out)"
 else
@@ -112,12 +111,13 @@ else
       # their own checks below); one git already listed is listed once.
       # Each build-output line ends with a fingerprint: the first 12 hex digits of a hash over the
       # line's entries, one line each in the order git lists them (sorted by path, byte by byte):
-      # the entry's path with its regular file's contents (hashed with git hash-object
-      # --no-filters, one batch for every such file), its symlink's target (read, never followed),
-      # or neither for an entry not examined. A file edited, replaced or renamed in place, or a
-      # symlink pointed elsewhere, changes it even when every count stays the same; file modes
-      # and times are not part of it. If a file cannot be hashed, every fingerprint reads
-      # "unknown" and the check is listed as not run.
+      # the entry's path with the hash of its regular file's contents or of its symlink's target
+      # (as readlink prints it, into a temp file; the link is never followed), or with neither for
+      # an entry not examined. One batch of git hash-object --no-filters hashes them all. A file
+      # edited, replaced or renamed in place, or a symlink pointed elsewhere, changes it even when
+      # every count stays the same; file modes and times are not part of it, and a newline in a
+      # path counts as "?", as in the listing. If anything cannot be hashed, every fingerprint
+      # reads "unknown" and the check is listed as not run.
       # The case patterns open with "(" (bash 3.2 needs that inside a command substitution).
       BOL=".venv/venv/node_modules/__pycache__/.pytest_cache/.mypy_cache/.ruff_cache"
       NRF=""; SUBP=""
@@ -129,12 +129,13 @@ else
             || FAILS="$FAILS- listing submodule paths failed: a submodule may be listed as a nested repo$NL"
         fi
       fi
-      # One record per entry: kind, tab, what the fingerprint takes from it, tab, path. A regular
-      # file in build output is marked F, and its path goes, NUL-terminated, to fd 3 in the same
-      # order, so the batch's hashes line up with the F records. The "end" record is written only
-      # when the loop over git's list ran, so a redirection that failed cannot pass as no entries.
+      # One record per entry: kind, tab, what the fingerprint takes from it, tab, path. In build
+      # output a regular file is marked F and a symlink L, and the file, or the temp file holding
+      # the link's target, goes NUL-terminated to fd 3 in the same order, so the batch's hashes
+      # line up with the F and L records. The "end" record is written only when the loop over
+      # git's list ran, so a redirection that failed cannot pass as no entries.
       FPD=$(mktemp -d 2>/dev/null) || FPD=""
-      ARC=1; FPOK=1
+      ARC=1; FPOK=1; SLN=0
       if [ -n "$FPD" ]; then
         { { while IFS= read -r -d '' r; do
           case "$r" in ('!! '*) ;; (*) continue ;; esac
@@ -142,8 +143,8 @@ else
           a="$TOP/$p"; m="$MAIN/$p"; t=-; bo=""
           if [ "$TOP" = "$MAIN" ]; then k=listed
           elif [ -L "$a" ]; then
-            lt=$(readlink "$a"); t="l $lt"
-            if [ -L "$m" ] && [ "$lt" = "$(readlink "$m")" ]; then k=same
+            t=l
+            if [ -L "$m" ] && [ "$(readlink "$a")" = "$(readlink "$m")" ]; then k=same
             elif [ -e "$m" ] || [ -L "$m" ]; then k=different; else k=only-here; fi
           elif [ -f "$a" ]; then
             t=f
@@ -159,8 +160,13 @@ else
               case "/$BOL/" in (*"/${d##*/}/"*) bo=1 ;; esac
             done
           fi
-          if [ "$t" = f ] && [ -n "$bo" ] && [ "$k" != nested-repo ]; then printf '%s\0' "$a" >&3; t=F; fi
-          case "$t" in (*"$NL"*|*"$TAB"*) t=$(printf '%s' "$t" | tr '\t\n' '??') ;; esac
+          if [ -n "$bo" ] && [ "$k" != nested-repo ]; then
+            case "$t" in
+              (f) printf '%s\0' "$a" >&3; t=F ;;
+              (l) SLN=$((SLN + 1))
+                if readlink "$a" > "$FPD/link$SLN"; then printf '%s\0' "$FPD/link$SLN" >&3; t=L; else t=-; fi ;;
+            esac
+          fi
           case "$p" in (*"$NL"*) p=$(printf '%s' "$p" | tr '\n' '?') ;; esac
           printf '%s\t%s\t%s\n' "$k" "$t" "$p"
         done; printf 'end\t-\t-\n'; } < "$IGNF" 3> "$FPD/paths"
@@ -190,15 +196,17 @@ else
           j=index(rest, "\t"); t=substr(rest, 1, j - 1); path=substr(rest, j + 1)
           if (k == "end") { ended=1; next }
           nrec++
-          if (t == "F") { h=""; if ((getline h < hs) <= 0 || length(h) < 40 || h ~ /[^0-9a-f]/) fpbad=1; t="f " h }
+          if (t == "F" || t == "L") { h=""; if ((getline h < hs) <= 0 || length(h) < 40 || h ~ /[^0-9a-f]/) fpbad=1
+            t=(t == "F" ? "f " : "l ") h }
           if (k == "listed") { print "  " path; next }
           if (k == "nested-repo") { if (path in nr_seen) next; nr_seen[path]=1 }
           np=split(path, part, "/"); g=""; dir=""
           # Every component but the last is a directory; the last is the entry itself.
           for (i=1; i<np; i++) { dir=dir part[i] "/"; if (part[i] in isb) { g=part[i]; break } }
           if (g != "" && k != "nested-repo") { bn_n[g]++; bn_c[g, k]++; if (!((g, dir) in seen)) { seen[g, dir]=1; bn_d[g]++ }
-            # A file or symlink here that the loop did not mark means the two build-output tests disagree.
-            if (k != "not-examined" && t == "-") fpbad=1
+            # A file or symlink here that the loop did not hash means the two build-output tests
+            # disagree, or its link could not be read.
+            if (k != "not-examined" && t !~ /^[fl] /) fpbad=1
             print t "\t" path > (fpd "/" gi[g]); next }
           top=path; if (index(top, "/")) top=substr(top, 1, index(top, "/")); n[top]++; c[top, k]++
           if (k == "nested-repo") ex[++shown]=k ": " path
@@ -294,6 +302,7 @@ else
     PRS=$(gh api --paginate "repos/$REPO/commits/$HEAD_SHA/pulls" \
       -q '.[]|[.number,(if .merged_at then "MERGED" else (.state|ascii_upcase) end),.head.sha,.base.ref,.html_url,.title]|@tsv' 2>/dev/null) || { PRFAIL=1; FAILS="$FAILS- PR lookup by commit failed: PR state unknown$NL"; }
   fi
+  TAB=$(printf '\t')
   if [ -n "$PRFAIL" ]; then echo "(lookup did not run — see the checks that did not run)"
   elif [ -n "$PRS" ]; then printf '%s\n' "$PRS" | while IFS="$TAB" read -r n st h base url title; do echo "  #$n $st (into $base) $url — $title"; done
   else echo "(none found for ${B:-this commit})"; fi
@@ -460,8 +469,8 @@ clone in `.venv/src/<pkg>/`; an initialized submodule is not one) is never build
 under a build-output name: it can hold unpushed commits, Step 1 lists it on its
 top-level line and by path, and any one of them rules this verdict out. And commits listed as
 reachable only from this worktree's HEAD reflog or ORIG_HEAD (usually commits amended or reset away; removal ends their recovery path).
-The verdict names every build-output line Step 1 printed, with its name, entry count, directory
-count and fingerprint as that line prints them (for example
+The verdict names every build-output line Step 1 printed in a short form: its name, entry count,
+directory count and fingerprint word for word as printed, without the per-kind counts (for example
 `__pycache__/ (any depth): 666 entries in 87 directories; fingerprint 3f9a0c1e2b7d`), and the
 reflog-only commits with their count, list id and the commits as listed (all of them, or the
 first 50 when there are more). It is not "safe" until I accept losing them: nothing in Steps 4
@@ -653,7 +662,7 @@ name, entry count, directory count, every per-kind count (same, only here, diffe
 examined) and its fingerprint. The fingerprint covers each entry's path and a regular file's
 contents or a symlink's target, so a build-output file edited, replaced or renamed in place, or a
 symlink pointed elsewhere, changes it even when every count stays the same; file modes and times
-are not part of it. A fingerprint that reads `unknown` comes with a check that did not run, so
+are not part of it, and a newline in a path counts as "?". A fingerprint that reads `unknown` comes with a check that did not run, so
 the verdict is not the same. The reflog-only commit count and list id must be the same too, and
 no nested git repo may be listed. If anything changed, act on nothing: report the new verdict, update the saved note if it no longer holds, and
 ask again.

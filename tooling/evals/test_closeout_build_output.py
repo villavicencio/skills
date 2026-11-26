@@ -31,10 +31,10 @@ main repo and a linked worktree made here:
   l. a failed find reports that repository discovery did not run
   m. each build-output line ends with a fingerprint over its entries' paths, file contents and
      symlink targets: a second run on an unchanged tree prints every line the same, and a file
-     edited in place (same size, every count unchanged), a symlink pointed elsewhere, a file
-     renamed in its directory, or a file with a newline in its name edited changes that line's
-     fingerprint and nothing else; a change to the main checkout's copy alone changes no
-     fingerprint
+     edited in place (same size, every count unchanged), a symlink pointed elsewhere (also to a
+     target that differs only by a tab against "?"), a file renamed in its directory, or a file
+     with a newline in its name edited changes that line's fingerprint and nothing else; a change
+     to the main checkout's copy alone changes no fingerprint
   n. when hashing fails, every fingerprint reads "unknown" and the check is listed as not run
 
 Step 1 also calls gh and git fetch. A gh shim that always fails keeps the run off the network
@@ -452,6 +452,8 @@ def scenario(shell: str, awk_label: str, path_env: str, block: str) -> None:
                ("symlink pointed elsewhere", relink(".venv/bin/python", "python3.13")),
                ("file renamed in its directory", rename(".venv/lib/sp ace.py", ".venv/lib/sp ade.py")),
                ("file with a newline in its name edited", edit(nl_name, "NL\n")),
+               ("symlink target with a tab", relink(".venv/bin/python", "py\tthon")),
+               ("symlink target with ? for the tab", relink(".venv/bin/python", "py?thon")),
                ("only the main checkout's copy edited",
                 edit(".venv/lib/d.py", "main copy, edited\n", where="main")),
                ("node_modules file edited in place", edit("node_modules/x/i.js", "JS\n"))),
@@ -472,14 +474,15 @@ def scenario(shell: str, awk_label: str, path_env: str, block: str) -> None:
               secs[1] == secs[0], detail)
         venv = [f.get(".venv/") for f in fps]
         nm = [f.get("node_modules/") for f in fps]
-        # Runs: 0 first, 1 rerun, 2 edit, 3 relink, 4 rename, 5 newline-name edit, 6 main-only
-        # edit, 7 node_modules edit. Each change to .venv/ gives a fingerprint not seen before.
+        # Runs: 0 first, 1 rerun, 2 edit, 3 relink, 4 rename, 5 newline-name edit, 6 tab target,
+        # 7 "?" target, 8 main-only edit, 9 node_modules edit. Each change to .venv/ gives a
+        # fingerprint not seen before.
         check(f"{tag} m. each change in .venv/ changes its fingerprint",
-              len(set(venv[1:6])) == 5, f"{venv}\n     {detail}")
+              len(set(venv[1:8])) == 7, f"{venv}\n     {detail}")
         check(f"{tag} m. a change to the main checkout's copy alone keeps it",
-              venv[6] == venv[5] and venv[7] == venv[6], f"{venv}\n     {detail}")
+              venv[8] == venv[7] and venv[9] == venv[8], f"{venv}\n     {detail}")
         check(f"{tag} m. node_modules/ keeps its fingerprint until a file in it changes",
-              len(set(nm[:7])) == 1 and nm[7] != nm[6], f"{nm}\n     {detail}")
+              len(set(nm[:9])) == 1 and nm[9] != nm[8], f"{nm}\n     {detail}")
 
 
 def main() -> int:

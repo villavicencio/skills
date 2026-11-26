@@ -625,10 +625,11 @@ else
   TOP=$(git rev-parse --show-toplevel) && [ -d "$TOP" ] || PFAIL="$PFAIL; the worktree's top could not be read"
   if WTL=$(git worktree list --porcelain); then MAIN=$(printf '%s\n' "$WTL" | sed -n '/^worktree /{s/^worktree //p;q;}'); fi
   [ -n "$MAIN" ] || PFAIL="$PFAIL; the main checkout could not be read"
-  if GCD=$(git rev-parse --git-common-dir) && GA=$(cd "$GCD" && pwd -P) && [ -n "$GA" ]; then STORE="$GA/handoffs"
+  # cd's own output (a shell hook that prints on cd) stays out of GA.
+  if GCD=$(git rev-parse --git-common-dir) && GA=$(cd "$GCD" >/dev/null 2>&1 && pwd -P) && [ -d "$GA" ]; then STORE="$GA/handoffs"
   else PFAIL="$PFAIL; the handoff store could not be resolved"; fi
   B=$(git branch --show-current) || PFAIL="$PFAIL; git branch --show-current failed"
-  if [ -n "$B" ]; then SLUG=$(printf '%s' "$B" | sed -e 's/%/%25/g' -e 's#/#%2F#g')
+  if [ -n "$B" ]; then SLUG=$(printf '%s' "$B" | sed -e 's/%/%25/g' -e 's#/#%2F#g') || PFAIL="$PFAIL; encoding the branch name failed"
   elif HS=$(git rev-parse HEAD) && [ -n "$HS" ]; then SLUG="detached-$HS"
   else PFAIL="$PFAIL; HEAD could not be read"; fi
   [ -n "$SLUG" ] || PFAIL="$PFAIL; the handoff name could not be worked out"
@@ -687,10 +688,19 @@ ST_END
       # copied only when no archived file already matches it byte for byte (it mirrors the store copy).
       if [ "$f" = "$TOP/HANDOFF.md" ] && [ -d "$STORE/_done" ]; then
         if ! DL=$(find "$STORE/_done" -maxdepth 1 -type f -name "$SLUG.*.md"); then AFAIL="$AFAIL; listing $STORE/_done failed"; continue; fi
-        dup=""
-        while IFS= read -r a; do [ -n "$a" ] && cmp -s "$a" "$f" && dup=1; done <<DL_END
+        # cmp exits 0 for the same bytes, 1 for different ones, 2 or more for an error.
+        dup=""; DSEEN=""; DERR=""
+        while IFS= read -r a; do
+          [ "$a" = __DL_END__ ] && { DSEEN=1; continue; }
+          [ -n "$a" ] || continue
+          cmp -s "$a" "$f"; rc=$?
+          if [ "$rc" = 0 ]; then dup=1; elif [ "$rc" != 1 ]; then DERR=1; fi
+        done <<DL_END
 $DL
+__DL_END__
 DL_END
+        [ -n "$DSEEN" ] || { AFAIL="$AFAIL; the duplicate check against $STORE/_done did not run"; continue; }
+        [ -z "$DERR" ] || { AFAIL="$AFAIL; comparing HANDOFF.md with an archived copy failed"; continue; }
         [ -n "$dup" ] && continue
       fi
       n=0; dest="$STORE/_done/$SLUG.$TS.md"
@@ -724,7 +734,8 @@ The archive is confirmed only when the block's last line is one of its two succe
 nothing to archive)`. The `archived:` lines alone do not confirm it. Every other outcome leaves
 the archive not confirmed: `ARCHIVE INCOMPLETE` (say what failed; the block prints it when a
 command whose failure could look like success fails, when the store, `_done` or `HANDOFF.md` path
-is of the wrong kind, when a here-doc it reads could not be written, when a `HANDOFF.md` in the
+is of the wrong kind, when a here-doc it reads could not be read to its end (each of the three
+ends with a sentinel line), when `cmp` errors (exit 2 or more) in the duplicate check, when a `HANDOFF.md` in the
 worktree does not name this branch and worktree, when this session's store file is still there
 afterwards, and outside a git repository), `uncommitted changes`, `this is the main
 checkout`, no output at all (the block stopped early), or Step 4 not run. Step 1's recheck, not

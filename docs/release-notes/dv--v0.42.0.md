@@ -26,15 +26,18 @@ failed>` instead of either success line when a command whose failure could look 
 fails (`git rev-parse`, `git worktree list`, `git branch --show-current`, `git status`, `date`,
 `find` of the store or of `_done`, `sort`, the `sed` calls that read the main checkout, the
 handoff name and a handoff's front matter, `mkdir`, `cp` with a byte-for-byte check, `mv` with
-the source gone and the destination present; the clean-tree filter is done in the shell, not by
-`grep`, and each here-doc that decides a result ends with a sentinel line, so one zsh could not
-write fails the block), when the store or `_done` exists but is not a directory or `HANDOFF.md`
-exists but is not a regular file, when a `HANDOFF.md` in the worktree does not name this branch
-and worktree, when outside a git repository, and when this session's store file is still there
-afterwards. Before this release a failed listing of the store or of `_done` read as "no
-handoff". The uncommitted-changes and main-checkout lines, no output, or Step 4 not run also
-leave the archive not confirmed. Step 1's recheck stays the source of the verdict; Step 4's own
-`git status` only guards the archive.
+the source gone and the destination present, `cd` into the common git directory (its output,
+such as a shell hook's, kept out of the path), and `cmp` in the duplicate check, where exit 1
+means different and exit 2 or more fails the block; the clean-tree filter is done in the shell,
+not by `grep`, and all three here-docs that decide a result (the clean-tree check, the handoff
+list and the duplicate check against `_done`) end with a sentinel line, so one that could not be
+read to its end, such as one zsh could not write, fails the block), when the store or `_done`
+exists but is not a directory or `HANDOFF.md` exists but is not a regular file, when a
+`HANDOFF.md` in the worktree does not name this branch and worktree, when outside a git
+repository, and when this session's store file is still there afterwards. Before this release a
+failed listing of the store or of `_done` read as "no handoff". The uncommitted-changes and
+main-checkout lines, no output, or Step 4 not run also leave the archive not confirmed. Step 1's
+recheck stays the source of the verdict; Step 4's own `git status` only guards the archive.
 
 A note closeout sends (by SendMessage or `terminal send`) keeps a safe verdict only when Step 4
 confirmed the archive after Steps 1 and 2 in the turn of the send; the SendMessage path reruns
@@ -70,7 +73,7 @@ description of closeout's reply says the same.
   plain file), Step 4 printed `ARCHIVE INCOMPLETE` twice, the note went out as `not confirmed
   safe: handoff archive incomplete or not confirmed (…)` from a new saved copy, and no turn named
   a removal command or said the Director removes the worktree.
-- The final Step 4 block, run on its own in bash and in zsh (`-f`) in a scratch repo, 42 cases
+- The final Step 4 block, run on its own in bash and in zsh (`-f`) in a scratch repo, 49 cases
   each, with PATH shims that make one command fail: no handoff, a store handoff, a rerun after
   archiving, a matching `HANDOFF.md`, a store handoff with an identical `HANDOFF.md` (and its
   rerun), a store handoff under another name with quoted front matter, and a detached HEAD's
@@ -83,7 +86,10 @@ description of closeout's reply says the same.
   handoff name or the main checkout, `mkdir`, `cp`, `cmp` after `cp`, and `mv`; and outside a
   git repository. An uncommitted file (also with `grep` failing) and the main checkout printed
   their own lines. With here-docs made unwritable, zsh printed `ARCHIVE INCOMPLETE` and bash,
-  which falls back, archived for real.
+  which falls back, archived for real. Each result-deciding here-doc made unreadable on its own,
+  and `cmp` exiting 2 in the duplicate check, printed `ARCHIVE INCOMPLETE`; `cmp` forced to exit
+  1 there led to a new verified copy and a success line, and a zsh `chpwd` hook that prints on
+  `cd` no longer bends the store path.
 - Not exercised: a real Director session's checks and removal, a terminal send, "safe once you
   accept losing", and a yes given before the note was sent.
 

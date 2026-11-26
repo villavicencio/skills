@@ -122,7 +122,7 @@ def run_case(shell: str, path_env: str, block: str, main_files: dict[str, str],
              wt_files: dict[str, str], wt_repos: tuple[str, ...] = (),
              wt_broken: tuple[str, ...] = (), wt_bare_git: tuple[str, ...] = (),
              submodule: bool = False, bare_repos: tuple[str, ...] = (),
-             bare_links: bool = False) -> tuple[list[str] | None, str]:
+             bare_links: bool = False, label: str = "") -> tuple[list[str] | None, str]:
     with tempfile.TemporaryDirectory(prefix="vil869-") as work:
         root = Path(work).resolve()
         home = root / "home"
@@ -191,6 +191,10 @@ def run_case(shell: str, path_env: str, block: str, main_files: dict[str, str],
             (wt / ".venv/src/not-a-repo/objects").mkdir(parents=True)
         p = subprocess.run([shell, "-c", block], cwd=wt, env=env, capture_output=True,
                            text=True, timeout=120)
+        # The block's status is that of its closing `if [ -n "$FAILS" ] ... fi`, which prints and
+        # returns 0 whether or not a check failed to run. Anything else is a block that broke.
+        check(f"{label}: the Step 1 block exits 0", p.returncode == 0,
+              f"rc={p.returncode} stdout={p.stdout!r} stderr={p.stderr!r}")
         return ignored_section(p.stdout), f"rc={p.returncode} stdout={p.stdout!r} stderr={p.stderr!r}"
 
 
@@ -207,7 +211,8 @@ def scenario(shell: str, awk_label: str, path_env: str, block: str) -> None:
                 wt_bare_git: tuple[str, ...] = (), submodule: bool = False,
                 bare_repos: tuple[str, ...] = (), bare_links: bool = False):
         sec, detail = run_case(shell, path_env, block, main_files, wt_files, wt_repos, wt_broken,
-                               wt_bare_git, submodule, bare_repos, bare_links)
+                               wt_bare_git, submodule, bare_repos, bare_links,
+                               label=f"{tag} {name}")
         if sec is None:
             failures.append(f"{tag} {name}: no 'Ignored entries' section in the output\n     {detail}")
         return sec, detail
@@ -397,7 +402,7 @@ def main() -> int:
             f.write("#!/bin/sh\nexit 1\n")
         os.chmod(find, 0o755)
         _, detail = run_case(shells[0], fail_dir + os.pathsep + gh_dir + os.pathsep + base,
-                             block, {}, {".venv/ordinary.py": "x\n"})
+                             block, {}, {".venv/ordinary.py": "x\n"}, label="failed discovery")
         check("failed discovery makes safety unconfirmed",
               "finding nested repositories below the worktree failed" in detail, detail)
     finally:

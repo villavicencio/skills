@@ -593,8 +593,10 @@ a no or no answer stops the command.
 **2. Create.** Start the session as a supervised Orca worker (2a) when you can: its chat is then
 yours to release once it has closed out ("Release a supervised Manager chat"), and I no longer
 close it. 2a needs this session to run in Orca (`ORCA_AGENT_SESSION_ID` is set) and
-`orca orchestration worker-start --help` to list `--keep-open`. When either is missing, use the
-ordinary start (2b), whose chat I close, as before. When a 2a start fails, use 2b in its place
+`"${ORCA_CLI_COMMAND:-orca}" orchestration worker-start --help` to list `--keep-open`. When either
+is missing, use the ordinary start (2b), whose chat I close, as before. The probe, 2a and 2b all
+run the same executable, `"${ORCA_CLI_COMMAND:-orca}"`, quoted as shown, so the probe tests the
+CLI that then starts the session. When a 2a start fails, use 2b in its place
 only if nothing was made: the failure's JSON lists no `worktree` entry under `effects` or
 `residualResources`, and `git worktree list` shows no new worktree for the ticket. Otherwise
 report the failure and start nothing more; a worktree it left behind is what the ownership check
@@ -751,7 +753,7 @@ PROMPT=$(cat <<'EOF'
 <the kickoff prompt>
 EOF
 ) && [ -n "$PROMPT" ] || { echo "FAILED: building the kickoff prompt"; exit 1; }
-orca worktree create --repo "path:<this main checkout>" --name "<short name>" --linear-issue VIL-N --agent claude --surface chat --prompt "$PROMPT"
+"${ORCA_CLI_COMMAND:-orca}" worktree create --repo "path:<this main checkout>" --name "<short name>" --linear-issue VIL-N --agent claude --surface chat --prompt "$PROMPT"
 ```
 
 - `--surface chat` opens the session as an Orca chat, whatever the host's Chat UI setting is.

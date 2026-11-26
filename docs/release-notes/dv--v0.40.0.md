@@ -20,7 +20,9 @@ as they were (VIL-1156, VIL-1190).
 
 - **`dv:director-mode`, "Open a worktree on request", step 2.** When the Director runs in Orca,
   the session starts with `orca orchestration worker-start --worktree new-child --keep-open` (2a)
-  instead of `orca worktree create --surface chat` (2b, kept as the fallback). The start block
+  instead of `orca worktree create --surface chat` (2b, kept as the fallback). The
+  `worker-start --help` probe that chooses between them, 2a and 2b all run the same executable,
+  `"${ORCA_CLI_COMMAND:-orca}"`, so the probe tests the CLI that starts the session. The start block
   starts nothing unless the prompt file was written whole: the write succeeded, and the file
   begins with the prompt's first line and ends with its supervised line. The receipt must say
   `mode: structured` and `keptOpen: true`. One setup block then links the ticket with

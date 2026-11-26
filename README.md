@@ -33,7 +33,9 @@ One plugin, invoked `dv:<skill>` — modeled on how `compound-engineering` holds
 
 **Supervised worktree sessions.** When the Director runs in Orca, `dv:director-mode`'s
 `open worktree VIL-N` starts the session as a supervised Orca worker
-(`orca orchestration worker-start --worktree new-child --keep-open`) once the kickoff prompt was
+(`orca orchestration worker-start --worktree new-child --keep-open`; the `--help` probe that picks
+it, this start and the ordinary fallback all run the same executable,
+`"${ORCA_CLI_COMMAND:-orca}"`) once the kickoff prompt was
 written whole, links the ticket and reads the link back, and only then records its dispatch,
 chat and workspace instance in `<git-common-dir>/orca-supervised/`. The session sends
 `worker_done` only as its last act, after the Director replied to its closeout note with nothing

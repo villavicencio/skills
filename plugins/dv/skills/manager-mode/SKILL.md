@@ -336,11 +336,11 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
     don't matter; check only the delete and scope-cut limits "What counts as the answer" gives,
     and treat a note as that bullet says. Apply it, undoing the way forward where it differs (for
     a `dv:groom` fork, its open Decisions line becomes the answer, in groom's Head form, and
-    a target or pull condition that held up the start no longer does).
+    a Head-only fork that held up the start no longer does).
   - **"Ask David" becomes this**, whenever no answer that counts comes in time (but not on an
     `Ask David` reply, below): take a way forward that needs no one's yes (your recommended option
-    when it is reversible, but never declining a high or critical finding on a safety boundary or
-    one of the CEO's 1%: for those, fix the finding; don't spend, reach outside or delete), keep the rest moving, and take a later reply from the verified
+    when it is reversible, except for an item under `dv:director-mode`'s "What no default
+    decides", whose way forward that bullet gives), keep the rest moving, and take a later reply from the verified
     Director as if it had come in time, unless your way forward already settled the question.
   - **The CEO's 1%** comes back as `Forwarded to the Head`, like any other: the Head brings it to
     me, so it is not asked of me at the end. A `Held for David` means the Director's send to him
@@ -349,9 +349,8 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
     question still without an answer that counts (a held kind and a forwarded one included),
     `Unanswered, VIL-N, Qk: <the question>. Options: <as in the Question>. Recommended: <the option>. Reversible: <yes or no, and how>. Sent: <UTC date and time>.`,
     and wait for it as for a question. Its `Answer` takes the recommended option; check it as
-    "What counts as the answer" says and apply it. A `Forwarded to the Head` reply (one of the
-    CEO's 1%, declining a finding on a safety boundary, or a choice that isn't reversible, which
-    no default decides: keep the way forward, such as fixing the finding), or no answer that counts, means ask me nothing:
+    "What counts as the answer" says and apply it. A `Forwarded to the Head` reply (an item
+    under "What no default decides": keep its way forward), or no answer that counts, means ask me nothing:
     write it on the ticket as an open decision, and it goes under WAITING ON in your closeout
     note. A `Held for David` reply to it is the one case that comes to me now: the Director's
     send to the Head failed, so ask me as with no Head.

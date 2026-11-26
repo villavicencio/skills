@@ -82,8 +82,13 @@ What a ticket waits on. `dv:ticket` applies these rules to the ticket it files (
   `blockedBy` wins. An id in the text ("Ticket ids in text") does not add a second relation: when
   one `save_issue` call saves text that names an issue and sets `blockedBy` to it, Linear sets
   only the blocked-by, and adding `blockedBy` to a ticket already related to that issue replaces
-  the related link (both seen 2026-11-24). Read the relations back after saving, as "Ticket ids
-  in text" says.
+  the related link (both seen 2026-11-24). Removing a blocked-by with `removeBlockedBy` can leave
+  the pair with no relation even when the description still names the id. Re-read the pair with
+  `get_issue` with relations included. If the reference is wanted under "Ticket ids in text"
+  (for example, the ticket still builds on the former prerequisite) and the pair has no relation, add
+  `relatedTo` in a separate `save_issue` call and read it back. If `relatedTo` is already present,
+  keep it without writing. An unreadable or incomplete read cannot establish absence. If the pair
+  has another relation, stop and report it before attempting to add `relatedTo`.
 
 ## Milestones
 

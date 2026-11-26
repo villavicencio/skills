@@ -798,9 +798,10 @@ printf '%s\n' "$S"
 "${ORCA_CLI_COMMAND:-orca}" agent launch --agent claude --surface chat --worktree "path:$W" --prompt "$PROMPT" --json
 ```
 
-- `worker-stop` closes the agent terminal Orca started for that dispatch, and its helpers; it
-  leaves the worktree, its Setup terminal and other tabs (`worker-stop --help`). Exit 0 with
-  `"ok":true` means Orca confirmed the stop. On anything else the block starts nothing: tell me the
+- `worker-stop` closes the agent terminal Orca started for that dispatch, and its helpers, and
+  keeps the worktree. Its help says it keeps the Setup terminal too, but in the fixture run under
+  "Release a supervised Manager chat" that terminal, its setup already done, was gone after the
+  stop. Exit 0 with `"ok":true` means Orca confirmed the stop. On anything else the block starts nothing: tell me the
   dispatch id and what it printed. That terminal is then mine to close, and the worktree has no
   chat.
 - The launch's reply must say `"kind":"structured"` under `result.outcome`; keep
@@ -1563,11 +1564,26 @@ every other terminal stayed listed, the workspace's identity and HEAD held, `GON
 check 4's removal-form scan failed on the sibling's `claude` process. With a stand-in `orca`, the
 earlier step 5 released past a shell blocked in `read`, and this one refused it.
 
-Not tested: a Director in an ordinary Orca chat (its starts follow my Chat or CLI setting for new
-agent tabs, so check the first receipt's `mode`; all six runs started from a worker session, whose
-`structured` mode may come from that lineage), a Director restarted between the start and the
-release, a session that works again after `worker_done`, a supervised session's own mail to a
-real Head, and a real ticket from kickoff through merge and closeout (VIL-1043).
+A Director in an ordinary Orca chat (VIL-1043 and VIL-1206, same day and host, Orca 1.4.277, my
+setting for new agent tabs terminal): step 2a's start as it then stood came up as a terminal
+(`startOptions.mode` `terminal`, reason `user_default`), its setup block wrote no record, and that
+session could be neither released nor closed through the checks (VIL-1043). The six runs above got
+chats because they started from a worker session (reason `chat_lineage`: "Workers started from a
+persistent agent's home, and their workers, run as structured chat sessions"). With step 2's probe,
+a test Director in an ordinary chat in a disposable clone, following this text for
+`open worktree` on a scratch ticket, printed `START: 2b`, and its session came up as a chat
+(`orca agent list --worktree` gave `"kind":"chat"`). A second test Director, with a stand-in
+`orca` whose `worker-start --help` listed `--surface chat|terminal` and which dropped that option
+before calling Orca, printed `START: 2a`, got `"mode":"terminal"`, and followed "A 2a start that
+came up as a terminal": the setup block linked the ticket and wrote no record, `worker-stop`
+answered `stopped` with `closed_agent_terminal` for that dispatch only, and the launch gave a chat
+(`"kind":"structured"`) in the same worktree. The terminal session had run for about 30 seconds and
+had sent the Director a probe; the worktree's Setup terminal was no longer listed after the stop.
+
+Not tested: a host whose `worker-start` takes `--surface` (Orca 1.4.277 has none), so neither 2a
+from a Director in an ordinary chat nor its release has run there; a Director restarted between the
+start and the release, a session that works again after `worker_done`, a supervised session's own
+mail to a real Head, and a real ticket from kickoff through merge and closeout (VIL-1043).
 
 ### Merge and clean up, from the main checkout
 

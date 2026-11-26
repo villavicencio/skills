@@ -114,8 +114,8 @@ else
       # the entry's path with the hash of its regular file's contents or of its symlink's target
       # (as readlink prints it, into a temp file; the link is never followed), or with neither for
       # an entry not examined. One xargs run of git hash-object --no-filters hashes them all. A
-      # path with a newline, shown with "?", also adds its bytes in hex, so it never matches the
-      # same path written with "?". A file edited, replaced or renamed in place, or a symlink
+      # path with a newline, shown with "?", also adds all its bytes in hex (od -v, so repeated
+      # rows are not shortened to "*"), so it never matches the same path written with "?". A file edited, replaced or renamed in place, or a symlink
       # pointed elsewhere, changes it even when every count stays the same; file modes and times
       # are not part of it. Every fingerprint is worked out before any line is printed: if anything
       # cannot be hashed, they all read "unknown" and the check is listed as not run.
@@ -168,7 +168,7 @@ else
                 if readlink "$a" > "$FPD/link$SLN"; then printf '%s\0' "$FPD/link$SLN" >&3; t=L; else t=-; fi ;;
             esac
           fi
-          case "$p" in (*"$NL"*) t="$t $(printf '%s' "$p" | od -An -tx1 | tr -d ' \n')"; p=$(printf '%s' "$p" | tr '\n' '?') ;; esac
+          case "$p" in (*"$NL"*) t="$t $(printf '%s' "$p" | od -v -An -tx1 | tr -d ' \n')"; p=$(printf '%s' "$p" | tr '\n' '?') ;; esac
           printf '%s\t%s\t%s\n' "$k" "$t" "$p"
         done; printf 'end\t-\t-\n'; } < "$IGNF" 3> "$FPD/paths"
         if [ -n "$NRF" ]; then while IFS= read -r -d '' g; do

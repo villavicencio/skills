@@ -33,8 +33,8 @@ main repo and a linked worktree made here:
      symlink targets: a second run on an unchanged tree prints every line the same, and a file
      edited in place (same size, every count unchanged), a symlink pointed elsewhere (also to a
      target that differs only by a tab against "?"), a file renamed in its directory, a file with
-     a newline in its name edited or renamed to the same name with "?" changes that line's
-     fingerprint and nothing else; a change to the main checkout's copy alone changes no
+     a newline in its name edited or renamed to the same name with "?", or a long, repetitive
+     newline name renamed, changes that line's fingerprint and nothing else; a change to the main checkout's copy alone changes no
      fingerprint
   n. when hashing fails, in the batch or for one line after another line's succeeded, every
      fingerprint reads "unknown" and the check is listed as not run
@@ -449,6 +449,8 @@ def scenario(shell: str, awk_label: str, path_env: str, block: str) -> None:
 
     # m. The fingerprint changes with what is in build output, and only then.
     nl_name = ".venv/lib/line\nbreak.py"
+    # A newline name long and repetitive enough that od, without -v, would print a row as "*".
+    rep_name = ".venv/lib/r\n" + "y" * 46 + ".py"
     # Each step: what it does, and whether it changes the .venv/ and node_modules/ lines.
     plan = (("rerun, nothing changed", unchanged, False, False),
             ("a.py edited in place", edit(".venv/lib/a.py", "hellp\n"), True, False),
@@ -458,6 +460,8 @@ def scenario(shell: str, awk_label: str, path_env: str, block: str) -> None:
             ("file with a newline in its name edited", edit(nl_name, "NL\n"), True, False),
             ("that file renamed to the same name with ?",
              rename(nl_name, ".venv/lib/line?break.py"), True, False),
+            ("a repetitive newline name renamed to a longer one",
+             rename(rep_name, ".venv/lib/r\n" + "y" * 62 + ".py"), True, False),
             ("symlink target with a tab", relink(".venv/bin/python", "py\tthon"), True, False),
             ("symlink target with ? for the tab", relink(".venv/bin/python", "py?thon"), True, False),
             ("only the main checkout's copy edited",
@@ -467,7 +471,8 @@ def scenario(shell: str, awk_label: str, path_env: str, block: str) -> None:
         shell, path_env, block,
         {".venv/lib/d.py": "main copy\n", "node_modules/x/same.js": "same\n"},
         {".venv/lib/a.py": "hello\n", ".venv/lib/d.py": "worktree copy\n",
-         ".venv/lib/sp ace.py": "x\n", nl_name: "nl\n", "node_modules/x/same.js": "same\n",
+         ".venv/lib/sp ace.py": "x\n", nl_name: "nl\n", rep_name: "rep\n",
+         "node_modules/x/same.js": "same\n",
          "node_modules/x/i.js": "js\n"},
         wt_links={".venv/bin/python": "python3.12"},
         steps=tuple((name, step) for name, step, _, _ in plan),

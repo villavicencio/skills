@@ -372,7 +372,9 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
     `Unanswered, VIL-N, Qk: <the question>. Options: <as in the Question>. Recommended: <the option>. Reversible: <yes or no, and how>. Sent: <UTC date and time>.`,
     and wait for it as for a question. Each Qk settles once: the first answer that counts (the
     Head's, which the Director relays in place of its default when it already has one, or the
-    default) decides it, and any later reply on that Qk changes nothing. Its `Answer` is the Director's default
+    default) decides it, and any later reply on that Qk changes nothing, except the Head's reply on
+    a pending entry for that Qk, which supersedes it (`dv:director-mode`, "A pending entry on the
+    ticket"). Its `Answer` is the Director's default
     (`dv:director-mode`, "Unanswered at the end"), its own path: apply it without the checks of
     "What counts as the answer", except that it must name one of the question's options and the
     delete and scope-cut limits. "What no default decides" stays binding: if you can see the
@@ -382,9 +384,11 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
     `Answer` as `Forwarded to the Head` and keep its way forward. The Director relays the Head's
     answer on it under the same Qk; apply it once, as "Answer from the Head" above says, and
     take any later reply on that Qk as changing nothing. When the Director's mail check fails and
-    it can't verify the question reached the Head, it records the question on the ticket and sends
-    no reply (`dv:director-mode`, "Unanswered at the end"): no answer that counts, as below, and
-    no default. A `Forwarded to the Head` reply (an item
+    it can't verify the question reached the Head, it posts the ticket's pending entry for that Qk
+    and sends no reply (`dv:director-mode`, "Unanswered at the end"): no answer that counts, as
+    below, and no default. The Head's reply on that entry is the one disposition for that Qk
+    (`dv:director-mode`, "A pending entry on the ticket"): it supersedes any earlier answer under
+    it, and you apply it once. A `Forwarded to the Head` reply (an item
     under "What no default decides": keep its way forward), or no answer that counts, means ask me nothing:
     write it on the ticket as an open decision, and it goes under WAITING ON in your closeout
     note. A `Held for David` reply to it is the one case that comes to me now: the Director's
@@ -402,7 +406,8 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
     `Answer from the Head` (above), under the same checks, and is applied once. The CEO's 1% and
     the two choices reserved for my yes go the same way: he brings them to me and relays my yes in
     `Approved by:`. A send that returns an error, or no result you can read, is not a verified
-    delivery: keep the question pending on its way forward, go on with work that doesn't depend
+    delivery: don't send it again; post the ticket's pending entry for that Qk (`dv:director-mode`,
+    "A pending entry on the ticket"), keep the question pending on its way forward, go on with work that doesn't depend
     on it, ask me nothing and open no card. At the end, a question still pending is written on the
     ticket as an open decision and goes under WAITING ON in your closeout note; there is no
     `Unanswered` without a Director.

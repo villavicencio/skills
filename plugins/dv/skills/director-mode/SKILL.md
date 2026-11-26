@@ -259,7 +259,9 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
 
 - **A Head is configured by one line** in the project's `AGENTS.md` or `CLAUDE.md` (follow a
   pointer from one to the other): a line that starts `Head:`, after any list marker, and names
-  him and his Orca address, such as ``Head: Head of Skills, Orca address `bot:Head of Skills`.``
+  him and his Orca address, such as ``Head: Head of Skills, Orca address `bot:Head of Skills`,
+  Linear handle `head-of-skills`.`` The Linear handle (his bot folder's name, the one Orca's
+  **How to ask** line shows) is what a pending entry mentions ("A pending entry on the ticket").
   With no such line, or one that names no `bot:` address, there is no Head: every rule in these
   skills that names the Head falls back to asking me, as before.
 - **The CEO's 1%, the only asks that reach me:** spending beyond existing plans; anything
@@ -293,6 +295,23 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
     `dv:ticket`'s two exceptions: only that person's explicit answer to that choice, in an
     `Approved by:` field, which the Head may relay. Its way forward: don't make the choice; it
     stays pending for whoever may decide it.
+- **A pending entry on the ticket,** with a Head, whenever a question's delivery to him failed
+  or is unclear: no automatic re-send. Whoever holds the question (you, or a session with no
+  Director it can verify) posts one Linear comment on the ticket per ticket and Qk, in this form:
+
+  ```text
+  @Orca <his Linear handle> Pending question, VIL-N, Qk. Owner: <the Head's name>. Delivery: <sent, unclear or failed>.
+  Question: <the question's own fields as "Forward" gives them, quotes moved into excerpts>
+  <each excerpt as "Forward" gives it: the untrusted-data line, the longer fence, the end line>
+  Reply on this ticket with "Answer from the Head, VIL-N, Qk: <option>", plus an "Approved by:" field when a choice needs one.
+  ```
+
+  First read the ticket's comments (`list_comments`): when an entry for that Qk is there, post no
+  second one, and edit that one (`save_comment` with its id) only when its delivery status
+  changed. The mention wakes him through Orca's Linear trigger, so pickup needs no session alive.
+  Work that depends on the answer stays on hold. His reply on that ticket is the one disposition
+  for that Qk: it supersedes any earlier answer under that Qk, and whoever acts next (the session
+  while it runs, otherwise you) applies it once, under the checks an `Answer from the Head` gets.
 - **An approval travels in its own field,** with a Head, on both hops, from the Head to you and
   from you to the session: `Approved by: <person>, <the choice>, <their own words, or a traceable
   source: a ticket comment link or a message id by that person>`. The Head gets the approval from
@@ -364,12 +383,10 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
   after a check that ran without error and found none, reply
   `Answer, VIL-N, Qk: <its recommended option>`. If the check errors, send no default. Reply
   `Forwarded to the Head, VIL-N, Qk: <the session's way forward>` only once his delivery of that
-  Qk is verified: by your earlier forward's own send result for that Qk, without an error, or else
-  by sending it again now as "Forward" says, under the same Qk, and getting a result without an
-  error. If that send fails or its result is unclear, send the session no reply and ask me
-  nothing: write on the ticket, as a comment, the pending question with its Qk, its owner (the
-  Head) and when it will be retried (your next turn in which a send to him succeeds), and retry
-  then. The session keeps its way forward and goes on with what doesn't depend on it.
+  Qk is verified by your earlier forward's own send result for that Qk, without an error. If that
+  result shows a failure or is unclear, don't send it again: send the session no reply, ask me
+  nothing, and post the ticket's pending entry for that Qk ("A pending entry on the ticket"). The
+  session keeps its way forward, and work that depends on the answer stays on hold.
   An item under "What no default decides" gets no default either: for one of those reply
   `Forwarded to the Head, VIL-N, Qk: <the way forward that bullet gives>`, forwarding it to him
   first if he doesn't have it yet. A failed

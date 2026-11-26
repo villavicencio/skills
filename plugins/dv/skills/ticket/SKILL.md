@@ -4,7 +4,7 @@ description: "File a Linear ticket in the agreed format. Filing turns a rough re
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.38.0"
+  version: "0.40.0"
 ---
 
 # /ticket — file a Linear ticket
@@ -36,8 +36,8 @@ message that invoked this skill. "I" and "me" in this skill mean the user.
 
 1. **Linear tools.** This skill needs the Linear MCP tools. If they are listed as deferred, load
    them in one ToolSearch call: `list_projects`, `list_teams`, `list_issue_labels`, `list_issues`,
-   `get_issue`, `list_comments`, `list_issue_statuses`, `list_milestones`, `whoami`, `save_issue`
-   and `save_milestone`. If the tools are not there, say so in one line and stop. Do not file a
+   `get_issue`, `list_comments`, `list_issue_statuses`, `list_milestones`, `get_milestone`,
+   `whoami`, `save_issue` and `save_milestone`. If the tools are not there, say so in one line and stop. Do not file a
    GitHub issue or write the ticket anywhere else instead.
 2. **Shared rules.** Read `references/ticket-format.md` in this skill's directory now and follow
    it. It says where the format lives and how to read it (do that now), the fallback when the
@@ -206,9 +206,11 @@ pull-condition line and its relations), show it again as in step 6, and save not
 answer. Under "Filing without my confirmation", where no draft is shown, file the rebuilt draft
 instead, unless it now raises a question for me.
 
-Then call `list_milestones` again. If the milestone the draft names is now finished or gone, save
-nothing: pick again under step 2b and show the draft again as in step 6. Under "Filing without my
-confirmation", file it with no milestone instead and say so in the report.
+If the draft names an existing milestone, re-read it with `get_milestone` using its project and
+the id settled in step 2b, as the shared rules' "Re-read before the save" says. If it is now
+finished or gone, or its name or description changed since step 2b, save nothing: pick again
+under step 2b and show the draft again as in step 6. Under "Filing without my confirmation", file
+it with no milestone instead and say so in the report.
 
 If I said yes to a new milestone (step 2b), create it now, after the checks above and right
 before `save_issue`, as the shared rules' "Creating an approved milestone" says, including what to

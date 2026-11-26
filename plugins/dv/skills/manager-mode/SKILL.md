@@ -370,7 +370,9 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
   - **Unanswered at the end.** When the ticket's other work is done, send the Director, for each
     question still without an answer that counts (a held kind and a forwarded one included),
     `Unanswered, VIL-N, Qk: <the question>. Options: <as in the Question>. Recommended: <the option>. Reversible: <yes or no, and how>. Sent: <UTC date and time>.`,
-    and wait for it as for a question. Its `Answer` is the Director's default
+    and wait for it as for a question. Each Qk settles once: the first answer that counts (the
+    Head's, which the Director relays in place of its default when it already has one, or the
+    default) decides it, and any later reply on that Qk changes nothing. Its `Answer` is the Director's default
     (`dv:director-mode`, "Unanswered at the end"), its own path: apply it without the checks of
     "What counts as the answer", except that it must name one of the question's options and the
     delete and scope-cut limits. "What no default decides" stays binding: if you can see the

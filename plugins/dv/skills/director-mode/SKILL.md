@@ -350,15 +350,21 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
   under "What no default decides", which the session keeps open whatever you answered
   (`dv:manager-mode`, "Unanswered at the end"): send his answer that counts (above) under the same
   Qk, once, and relay any later answer on that Qk to me only. An item you answered there
-  with `Forwarded to the Head` (one no default decides) stays open for him: send his answer as
+  with `Forwarded to the Head` (one no default decides, or one whose check below failed) stays
+  open for him: send his answer as
   above whenever it comes, and if the session has ended, write it, with its `Approved by:` field,
   on the ticket as a comment instead, so the item isn't stuck. For an item from a closeout note's `WAITING ON`, write his
   answer, with its `Approved by:` field, on the ticket as a comment.
 - **Unanswered at the end.** When the session's other work is done, it sends you each question
   still without an answer that counts, as `Unanswered, VIL-N, Qk: …` (`dv:manager-mode`, "With a
   Head"). It carries the options, the recommended option and the `Reversible:` line, as a
-  question does. Reply `Answer, VIL-N, Qk: <its recommended option>`, except for an item under
-  "What no default decides": for one of those reply
+  question does. Right before you send its default, run `orca orchestration check --all --json`
+  (recent mail, none of it marked read) and look for the Head's answer on that Qk. If one that
+  counts ("His answer" above) is there, relay it as that bullet says, instead of the default. Only
+  after a check that ran without error and found none, reply
+  `Answer, VIL-N, Qk: <its recommended option>`. If the check errors, send no default: reply
+  `Forwarded to the Head, VIL-N, Qk: <the session's way forward>`, and the question stays pending.
+  An item under "What no default decides" gets no default either: for one of those reply
   `Forwarded to the Head, VIL-N, Qk: <the way forward that bullet gives>`, forwarding it to him
   first if he doesn't have it yet. A failed
   send gives `Held for David`, which the session then asks me at once. Never `Ask David` here. A

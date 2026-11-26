@@ -542,6 +542,23 @@ CLEANUP THE PARENT OWNS
 REPLY NEEDED: <no | yes: the question>
 ```
 
+**A sent note's Worktree line and Step 4.** A note that is sent (by `terminal send` or
+SendMessage, "Deliver the note") may keep a `safe to delete` or `safe once you accept losing`
+verdict only when, in the turn it is sent, Step 4 ran after that turn's Step 1 and Step 2 and
+confirmed the archive (Step 4's two success lines). Otherwise, for a note whose verdict is one of
+those two, before the send write its Worktree line as `not confirmed safe: handoff archive
+incomplete or not confirmed (<what Step 4 printed, or "Step 4 has not run", naming the losses it
+waits on>), by these checks`, and save the note again with the block below. A `NOT safe to
+delete` or `not confirmed safe` verdict stays as it is. In the first turn Step 3 runs before
+Step 4, so when Step 4 does not confirm the archive, the copy saved first is replaced by a new
+one: the block saves it under a new `<branch slug>.<YYYYMMDDTHHMMSSZ>.txt` name (with `-<n>` on a
+clash), the send uses that path, and the reply shows that copy and names its path. The Director
+reads the saved copy, and its check on the note (`dv:director-mode`, "End a finished worktree
+session", check 1) refuses `not confirmed safe`, so it leaves the worktree and tells me instead
+of asking me to close the session or releasing it. Known limit: if the session ends anyway,
+director-mode's later removal runs the global removal procedure's checks, which do not read the
+note.
+
 Leave out secrets, credentials and tokens. Then save the note and attempt to copy it, with the note's text
 in place of the placeholder line:
 
@@ -601,16 +618,23 @@ under the name `/pickup` looks for. Nothing is deleted and no earlier archive is
 if git rev-parse --git-dir >/dev/null 2>&1; then
   TOP=$(git rev-parse --show-toplevel)
   MAIN=$(git worktree list --porcelain | sed -n 's/^worktree //p' | head -1)
-  GCD=$(git rev-parse --git-common-dir) && STORE="$(cd "$GCD" && pwd -P)/handoffs"
+  STORE=""
+  if GCD=$(git rev-parse --git-common-dir) && GA=$(cd "$GCD" && pwd -P) && [ -n "$GA" ]; then STORE="$GA/handoffs"; fi
   B=$(git branch --show-current)
   SLUG=$(printf '%s' "${B:-detached-$(git rev-parse HEAD 2>/dev/null)}" | sed -e 's/%/%25/g' -e 's#/#%2F#g')
-  if [ "$TOP" = "$MAIN" ]; then
+  if [ -z "$TOP" ] || [ -z "$STORE" ]; then
+    echo "!! ARCHIVE INCOMPLETE: the worktree or the handoff store could not be resolved — offer no removal until this is fixed"
+  elif [ "$TOP" = "$MAIN" ]; then
     echo "(this is the main checkout — nothing archived)"
   elif [ -n "$(git status --porcelain --untracked-files=all | grep -v '^.. HANDOFF\.md$')" ]; then
     echo "!! uncommitted changes — not safe to delete, nothing archived"
   else
     TS=$(date -u +%Y%m%dT%H%M%SZ); AFAIL=""; LIST=""
-    if [ -d "$STORE" ]; then LIST=$(find "$STORE" -maxdepth 1 -type f -name '*.md' | sort) || AFAIL="listing the handoff store failed"; fi
+    # find alone, then sort, so a find that fails is caught (a pipe reports only sort's status).
+    if [ -d "$STORE" ]; then
+      if LIST=$(find "$STORE" -maxdepth 1 -type f -name '*.md'); then LIST=$(printf '%s\n' "$LIST" | sort)
+      else AFAIL="listing the handoff store failed"; fi
+    fi
     [ -f "$TOP/HANDOFF.md" ] && LIST=$(printf '%s\n%s\n' "$LIST" "$TOP/HANDOFF.md")
     # A here-doc, not a pipe, so AFAIL survives the loop in bash.
     while IFS= read -r f; do
@@ -621,6 +645,9 @@ if git rev-parse --git-dir >/dev/null 2>&1; then
       mine=""
       [ "$f" = "$STORE/$SLUG.md" ] && mine=1
       [ "$fw" = "$TOP" ] && [ "$fb" = "${B:-(detached)}" ] && mine=1
+      # A HANDOFF.md in the worktree that does not name this branch and worktree would go with
+      # the worktree unarchived, so it leaves the archive not confirmed.
+      if [ -z "$mine" ] && [ "$f" = "$TOP/HANDOFF.md" ]; then AFAIL="$AFAIL; $TOP/HANDOFF.md does not name this branch and worktree, so it was not archived"; fi
       [ -n "$mine" ] || continue
       # The store file is always moved, so the active slot is cleared even on a rerun. HANDOFF.md is
       # copied only when no archived file already matches it byte for byte (it mirrors the store copy).
@@ -639,14 +666,24 @@ if git rev-parse --git-dir >/dev/null 2>&1; then
 $LIST
 LIST_END
     [ -e "$STORE/$SLUG.md" ] && AFAIL="$AFAIL; $STORE/$SLUG.md is still in the store"
+    # A failed listing of _done is not "no handoff": only a _done that is absent, or listed with
+    # no match, counts as nothing archived.
+    DONE=""
+    if [ -e "$STORE/_done" ] && ! DONE=$(find "$STORE/_done" -maxdepth 1 -type f -name "$SLUG.*.md"); then AFAIL="$AFAIL; listing $STORE/_done failed"; fi
     if [ -n "$AFAIL" ]; then echo "!! ARCHIVE INCOMPLETE: ${AFAIL#; } — offer no removal until this is fixed"
-    elif ! find "$STORE/_done" -maxdepth 1 -type f -name "$SLUG.*.md" 2>/dev/null | grep -q .; then echo "(no handoff for this session — nothing to archive)"; fi
+    elif [ -z "$DONE" ]; then echo "(no handoff for this session — nothing to archive)"
+    else echo "archive complete: this session's handoff is in $STORE/_done"; fi
   fi
 fi
 ```
 
-If the block prints `ARCHIVE INCOMPLETE`, say what failed, and offer and name no removal: the
-session would stay listed by `/pickup`. The `HANDOFF.md` in the worktree is left in place; it goes with the worktree. When Step 2 did not
+The archive is confirmed only when the block's last line is one of its two success lines:
+`archive complete: this session's handoff is in <store>/_done` or `(no handoff for this session —
+nothing to archive)`. The `archived:` lines alone do not confirm it. Every other outcome leaves
+the archive not confirmed: `ARCHIVE INCOMPLETE` (say what failed), `uncommitted changes`, `this is
+the main checkout`, no output at all (outside a git repo, or the block stopped early), or Step 4
+not run. Then offer and name no removal: the session would stay listed by `/pickup`, and a
+handoff copy that exists only in the worktree would go with it. The `HANDOFF.md` in the worktree is left in place; it goes with the worktree. When Step 2 did not
 say safe (or I have not yet accepted the listed losses), skip this step and say the handoff was
 left where it is.
 
@@ -665,19 +702,21 @@ after this session has ended. Do not run it.
   worktree ends this session, and the note is then not sent.
 - **Removal cleared.** Name a removal command only when Step 2 said safe to delete, or it said
   safe once I accept losing and I accepted those build-output lines and reflog-only commits (the
-  recheck below still matching), and Step 4 did not print `ARCHIVE INCOMPLETE`. Otherwise, with
-  or without a verified Director, name no command and don't say the Director removes it: say why
-  removal is blocked (what would be lost, the check that did not run, or the failed archive), and
-  for losses not yet accepted ask the question in the paragraph below.
+  recheck below still matching), and Step 4 confirmed the archive (its two success lines, Step 4).
+  Otherwise, with or without a verified Director, name no command and don't say the Director
+  removes it: say why removal is blocked (what would be lost, the check that did not run, or the
+  archive not confirmed), and for losses not yet accepted ask the question in the paragraph below.
 - **The Director removes it.** When the removal is cleared, the note has been sent to a Director
-  its probe verified ("Deliver the note", steps 4 and 5), and either Step 2 said safe to delete or
-  a standing yes of mine (in the global instructions, this project's instructions or memory)
-  covers every accepted loss and my acceptance came before the note that was sent, say that the
-  Director removes this worktree after this session ends if its checks pass, and still name the
-  command for me; "Offer the removal", below, then asks nothing. Losses I accepted only in this
-  session fail the Director's check on the note (`dv:director-mode`, "End a finished worktree
-  session", check 1), and an acceptance after the note is a message from me after it (check 3), so
-  in either case the removal stays mine, as without a Director.
+  its probe verified ("Deliver the note", steps 4 and 5) with Step 4's archive confirmed in that
+  send's turn (its Worktree line was not turned into `not confirmed safe` under "A sent note's
+  Worktree line and Step 4"), and either Step 2 said safe to delete or a standing yes of mine (in
+  the global instructions, this project's instructions or memory) covers every accepted loss and
+  my acceptance came before the note that was sent, say that the Director removes this worktree
+  after this session ends if its checks pass, and still name the command for me; "Offer the
+  removal", below, then asks nothing. Losses I accepted only in this session fail the Director's
+  check on the note (`dv:director-mode`, "End a finished worktree session", check 1), and an
+  acceptance after the note is a message from me after it (check 3), so in either case the removal
+  stays mine, as without a Director.
 - **Initialized submodules.** If Step 1 printed "initialized submodules" above 0, `wt done`,
   `git worktree remove` and a plain `orca worktree rm` all refuse this worktree. Say so, and point
   to the guarded procedure instead of a plain command: `dv:orca-setup` Step 5 (`orca worktree rm
@@ -689,8 +728,9 @@ When it is safe once I accept losing (never while a nested git repo is listed: t
 end the reply with one plain question that names what would be lost: each build-output line with
 its name, entry count, directory count and fingerprint (for example
 `__pycache__/ (any depth): 666 entries in 87 directories; fingerprint 3f9a0c1e2b7d`), and the
-reflog-only commits with their count and list id. Accept losing them? On my yes, recheck first (below), then run Step 4, then
-name the removal command (or make the Orca offer below).
+reflog-only commits with their count and list id. Accept losing them? On my yes, recheck first (below), then run Step 4, then,
+only if Step 4 confirmed the archive, name the removal command (or make the Orca offer below);
+otherwise say why removal is blocked (the bullet "Removal cleared").
 
 **Recheck in every later turn.** A yes arrives in a later turn, and the worktree may have changed
 since the verdict. Before acting on any yes (accepting losses, archiving, removing), run the Step 1
@@ -767,7 +807,8 @@ replied") before `dv:manager-mode` lets the session send `worker_done`. Every ot
 routes as the bullets say.
 
 - Exactly one qualifying terminal (not for a supervised session): send the saved note from
-  Step 3, once, with the CLI path the block printed in place of `<orca CLI>`, kept inside the quotes (no variable from that block survives to this call):
+  Step 3, written under "A sent note's Worktree line and Step 4" (so a new copy when Step 4 did
+  not confirm the archive), once, with the CLI path the block printed in place of `<orca CLI>`, kept inside the quotes (no variable from that block survives to this call):
   `"<orca CLI>" terminal send --terminal <handle> --text "$(cat "<note path>")" --enter --wait-submit 20 --json`
   Report what the result says (`input_accepted`, and whether a turn was seen to start), not
   "delivered". Do not resend on a timeout. After a transport error, reissue the same command with
@@ -824,8 +865,10 @@ routes as the bullets say.
      agents on one machine, and the note holds nothing secret.
   5. The note. Send the note once, with SendMessage to the Director's answer's `from` address.
      The answer arrives in a later turn, so first run the Step 1 block
-     again, apply Step 2, and write the note again from those facts with Step 3, which saves a new
-     copy and attempts to copy it to the clipboard. Send that copy; `<note path>` is the `note saved:` path
+     again, apply Step 2, run Step 4 again when Step 2 allows it (safe to delete, or safe once I
+     accept losing and I accepted those losses), and write the note again from those facts with
+     Step 3, under "A sent note's Worktree line and Step 4", which saves a new copy and attempts
+     to copy it to the clipboard. Send that copy; `<note path>` is the `note saved:` path
      Step 3 printed in this turn. The receiver sees only the first line until it expands the
      message, so the first line must say what the message is:
 
@@ -878,11 +921,12 @@ of the session, because it stops this worktree's sessions:
 `"<orca CLI>" worktree rm --worktree "path:<worktree path>" --json`
 
 **When the Director removes it, ask nothing.** This applies only where this question would be
-asked (above) and Step 5's bullet "The Director removes it" holds: the removal is cleared, the
-note has been sent to a Director its probe verified ("Deliver the note", steps 4 and 5), and
-Step 2 said safe to delete or a standing yes of mine covers every accepted loss and my
-acceptance came before the note that was sent. When the
-removal is not cleared there is no question and no command: say why removal is blocked (Step 5).
+asked (above) and Step 5's bullet "The Director removes it" holds: the removal is cleared (Step 4
+confirmed the archive), the note has been sent to a Director its probe verified ("Deliver the
+note", steps 4 and 5) with its safe verdict kept under "A sent note's Worktree line and Step 4",
+and Step 2 said safe to delete or a standing yes of mine covers every accepted loss and my
+acceptance came before the note that was sent. When the removal is not cleared there is no
+question and no command: say why removal is blocked (Step 5).
 Where it applies, from the turn the note is sent, in that turn and every later one, end the reply
 without this question, whether or not the Director has replied (the outcomes "note sent with no
 reply yet" and "note sent and replied"). Say instead that the Director removes this worktree

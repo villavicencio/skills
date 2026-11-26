@@ -81,7 +81,9 @@ Then carry on: from a linked worktree the Director advises but does no merge, pu
   ("Answer a worktree session's question"), opens the PR, and hands the PR to you once
   MergeWren passes. When you report the PR merged, it runs `dv:closeout` and sends you a note;
   you ask me to close the session when the checks in "End a finished worktree session" allow it,
-  and clean up once it has ended ("Take closeout notes").
+  and clean up once it has ended ("Take closeout notes"). A session you started as a supervised
+  Orca worker you release yourself instead, once its closeout checks pass ("Release a supervised
+  Manager chat").
 
 dotfiles `docs/agents/parallel-sessions.md` ("Roles") gives merges to the home session too; if
 the two ever disagree, say so to me.
@@ -354,9 +356,111 @@ a no or no answer stops the command.
   the ticket" (don't copy it here). If anything owns the ticket, or a lookup can't run, stop and
   report the owner or the failed lookup.
 
-**2. Create.** From the main checkout, with the kickoff prompt (step 3) held in a shell variable
-by a quoted heredoc, so its quotes and link reach `--prompt` as one argument without expansion, and
-stopping if the prompt comes out empty:
+**2. Create.** Start the session as a supervised Orca worker (2a) when you can: its chat is then
+yours to release once it has closed out ("Release a supervised Manager chat"), and I no longer
+close it. 2a needs this session to run in Orca (`ORCA_AGENT_SESSION_ID` is set) and
+`orca orchestration worker-start --help` to list `--keep-open`. When either is missing, use the
+ordinary start (2b), whose chat I close, as before. When a 2a start fails, use 2b in its place
+only if nothing was made: the failure's JSON lists no `worktree` entry under `effects` or
+`residualResources`, and `git worktree list` shows no new worktree for the ticket. Otherwise
+report the failure and start nothing more; a worktree it left behind is what the ownership check
+finds when I ask again.
+
+- `<this main checkout>` is the path `git rev-parse --show-toplevel` prints. `<short name>` is a
+  few words from the ticket's title, in lowercase letters, digits and hyphens, such as
+  `vil-907-open-worktree`. Both stay inside the double quotes.
+- Pass no `--model`, `--effort`, `--setup` or `--branch`. The session takes Orca's default model,
+  and `dv:manager-mode` warns when its setting is wrong. Branch naming is not this command's job;
+  the kickoff prompt renames the branch.
+- Don't put a line that is only `EOF` inside the prompt; it would end the heredoc early.
+
+**2a. Supervised start.** From the main checkout, with the kickoff prompt (step 3, with its
+supervised line) written to a file by a quoted heredoc, so its quotes and link reach Orca as they
+are, and stopping if the file comes out empty:
+
+```bash
+PF=$(mktemp) && cat > "$PF" <<'EOF'
+<the kickoff prompt>
+EOF
+[ -s "$PF" ] || { echo "FAILED: building the kickoff prompt"; exit 1; }
+"${ORCA_CLI_COMMAND:-orca}" orchestration worker-start --from "orca_session_id:$ORCA_AGENT_SESSION_ID" --spec-file "$PF" --task-title "VIL-N worktree session" --worktree new-child --repo "path:<this main checkout>" --name "<short name>" --agent claude --keep-open --json
+```
+
+- `--worktree new-child` creates the worktree as a child of this session's workspace, the main
+  checkout, as 2b's `orca worktree create` does, and the project's setup runs as it does there. `--keep-open`
+  cancels the release Orca would otherwise make about 2 minutes after the session's
+  `worker_done`, so the chat stays open until you release it.
+- The receipt must say `"ok":true`, `"mode":"structured"` (an Orca chat) and `"keptOpen":true`.
+  Keep its `dispatchId` and `workspace`. Another `mode` means Orca started the session in a
+  terminal, not a chat: report it with the reason `worker-show --dispatch <id> --full` gives under
+  `startOptions.mode.detail`; that session takes the manual close. If the command fails, report
+  its error with the `stage`, `effects` and `residualResources` it printed, and go on as step 2
+  says. After a lost reply, run the same block again with `--retry-request <id>` from the error
+  added; never as a fresh start.
+  Orca then mails you about the worker as you are its coordinator, such as `Setup succeeded for
+  worker <dispatch id>`: that mail is information, not a highlight, and needs no reply.
+- Link the ticket to the worktree, as 2b's `--linear-issue` does:
+  `"${ORCA_CLI_COMMAND:-orca}" worktree set --worktree "id:<the receipt's workspace>" --linear-issue VIL-N --json`
+- Write the kickoff record, from the main checkout, with the receipt's `dispatchId` and the
+  ticket's id:
+
+```bash
+D="<dispatch id>"; T="<ticket id>"
+GCD=$(git rev-parse --path-format=absolute --git-common-dir) || { echo "RECORD NOT WRITTEN: not in a git checkout"; exit 1; }
+RD="$GCD/orca-supervised"
+python3 -I - "$D" "$T" "$RD" "${ORCA_CLI_COMMAND:-orca}" "${ORCA_AGENT_SESSION_ID:-}" <<'PY'
+import json, os, re, subprocess, sys, time
+D, T, RD, ORCA, ME = sys.argv[1:6]
+def orca_json(args):
+    try:
+        p = subprocess.run([ORCA] + args + ["--json"], capture_output=True, text=True, timeout=120)
+        d = json.loads(p.stdout)
+    except Exception as e:
+        sys.exit("RECORD NOT WRITTEN: %s failed: %s" % (" ".join(args[:2]), e))
+    if p.returncode != 0 or not d.get("ok"):
+        sys.exit("RECORD NOT WRITTEN: %s failed: %s" % (" ".join(args[:2]), json.dumps(d.get("error", d))[:300]))
+    return d["result"]
+s = orca_json(["orchestration", "worker-show", "--dispatch", D, "--full"])
+dp, wk, tr = s.get("dispatch") or {}, s.get("worker") or {}, s.get("terminalResource") or {}
+if tr.get("releaseState") != "retained" or tr.get("retainedReason") != "user_requested":
+    orca_json(["orchestration", "worker-keep-open", "--dispatch", D])
+    s = orca_json(["orchestration", "worker-show", "--dispatch", D, "--full"]); tr = s.get("terminalResource") or {}
+keep = tr.get("releaseState") == "retained" and tr.get("retainedReason") == "user_requested"
+mode = ((wk.get("startOptions") or {}).get("mode") or {}).get("mode")
+m = re.fullmatch(r"structured:([0-9a-f-]{36})", dp.get("processIncarnation") or "")
+wid = wk.get("worktreeId") or ""
+if not m or "::" not in wid:
+    sys.exit("RECORD NOT WRITTEN: worker-show names no structured chat or workspace: %r %r" % (dp.get("processIncarnation"), wid))
+wt = orca_json(["worktree", "show", "--worktree", "id:" + wid])["worktree"]
+rec = {"schema": 1, "ticket": T, "dispatchId": D, "taskId": dp.get("taskId"), "runId": dp.get("runId"),
+       "coordinator": "orca_session_id:" + ME if ME else None, "orcaSessionId": m.group(1),
+       "terminalHandle": wk.get("agentTerminalHandle"), "mode": mode, "keptOpen": keep,
+       "worktreeId": wt.get("id"), "instanceId": wt.get("instanceId"), "identityKey": (wt.get("identity") or {}).get("key"),
+       "path": wt.get("path"), "branch": wt.get("branch"), "head": wt.get("head"),
+       "recordedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+os.makedirs(RD, exist_ok=True)
+f = os.path.join(RD, D + ".json")
+try:
+    with open(f, "x") as fh: json.dump(rec, fh, indent=1)
+except FileExistsError:
+    sys.exit("RECORD NOT WRITTEN: %s already exists; read it instead" % f)
+print("record:", f)
+for k in ("dispatchId", "orcaSessionId", "terminalHandle", "mode", "keptOpen", "worktreeId", "identityKey", "branch", "head"):
+    print(" ", k + ":", rec[k])
+if mode != "structured": print("WARNING: the worker is not a structured chat; it takes the manual close, not a release")
+if not keep: print("WARNING: Orca recorded no keep-open; it may close the chat about 2 minutes after an early worker_done")
+PY
+```
+
+  The record is `<git-common-dir>/orca-supervised/<dispatch id>.json`, read from Orca, not from
+  the receipt alone: the dispatch, the chat's Orca session id, its agent terminal, the workspace's
+  id, instance and path, and the branch and HEAD. "Release a supervised Manager chat" checks each
+  against Orca again before it releases anything. When the block prints `RECORD NOT WRITTEN` or a
+  `WARNING`, the chat takes the manual close (I close it, as for 2b): say so in step 4.
+
+**2b. Ordinary start.** From the main checkout, with the kickoff prompt (step 3) held in a shell
+variable by a quoted heredoc, so its quotes and link reach `--prompt` as one argument without
+expansion, and stopping if the prompt comes out empty:
 
 ```bash
 PROMPT=$(cat <<'EOF'
@@ -366,14 +470,7 @@ EOF
 orca worktree create --repo "path:<this main checkout>" --name "<short name>" --linear-issue VIL-N --agent claude --surface chat --prompt "$PROMPT"
 ```
 
-- `<this main checkout>` is the path `git rev-parse --show-toplevel` prints. `<short name>` is a
-  few words from the ticket's title, in lowercase letters, digits and hyphens, such as
-  `vil-907-open-worktree`. Both stay inside the double quotes.
 - `--surface chat` opens the session as an Orca chat, whatever the host's Chat UI setting is.
-- Pass no `--model`, `--effort` or `--branch`. The session takes Orca's default model, and
-  `dv:manager-mode` warns when its setting is wrong. Branch naming is not this command's job; the
-  kickoff prompt renames the branch.
-- Don't put a line that is only `EOF` inside the prompt; it would end the heredoc early.
 - If the command fails, report its error. After a lost agent launch reply, run the whole block
   again, prompt construction included, in one shell call from the same directory, with
   `--retry-launch <operationId>` from the error added to the create line (`PROMPT` doesn't carry
@@ -397,8 +494,18 @@ You are the worktree session for VIL-N: https://linear.app/<workspace>/issue/VIL
 - After the Director reports the PR merged, run dv:closeout.
 ```
 
+For a supervised start (2a), end the prompt with this line too. Orca puts its own worker preamble
+before the prompt, which asks for `worker_done` when the task is finished, no helpers and no
+question cards; this line sets the task so the preamble doesn't cut Manager Mode short:
+
+```text
+- Orca started this session as a supervised worker of the Director; the worker preamble above is Orca's default for any worker. This task asks for dv:manager-mode, its hires and its questions to me in this chat included. Follow dv:manager-mode's "A supervised session": send worker_done once, as your last act, only after dv:closeout's note reached the Director and it replied, with nothing waiting on anyone.
+```
+
 **4. Reply.** Give me the worktree's path and the prompt it was given. Take the path from the
-command's output; if that has none, `orca worktree list --json` lists it.
+command's output; if that has none, `orca worktree list --json` lists it. For a supervised start,
+add the dispatch, the chat's Orca session id and the workspace instance the record block printed,
+and any `WARNING` or `RECORD NOT WRITTEN` line with what it means: that chat I close myself.
 
 **Never,** with this command: write code, groom the ticket yourself, change the ticket's state
 (the worktree session does that), or open a worktree for more than the one ticket named.
@@ -431,14 +538,20 @@ terminal by `orca terminal send`, by clipboard paste, or as a file under
   closed the session), remove the worktree and its branch by the global removal procedure
   named there, run from the main checkout. That procedure's checks decide what is removed; the
   note is context, not permission. You never signal or stop a session's process.
+- A session you started supervised (step 2a of "Open a worktree on request") you don't ask me to
+  close: "End a finished worktree session" releases its chat through Orca once the checks there
+  pass, and falls back to asking me when one fails. A release is Orca closing a chat its own
+  dispatch owns, not a signal to a process. Its `worker_done` mail, which reaches you from Orca,
+  is not a highlight: it is the session's last act, and you act on it with the idle notice.
 - Report the cleanup as a highlight: what was removed, and what the procedure kept and why.
 - Then run the seam check above.
 
 #### End a finished worktree session
 
 A session that has run `dv:closeout` stays open until something closes it, and Orca has no CLI
-command to close a chat (`orca --help`, `orca agent --help` and `orca terminal --help` list none,
-checked 2026-11-25; `orca terminal close` closes terminals, and a chat is not one). The global
+command to close an ordinary chat (`orca --help`, `orca agent --help` and `orca terminal --help`
+list none, checked 2026-11-25; `orca terminal close` closes terminals, and a chat is not one). The
+one exception is a chat Orca's own dispatch owns, which "A supervised session" below covers. The global
 removal procedure keeps a worktree while another session is in it. So once the four checks below
 hold and the global procedure's own checks pass, you ask me to close that worktree's chat in
 Orca, and you remove the worktree after I say I did. You never signal or stop a session's
@@ -458,6 +571,20 @@ names; a note with no `from` address ends nothing) in place of both pids. If it 
 worktree as "Take closeout notes" says, by the global procedure with check 4 in its removal
 form. Otherwise run checks 1, 3 and 4, then "Before asking me to close it", then "Asking me to
 close it".
+
+**A supervised session** (one you started with step 2a of "Open a worktree on request", so its
+kickoff record exists) is released, not asked about. Its last act is `worker_done`, sent after it
+read your reply to the note (`dv:manager-mode`, "A supervised session"), so the idle notice
+follows it. When the notice arrives and the `ps` check above doesn't print `GONE`, run checks 1, 2
+and 3, find the session's wrapper as "Asking me to close it" says, then run "Release a supervised Manager chat" in place of check 4, "Before
+asking me to close it" and "Asking me to close it". Check 4 does not gate the release: the release
+closes only that chat (with the Setup terminal and startup tabs its start opened), and check 4 and
+the global procedure's checks still run in their removal form before anything is removed ("After
+I close it"). When a check fails or the release block prints anything but `RESULT: released`, go
+on from check 4 as for any other session, and put the block's reason in what you tell me. A
+`worker_done` that reaches you after the block refused the session as not settled starts this
+paragraph again, unless I have already closed the chat. A session that tells you it worked again
+after its `worker_done` takes the manual path: ask me to close it, never release it.
 
 **The note's header, time and sender.** The note's header is its first line, `CLOSEOUT NOTE
 from <branch> at <worktree path>, <date and time with zone>`. A note sent by SendMessage leaves
@@ -611,6 +738,206 @@ in a later turn (my "closed" can arrive before Orca finishes ending the process)
 fails, remove nothing and tell me. The global procedure's own step 2 checks run again at removal. Otherwise remove the worktree and its branch as
 above, and report it as a highlight.
 
+#### Release a supervised Manager chat
+
+Run this only from the main checkout, for a supervised session under "A supervised session"
+above, in the turn its checks 1, 2 and 3 pass. `<worktree path>` is the path the note's header
+names, `<claude pid>` is the session's `claude` process (from the note's `from` address), and
+`<note timestamp>` is the UTC time in the saved copy's file name, `YYYYMMDDTHHMMSSZ` ("The note's
+header, time and sender").
+
+```bash
+W="<worktree path>"; CP="<claude pid>"; NT="<note timestamp>"
+GCD=$(git rev-parse --path-format=absolute --git-common-dir) || { echo "RESULT: refused: not in a git checkout"; exit 3; }
+RD="$GCD/orca-supervised"
+python3 -I - "$W" "$CP" "$NT" "$RD" "${ORCA_CLI_COMMAND:-orca}" <<'PY'
+import glob, json, os, re, subprocess, sys
+W, CP, NT, RD, ORCA = sys.argv[1:6]
+W = W.rstrip("/") or W
+bad = []
+def stop(code, line):
+    for b in bad: print("FAIL", b)
+    print("RESULT:", line); sys.exit(code)
+def run(args):
+    try: p = subprocess.run(args, capture_output=True, text=True, timeout=120)
+    except Exception as e: return None, str(e)
+    return p, None
+def orca_json(args):
+    p, err = run([ORCA] + args + ["--json"])
+    if p is None: return None, err
+    try: d = json.loads(p.stdout)
+    except Exception: return None, "exit %d, no JSON: %s" % (p.returncode, (p.stderr or p.stdout).strip()[:200])
+    if p.returncode != 0 or not d.get("ok"): return d, "exit %d: %s" % (p.returncode, json.dumps(d.get("error", d))[:300])
+    return d, None
+def ts(s):
+    # "2026-11-26 05:32:15", "2026-11-26T05:32:15.415Z" or "20261126T053215Z" -> "20261126T053215"
+    s = re.sub(r"[^0-9]", "", s or "")
+    return s[:8] + "T" + s[8:14] if len(s) >= 14 else None
+if not re.fullmatch(r"\d{8}T\d{6}Z", NT): stop(3, "refused: the note's timestamp is missing or malformed")
+# 1. The kickoff record: exactly one whose path is this worktree and whose instance is the live one.
+recs = []
+for f in sorted(glob.glob(os.path.join(RD, "*.json"))):
+    try: r = json.load(open(f))
+    except Exception: bad.append("unreadable record " + f); continue
+    if (r.get("path") or "").rstrip("/") == W: recs.append((f, r))
+if not recs: stop(3, "refused: no supervised record for this worktree; it is an ordinary chat, so ask David to close it")
+wt, err = orca_json(["worktree", "show", "--worktree", "path:" + W])
+if err: stop(3, "refused: orca worktree show failed: " + err)
+live = wt["result"]["worktree"]
+mine = [(f, r) for f, r in recs if r.get("instanceId") == live.get("instanceId")]
+if len(mine) != 1:
+    stop(3, "refused: %d records for this path, %d for the live workspace instance %s" % (len(recs), len(mine), live.get("instanceId")))
+RF, R = mine[0]
+D, SID, H = R.get("dispatchId"), R.get("orcaSessionId"), R.get("terminalHandle")
+print("record:", RF); print("dispatch:", D, "| chat: orca_session_id:%s" % SID, "| terminal:", H)
+print("workspace:", live.get("identity", {}).get("key"), live.get("path"), "HEAD", live.get("head"))
+for k, v in (("dispatchId", D), ("orcaSessionId", SID), ("terminalHandle", H)):
+    if not v: bad.append("record has no " + k)
+if R.get("mode") != "structured": bad.append("record mode is %r, not structured" % R.get("mode"))
+for k in ("worktreeId", "path"):
+    if (R.get(k) or "").rstrip("/") != (live.get("id" if k == "worktreeId" else k) or "").rstrip("/"): bad.append("record %s %r is not the live %r" % (k, R.get(k), live.get("id" if k == "worktreeId" else k)))
+if R.get("identityKey") != live.get("identity", {}).get("key"): bad.append("record identity key is not the live one")
+if bad: stop(3, "refused: the record does not match the live workspace")
+# 2. The note's sender is that chat: Orca sets these in the claude process's environment.
+if not re.fullmatch(r"\d+", CP or ""): stop(3, "refused: no claude pid from the note's from address")
+p, err = run(["ps", "-E", "-ww", "-o", "command=", "-p", CP])
+if p is None or p.returncode != 0 or not p.stdout.strip(): stop(3, "refused: ps could not read the note sender's process %s" % CP)
+env = {}
+for tok in p.stdout.split():
+    m = re.match(r"(ORCA_AGENT_SESSION_ID|ORCA_TERMINAL_HANDLE|ORCA_STRUCTURED_SESSION)=(\S+)$", tok)
+    if m: env.setdefault(m.group(1), set()).add(m.group(2))
+for k, want in (("ORCA_AGENT_SESSION_ID", SID), ("ORCA_TERMINAL_HANDLE", H), ("ORCA_STRUCTURED_SESSION", "1")):
+    got = env.get(k, set())
+    if got != {want}: bad.append("note sender %s %s is %s, not %s" % (CP, k, sorted(got) or "unset", want))
+if bad: stop(3, "refused: the closeout note did not come from the supervised chat")
+print("note sender: pid", CP, "is orca_session_id:%s on %s" % (SID, H))
+# 3. The dispatch: owned, structured, exact chat and workspace, settled after the note.
+sh, err = orca_json(["orchestration", "worker-show", "--dispatch", D, "--full"])
+if err: stop(3, "refused: worker-show failed: " + err)
+s = sh["result"]; dp = s.get("dispatch") or {}; wk = s.get("worker") or {}; tr = s.get("terminalResource") or {}
+mode = ((wk.get("startOptions") or {}).get("mode") or {}).get("mode")
+checks = [
+    ("dispatch id", dp.get("id"), D),
+    ("mode", mode, "structured"),
+    ("chat", dp.get("processIncarnation"), "structured:" + SID),
+    ("agent terminal", wk.get("agentTerminalHandle"), H),
+    ("assignee", dp.get("assigneeHandle"), H),
+    ("workspace", wk.get("worktreeId"), live.get("id")),
+    ("terminal owner", tr.get("ownerDispatchId"), D),
+    ("terminal origin", tr.get("originDispatchId"), D),
+    ("terminal ownership", tr.get("ownershipState"), "owned"),
+    ("terminal handle", tr.get("terminalHandle"), H),
+    ("terminal workspace", tr.get("worktreeId"), live.get("id")),
+    ("terminal incarnation", tr.get("endpointIncarnation"), "structured:" + SID),
+    ("worker state", wk.get("state"), "succeeded"),
+    ("dispatch status", dp.get("status"), "completed"),
+]
+for name, got, want in checks:
+    if got != want: bad.append("%s is %r, not %r" % (name, got, want))
+if tr.get("releaseState") not in ("retained", "not_requested"): bad.append("release state is %r" % tr.get("releaseState"))
+done = ts(dp.get("completedAt"))
+if not done or done <= NT[:15]: bad.append("settled at %r, not after the note (%s): early settlement" % (dp.get("completedAt"), NT))
+if bad: stop(3, "refused: the dispatch is not this chat's settled owned dispatch")
+print("dispatch: succeeded, completed", dp.get("completedAt"), "UTC; terminal", tr.get("releaseState"), tr.get("retainedReason") or "")
+# 4. The chat is listed, idle, in this workspace; note every other agent there.
+al, err = orca_json(["agent", "list", "--worktree", "path:" + W])
+if err: stop(3, "refused: orca agent list failed: " + err)
+rows = al["result"]["agents"]; me = [a for a in rows if a.get("orcaSessionId") == SID]
+if len(me) != 1 or me[0].get("kind") != "chat" or me[0].get("state") != "done" or me[0].get("worktreeId") != live.get("id"):
+    stop(3, "refused: the chat is not listed exactly once as a done chat in this workspace: %r" % [(a.get("kind"), a.get("state")) for a in me])
+others = sorted(a["orcaSessionId"] for a in rows if a.get("orcaSessionId") != SID)
+print("others in the workspace before:", others or "none")
+hp, _ = run(["git", "-C", W, "rev-parse", "HEAD"]); head0 = hp.stdout.strip() if hp and hp.returncode == 0 else None
+# 5. Release that one dispatch.
+rl, err = orca_json(["orchestration", "worker-release", "--dispatch", D])
+st = ((rl or {}).get("result") or {}).get("state")
+print("worker-release:", json.dumps((rl or {}).get("result") or (rl or {}).get("error"))[:400])
+if st not in ("released", "already_released"):
+    stop(4, "not released (%s): the chat may still be open; ask David to close it%s" % (st or err, "" if not rl else ", or check again with worker-show"))
+# 6. Prove the exact chat is gone and nothing else moved.
+al2, err2 = orca_json(["agent", "list", "--worktree", "path:" + W])
+if err2: bad.append("agent list after: " + err2)
+else:
+    rows2 = al2["result"]["agents"]
+    if any(a.get("orcaSessionId") == SID for a in rows2): bad.append("agent list still lists orca_session_id:" + SID)
+    gone = [o for o in others if o not in {a.get("orcaSessionId") for a in rows2}]
+    if gone: bad.append("other agents no longer listed: %s" % gone)
+ag, err3 = orca_json(["agent", "show", "orca_session_id:" + SID])
+if ag and not err3:
+    if ag["result"].get("places"): bad.append("agent show still has places: %r" % ag["result"]["places"])
+else: print("agent show:", err3)
+wt2, err4 = orca_json(["worktree", "show", "--worktree", "path:" + W])
+if err4: bad.append("worktree show after: " + err4)
+elif (wt2["result"]["worktree"].get("instanceId"), wt2["result"]["worktree"].get("path")) != (live.get("instanceId"), live.get("path")): bad.append("workspace instance changed")
+hp2, _ = run(["git", "-C", W, "rev-parse", "HEAD"])
+if not os.path.isdir(W) or not hp2 or hp2.returncode != 0 or hp2.stdout.strip() != head0: bad.append("worktree directory or HEAD changed")
+if bad: stop(5, "released, but a check after it failed: tell David what still shows")
+os.makedirs(os.path.join(RD, "_released"), exist_ok=True)
+os.replace(RF, os.path.join(RD, "_released", os.path.basename(RF)))
+print("after: chat absent from agent list and agent show; others still listed:", others or "none", "| workspace", live.get("instanceId"), "HEAD", head0)
+print("RESULT: released")
+PY
+```
+
+It releases nothing unless all of these hold, checked in this order:
+
+1. **The record.** Exactly one kickoff record names this worktree's path and the workspace
+   instance Orca shows there now, with the same workspace id and identity key. A worktree removed
+   and made again at the same path has a new instance, so an old record never matches it. No
+   record means an ordinary chat.
+2. **The note came from that chat.** Orca sets `ORCA_AGENT_SESSION_ID`, `ORCA_TERMINAL_HANDLE` and
+   `ORCA_STRUCTURED_SESSION` in the environment of a chat's `claude` process. `ps -E` reads them
+   (for this user's processes only), and they must name the record's chat and agent terminal. The
+   block prints those three values and nothing else from the environment.
+3. **The dispatch.** `worker-show` names that dispatch, a structured chat, that chat
+   (`structured:<session id>`), that agent terminal and that workspace; the terminal is owned by
+   that dispatch; the worker `succeeded` and the dispatch `completed` after the note's timestamp
+   (a `worker_done` from before the note is early settlement, and refused); and the terminal is
+   not already released or being released.
+4. **The chat.** `orca agent list` lists it once, in that workspace, as a `done` chat. The block
+   notes every other agent listed there.
+
+Then it runs `orca orchestration worker-release --dispatch <dispatch>` once, and proves the
+result: the chat is gone from `orca agent list` and has no place in `orca agent show`, every other
+agent it noted is still listed, and the workspace's instance, directory and HEAD are unchanged.
+Only then does it move the record to `orca-supervised/_released/` and print `RESULT: released`.
+
+- **`RESULT: released`:** go on with "After I close it" as if I had closed the chat (the `GONE`
+  check with the wrapper and `claude` pids, check 4 in its removal form, check 3 again, then the
+  removal), and report it as a highlight: `Released the chat for <worktree folder> (dispatch
+  <id>); removing the worktree next.`
+- **`RESULT: refused: …` (exit 3):** nothing was released. Go on from check 4 as for an ordinary
+  session, and give the reason when you tell me.
+- **`RESULT: not released (…)` (exit 4):** Orca kept the chat (`retained`), hasn't finished
+  (`release_pending`), or the call failed. Ask me to close the chat, giving that state. Retry a
+  failed release only with the `--retry-request` id its error names.
+- **`RESULT: released, but …` (exit 5):** remove nothing, and tell me what still shows.
+
+Never run `worker-release` outside this block or for a dispatch with no record here, and never end
+a session with `worker-stop` or `worker-abandon`. A release also closes the Setup terminal and
+startup tabs the worker's start opened (unless setup failed) and terminals the session's agent
+created without `--keep-open`. It never closes a terminal I kept open, a reused or pre-existing
+terminal, or one whose identity Orca can't prove (`orca orchestration worker-release --help`,
+Orca 1.4.277).
+
+What a test showed (VIL-1190, 2026-11-26, Orca 1.4.277 on hal, from a session that was itself
+an Orca worker): step 2a's start made a scratch worktree with its Setup terminal and a structured
+chat (`"mode":"structured"`, `"keptOpen":true`), and step 2a's record block recorded it. That
+stand-in session waited for the reply to its stand-in note before it sent `worker_done`, 11
+seconds after the reply; four minutes later, twice Orca's 2-minute release delay, its chat was
+still listed and its `autoReleaseAt` was empty. The block refused, changing nothing: while the
+session was unsettled; for a note sender that was an ordinary chat in the same worktree; for a
+worktree with no record; for a dispatch Orca didn't know; for a record of an older instance; and
+for a second stand-in that sent `worker_done` before its note (early settlement), whose chat then
+stayed open. Then it released the first one (`"state":"released"`,
+`"processAction":"closed_agent_terminal"`): the chat left `orca agent list`, `orca agent show`
+gave it no place, the ordinary chat beside it stayed listed and running, the Setup terminal
+closed, the workspace instance, HEAD and a sentinel file were unchanged, and the `GONE` check
+passed. A second release returned `already_released`. Not tested: a Director in an ordinary Orca
+chat (its starts follow my Chat or CLI setting for new agent tabs, so check the first receipt's
+`mode`), a Director restarted between the start and the release, a session that works again
+after `worker_done`, and a real ticket from kickoff through merge and closeout (VIL-1043).
+
 ### Merge and clean up, from the main checkout
 
 A worktree session hands you a PR once MergeWren has passed it. You merge it; the worktree
@@ -669,8 +996,9 @@ session never does.
   in its removal form: ListAgents lists no live session for the worktree (the test above), and
   the worktree process scan with an empty `<claude pid>` finds no process of this user with its
   directory or an open file in the worktree. Another user's processes are not seen.
-- Leave a worktree and its branch in place until its session has ended, by itself or closed by
-  me (including when you asked under "End a finished worktree session"); the global procedure's own checks, including
+- Leave a worktree and its branch in place until its session has ended, by itself, closed by
+  me (including when you asked under "End a finished worktree session") or released by you
+  ("Release a supervised Manager chat"); the global procedure's own checks, including
   that no other session is still in it, decide removal, and a `dv:closeout` note is context, not
   permission to delete.
 - Re-check every ticket id the PR named. Reopen one only if it moved to Done and its work is not

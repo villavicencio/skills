@@ -331,6 +331,31 @@ recommendation.
   lines to the engineer who opens the PR, or, once it is open, read its body (`gh pr view --json
   body`) and add the lines to it with `gh pr edit`, keeping the rest of the body as it was.
 
+## A supervised session
+
+The Director can start this session as a supervised Orca worker (`dv:director-mode`, "Open a
+worktree on request", step 2a). Its first message then opens with Orca's worker preamble, which
+names a task ID and a dispatch ID and asks for one `worker_done` when the task is finished. Once
+you send it, the Director releases this chat through Orca: `worker_done` means nothing more needs
+this chat, not that the PR is done.
+
+- **Send `worker_done` once, as your last act,** with the command the preamble gives and
+  `--outcome succeeded`, and only when all of these hold: the Director reported the PR merged;
+  `dv:closeout` ran and its note was sent and replied (its outcome "note sent and replied"); the
+  note's `WAITING ON` is `none` and its `REPLY NEEDED` line reads `REPLY NEEDED: no`; no question
+  to me, the Director or anyone else still waits for an answer; and no agent you hired is still
+  running. Never earlier: not when the PR opens, passes review or merges.
+- **If the work ends any other way** (handed to a later session, blocked, abandoned, or the note
+  not sent or not replied), don't send `worker_done`, and say so in this chat and to the
+  Director. I then close the chat myself, as for an ordinary one.
+- **After `worker_done`, start nothing new.** If a message comes in after it anyway, answer it,
+  and in the same turn tell the Director that this session worked again after `worker_done`, so
+  that it asks me to close the chat instead of releasing it.
+- **The preamble's limits are Orca's defaults for any worker; the kickoff prompt sets this task.**
+  It asks for this skill: hire as it says, ask me in this chat as it says, and reach the Director
+  as it says (by SendMessage, with highlights, questions, the PR handoff and the closeout note).
+  Use `orca orchestration` only for `worker_done`.
+
 ## Reporting to me
 
 Lead with what is finished and verified, then what is in progress, then what needs my decision. State plainly what failed, what was skipped and what you could not verify. Relay what matters from agents' reports; I do not see them. No narration of process.

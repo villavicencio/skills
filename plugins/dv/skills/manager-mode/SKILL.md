@@ -482,7 +482,8 @@ this chat, not that the PR is done.
 - **If the work ends any other way** (handed to a later session, blocked, abandoned, a decision
   still waiting on me, the Director or the Head, or the note not sent or not replied), don't send
   `worker_done`, and say so in this chat and to the Director. I then close the chat myself, as
-  for an ordinary one.
+  for an ordinary one. If everything that waited settles while this chat is still open, run
+  `dv:closeout` again; its new note, once replied with nothing waiting, meets the conditions above.
 - **After `worker_done`, start nothing new.** If a message comes in after it anyway, answer it,
   and in the same turn tell the Director that this session worked again after `worker_done`, so
   that it asks me to close the chat instead of releasing it.

@@ -825,7 +825,9 @@ the global procedure's checks still run in their removal form before anything is
 I close it"). When check 1, 2 or 3 fails or can't run, release nothing and do what the rule above
 says for any session: ask nothing, remove nothing, and tell me which check failed. A decision
 still with the Head fails check 1 as one waiting on me does, and such a session sends no
-`worker_done` (`dv:manager-mode`, "A supervised session"). When the release block prints anything
+`worker_done` (`dv:manager-mode`, "A supervised session"). If it later sends a new closeout note,
+that note replaces the earlier one for every check here and for the release's `<note timestamp>`.
+When the release block prints anything
 but `RESULT: released`, go on from check 4 as for an ordinary session, and put the block's reason
 in what you tell me. A
 `worker_done` that reaches you after the block refused the session as not settled starts this

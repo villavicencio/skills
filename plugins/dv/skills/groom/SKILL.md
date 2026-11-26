@@ -101,14 +101,18 @@ milestone's other options) stays pending, whatever he answers: the ticket isn't 
 `groomed` label. Two choices settle on my explicit yes instead, relayed in his answer's
 `Approved by:` field and verified by this session against my own words in the source it names, as
 manager-mode's check on an `Answer from the Head` says:
-- Keeping a ticket pointed 13 whole (step 4): only when that verified yes is for that ticket.
+- Keeping a ticket pointed 13 whole (step 4): only when that verified yes is for that ticket as
+  it now stands, its current scope and points.
 - Creating a new milestone (step 3, "Milestone"). The Director forwards the proposal (its name and
   one line on what done means) to the Head. It is created only when that verified yes is for that
-  milestone, by name. A specific yes I gave earlier
-  for that milestone counts, with its source, and he relays it; when there is none, he asks me
-  once. Where the shared rules' "Milestones" would ask me again (the milestone finished or gone
+  milestone's current name and definition (what done means). A specific yes I gave earlier for it
+  counts, with its source, when it matches that name and definition, and he relays it; when there
+  is none, he asks me once. Where the shared rules' "Milestones" would ask me again (the milestone finished or gone
   since the draft, a name conflict at creation), that ask goes the same way and creating still
   needs my relayed yes. Choosing an existing milestone follows the cases in step 3, unchanged.
+
+When the scope, the points, the milestone's name or its definition changed materially since my
+yes, that yes no longer counts: the choice stays pending, and the Head asks me once.
 
 Until that yes comes, the fork stays pending: nothing is created, the ticket is not ready and gets
 no `groomed` label, and its Decisions line, once settled, records my yes, relayed by the Head,

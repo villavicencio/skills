@@ -323,13 +323,16 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
   Head record, VIL-N, Qk. Key: VIL-N/<session ID>/Qk. Owner: <the Head's name>. Reply to: <the sender's Orca address>. Status: <sending, sent, unclear or failed>. Send result: <the message id, the error, or none yet>.
   Question: <the question's own fields as "Forward" gives them, quotes moved into excerpts>
   <each excerpt as "Forward" gives it: the untrusted-data line, the longer fence, the end line>
-  Reply by Orca mail to the "Reply to" address with "Answer from the Head, VIL-N, Qk: <option>", plus an "Approved by:" field that points to the person's own words when a choice needs their approval.
+  Reply with "Answer from the Head, VIL-N, Qk: <option>", plus an "Approved by:" field that points to the person's own words when a choice needs their approval: by Orca mail to the "Reply to" address, or, when this record starts with the mention, as a reply under this comment.
   ```
 
   "Reply to" names one address, the question's immediate sender: yours for a question you
   forwarded, the session's for one it sent straight to him. Only on a fallback status (step 3:
   `unclear`, `failed`, or an earlier session's `sent` with no reply) does the first line start
-  with `@Orca <his Linear handle> `; a record at `sending` or `sent` carries no mention. A
+  with `@Orca <his Linear handle> `; a record at `sending` or `sent` carries no mention. On a
+  fallback the Head replies under the record itself, so his advice doesn't depend on a live
+  reply address: the next session responsible for the question (the session while it runs,
+  otherwise you) reads it there (`list_comments`) and treats it as advice, like his mail. A
   transport failure never changes who decides: the question stays his, and the CEO's 1% and the
   two choices reserved for my yes keep their route to me through him; it never becomes
   `Ask David` or `Held for David`. Work that depends on the answer stays on hold. A Head's mailed answer is advisory until verified Head decision delivery ships (VIL-1193).
@@ -340,7 +343,8 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
   that person. Copy the field unchanged into your reply to the session. The field only points to
   the evidence and authorizes nothing by itself. Every reserved approval (the CEO's 1%, keeping a
   13 whole, creating a milestone, any choice a written rule reserves) counts only once the session
-  that would act on it has verified, itself, that person's own words for that exact choice in an
+  that would act on it has verified, itself, that person's own words for that exact choice, the
+  full current proposal (`dv:groom` says what that covers for a 13 and a milestone), in an
   authenticated original source the field names: a ticket comment whose Linear author (its `user`)
   is that person's own account, or that person's message in a chat the session can read. When the
   source is missing, has another author, or doesn't name that exact choice, the choice stays

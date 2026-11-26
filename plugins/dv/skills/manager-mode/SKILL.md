@@ -363,7 +363,9 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
     question is one of those items (a Head-only `dv:groom` fork, `Reversible: no`, a
     safety-boundary decline, one of the CEO's 1%, a choice a written rule reserves for someone's
     explicit yes), treat the
-    `Answer` as `Forwarded to the Head` and keep its way forward. A `Forwarded to the Head` reply (an item
+    `Answer` as `Forwarded to the Head` and keep its way forward. The Director relays the Head's
+    answer on it under the same Qk; apply it once, as "Answer from the Head" above says, and
+    take any later reply on that Qk as changing nothing. A `Forwarded to the Head` reply (an item
     under "What no default decides": keep its way forward), or no answer that counts, means ask me nothing:
     write it on the ticket as an open decision, and it goes under WAITING ON in your closeout
     note. A `Held for David` reply to it is the one case that comes to me now: the Director's

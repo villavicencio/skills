@@ -5,7 +5,8 @@ Minor release. When a project names a department Head, `dv:director-mode`, `dv:m
 CEO's 1% reaches David, through him, unless no Director can be verified or the Director replies
 `Ask David`, and apart from `dv:closeout`'s own reply, which still asks David until VIL-1191.
 The one exception: keeping a 13-point ticket whole needs David's explicit yes, relayed by the Head (`dv:groom` step 4). These routing changes apply only when a project names a
-Head. Two changes apply always: an answer with a short note, and mail before a question card.
+Head. Three changes apply always: an answer with a short note, mail before a question card, and
+a kickoff that counts a ticket as groomed only by its `groomed` label (VIL-993).
 David's role is renamed from the Chairman to the CEO. The other twelve skills have no behaviour
 changes; their version moves to `0.39.0` only because the suite is released as one plugin.
 
@@ -33,6 +34,10 @@ schedule time in a dialog, and the dialog kept the Director's reply from reachin
   and adds a `. Note:` counts, unless the note changes what the option does.
 - **Always on: mail before a question card.** A session sends its mail to the Director or the
   Head before it opens a question card, and opens none while a question to either still waits.
+- **Always on: the kickoff counts a ticket as groomed only by its `groomed` label (VIL-993).**
+  `dv:director-mode`'s kickoff prompt leaves out the `dv:groom` line only for a ticket with the
+  `groomed` label; a dated grooming line alone, which grooming writes on every run, no longer
+  counts. Every kickoff starts the work only once `dv:groom`'s ready test passes.
 - **README.** The version, and short pointers in the four skills' entries.
 
 ## Not in this release

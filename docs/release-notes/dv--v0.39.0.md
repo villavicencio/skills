@@ -46,7 +46,7 @@ schedule time in a dialog, and the dialog kept the Director's reply from reachin
   and adds a `. Note:` counts, unless the note changes what the option does.
 - **Always on: mail before a question card.** A session sends its mail to the Director or the
   Head before it opens a question card, and opens none while any question to either is still
-  open. With a Head, a question stays open past its 10-minute wait until an answer settles it,
+  open. With a Head, a question stays open past its 10-minute wait until an answer that counts settles it (the Head's advice doesn't),
   under the same Qk; an ask to David that falls due meanwhile goes as plain text in the chat.
 - **Always on: the kickoff counts a ticket as groomed only by its `groomed` label (VIL-993).**
   `dv:director-mode`'s kickoff prompt leaves out the `dv:groom` line only for a ticket with the

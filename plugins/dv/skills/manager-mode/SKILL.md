@@ -275,8 +275,8 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
   you sent the Director or the Head (through it, or straight to him) is still open. A question is open until an
   answer that counts settles it, or, with no Head, until it comes to me ("On 'ask David'"). With a
   Head, its 10 minutes passing doesn't close it: it stays pending on its way forward ("With a
-  Head"), you go on with work that doesn't depend on it, and a later answer settles it under the
-  same Qk. An ask to me that falls due while a question is open goes to me as plain text in this
+  Head"), you go on with work that doesn't depend on it, and only a later answer that counts
+  settles it under the same Qk (the Head's advice doesn't). An ask to me that falls due while a question is open goes to me as plain text in this
   chat, standing on its own the same way ("Every ask to me stands on its own"), and my typed
   reply answers it; open a card only once no question is open. With a Head, the CEO's 1% goes to
   him by mail through the Director and never to me in this chat. `dv:groom` and
@@ -293,7 +293,7 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
   fix round, a decline, a merge, a delete or cutting scope, accept the option it names, whichever
   it is: that call is the Director's. Declining a high or critical finding on code that deletes,
   handles secrets or sits on another safety boundary is the exception: only I decide it (with a
-  Head, he does), so a Director's own answer that declines one counts as "held for David" (with a
+  Head, a verified decision of his, pending while his answers are advisory), so a Director's own answer that declines one counts as "held for David" (with a
   Head, as `Forwarded to the Head`), with fixing it as the way forward. Before
   you act on a delete or scope-cut answer, check the limits you can judge yourself: a delete must
   be one of the three kinds the global standing approvals cover, done by its guarded procedure,
@@ -375,8 +375,10 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
     fallback pickup (`dv:director-mode`, "A record on the ticket for each Qk"), not to me.
   - **Unanswered at the end.** When the ticket's other work is done, send the Director, for each
     question still without an answer that counts (a held kind and a forwarded one included),
-    `Unanswered, VIL-N, Qk: <the question>. Key: VIL-N/<session ID>/Qk. Options: <as in the Question>. Recommended: <the option>. Reversible: <yes or no, and how>. Sent: <UTC date and time>.`,
-    and wait for it as for a question. Its `Answer` is the Director's own decision, which may follow
+    `Unanswered, VIL-N, Qk: <the question>. Key: VIL-N/<session ID>/Qk. Options: <as in the Question>. Recommended: <the option>. Reversible: <yes or no, and how>. Sent: <UTC date and time>. Head advice (advisory only): <his option and note, with its message id, for a question you sent straight to him; none otherwise>.`,
+    and wait for it as for a question. The key is the question's original one, and the advice line
+    is advice only: the Director may decide within its own authority, and a Head-only choice stays
+    pending. Its `Answer` is the Director's own decision, which may follow
     the Head's advice; each Qk settles once, and any later reply on it changes nothing. That `Answer` is the Director's default
     (`dv:director-mode`, "Unanswered at the end"), its own path: apply it without the checks of
     "What counts as the answer", except that it must name one of the question's options and the

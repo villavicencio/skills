@@ -50,8 +50,9 @@ overrule it.
   conflicting rules (Current rules);
 - anything destructive or hard to undo;
 - a target only I can set (step 3, Targets), or a missing pull condition only I can supply (with
-  a Head, these and the split and new milestone below are his, though keeping a 13 whole and
-  creating a milestone still need my yes, relayed by him: "From a worktree session");
+  a Head, these and the split and new milestone below go to him and stay pending while his answers
+  are advisory, though keeping a 13 whole and creating a milestone settle on my yes, relayed by him
+  and verified: "From a worktree session");
 - a split, with the parent's replacement description when it stays as the parent;
 - a prerequisite that the shared rules' "Prerequisites" sends to a question (step 3; no relation
   is set on a guess);

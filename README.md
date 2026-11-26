@@ -40,17 +40,21 @@ chat and workspace instance in `<git-common-dir>/orca-supervised/`. The session 
 waiting on anyone, a department Head included (`dv:manager-mode`, "A supervised session"). The
 Director then releases that one chat
 through Orca (`worker-release`) once its closeout checks pass and the record, the note's sender,
-the settled owned dispatch and the live workspace instance all match, and once every terminal
-Orca would or might close with it (the start's Setup terminal and tabs, and any live terminal on
-the host not shown to be older than the dispatch, since Orca lists none the session made) runs
-nothing but an idle shell. Afterwards it proves the chat gone, every other agent there and every
-older terminal still listed, the workspace's identity unchanged, and the worktree's directory
-still there with HEAD where it was; it compares no worktree file. An ordinary chat, a start Orca
-made in a terminal, a start whose setup didn't complete, and any check before the release that
-fails or can't run still go to you to close in Orca, as the `dv:director-mode` entry above says,
-and so does a chat Orca answers it kept (`retained`). A terminal Orca can't date or map to a
-process makes every release refuse while it is open (on hal on 2026-11-26, one in
-`/Users/david/Projects/axiom` held by Orca's older pty daemon). If the release runs and its outcome is unknown
+the settled owned dispatch and the live workspace instance all match, and only while no terminal
+Orca could close with it is still open. Orca closes, with the chat, the start's Setup terminal and
+tabs and every terminal the session made without `--keep-open`; no Orca command lists the
+latter, so every terminal not shown to be older than the dispatch counts. No check can show a
+live shell idle (one blocked in a builtin such as `read` looks the same), so such a terminal
+still open refuses the release and keeps running. A terminal made in the seconds between that
+check and the release isn't seen. In practice the Setup terminal keeps a shell at its prompt, so
+a release refuses until that terminal is closed, and a terminal Orca can't date makes every
+release refuse while it is open (on hal on 2026-11-26, one in `/Users/david/Projects/axiom` held
+by Orca's older pty daemon). Afterwards it proves the chat gone, every other agent there and
+every terminal listed before still listed, the workspace's identity unchanged, and the worktree's
+directory still there with HEAD where it was; it compares no worktree file. An ordinary chat, a
+start Orca made in a terminal, a start whose setup didn't complete, and any check before the
+release that fails or can't run still go to you to close in Orca, as the `dv:director-mode` entry
+above says, and so does a chat Orca answers it kept (`retained`). If the release runs and its outcome is unknown
 (any other answer, an error or a timeout), or a check after it fails or can't run (`orca agent
 show` must give the chat no place or answer `agent_unknown`), the Director removes nothing and
 tells you what it saw.

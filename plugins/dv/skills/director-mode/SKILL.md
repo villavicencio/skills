@@ -870,10 +870,9 @@ read your reply to the note (`dv:manager-mode`, "A supervised session"), so the 
 follows it. When the notice arrives and the `ps` check above doesn't print `GONE`, run checks 1, 2
 and 3, find the session's wrapper as "Asking me to close it" says, then run "Release a supervised Manager chat" in place of check 4, "Before
 asking me to close it" and "Asking me to close it". Check 4 does not gate the release: its scan
-fails on any other chat in the worktree, which the release leaves running, and on the Setup
-terminal's idle shell. What a release can end besides the chat is the terminals Orca closes with
-it, and the release block refuses unless each terminal it would or might close runs nothing but an
-idle shell (its step 5). Check 4 and the global procedure's checks still run in their removal form,
+fails on any other chat in the worktree, which the release leaves running. What a release can end
+besides the chat is the terminals Orca closes with it, and the release block refuses while any
+terminal it could close is still open (its step 5). Check 4 and the global procedure's checks still run in their removal form,
 on their own, before anything is removed ("After I close it"). When check 1, 2 or 3 fails or can't run, release nothing and do what the rule above
 says for any session: ask nothing, remove nothing, and tell me which check failed. A decision
 still with the Head fails check 1 as one waiting on me does, and such a session sends no
@@ -1060,7 +1059,6 @@ import calendar, glob, json, os, re, subprocess, sys, time
 W, CP, NT, RD, ORCA = sys.argv[1:6]
 W = W.rstrip("/") or W
 bad, phase = [], "before"
-SHELLS = {"zsh", "bash", "sh", "dash", "ksh", "mksh", "fish", "tcsh", "csh"}
 def stop(code, line):
     for b in bad: print("FAIL", b)
     print("RESULT:", line); sys.exit(code)
@@ -1107,22 +1105,18 @@ def epoch(s):
     try: return calendar.timegm(time.strptime(d[:14], "%Y%m%d%H%M%S")) if len(d) >= 14 else None
     except ValueError: return None
 def procs():
-    # Every process on this machine (pid -> fields, start time in UTC), or None if ps fails or a line won't read.
-    p, _ = run(["ps", "-axww", "-o", "pid=,ppid=,pgid=,tpgid=,uid=,time=,tty=,stat=,lstart=,command="], dict(os.environ, TZ="UTC", LC_ALL="C"))
+    # Each process's start time in UTC (pid -> seconds since 1970), or None if ps fails or a line won't read.
+    p, _ = run(["ps", "-axww", "-o", "pid=,lstart="], dict(os.environ, TZ="UTC", LC_ALL="C"))
     if p is None or p.returncode != 0: return None
     out = {}
     for l in p.stdout.splitlines():
-        f = l.split(None, 13)
-        if len(f) < 14 or not f[0].isdigit(): return None
-        try: st = calendar.timegm(time.strptime(" ".join(f[8:13]), "%a %b %d %H:%M:%S %Y"))
+        f = l.split()
+        if len(f) != 6 or not f[0].isdigit(): return None
+        try: out[f[0]] = calendar.timegm(time.strptime(" ".join(f[1:]), "%a %b %d %H:%M:%S %Y"))
         except ValueError: return None
-        out[f[0]] = {"ppid": f[1], "pgid": f[2], "tpgid": f[3], "time": f[5], "tty": f[6], "stat": f[7], "start": st, "cmd": f[13]}
     return out or None
-def interactive(cmd):
-    # A shell waiting for typed commands: a shell's name with only -l, -i or --login, no script and no -c.
-    a = cmd.split()
-    return bool(a) and os.path.basename(a[0].lstrip("-")) in SHELLS and all(x in ("-l", "-i", "-il", "-li", "--login", "--interactive") for x in a[1:])
 def pty_pid(t, pids):
+    # The one process orca diagnostics memory names for the terminal's pty on this machine, or None.
     p = pids.get(t.get("ptyId")) or []
     return str(p[0]) if t.get("executionHostId") == "local" and len(p) == 1 and re.fullmatch(r"\d+", str(p[0])) else None
 def older(t, born, pids, P):
@@ -1130,45 +1124,8 @@ def older(t, born, pids, P):
     lo, root = t.get("lastOutputAt"), pty_pid(t, pids)
     if isinstance(lo, (int, float)) and not isinstance(lo, bool) and lo / 1000.0 < born - 60:
         return "output at %s UTC" % time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(lo / 1000.0))
-    if root in P and P[root]["start"] < born - 60:
-        return "pty process %s started %s UTC" % (root, time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(P[root]["start"])))
-    return None
-def idle(t, pids, snaps):
-    # None when the terminal runs nothing but an interactive shell at its prompt; otherwise why not, or why it can't be shown.
-    if t.get("executionHostId") != "local": return "it runs on host %r, which ps here can't see" % t.get("executionHostId")
-    root = pty_pid(t, pids)
-    if root is None: return "orca diagnostics memory names no single process for its pty %r" % t.get("ptyId")
-    seen = []
-    for P in snaps:
-        if root not in P: return "its pty process %s is not running, so what runs on its tty can't be found" % root
-        tty = P[root]["tty"]
-        if not re.fullmatch(r"ttys?[0-9]+", tty): return "its pty process %s has no terminal (%r)" % (root, tty)
-        kids = {}
-        for q, x in P.items(): kids.setdefault(x["ppid"], []).append(q)
-        chain = [root]
-        while kids.get(chain[-1]):
-            q = chain[-1]
-            if len(kids[q]) != 1 or len(chain) > 20: return "pid %s (%s) runs %d processes" % (q, P[q]["cmd"][:60], len(kids[q]))
-            chain.append(kids[q][0])
-        extra = sorted(set(q for q, x in P.items() if x["tty"] == tty) - set(chain))
-        if extra: return "pid %s (%s) also runs on %s" % (extra[0], P[extra[0]]["cmd"][:60], tty)
-        if P[root]["cmd"].split()[:1] != ["/usr/bin/login"] and not interactive(P[root]["cmd"]): return "its pty process %s runs %r" % (root, P[root]["cmd"][:60])
-        for q in chain[1:] or chain:
-            if not interactive(P[q]["cmd"]): return "pid %s runs %r, not a shell at its prompt" % (q, P[q]["cmd"][:60])
-        leaf = P[chain[-1]]
-        if not leaf["pgid"] == leaf["tpgid"] == chain[-1] or "Z" in leaf["stat"]: return "its shell %s is not in front on %s" % (chain[-1], tty)
-        seen.append([(q, P[q]["time"]) for q in chain])
-    if seen[0] != seen[1]: return "its processes or their CPU time changed between two reads 2 seconds apart: %s, then %s" % (seen[0], seen[1])
-    sh, tty = seen[0][-1][0], snaps[0][root]["tty"]
-    p, _ = run(["lsof", "-n", "-P", "-w", "-a", "-p", sh, "-F", "ftn"])
-    if p is None or p.returncode != 0: return "lsof could not read its shell %s" % sh
-    fds = []
-    for l in p.stdout.splitlines():
-        if l[:1] == "f": fds.append({"f": l[1:]})
-        elif l[:1] in ("t", "n") and fds: fds[-1][l[0]] = l[1:]
-    num = [x for x in fds if x["f"].isdigit()]
-    odd = [x for x in num if not (x.get("t") == "CHR" and x.get("n") in ("/dev/" + tty, "/dev/tty", "/dev/null"))]
-    if not num or odd: return "its shell %s has open: %s" % (sh, "; ".join("fd %s %s %s" % (x["f"], x.get("t"), x.get("n")) for x in odd[:3]) or "no descriptors")
+    if root in P and P[root] < born - 60:
+        return "pty process %s started %s UTC" % (root, time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(P[root])))
     return None
 def main():
     global phase
@@ -1258,10 +1215,13 @@ def main():
     print("others in the workspace before:", others or "none")
     head0 = head(W) if os.path.isdir(W) else None
     if not head0: stop(3, "refused: could not read the worktree's HEAD, so a change after a release could not be seen")
-    # 5. Every other terminal the release closes or might close runs only an idle shell. Orca closes
-    #    the Setup terminal and startup tabs the start opened (the worker's effects) and every terminal
-    #    the session made without --keep-open, which no Orca command lists: so every live terminal on
-    #    this host not shown to be older than the dispatch counts too.
+    # 5. No terminal the release could also close is still open. With the chat Orca closes every
+    #    terminal bound to the worker: the Setup terminal and startup tabs its start opened (the
+    #    worker's effects) and each one its agent made with `orca terminal create` or `split` without
+    #    --keep-open, in any workspace, which no Orca command lists. No check can show a live shell
+    #    idle (one blocked in a builtin such as `read` looks the same, and work can start after any
+    #    look), so a listed terminal that could be one of these refuses: the start's own, and every
+    #    terminal Orca's evidence doesn't show open since before the dispatch was made.
     born = epoch(dp.get("createdAt"))
     if born is None: stop(3, "refused: worker-show gives no time the dispatch was made, so terminals its session made can't be told from older ones")
     start = []
@@ -1280,33 +1240,34 @@ def main():
     if err: stop(3, "refused: orca terminal list failed: " + err)
     trows = terminals(tl)
     if trows is None: stop(3, "refused: orca terminal list is not whole for this host: %s" % json.dumps({k: tl["result"].get(k) for k in ("totalCount", "truncated", "hostScope")})[:300])
+    # Dating a terminal by its pty process takes orca diagnostics memory (pty -> pid) and ps; without
+    # them only lastOutputAt dates it, and a terminal nothing dates counts as one the release could close.
+    pids, undated = {}, []
     dg, err, _ = orca_json(["diagnostics", "memory"])
-    if err: stop(3, "refused: orca diagnostics memory failed, so no terminal's processes can be found: " + err)
-    wts = dg["result"].get("worktrees")
-    if not isinstance(wts, list): stop(3, "refused: orca diagnostics memory gives no worktree list, so no terminal's processes can be found")
-    pids = {}
+    wts = None if err else dg["result"].get("worktrees")
+    if not isinstance(wts, list): undated.append("orca diagnostics memory gave no worktree list: %s" % (err or "none in its reply")); wts = []
     for w in wts:
-        # A terminal this leaves with no pid can be neither dated by its process nor shown idle.
         for x in (w.get("sessions") if isinstance(w, dict) and isinstance(w.get("sessions"), list) else []):
             if isinstance(x, dict) and isinstance(x.get("sessionId"), str): pids.setdefault(x["sessionId"], []).append(x.get("pid"))
-    A = procs(); time.sleep(2); B = procs()
-    if A is None or B is None: stop(3, "refused: ps could not list every process, so no terminal can be shown idle")
-    cand, old, gone = {}, [], []
+    P = procs()
+    if P is None: undated.append("ps could not list every process"); P = {}
+    if undated: print("terminals dated by lastOutputAt alone:", "; ".join(undated))
+    held, old, gone = {}, [], []
     for h, tab, leaf, role in start:
         t = next((x for x in trows if x["handle"] == h), None) or next((x for x in trows if tab and leaf and x.get("tabId") == tab and x.get("leafId") == leaf), None)
         if t is None: gone.append(h)
-        else: cand.setdefault(t["handle"], (t, "opened by the start (%s)" % role))
+        else: held.setdefault(t["handle"], (t, "opened by the start (%s)" % role))
     for t in trows:
-        if t["handle"] not in cand:
-            if older(t, born, pids, A): old.append(t["handle"])
-            else: cand[t["handle"]] = (t, "not shown to be older than the dispatch")
-    print("terminals: %d on this host, %d open since before the dispatch (made %s UTC); the start's own no longer listed: %s" % (len(trows), len(old), dp.get("createdAt"), gone or "none"))
-    for h in sorted(cand):
-        t, why = cand[h]
-        r_ = idle(t, pids, (A, B))
-        print("  %s %r in %s, %s: %s" % (h, t.get("title"), t.get("worktreePath"), why, r_ or "an idle shell"))
-        if r_: bad.append("terminal %s %r in %s, %s: %s" % (h, t.get("title"), t.get("worktreePath"), why, r_))
-    if bad: stop(3, "refused: a terminal the release would or might close is not shown to be an idle shell")
+        if t["handle"] not in held:
+            if older(t, born, pids, P): old.append(t["handle"])
+            else: held[t["handle"]] = (t, "not shown open since before the dispatch")
+    print("terminals: %d listed, %d open since before the dispatch (made %s UTC); the start's own no longer listed: %s" % (len(trows), len(old), dp.get("createdAt"), sorted(set(gone)) or "none"))
+    for h in sorted(held):
+        t, why = held[h]
+        root = pty_pid(t, pids)
+        what = "its pty process %s is running" % root if root in P else "ps shows no pty process %s" % root if root else "Orca names no process for it"
+        bad.append("terminal %s %r in %s, %s, is still open (%s)" % (h, t.get("title"), t.get("worktreePath"), why, what))
+    if bad: stop(3, "refused: the release could close a terminal that is still open, and a shell there can't be shown idle, so it is left running")
     # 6. Release that one dispatch, once.
     phase = "called"
     rl, err, _ = orca_json(["orchestration", "worker-release", "--dispatch", D])
@@ -1317,8 +1278,8 @@ def main():
     if err or st not in ("released", "already_released"):
         stop(5, "release attempted, outcome unknown (%s): the chat may or may not be closed; remove nothing and tell David" % (st or err))
     phase = "released"
-    # 7. Prove the exact chat is gone, the other agents and older terminals stay, and the workspace's
-    #    identity, directory and HEAD hold; every proof must run. Worktree files are not compared.
+    # 7. Prove the exact chat is gone, the other agents and every terminal listed before stay, and the
+    #    workspace's identity, directory and HEAD hold; every proof must run. Worktree files are not compared.
     al2, err2, _ = orca_json(["agent", "list", "--worktree", "path:" + W])
     rows2 = None if err2 else agents(al2)
     if rows2 is None: bad.append("agent list after could not be read: %s" % (err2 or "a row with no Orca session id"))
@@ -1344,7 +1305,6 @@ def main():
         left = {t["handle"] for t in trows2}
         lost = [h for h in old if h not in left]
         if lost: bad.append("terminals open since before the dispatch no longer listed: %s" % lost)
-        print("terminals closed:", sorted(h for h in cand if h not in left) or "none", "| still listed:", sorted(h for h in cand if h in left) or "none")
     wt2, err4, _ = orca_json(["worktree", "show", "--worktree", "path:" + W])
     lv2 = None if err4 else wt2["result"].get("worktree")
     if not isinstance(lv2, dict): bad.append("worktree show after could not be read: %s" % (err4 or "no worktree"))
@@ -1362,7 +1322,7 @@ def main():
     except FileExistsError: bad.append("%s already exists, so the record stays at %s" % (dst, RF))
     except Exception as e: bad.append("archiving the record failed: %r; check %s and %s" % (e, RF, dst))
     if bad: stop(5, "released, but a check after it failed or could not run: remove nothing and tell David what still shows")
-    print("after: chat absent from agent list, agent show gives %s; others still listed: %s; %d older terminals still listed | workspace %s, directory there, HEAD %s" % (shown, others or "none", len(old), LINST, head0))
+    print("after: chat absent from agent list, agent show gives %s; others still listed: %s; all %d terminals listed before still listed | workspace %s, directory there, HEAD %s" % (shown, others or "none", len(old), LINST, head0))
     print("RESULT: released")
 try: main()
 except SystemExit: raise
@@ -1397,29 +1357,27 @@ It releases nothing unless all of these hold, checked in this order:
    listed there and reads the worktree's HEAD. A list it can't read whole, or a HEAD it can't
    read, releases nothing: without them it could not check afterwards that the other agents are
    still listed and HEAD has not moved.
-5. **The terminals the release also closes.** Orca closes, with the chat, the Setup terminal and
-   startup tabs the start opened (unless setup failed) and every terminal the session made with
-   `orca terminal create` or `split` without `--keep-open`, in any workspace. Closing one ends
-   whatever runs in it. The block takes the start's terminals from `worker-show`'s `effects` and
-   `residualResources` (each must be a readable list; a terminal no longer listed by handle or by
-   tab and pane is gone). No Orca command lists the terminals the session made (Orca 1.4.277 keeps
-   them in its own database), so it also counts every live terminal on this host that Orca's
-   evidence doesn't show open since before the dispatch was made: output (`lastOutputAt`), or its
-   pty process's start (`ps`), more than 60 seconds before the dispatch's `createdAt`.
-   `orca terminal list` must say it is whole (not `truncated`, as many rows as `totalCount`, no
-   host left out). For each terminal counted, `orca diagnostics memory` must name exactly one
-   pty process, and two reads of `ps` 2 seconds apart must each show only that process (Orca's
-   `/usr/bin/login`, or a shell) and below it a chain of interactive shells (a shell's name with
-   only `-l`, `-i` or `--login`) with nothing else on its tty, the last shell in front of the tty
-   and childless, the same processes and CPU time in both reads; and `lsof` must show the last
-   shell holding only its tty or `/dev/null`. Anything else, or anything it can't read, refuses
-   with each terminal named. Its known limits: a shell builtin waiting at the prompt (such as
-   `read`) looks like an idle prompt; a process that starts in one of these terminals after the
-   second read isn't seen (check 4's removal form afterwards still catches one left in the
-   worktree); and a terminal Orca can't date or map to a process refuses every release while it
-   is open. On hal on 2026-11-26 one did: a terminal in `/Users/david/Projects/axiom` held by
-   Orca's older pty daemon (`ptyId` `serve-…`, no `lastOutputAt`, no process in `orca diagnostics
-   memory`), so until it is closed every supervised chat there takes my close.
+5. **No terminal the release could also close is open.** With the chat, Orca closes every
+   terminal bound to the worker: the Setup terminal (unless setup failed) and startup tabs the
+   start opened, and every terminal the session's agent made with `orca terminal create` or
+   `split` without `--keep-open`, in any workspace (Orca 1.4.277's server code, read on hal:
+   `worker-release` closes the worker's rows in its `worker_bound_terminals` table). Closing one
+   ends whatever runs in it, and no check can show a live shell idle: one blocked in a builtin
+   such as `read` looks like one at its prompt, and work can start in it after any look. So the
+   block refuses while any terminal the release could close is still listed, naming each. The
+   start's terminals come from `worker-show`'s `effects` and `residualResources` (each must be a
+   readable list; one listed by neither handle nor tab and pane is gone). No Orca command lists
+   the terminals the session made, so every terminal `orca terminal list` gives counts too unless
+   Orca's evidence shows it open since before the dispatch was made: its output (`lastOutputAt`)
+   or its pty process's start (the process `orca diagnostics memory` names, dated by `ps`), more
+   than 60 seconds before the dispatch's `createdAt`. The list must say it is whole (not
+   `truncated`, as many rows as `totalCount`, no host left out); a terminal nothing dates counts.
+   In practice a start's Setup terminal keeps a shell at its prompt after setup, so a release
+   refuses until that terminal is closed. And on hal on 2026-11-26 a terminal in
+   `/Users/david/Projects/axiom`, held by Orca's older pty daemon (`ptyId` `serve-…`, no
+   `lastOutputAt`, no process in `orca diagnostics memory`), can't be dated, so every release
+   there refuses while it is open: those chats take my close. A terminal the session makes in the
+   seconds between this check and the release isn't seen; by then it has settled.
 
 Then it runs `orca orchestration worker-release --dispatch <dispatch>` once. Only Orca's answer
 `released` or `already_released` counts as a release; `retained` means Orca kept the chat; any
@@ -1427,10 +1385,10 @@ other answer (`release_pending`, `release_unknown`, an error, a timeout, no JSON
 outcome unknown. After a release it proves the result, and each proof must run and pass: the
 chat is gone from `orca agent list`; `orca agent show` answers with no place for it, or fails with
 exactly the error `agent_unknown` (any other failure, a timeout or a malformed reply proves
-nothing); every other agent it noted is still listed; every terminal it found open since before
-the dispatch is still listed; the workspace's id, instance, identity key and path are unchanged;
-and the worktree's directory still exists with HEAD where it was. It compares no file in the
-worktree. Only then does it move the record to `orca-supervised/_released/`, never over a file
+nothing); every other agent it noted is still listed; every terminal listed before the release
+(each one shown open since before the dispatch) is still listed; the workspace's id, instance,
+identity key and path are unchanged; and the worktree's directory still exists with HEAD where it
+was. It compares no file in the worktree. Only then does it move the record to `orca-supervised/_released/`, never over a file
 already there, and print `RESULT: released`.
 
 - **`RESULT: released`:** go on with "After I close it" as if I had closed the chat (the `GONE`
@@ -1455,7 +1413,8 @@ a session with `worker-stop` or `worker-abandon`. A release also closes the Setu
 startup tabs the worker's start opened (unless setup failed) and terminals the session's agent
 created without `--keep-open`. It never closes a terminal I kept open, a reused or pre-existing
 terminal, or one whose identity Orca can't prove (`orca orchestration worker-release --help`,
-Orca 1.4.277). Step 5 is what keeps that from ending a live process.
+Orca 1.4.277). Step 5 refuses while any terminal it could close is still open, so a release ends
+no shell that was open when the block checked.
 
 What a test showed (VIL-1190, 2026-11-26, Orca 1.4.277 on hal, from a session that was itself
 an Orca worker): step 2a's start made a scratch worktree with its Setup terminal and a structured
@@ -1505,27 +1464,28 @@ real release of another stand-in, it printed `RESULT: released, but …` (exit 5
 in place and archived nothing. Fixture runs with a stand-in `orca` covered the other failures:
 each check that can't run refuses before the release, and each one after it gives exit 5.
 
-A fifth run tested step 5 (same day, host and Orca, from a worker session, in a fresh scratch
-worktree, on this text after dv 0.39.4 was merged in). The stand-in opened a terminal without
-`--keep-open` running a loop of `sleep 1` (`worker-show`'s effects listed the Setup terminal but
-not that one), then settled after its note. The block
-refused, with no `worker-release` call, naming that terminal, and its loop kept running; it also
-named the Projects/axiom terminal above. With the loop ended (the terminal back at its prompt) it
-refused on the axiom terminal alone, and, with that one terminal hidden by a stand-in `orca` that
-passed every other call through, on each injected gap: `orca diagnostics memory` failing or
-naming no process for the Setup or the stand-in's terminal, no `effects` list, no `createdAt`, a
-truncated terminal list and a host left out. With only the axiom terminal hidden it released the
-chat (`closed_agent_terminal`): Orca closed the Setup terminal and the stand-in's terminal, both
-idle; a sibling chat stayed listed; the six terminals open since before the dispatch stayed
-listed; the workspace instance, HEAD and a sentinel file were unchanged; `GONE` passed; and
-check 4's removal-form scan failed on the sibling's `claude` process. Step 5's shell test, run on
-shells in throwaway ptys, refused a foreground job, a background job, a `nohup … & disown` job, a
-Python REPL, a busy builtin loop, an open regular file, a `zsh -c` script, a non-shell pty
-process and `bash --norc`, and passed an idle `zsh -i` or `-l` and an idle nested `bash -i`, and
-also a builtin `read` at the prompt (its known limit).
+A fifth run (same day, host and Orca) tested an earlier step 5, which let the release close a
+terminal that two `ps` reads and `lsof` showed as an idle shell. That form passed a shell blocked
+in the builtin `read`, so it was replaced by the one above. The run also showed that
+`worker-show`'s effects list the Setup terminal but not a terminal the stand-in opened without
+`--keep-open`, that Orca closed both with the chat, and that the Projects/axiom terminal above
+can't be dated.
+
+A sixth run tested this step 5 (same day, host and Orca, from a worker session, in a fresh scratch
+worktree). The stand-in opened a terminal without `--keep-open` whose shell then sat in the
+builtin `read`, and settled after its note; in `ps` that shell and the Setup terminal's shell at
+its prompt looked the same (`S+`, no child). Run unchanged against Orca, the block refused
+(exit 3, no `worker-release`), naming the Setup terminal, that terminal and the Projects/axiom
+terminal. Both shells were still running, and a line typed into the `read` came back. With both
+shells ended by `exit` (Orca then no longer listed either terminal) it refused on the axiom
+terminal alone. With that one row hidden from `orca terminal list` by a wrapper that passed every
+other call to Orca, it released the chat (`released`, `closed_agent_terminal`): a sibling chat and
+every other terminal stayed listed, the workspace's identity and HEAD held, `GONE` passed, and
+check 4's removal-form scan failed on the sibling's `claude` process. With a stand-in `orca`, the
+earlier step 5 released past a shell blocked in `read`, and this one refused it.
 
 Not tested: a Director in an ordinary Orca chat (its starts follow my Chat or CLI setting for new
-agent tabs, so check the first receipt's `mode`; all five runs started from a worker session, whose
+agent tabs, so check the first receipt's `mode`; all six runs started from a worker session, whose
 `structured` mode may come from that lineage), a Director restarted between the start and the
 release, a session that works again after `worker_done`, a supervised session's own mail to a
 real Head, and a real ticket from kickoff through merge and closeout (VIL-1043).

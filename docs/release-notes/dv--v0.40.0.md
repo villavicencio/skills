@@ -43,8 +43,7 @@ as they were (VIL-1156, VIL-1190).
 - **`dv:director-mode`, "End a finished worktree session".** A supervised session is released,
   not asked about: after checks 1 to 3, "Release a supervised Manager chat" runs in place of
   check 4 and the ask. Check 4's scan would fail on any sibling chat, which the release leaves
-  running, and on the Setup terminal's idle shell; the release block's own terminal check (below)
-  covers what the release can end. Check 4 and the global removal checks still run in their
+  running; the release block's own terminal check (below) covers what the release can end. Check 4 and the global removal checks still run in their
   removal form, on their own, before anything is removed. When check 1, 2 or 3 fails, nothing is released, asked or removed,
   as for any session; a decision still with the Head fails check 1. A newer closeout note from
   the same session replaces the earlier one for the checks and the release.
@@ -56,24 +55,25 @@ as they were (VIL-1156, VIL-1190).
   that dispatch with the record's task and Run, a structured chat, that chat, terminal and
   workspace, a terminal the dispatch owns, and a worker that succeeded after the note's
   timestamp (earlier is early settlement, refused); `orca agent list` lists the chat once as
-  `done`, with every row naming its session; the worktree's HEAD can be read; and every terminal
-  the release would or might close runs nothing but an idle shell. Orca closes, with the chat,
-  the Setup terminal and startup tabs the start opened and any terminal the session made without
-  `--keep-open`, in any workspace; no Orca command lists the latter. So the block takes the
-  start's terminals from `worker-show`'s `effects` and `residualResources`, and also counts every
-  live terminal on the host that Orca's evidence (`lastOutputAt`, or the pty process's start)
-  doesn't show open more than 60 seconds before the dispatch's `createdAt`. `orca terminal list`
-  must be whole; for each terminal counted, `orca diagnostics memory` must name one pty process,
-  two `ps` reads 2 seconds apart must show only Orca's login and a chain of interactive shells,
-  the last one in front and childless, with unchanged processes and CPU time, and `lsof` must show
-  that shell holding only its tty or `/dev/null`. Any of these that fails or can't run refuses with
-  nothing released (exit 3). Then it runs `worker-release`
+  `done`, with every row naming its session; the worktree's HEAD can be read; and no terminal the
+  release could also close is still open. Orca closes, with the chat, every terminal bound to the
+  worker (Orca 1.4.277's server code: the worker's `worker_bound_terminals` rows): the Setup
+  terminal (unless setup failed) and startup tabs the start opened, and any terminal the session's
+  agent made with `orca terminal create` or `split` without `--keep-open`, in any workspace; no
+  Orca command lists the latter. No check can show a live shell idle: one blocked in a builtin
+  such as `read` looks like one at its prompt, and work can start after any look. So the block
+  takes the start's terminals from `worker-show`'s `effects` and `residualResources`, counts every
+  other terminal in `orca terminal list` (which must be whole) unless Orca's evidence shows it open
+  more than 60 seconds before the dispatch's `createdAt` (its `lastOutputAt`, or the start of the
+  pty process `orca diagnostics memory` names, dated by `ps`), and refuses while any terminal it
+  counts is still listed; one nothing dates counts. Any of these that fails or can't run refuses
+  with nothing released (exit 3). Then it runs `worker-release`
   once. `released` or `already_released` goes on; `retained` is exit 4 (not released, David
   closes the chat); any other answer, an error or a timeout is exit 5 (release attempted, outcome
   unknown). After a release it proves, with every proof required to run: the chat absent from
   `orca agent list`; `orca agent show` giving it no place, or failing with exactly
   `agent_unknown` (any other failure, a timeout or a malformed reply proves nothing); every other
-  agent there still listed; every terminal found open since before the dispatch still listed;
+  agent there still listed; every terminal listed before the release still listed;
   the workspace's id, instance, identity key and path unchanged; and the worktree's directory
   still there with HEAD where it was. It compares no worktree file. Only then does it move the record to `_released/`, never over an existing
   file, and print `RESULT: released`. A proof that fails or can't run, or an archive that would
@@ -96,11 +96,12 @@ as they were (VIL-1156, VIL-1190).
 
 ## Tested
 
-On hal, 2026-11-26, Orca 1.4.277, all five runs started from a session that was itself an Orca
+On hal, 2026-11-26, Orca 1.4.277, all six runs started from a session that was itself an Orca
 worker, with the code blocks extracted from `SKILL.md` as it stood for that run and only the
 placeholders and the record directory replaced. The first three ran the blocks as first written;
 the fourth ran them after the first review fixes (start, setup and release blocks); the fifth ran
-the release block with its terminal check (step 5), which this release ships.
+an earlier terminal check (step 5), which let a release close terminals it judged idle shells;
+the sixth ran the step 5 this release ships, which refuses while any such terminal is open.
 
 - **First run, before the merge with 0.39.0** (one scratch worktree). Step 2a's command gave
   `mode: structured` and `keptOpen: true`. The stand-in held custody until its closeout stand-in
@@ -170,7 +171,7 @@ the release block with its terminal check (step 5), which this release ships.
   malformed ticket id all wrote no record), and the start block 5 (a write that failed or came
   out short, a failed `mktemp` and a prompt without its supervised line started nothing; a whole
   prompt reached `worker-start` byte for byte).
-- **Fifth run, the terminal check, on this text after merging 0.39.4** (a fresh scratch worktree,
+- **Fifth run, the earlier terminal check, after merging 0.39.4** (a fresh scratch worktree,
   `scratch-vil-1190-q4-383171`, a child of the integration worktree). The start and setup blocks
   ran as written. `worker-show`'s `effects` listed the Setup terminal (with its tab and pane) and
   the agent, and not the terminal the stand-in then opened without `--keep-open` (`AUX-LIVE`,
@@ -189,18 +190,42 @@ the release block with its terminal check (step 5), which this release ships.
   a 64 KiB random sentinel (SHA-256, inode, size, mtime) were unchanged; the record moved to
   `_released/`; `GONE` passed for the chat's wrapper and `claude` processes; and check 4's
   removal-form scan failed on the sibling's `claude` process, so the worktree would have been kept.
-- **Fixtures for the terminal check.** Step 5's shell test, run from the block's own code on
-  shells in throwaway ptys, refused a foreground job, a background job, a `nohup … & disown` job,
-  a Python REPL, a busy builtin loop (its CPU time moved), an open regular file, a `zsh -c` script,
-  a non-shell pty process and `bash --norc -i`, and passed an idle `zsh -i` or `zsh -l`, an idle
-  nested `bash -i`, and a builtin `read` at the prompt (the known limit). With a stand-in `orca`
-  answering from scenario files, the whole block released when the start's Setup terminal was gone
-  and three older terminals stayed; gave exit 5 after a release when an older terminal went
-  missing, or the terminal list after failed or was `truncated`; and refused with no
-  `worker-release` call for the start's pane under a new handle with no process, a new terminal on
-  another host, an unreadable `createdAt`, no `residualResources`, a start terminal with no handle,
-  and two processes for one pty. The 36 fixture cases above ran on the block before step 5 and
-  were not rerun; steps 1 to 4 and the other proofs after a release are unchanged.
+  That check's shell test passed a shell blocked in the builtin `read`, so the sixth run's step 5
+  replaced it.
+- **Sixth run, step 5 as shipped** (a fresh scratch worktree, `scratch-vil-1190-q5-af3923`, a
+  child of the integration worktree; dispatch `ctx_a9ba843477c6`, sibling `ctx_c404c833ef61`). The
+  start and setup blocks ran as written. The stand-in opened `AUX-READ` without `--keep-open`,
+  with `read -r line; echo "READ-RETURNED:$line"` typed into its shell, and settled after its
+  note. In `ps` that shell and the Setup terminal's shell at its prompt looked the same (`S+`, no
+  child). **Unmodified run, real Orca and its full terminal list:** the block refused (exit 3),
+  naming the Setup terminal and `AUX-READ` (each with its pty process running) and the axiom
+  terminal (no process Orca names). Orca recorded no release request; the chat and both terminals
+  stayed listed and both shells kept running; typing `survived` into `AUX-READ` then printed
+  `READ-RETURNED:survived`. After `exit` in both shells Orca listed neither terminal, and the
+  unmodified block refused on the axiom terminal alone. **Controlled run, one inventory row
+  hidden:** with the axiom row hidden from `orca terminal list` by a wrapper that passed every call
+  to the real Orca and changed nothing else, the block released the chat (`released`,
+  `closed_agent_terminal`). The sibling chat stayed listed; Orca's full list still held all seven
+  terminals right after and a minute later; the workspace's id, instance, identity key, path and
+  HEAD were unchanged; the record moved to `_released/`; `GONE` passed for the chat's wrapper and
+  `claude` processes; and check 4's removal-form scan failed on the sibling's `claude` process, so
+  the worktree would have been kept.
+- **Fixtures for step 5**, with a stand-in `orca` answering from scenario files, a throwaway git
+  repository and real ptys for the live shells, on the block extracted from this text: 18 of 18
+  cases as expected. It released when the start's Setup terminal was gone and every other
+  terminal was dated (by `lastOutputAt`; by a pty process started at boot; or, with `orca
+  diagnostics memory` failing, by `lastOutputAt` alone), and gave exit 5 after a release when an
+  older terminal went missing or the terminal list after failed or was `truncated`. It refused
+  with no `worker-release` call for the start's Setup terminal still open with a real `zsh` at its
+  prompt; a terminal the session made whose real `zsh` sat in the builtin `read` (afterwards that
+  shell was still running, and a typed line came back from the `read`); the start's pane under a
+  new handle; a new terminal on another host; a row like hal's axiom terminal; two pids for one
+  pty; with `orca diagnostics memory` failing, a terminal dated only by its pty process; a
+  `truncated` list or a host left out; an unreadable `createdAt`; no `residualResources`; and a
+  start terminal with no handle. The fifth run's block, given the same two live-shell cases,
+  called `worker-release` for both, reading the shell in `read` as an idle shell. The 36 fixture
+  cases above ran on the block before step 5 and were not rerun; steps 1 to 4 and the other
+  proofs after a release are unchanged.
 
 What stood in, in the second to fifth runs. The caller was a worker session in a worktree, not a
 Director in the main checkout. In the second and third runs every block ran from the main
@@ -247,12 +272,20 @@ by Orca. To let the release run on hal at all, a wrapper hid one terminal from `
 same wrapper injected the gaps. The `claude` pid came from `ps -E` as before, and the note's
 timestamp was Orca's message time.
 
+In the sixth run the ticket was again `VIL-0`. The supervised stand-in opened its terminal on its
+own, so Orca bound it to that worker, and the caller replied to its note by the message's id. The
+sibling was a second worker in the same worktree, started without `--keep-open`, which waited on a
+question until after the release, then finished and was closed by Orca. The caller typed the
+`survived` line and both `exit` lines with `orca terminal send`. The unmodified runs used no
+wrapper; in the controlled run the wrapper hid only the axiom row and injected nothing else. The
+`claude` pid came from `ps -E`, and the note's timestamp was Orca's message time.
+
 These runs are pre-merge fixtures. They don't stand in for the live check below.
 
 ## Not in this release
 
 - Not tested: a Director in an ordinary Orca chat (whether its starts come out structured follows
-  the Chat or CLI setting for new agent tabs; all five runs started from a worker session, whose
+  the Chat or CLI setting for new agent tabs; all six runs started from a worker session, whose
   `structured` mode may come from that lineage), a Director restarted between the start and the
   release, a session that works again after `worker_done`, and a supervised session's own mail to
   a real Head.
@@ -260,9 +293,10 @@ These runs are pre-merge fixtures. They don't stand in for the live check below.
   release ships (VIL-1043).
 - Ordinary chats still need David's click: Orca has no command to close them.
 - Orca 1.4.277 has no command that lists the terminals a worker made, so the release counts every
-  live terminal it can't show to be older than the dispatch, and one Orca can't date or map to a
-  process refuses every release while it is open. On hal that is the Projects/axiom terminal held
-  by Orca's older pty daemon; until it is closed, supervised chats there take David's close.
-- The terminal check can't tell a shell builtin waiting at the prompt (such as `read`) from an
-  idle prompt, and doesn't see a process that starts in one of those terminals after its second
-  read; check 4's removal form afterwards still catches one left in the worktree.
+  terminal it can't show to be older than the dispatch, and refuses while any terminal it counts
+  is open. A start's Setup terminal keeps a shell at its prompt, so a release refuses until that
+  terminal is closed; and one Orca can't date refuses every release while it is open (on hal, the
+  Projects/axiom terminal held by Orca's older pty daemon). Until then, supervised chats take
+  David's close.
+- A terminal the session makes in the seconds between the terminal check and the release isn't
+  seen.

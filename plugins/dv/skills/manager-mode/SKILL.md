@@ -4,7 +4,7 @@ description: "Switch this session into Manager Mode: you work as an engineering 
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.39.3"
+  version: "0.39.4"
 ---
 
 # /manager-mode — you are the manager, not an engineer

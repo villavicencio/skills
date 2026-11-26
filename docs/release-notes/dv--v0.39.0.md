@@ -23,7 +23,7 @@ schedule time in a dialog, and the dialog kept the Director's reply from reachin
   Director can be verified or the Director replies `Ask David`.
 - **`dv:groom`.** With a Head, in forks-only mode from a worktree session, its David-only forks
   go through the Director to the Head.
-- **`dv:closeout`.** Unchanged apart from the version and one pointer: its note reaches the
+- **`dv:closeout`.** Unchanged apart from the version: its note reaches the
   Director as before, and with a Head the Director forwards the note's open items that aren't the
   CEO's 1% to him. Closeout's own Head routing comes in VIL-1191.
 - **Always on: an answer with a short note counts.** An `Answer` that names an offered option

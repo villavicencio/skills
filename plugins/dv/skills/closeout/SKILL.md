@@ -468,8 +468,7 @@ CLEANUP THE PARENT OWNS
 REPLY NEEDED: <no | yes: the question>
 ```
 
-When the project has a department Head, the parent routes the note's open items
-onward (`dv:director-mode`, "The Head and the CEO's 1%"). Leave out secrets, credentials and tokens. Then save the note and copy it, with the note's text
+Leave out secrets, credentials and tokens. Then save the note and copy it, with the note's text
 in place of the placeholder line:
 
 ```bash

@@ -4,7 +4,7 @@ description: "Switch this session into Director Mode, the mode for the home sess
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.40.1"
+  version: "0.40.2"
 ---
 
 # /director-mode — the home session directs; worktree managers hire
@@ -1528,10 +1528,13 @@ session never does.
     versions its releases, and commits the merge and any bump. It pushes with `git push origin
     HEAD:<branch>`, which only fast-forwards: if the push is rejected, it stops and reports,
     never forces, and the temporary worktree, with its unpushed merge, comes to me as a
-    leftover. When it has finished, it removes that temporary worktree by the global removal
-    procedure named below (the same Git bullets your own removals use); if that procedure keeps
-    the worktree, it reports it to me as a leftover. This also fits a pilot PR, which has no
-    local worktree. It waits for MergeWren's verdict on the new head (the reviewer wait in "Fix
+    leftover. After a successful push it hands you the PR number, the exact absolute temporary
+    worktree path as recorded by `git worktree list --porcelain` and its full verified HEAD
+    (`git -C <path> rev-parse HEAD`), and leaves it in
+    place until the PR merges. It reports any failure or uncertainty and the path as a leftover;
+    never infer the path from a matching commit. Keep this handoff with the PR until cleanup,
+    including across a session handoff. This also fits a pilot PR, which has no local worktree.
+    It waits for MergeWren's verdict on the new head (the reviewer wait in "Fix
     rounds", in the same `code-review.md`) and reports it. Report the update to me as a
     highlight; any finding comes to me.
   - Either way, never merge a PR that MergeWren has not passed on its new head.
@@ -1540,7 +1543,26 @@ session never does.
     SendMessage to the `from` address its handoff came from. Its kickoff prompt has it run
     `dv:closeout` then, and the branch and worktree are cleaned up when its note arrives ("Take
     closeout notes").
-  - **No session is live:** clean up the merged PR's branch and worktree now.
+  - **No session is live:** clean up the merged PR's branch and worktree now. For a stale-PR
+    repair, also consider only the exact temporary path and full HEAD the engineer handed back.
+    Read the merged PR's state, `commits` and `headRefOid` with `gh pr view`, and the main
+    checkout's `git worktree list --porcelain`. The PR must be merged, the handed-back HEAD
+    must equal its head and occur in its commit list, and exactly one worktree record must name
+    that path, detached at that same HEAD. Verify `git -C <path> rev-parse HEAD` agrees. If
+    any evidence is missing, stale, ambiguous or cannot be read, keep the path and report why;
+    never select another detached worktree just because it has the same SHA. Run all checks in
+    the global removal procedure below, including check 4 in its strict removal form; if any
+    fails or cannot run, keep it. After those checks and immediately before the procedure's
+    removal command, re-read the PR evidence, exact worktree record and live HEAD; if any has
+    changed or cannot be verified, keep it. Only then run the procedure's removal command from
+    the main checkout. If Orca returns `selector_not_found`, keep the worktree. A read-only
+    `orca worktree show` with the registered repo's exact `id:<repo-id>::<absolute-path>` and
+    the owning environment can make a hidden external worktree visible to its path selector
+    (observed once). Corroborate the returned repo, path, host, detached state and HEAD with
+    the existing evidence; if retrying, first rerun every preservation and identity check. If it
+    still cannot be selected or any check fails, leave it and report the error. Report the exact
+    path and reason for any leftover, including when the PR does not merge. Do not treat matching
+    the PR as a substitute for any preservation gate.
 - Clean up by the global procedure for removing branches and worktrees (the Git bullets "After a
   PR merges…", "A leftover local branch…" and "Remove a finished Orca worktree yourself…"), run
   from the main checkout. Any other worktree or branch removal, merged PR or not, follows the

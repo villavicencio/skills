@@ -329,8 +329,8 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
   harness approval, a barrier set for me) is not a question and still comes to me ("Decisions and
   escalation", "Limits"). A question forwarded to the Head never blocks:
   - **On `Forwarded to the Head, VIL-N, Qk: <the way forward>`**, take the way forward and keep
-    the rest moving, as for a held question. Until the Director answers its `Unanswered`
-    (below), an `Answer from the Head, VIL-N, Qk: <option>` from the verified Director that names
+    the rest moving, as for a held question. Until the Director answers its `Unanswered` with an
+    `Answer` (below), an `Answer from the Head, VIL-N, Qk: <option>` from the verified Director that names
     one of the question's options settles it, as does one that comes as your first reply. It is
     the Head's call, so whether it is the option you recommended, and the clear-cut conditions,
     don't matter; check only the delete and scope-cut limits "What counts as the answer" gives,
@@ -348,8 +348,12 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
   - **Unanswered at the end.** When the ticket's other work is done, send the Director, for each
     question still without an answer that counts (a held kind and a forwarded one included),
     `Unanswered, VIL-N, Qk: <the question>. Options: <as in the Question>. Recommended: <the option>. Reversible: <yes or no, and how>. Sent: <UTC date and time>.`,
-    and wait for it as for a question. Its `Answer` takes the recommended option; check it as
-    "What counts as the answer" says and apply it. A `Forwarded to the Head` reply (an item
+    and wait for it as for a question. Its `Answer` is the Director's default
+    (`dv:director-mode`, "Unanswered at the end"), its own path: apply it without the checks of
+    "What counts as the answer", except the delete and scope-cut limits. "What no default
+    decides" stays binding: if you can see the question is one of those items (a Head-only
+    `dv:groom` fork, `Reversible: no`, a safety-boundary decline, one of the CEO's 1%), treat the
+    `Answer` as `Forwarded to the Head` and keep its way forward. A `Forwarded to the Head` reply (an item
     under "What no default decides": keep its way forward), or no answer that counts, means ask me nothing:
     write it on the ticket as an open decision, and it goes under WAITING ON in your closeout
     note. A `Held for David` reply to it is the one case that comes to me now: the Director's

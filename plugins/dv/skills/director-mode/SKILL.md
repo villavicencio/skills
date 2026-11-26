@@ -304,8 +304,11 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
   when his answer says it carries my decision ("What no default decides"); otherwise, or when he
   takes it to me, send nothing: the question stays on its way forward until my decision comes
   through him. Anything else settles nothing.
-  Once you have answered the session's `Unanswered` for it (next bullet), send his answer to the
-  session no more; relay it to me as a highlight. For an item from a closeout note's `WAITING ON`,
+  Once you have answered the session's `Unanswered` for it with an `Answer` (next bullet), send
+  his answer to the session no more; relay it to me as a highlight. An item you answered there
+  with `Forwarded to the Head` (one no default decides) stays open for him: send his answer as
+  above whenever it comes, and if the session has ended, write it on the ticket as a comment
+  instead, so the item isn't stuck. For an item from a closeout note's `WAITING ON`,
   write his answer on the ticket as a comment, then send the session
   `WAITING ON answered, VIL-N: <the item>: <his answer>` (`dv:closeout`, Step 5, "With a Head");
   for one of the CEO's 1%, the losses to accept included, only when it says it carries my

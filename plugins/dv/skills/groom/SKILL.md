@@ -307,27 +307,33 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
     is "not run: default-branch commit not verified". When the ticket changes more than one repo,
     a line that does not name its repo is "not run: repo unclear".
   - **Form.** Take the line's command in backticks. A note of the author's own run in the form
-    "<result> at `<commit>`", such as "nothing at `abc1234`" (the format asks for one), is neither
-    a command nor the stated result: set it aside. A line is checked only when its command, split
-    into words at spaces, is exactly a file test: `test -f <path>`, `test -e <path>`,
-    `[ -f <path> ]` or `[ -e <path> ]`, with at most one `!`, before the whole command or before
-    `-f` or `-e`, and `<path>` one path, bare or in quotes. Any other command is "not run:
-    unsupported form": a search such as `grep`, any other program, any other flag, a second path,
-    a pipe, `;`, `&&`, `||`, a redirect, `$`, a backtick, a glob or an environment variable. A
-    line with more than one command is "not run: more than one command". A line with no command
-    (an observation, such as a review verdict) is not checked here and is listed as "observation,
-    not checked".
+    "<result> at `<commit>`", such as "nothing at `abc1234`" (the format asks for one), is neither a
+    command nor the stated result: set it aside. A line is checked only when its command, split into
+    words at spaces, is exactly a file test: `test -f <path>`, `test -e <path>`, `[ -f <path> ]` or
+    `[ -e <path> ]`, with at most one `!`, before the whole command or before `-f` or `-e`, and
+    `<path>` one path, bare or in quotes. Any other command is "not run: unsupported form": a search
+    such as `grep`, any other program, any other flag, a second path, a pipe, `;`, `&&`, `||`, a
+    redirect, `$`, a backtick, a glob or an environment variable. A line with more than one command
+    is "not run: more than one command". A line with no command in backticks is checked when its
+    text after the `- [ ]` box starts with exactly such a file test, under the same form and path
+    rules, followed by a space or the end of the line; the rest of the line is the stated result. A
+    path there that ends in `.` is "not run: unsupported form", since the dot may end the sentence.
+    Such a line that starts with `test`, `[` or `!` but not with exactly a file test, or that starts
+    with another command, is "not run: unsupported form". Any other line with no command (an
+    observation, such as a review verdict) is not checked here and is listed as "observation, not
+    checked".
   - **The path.** Take `<path>` without its quotes (one matching pair of `'` or `"`) and drop a
     leading `./`. What is left must be relative to the repo's top level: only `A` to `Z`, `a` to
     `z`, `0` to `9`, `.`, `_`, `-` and `/`; no leading `/` or `-`; no part that is `.`, `..` or
-    empty; no trailing `/`. Otherwise it is "not run: unsafe path". A
-    secret-named path is "not run: secret-named path", checked before any git read of the path,
-    with each part lowercased first, so case never matters: a part named `.env`, `.envrc`,
-    `.netrc`, `.npmrc`, `.pypirc`, `.pgpass`, `.ssh`, `.aws`, `.gnupg`, `kubeconfig` or
-    `auth.json`; a part starting with `.env.`, `id_rsa`, `id_dsa`, `id_ecdsa` or `id_ed25519`; a
-    part ending in `.pem`, `.key`, `.p12`, `.pfx`, `.jks`, `.keystore`, `.kdbx` or `.tfvars`; or a
-    part holding `secret`, `credential`, `password`, `passwd` or `token`. The path reaches the
-    shell only inside the single quotes of the reads below.
+    empty; no trailing `/`. Otherwise it is "not run: unsafe path". A path with a part named `.git`,
+    in any case, is "not run: git metadata": git does not track it, so the tracked files cannot show
+    whether it exists. A secret-named path is "not run: secret-named path". With each part
+    lowercased first, so case never matters, that is a part named `.env`, `.envrc`, `.netrc`,
+    `.npmrc`, `.pypirc`, `.pgpass`, `.ssh`, `.aws`, `.gnupg`, `kubeconfig` or `auth.json`; a part
+    starting with `.env.`, `id_rsa`, `id_dsa`, `id_ecdsa` or `id_ed25519`; a part ending in `.pem`,
+    `.key`, `.p12`, `.pfx`, `.jks`, `.keystore`, `.kdbx` or `.tfvars`; or a part holding `secret`,
+    `credential`, `password`, `passwd` or `token`. Both checks come before any git read of the path.
+    The path reaches the shell only inside the single quotes of the reads below.
   - **Reads.** Fixed commands, run as written with only the commit, the path and a parent
     directory filled in. They only read the repo's objects; none writes or reaches the network
     (`--no-lazy-fetch` stops a partial clone from fetching a missing object: the read fails

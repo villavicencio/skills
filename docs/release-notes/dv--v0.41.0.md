@@ -16,13 +16,14 @@ outside the repo or a secret in each of four rounds. This one runs no command fr
 
 - **`dv:groom`, step 3, "Done means lines that already pass".** It checks file-existence lines
   only: `test -f <path>`, `test -e <path>`, `[ -f <path> ]` or `[ -e <path> ]`, with at most one
-  `!`. For those, grooming looks up the named path in the files tracked at the default branch's
-  commit with fixed git reads of its own: `cat-file -e` for the commit, and `ls-tree` for the path
-  (and its leading directories and parent when it is missing), each with `--no-lazy-fetch`. It
-  uses that commit only when step 1 found its local id equal to origin's and the commit is in the
-  clone, and it does not fetch. It runs no command from the ticket and no code from the repo, and
-  it reports a result for each line, not file contents. A result note the author left in the line
-  ("nothing at `abc1234`") is set aside.
+  `!`, written in backticks or bare at the start of the line (after the `- [ ]` box, with the rest
+  of the line as the stated result). For those, grooming looks up the named path in the files
+  tracked at the default branch's commit with fixed git reads of its own: `cat-file -e` for the
+  commit, and `ls-tree` for the path (and its leading directories and parent when it is missing),
+  each with `--no-lazy-fetch`. It uses that commit only when step 1 found its local id equal to
+  origin's and the commit is in the clone, and it does not fetch. It runs no command from the ticket
+  and no code from the repo, and it reports a result for each line, not file contents. A result note
+  the author left in the line ("nothing at `abc1234`") is set aside.
 - **A search is not run.** A `grep` or any other search line is "not run: unsupported form",
   because a result about a file's contents would let ticket text probe them.
 - **Results.** Each line gets one: "already passes" (flagged), "fails in the tracked files at the
@@ -32,8 +33,9 @@ outside the repo or a secret in each of four rounds. This one runs no command fr
   run when its command is not a file test (a search, another program, another flag, a pipe, `;`,
   `&&`, `$`, a backtick or a glob, among others); when its path is not a plain repo-relative path
   or is secret-named, in any case (`.env`, `.netrc`, key files, `*.pem`, `id_rsa*`, names holding
-  `secret`, `credential`, `password` or `token`, among others); when the path, or a directory on
-  its way, is a link or a submodule; when a missing path differs only in case from a tracked one;
+  `secret`, `credential`, `password` or `token`, among others); when a part of the path is named
+  `.git`, in any case (git does not track it); when the path, or a directory on its way, is a link
+  or a submodule; when a missing path differs only in case from a tracked one;
   when a read fails; or when what the line says passing looks like is unclear.
 - **A flagged line is an open decision:** rewrite it so it fails first, or keep it as a guard of
   unchanged behavior with the reason in the line. In `forks-only` mode a rewrite that fails is a

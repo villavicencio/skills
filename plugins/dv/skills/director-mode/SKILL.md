@@ -1181,10 +1181,24 @@ stayed open. Then it released the first one (`"state":"released"`,
 `"processAction":"closed_agent_terminal"`): the chat left `orca agent list`, `orca agent show`
 gave it no place, the ordinary chat beside it stayed listed and running, the Setup terminal
 closed, the workspace instance, HEAD and a sentinel file were unchanged, and the `GONE` check
-passed. A second release returned `already_released`. Not tested: a Director in an ordinary Orca
-chat (its starts follow my Chat or CLI setting for new agent tabs, so check the first receipt's
-`mode`), a Director restarted between the start and the release, a session that works again
-after `worker_done`, and a real ticket from kickoff through merge and closeout (VIL-1043).
+passed. A second release returned `already_released`.
+
+A second run, after the Head routing (dv 0.39.0) was merged in (same day, host and Orca, again
+from a worker session, in a fresh scratch worktree): step 2a passed the integrated kickoff prompt
+to Orca unchanged (the stored spec matched the file byte for byte). A stand-in following its
+supervised line and `dv:manager-mode`'s "A supervised session" sent no `worker_done` while its
+note listed a question pending with the Head, and the block refused that unsettled session,
+changing nothing. Told that everything had settled, it sent a new note and, 10 seconds after that
+note, `worker_done`. Given the new note's timestamp, the block released it while a second
+supervised chat in the same worktree stayed listed; the `GONE` check passed, and check 4's
+removal-form scan then failed on that second chat's `claude` process, so the worktree would have
+been kept.
+
+Not tested: a Director in an ordinary Orca chat (its starts follow my Chat or CLI setting for new
+agent tabs, so check the first receipt's `mode`; both runs started from a worker session, whose
+`structured` mode may come from that lineage), a Director restarted between the start and the
+release, a session that works again after `worker_done`, a supervised session's own mail to a
+real Head, and a real ticket from kickoff through merge and closeout (VIL-1043).
 
 ### Merge and clean up, from the main checkout
 

@@ -36,7 +36,8 @@ One plugin, invoked `dv:<skill>` — modeled on how `compound-engineering` holds
 (`orca orchestration worker-start --worktree new-child --keep-open`) and records its dispatch,
 chat and workspace instance in `<git-common-dir>/orca-supervised/`. The session sends
 `worker_done` only as its last act, after the Director replied to its closeout note with nothing
-waiting (`dv:manager-mode`, "A supervised session"). The Director then releases that one chat
+waiting on anyone, a department Head included (`dv:manager-mode`, "A supervised session"). The
+Director then releases that one chat
 through Orca (`worker-release`) once its closeout checks pass and the record, the note's sender,
 the settled owned dispatch and the live workspace instance all match, and proves the chat gone
 with the worktree and any other chat in it untouched. An ordinary chat, a start Orca made in a

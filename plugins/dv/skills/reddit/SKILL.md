@@ -4,7 +4,7 @@ description: Fetch and summarize a Reddit post with all its comments from a URL,
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.38.1"
+  version: "0.40.2"
 ---
 
 # /reddit — Fetch Reddit Post and Comments

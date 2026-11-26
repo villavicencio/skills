@@ -4,7 +4,7 @@ description: "Bootstrap a new project on David's personal Mac in one run: a loca
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.38.1"
+  version: "0.40.2"
 ---
 
 # /new-project — bootstrap a new project on the personal Mac

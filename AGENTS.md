@@ -33,8 +33,10 @@ checkout.
   the release with `docs/release-notes/<plugin>--v<version>.md` as its notes, and starts
   `validate` on the tag. If `validate` didn't pass, the run fails naming the commit and the
   `validate` run, and nothing is released. A person still does three things: bump the version
-  (plugin.json and every skill's `metadata.version`), write that notes file, and merge. Don't
-  tag or create a release by hand for a version the workflow will release; that races it.
+  (plugin.json and every skill's `metadata.version`), write that notes file, and merge. Bump
+  only when the change ships in a plugin (anything under `plugins/<plugin>/`). A change only to
+  `tooling/`, `.github/` or `docs/` ships in no plugin, so it gets no bump and no notes file
+  (skills PR 117, VIL-924). Don't tag or create a release by hand for a version the workflow will release; that races it.
   Logic and rules are in `tooling/release_plugins.py` (unit tests:
   `python3 tooling/test_release_plugins.py`, which both jobs run first). Its checks run before
   it creates anything; any of these fails the run with nothing tagged or released: a directory
@@ -101,6 +103,7 @@ checkout.
   - plugin.json ↔ skill version-parity — plugin manifest version must match skills'
 
 ## Conventions
+- Head: Head of Skills, Orca address `bot:Head of Skills`, Linear handle `head-of-skills`. He runs this department for David, the CEO; `dv:director-mode`, `dv:manager-mode` and `dv:groom` (only in forks-only mode from a worktree session) route escalations to him as `dv:director-mode` ("The Head and the CEO's 1%") says, his answers advisory until verified Head decision delivery ships (VIL-1193), and `dv:closeout` follows in VIL-1191.
 - Push to main is NOT pre-authorized on this repo — confirm before `git push origin main`
 - All file paths in docs are repo-relative
 - Apache-2.0 root LICENSE; no per-skill LICENSE/CHANGELOG in v0.1.0

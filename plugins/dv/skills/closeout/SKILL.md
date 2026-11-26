@@ -4,7 +4,7 @@ description: "Close out a finished worktree session and brief the parent session
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.40.2"
+  version: "0.42.0"
 ---
 
 # /closeout — close out a finished worktree session
@@ -663,6 +663,9 @@ after this session has ended. Do not run it.
   replaces this command; otherwise keep the command above.
 - While the note waits for the probe answers ("Deliver the note", below), say that removing the
   worktree ends this session, and the note is then not sent.
+- Once the note has been sent to a Director its probe verified ("Deliver the note", steps 4 and
+  5), say that the Director removes this worktree after this session ends, and still name the
+  command for me. "Offer the removal", below, then asks nothing.
 - **Initialized submodules.** If Step 1 printed "initialized submodules" above 0, `wt done`,
   `git worktree remove` and a plain `orca worktree rm` all refuse this worktree. Say so, and point
   to the guarded procedure instead of a plain command: `dv:orca-setup` Step 5 (`orca worktree rm
@@ -705,7 +708,8 @@ Reply in this order, short:
    what happened with the Director, as one of the outcomes in "Deliver the note" (not sent and why, probe sent and the note waiting for the answers, send
    failed and probe sent again with the note waiting for the answers, answered but not verified
    (a wrong path, or ambiguous), note sent with no reply yet, note sent and replied); the removal
-   command, when safe.
+   command, when safe, and, once the note was sent to a probe-verified Director, that the Director
+   removes the worktree after this session ends ("Offer the removal").
 4. The line the optional section below tells you to add, if any.
 5. The full note itself in a fenced code block, whatever the clipboard status, so I can copy it.
 
@@ -857,6 +861,20 @@ then not sent. The question is: remove this worktree now? Run the removal only a
 of the session, because it stops this worktree's sessions:
 
 `"<orca CLI>" worktree rm --worktree "path:<worktree path>" --json`
+
+**When the Director removes it, ask nothing.** From the turn the note is sent to a Director its
+probe verified ("Deliver the note", steps 4 and 5), in that turn and every later one, end the
+reply without this question, whether or not the Director has replied (the outcomes "note sent
+with no reply yet" and "note sent and replied"). Say instead that the Director removes this
+worktree after this session ends, by its own checks (`dv:director-mode`, "Take closeout notes"
+and "End a finished worktree session"), and name the command above for me: when one of its checks
+fails, the Director keeps the worktree, tells me, and leaves the removal to me. With no verified
+Director the question stays as above: no note sent, the note waiting for the probe answers (or
+sent again after a failed send), an answer not verified, a note sent only by `terminal send`.
+Skipping this question never stands in for my consent to losing data that exists nowhere else:
+while Step 2 says safe once you accept losing, Step 5's question still asks it, and nothing treats
+the worktree as safe before my yes. A yes I already gave to this question, asked before the note
+was sent, still counts: recheck and remove as above.
 
 The command can return `ok: true` with `removing: true` before the removal has finished
 (`dv:orca-setup` Step 5). Before reporting it done, check from the main checkout that the path is

@@ -293,9 +293,11 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
   on the default branch before the work and passes after it, unless the line says it guards
   behavior that must not change. A line that already passes proves nothing. This check runs no
   command from the ticket and no code from the repo, not even a command that only reads ("How"
-  above lets a fact check run one; this check does not use that). For two fixed forms it reads the
-  named tracked file at the default branch's commit with fixed git reads of its own, and it lists
-  every other line as not run, with the reason.
+  above lets a fact check run one; this check does not use that). It checks file-existence lines
+  only: it looks up the named path in the files tracked at the default branch's commit with fixed
+  git reads of its own, and it lists every other line as not run, with the reason. A search
+  (`grep` and the like) is not run, because a result about a file's contents would let ticket
+  text probe them.
   - **Commit.** Use the default branch's commit that step 1 recorded, and only when step 1 found
     its full local id equal to the one `git ls-remote` returned for origin's default branch and
     `git --no-lazy-fetch -C "<top level>" cat-file -e "<commit>^{commit}"` exits 0. `<top level>`
@@ -304,90 +306,55 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
     remote returned no line, the commit is not in the clone, the repo cannot be read) every line
     is "not run: default-branch commit not verified". When the ticket changes more than one repo,
     a line that does not name its repo is "not run: repo unclear".
-  - **Forms.** Take the line's command in backticks. A note of the author's own run in the form
+  - **Form.** Take the line's command in backticks. A note of the author's own run in the form
     "<result> at `<commit>`", such as "nothing at `abc1234`" (the format asks for one), is neither
-    a command nor the stated result: set it aside. Split the command into words at spaces; a
-    quoted pattern or path is one word. A line is checked only when its command is exactly one of
-    these:
-    - a file test: `test -f <path>`, `test -e <path>`, `[ -f <path> ]` or `[ -e <path> ]`, with at
-      most one `!`, before the whole command or before `-f` or `-e`;
-    - a search of one file: `grep <flags> <pattern> <path>`, with at most one `!` before it.
-      `<flags>` is none or more of `-n`, `-i`, `-q`, `-w`, `-F` and `-E`, alone or joined in one
-      word (`-in`), and never `-F` with `-E`. `<pattern>` is in single or double quotes. `<path>`
-      is one path, bare or in quotes.
-
-    Any other command is "not run: unsupported form": for example one with a pipe, `;`, `&&`,
-    `||`, a redirect, `$`, a backtick, a glob or an environment variable outside the pattern's
-    quotes, or one with `-r` or any other flag, a directory to search, a second pattern or path, or
-    any other program. A line with more than one command is "not run: more than one command". A
-    line with no command (an observation, such as a review verdict) is not checked here and is
-    listed as "observation, not checked".
-  - **What the ticket supplies.** Drop a leading `./` from `<path>`. What is left must be relative
-    to the repo's top level: only `A` to `Z`, `a` to `z`, `0` to `9`, `.`, `_`, `-` and `/`; no
-    leading `/` or `-`; no part that is `.`, `..` or empty; no trailing `/`. Otherwise it is "not
-    run: unsafe path". A secret-named path is "not run: secret-named path", checked before any git
-    read of the path, with each part lowercased first, so case never matters: a part named `.env`,
-    `.envrc`, `.netrc`, `.npmrc`, `.pypirc`, `.pgpass`, `.ssh`, `.aws`, `.gnupg`, `kubeconfig` or
+    a command nor the stated result: set it aside. A line is checked only when its command, split
+    into words at spaces, is exactly a file test: `test -f <path>`, `test -e <path>`,
+    `[ -f <path> ]` or `[ -e <path> ]`, with at most one `!`, before the whole command or before
+    `-f` or `-e`, and `<path>` one path, bare or in quotes. Any other command is "not run:
+    unsupported form": a search such as `grep`, any other program, any other flag, a second path,
+    a pipe, `;`, `&&`, `||`, a redirect, `$`, a backtick, a glob or an environment variable. A
+    line with more than one command is "not run: more than one command". A line with no command
+    (an observation, such as a review verdict) is not checked here and is listed as "observation,
+    not checked".
+  - **The path.** Drop a leading `./`. What is left must be relative to the repo's top level: only
+    `A` to `Z`, `a` to `z`, `0` to `9`, `.`, `_`, `-` and `/`; no leading `/` or `-`; no part
+    that is `.`, `..` or empty; no trailing `/`. Otherwise it is "not run: unsafe path". A
+    secret-named path is "not run: secret-named path", checked before any git read of the path,
+    with each part lowercased first, so case never matters: a part named `.env`, `.envrc`,
+    `.netrc`, `.npmrc`, `.pypirc`, `.pgpass`, `.ssh`, `.aws`, `.gnupg`, `kubeconfig` or
     `auth.json`; a part starting with `.env.`, `id_rsa`, `id_dsa`, `id_ecdsa` or `id_ed25519`; a
     part ending in `.pem`, `.key`, `.p12`, `.pfx`, `.jks`, `.keystore`, `.kdbx` or `.tfvars`; or a
-    part holding `secret`, `credential`, `password`, `passwd` or `token`. Inside its
-    quotes, `<pattern>` is "not run: unsafe pattern" when it is empty, starts with `-`, or holds a
-    single quote, a double quote, `$`, a backtick, a backslash or a line break (a backslash reads
-    differently inside double quotes, and between `grep` and `git grep`). The path and the pattern
-    reach the shell only inside the single quotes of the reads below.
-  - **Reads.** Fixed commands, run as written with only the commit, the path, a parent directory
-    and the pattern filled in. They only read the repo's objects, attributes and config; none
-    writes or reaches the network (`--no-lazy-fetch` stops a partial clone from fetching a missing object:
-    the read fails instead), and none prints a file's contents.
-    1. Every checked line: `git --no-lazy-fetch -C "<top level>" ls-tree <commit> -- '<path>'`.
-       One line for exactly that path with mode `100644` or `100755` is a regular file, and mode
-       `040000` a directory. Mode `120000` (a link) or `160000` (a submodule) is "not run: link or
-       submodule". When it prints no line, read each leading directory of the path the same way,
-       from the top: mode `120000` or `160000` there is also "not run: link or submodule". At the
-       first part that is missing (a leading directory or the last part), list its parent with
-       `git --no-lazy-fetch -C "<top level>" ls-tree --name-only <commit> -- '<parent>/'` (for a
-       part at the top level, the same command with no `--` and no path). If the last part of an
-       entry there matches the missing part when case is ignored, the line is "not run: path
-       differs only in case", since it can pass on a disk that ignores case. Otherwise the path is
-       not in the tracked files at the commit, and the check treats it as missing.
-    2. A search, when read 1 found a regular file. First, whether a checkout would change the
-       file's bytes, so that `grep` in a checkout would see other text than the commit holds:
-       `git --no-lazy-fetch -C "<top level>" check-attr --source <commit> filter working-tree-encoding ident crlf eol -- '<path>'`,
-       then `git -C "<top level>" config --get core.autocrlf` and
-       `git -C "<top level>" config --get core.eol` (each prints nothing and exits 1 when unset).
-       The line is "not run: a checkout changes the file" when `filter`, `working-tree-encoding`,
-       `ident` or `crlf` has a value other than `unspecified`, `eol` has one other than
-       `unspecified` or `lf`, `core.autocrlf` is set to anything but `input` or a false value
-       (`false`, `no`, `off`, `0`), or `core.eol` is set to anything but `lf` or `native`, each
-       config value compared in any case; and for every search on Windows, where line endings
-       default to CRLF (Git LFS and CRLF line endings are such cases). Then
-       `git --no-lazy-fetch -C "<top level>" grep -q <matcher> -e '<pattern>' <commit> -- '<path>'`,
-       with `<matcher>` `-F` or `-E` when the line has it and `-G` otherwise, so git config
-       cannot change the pattern syntax, plus `-i` and `-w` when the line has them. Exit 0 is a
-       match, exit 1 no match.
+    part holding `secret`, `credential`, `password`, `passwd` or `token`. The path reaches the
+    shell only inside the single quotes of the reads below.
+  - **Reads.** Fixed commands, run as written with only the commit, the path and a parent
+    directory filled in. They only read the repo's objects; none writes or reaches the network
+    (`--no-lazy-fetch` stops a partial clone from fetching a missing object: the read fails
+    instead), and none prints a file's contents. First
+    `git --no-lazy-fetch -C "<top level>" ls-tree <commit> -- '<path>'`. One line for exactly that
+    path with mode `100644` or `100755` is a regular file, and mode `040000` a directory. Mode
+    `120000` (a link) or `160000` (a submodule) is "not run: link or submodule". When it prints no
+    line, read each leading directory of the path the same way, from the top: mode `120000` or
+    `160000` there is also "not run: link or submodule". At the first part that is missing (a
+    leading directory or the last part), list its parent with
+    `git --no-lazy-fetch -C "<top level>" ls-tree --name-only <commit> -- '<parent>/'` (for a part
+    at the top level, the same command with no `--` and no path). If the last part of an entry
+    there matches the missing part when case is ignored, the line is "not run: path differs only
+    in case", since it can pass on a disk that ignores case. Otherwise the path is not in the
+    tracked files at the commit, and the check treats it as missing.
 
     Any other exit or output from a read is "not run: read failed". The reads see only the files
     tracked at the commit: this check does not see untracked or generated files, so a path that a
-    build or another local step creates is treated as missing. Do not print matched lines or file
-    contents anywhere, in the reply, the report or Linear: a line gets a result, not output.
-  - **Judge.** From the reads, the ticket's command on the default branch would: for a file test,
-    exit 0 when `-f` found a regular file or `-e` found a regular file or a directory, and 1
-    otherwise; for a search, exit 0 on a match and print the matching lines (nothing with `-q`),
-    exit 1 on no match and print nothing, and exit non-zero with an error when the path is missing
-    or a directory. A `!` turns exit 0 into 1 and any other exit into 0. Then read what the line
-    states, taking the first rule that applies:
-    1. A count, a line number, an exit code other than 0, output from `test` or `-q`, or two
-       statements that disagree: "not run: stated result unclear".
+    build or another local step creates is treated as missing. Do not print file contents
+    anywhere, in the reply, the report or Linear: a line gets a result, not output.
+  - **Judge.** From the reads, the test on the default branch would exit 0 when `-f` found a
+    regular file or `-e` found a regular file or a directory, and 1 otherwise. A `!` turns exit 0
+    into 1 and 1 into 0. Then read what the line states, taking the first rule that applies:
+    1. A count, a line number, an exit code other than 0, any output, or two statements that
+       disagree: "not run: stated result unclear".
     2. Only the command, or "exits 0", "succeeds" or "passes": the line passes on exit 0.
     3. "Fails" or "exits non-zero": it passes on a non-zero exit.
-    4. For a search of a regular file, with no `!` and no `-q`: a statement that it prints or finds
-       nothing, in any wording ("prints nothing", "no output", "finds no line", "no longer
-       finds"), passes on no match. "Prints" or "finds" with a description of the lines passes on
-       a match, since a command that already prints cannot fail first, whatever it prints. On a
-       match for such a statement, first run read 2's `git grep` again with `-I` added after `-q`:
-       exit 1 there means git takes the file for binary, where `grep` prints a binary-file notice
-       and not the lines, so the line is "not run: binary file".
-    5. Anything else: "not run: stated result unclear".
+    4. Anything else: "not run: stated result unclear".
   - **Results.** Each Done means line gets one of these results. They go, with the commit's short
     id (or "commit not verified"), in step 6's findings and step 8's report, the lines not run
     listed apart from the lines that fail:

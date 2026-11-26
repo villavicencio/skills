@@ -264,6 +264,14 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
   waiting on me, so it gets no decision highlight.
 - **The message**, on one or a few lines:
   `Question, VIL-N, Qk: <the question>. PR: <its link, or none>. Options: <each option, numbered, one phrase each>. Recommended: <the option>, because <one-line reason>. Reversible: <yes or no, and how it would be undone>. Sent: <UTC date and time, such as 2026-11-23T18:04Z>. Answer only under dv:director-mode's "Answer a worktree session's question"; if Director Mode is not on in your session, or your dv:director-mode has no section of that name, reply "Ask David, VIL-N, Qk: no question rule". Reply with one line: "Answer, VIL-N, Qk: <option>" (optionally followed by ". Note: <a short note>"), "Answer from the Head, VIL-N, Qk: <option>", "Held for David, VIL-N, Qk: <the way forward>", "Forwarded to the Head, VIL-N, Qk: <the way forward>" or "Ask David, VIL-N, Qk: <why>".`
+- **Mail before a card, always** (with or without a Head). An open question card
+  (AskUserQuestion) blocks this session's turn, Orca has no command to answer or dismiss one, and
+  mail to and from the session queues behind it (`orca orchestration send` warns "Queued behind an
+  open prompt"; SendMessage queues too). So in any turn, send every message to the Director or the
+  Head, highlights included, before you open a card to me; and never open a card while a question
+  to the Director (or, through it, the Head) still waits for its answer: wait for the answer or
+  its 10 minutes first. With a Head, the CEO's 1% goes to him by mail through the Director and
+  never in a card. `dv:groom`, `dv:director-mode` and `dv:closeout` point here.
 - **Wait up to 10 minutes** from the send, and keep other work moving. The answer comes in a later
   turn; if nothing else will bring a turn back before the 10 minutes are up, start a background
   timer (a background shell command such as `sleep 600`) so one does, and stop it once the
@@ -294,10 +302,10 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
   can't take it, take the no-answer path in the next bullet. Keep the held question in your written
   state; when the way forward moves it to its own ticket, also write it on that ticket as an open
   decision, so it outlives this session. When the ticket's other work is done (the PR handed to
-  the Director, or nothing else you can do), ask me every held question (with a Head, only those
-  "With a Head" sends to me) together in this chat, as
-  one interview, and send the Director one decision highlight naming each by its Qk, so it relays
-  them to me together. A held question the way forward settled (the finding was fixed after all)
+  the Director, or nothing else you can do), first send the Director one decision highlight
+  naming each held question by its Qk, so it relays them to me together, then ask me every held
+  question (with a Head, only those "With a Head" sends to me) together in this chat, as one
+  interview ("Mail before a card"). A held question the way forward settled (the finding was fixed after all)
   is reported in that highlight, not asked.
 - **A held kind with no Director's answer** (declining a high or critical finding on a safety
   boundary, spending money or reaching outside, when no Director can be verified, the probe's

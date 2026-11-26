@@ -33,6 +33,9 @@ mention. Bare invocation takes none. "I" and "me" in this skill mean the user.
   read, say which fact is unverified. The worktree is then "not confirmed safe", never "safe".
 - **Nothing is removed without my yes.** This skill never merges a PR, never deletes a branch and
   never removes the worktree on its own.
+- **Mail before a card.** In a turn that sends a probe or the note, send it before any question
+  to me, and open no question card while a probe or a question to the Director still waits
+  (`dv:manager-mode`, "Mail before a card").
 - **Every block is self-contained.** Shell state does not survive between tool calls. The blocks
   take no positional parameters, and awk reads the whole line as `$(0)`: Claude Code replaces `$`
   followed by a digit everywhere in this file.

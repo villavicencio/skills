@@ -126,7 +126,10 @@ falls back to me. Grooming goes on in the turn the last answer arrives.
 3. **Interview rounds.** The interview rules in that file hold, with three additions for grooming.
    A round has at most 4 questions; when there are more decisions, hold another round after the
    answers, as many as it takes. Never leave a decision for the closing report. Each question
-   starts with its finding in one sentence, since I may see only the dialog.
+   starts with its finding in one sentence, since I may see only the dialog. Before each round,
+   follow `dv:manager-mode`'s "Mail before a card" (under "Questions go to the Director first"):
+   send any message to the Director or the Head first, and open no round while a fork sent to the
+   Director still waits for its answer.
 4. **Settled by a rule.** A choice that a written rule already settles (the format, a repo's
    `AGENTS.md` or `CLAUDE.md`, the global instructions) is applied and reported, not asked. Name
    the rule.

@@ -47,6 +47,11 @@ schedule time in a dialog, and the dialog kept the Director's reply from reachin
 - **`dv:closeout`.** With a Head, the note's `WAITING ON` names him (the CEO's 1% marked), and the
   reply asks David nothing: losses to accept go under `WAITING ON`, no removal offer is made, and
   **Needs you** is left out.
+- **Mail before a card, always** (`dv:manager-mode`, pointed to from `dv:groom`,
+  `dv:director-mode` and `dv:closeout`). An open question card blocks the session's turn, Orca
+  cannot answer or dismiss it, and mail queues behind it. So a session sends its mail to the
+  Director or the Head before opening a card in the same turn, and opens none while a question to
+  the Director or the Head still waits. With a Head, the CEO's 1% goes by mail, never in a card.
 - **README.** The version, and the `dv:director-mode`, `dv:manager-mode`, `dv:groom` and
   `dv:closeout` entries.
 

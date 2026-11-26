@@ -5,10 +5,11 @@ that session as a supervised Orca worker, so David no longer closes those chats 
 `dv:director-mode` and `dv:manager-mode` change. The other fourteen skills have no behaviour
 changes; their version moves to `0.40.0` only because the suite is released as one plugin.
 
-Numbering: 0.40.0 follows 0.39.3 and carries everything released through it. It is built on
+Numbering: 0.40.0 follows 0.39.4 and carries everything released through it. It is built on
 0.39.0, which routes escalations to a department's Head; where the two meet, the Head routing
-wins: a session with anything still pending with the Head is not released. 0.39.1 to 0.39.3
-(`dv:groom`, `dv:ticket` and `dv:closeout` fixes) are unchanged here.
+wins: a session with anything still pending with the Head is not released. 0.39.1 to 0.39.4
+(`dv:groom`, `dv:ticket` and `dv:closeout` fixes, among them 0.39.4's build-output fingerprint,
+which director-mode's closeout recheck compares) are unchanged here.
 
 Why: Orca 1.4.277 has no command to close an ordinary chat, but `orca orchestration
 worker-release` closes a settled chat that one of its own dispatches owns. On hal on 2026-11-26 it
@@ -25,10 +26,12 @@ as they were (VIL-1156, VIL-1190).
   `mode: structured` and `keptOpen: true`. One setup block then links the ticket with
   `orca worktree set --linear-issue` and reads the link back, makes sure Orca keeps the chat open,
   and only when every part held writes `<git-common-dir>/orca-supervised/<dispatch id>.json`
-  (schema 2, never over an existing file) with the ticket, the dispatch with its task and Run,
-  the chat's Orca session id, its agent terminal, its mode and keep-open, the workspace's id,
-  instance, identity key and path, the branch, HEAD, the coordinator and the time, all read from
-  Orca. It prints `RESULT: setup complete`; any other outcome writes no record, so the chat takes
+  (schema 2, never over an existing file). From Orca's replies: the dispatch with its task and
+  Run, the chat's Orca session id, its agent terminal, its mode and keep-open (`worker-show`), and
+  the workspace's id, instance, identity key and path, the branch and HEAD (`orca worktree
+  show`). From elsewhere: the ticket is the caller's id, kept only once Orca's read-back of the
+  link matches it; the coordinator is the caller's `ORCA_AGENT_SESSION_ID`, not checked with
+  Orca; the time is the local clock. It prints `RESULT: setup complete`; any other outcome writes no record, so the chat takes
   the manual close, and a `LINK: NOT LINKED` line says the worktree runs without its ticket link.
   Without `--keep-open`, Orca would close the chat about 2 minutes after the session's
   `worker_done`. Orca's mail about the worker is information, and none of it is the Head's
@@ -39,8 +42,10 @@ as they were (VIL-1156, VIL-1190).
   and `worker_done` comes last, with nothing waiting on anyone, the Head included.
 - **`dv:director-mode`, "End a finished worktree session".** A supervised session is released,
   not asked about: after checks 1 to 3, "Release a supervised Manager chat" runs in place of
-  check 4 and the ask. Check 4 and the global removal checks still run in their removal form
-  before anything is removed. When check 1, 2 or 3 fails, nothing is released, asked or removed,
+  check 4 and the ask. Check 4's scan would fail on any sibling chat, which the release leaves
+  running, and on the Setup terminal's idle shell; the release block's own terminal check (below)
+  covers what the release can end. Check 4 and the global removal checks still run in their
+  removal form, on their own, before anything is removed. When check 1, 2 or 3 fails, nothing is released, asked or removed,
   as for any session; a decision still with the Head fails check 1. A newer closeout note from
   the same session replaces the earlier one for the checks and the release.
 - **`dv:director-mode`, new "Release a supervised Manager chat".** One block checks, in order:
@@ -51,15 +56,26 @@ as they were (VIL-1156, VIL-1190).
   that dispatch with the record's task and Run, a structured chat, that chat, terminal and
   workspace, a terminal the dispatch owns, and a worker that succeeded after the note's
   timestamp (earlier is early settlement, refused); `orca agent list` lists the chat once as
-  `done`, with every row naming its session; and the worktree's HEAD can be read. Any of these
-  that fails or can't run refuses with nothing released (exit 3). Then it runs `worker-release`
+  `done`, with every row naming its session; the worktree's HEAD can be read; and every terminal
+  the release would or might close runs nothing but an idle shell. Orca closes, with the chat,
+  the Setup terminal and startup tabs the start opened and any terminal the session made without
+  `--keep-open`, in any workspace; no Orca command lists the latter. So the block takes the
+  start's terminals from `worker-show`'s `effects` and `residualResources`, and also counts every
+  live terminal on the host that Orca's evidence (`lastOutputAt`, or the pty process's start)
+  doesn't show open more than 60 seconds before the dispatch's `createdAt`. `orca terminal list`
+  must be whole; for each terminal counted, `orca diagnostics memory` must name one pty process,
+  two `ps` reads 2 seconds apart must show only Orca's login and a chain of interactive shells,
+  the last one in front and childless, with unchanged processes and CPU time, and `lsof` must show
+  that shell holding only its tty or `/dev/null`. Any of these that fails or can't run refuses with
+  nothing released (exit 3). Then it runs `worker-release`
   once. `released` or `already_released` goes on; `retained` is exit 4 (not released, David
   closes the chat); any other answer, an error or a timeout is exit 5 (release attempted, outcome
   unknown). After a release it proves, with every proof required to run: the chat absent from
   `orca agent list`; `orca agent show` giving it no place, or failing with exactly
   `agent_unknown` (any other failure, a timeout or a malformed reply proves nothing); every other
-  agent there still listed; and the workspace's id, instance, identity key, path, directory and
-  HEAD unchanged. Only then does it move the record to `_released/`, never over an existing
+  agent there still listed; every terminal found open since before the dispatch still listed;
+  the workspace's id, instance, identity key and path unchanged; and the worktree's directory
+  still there with HEAD where it was. It compares no worktree file. Only then does it move the record to `_released/`, never over an existing
   file, and print `RESULT: released`. A proof that fails or can't run, or an archive that would
   overwrite, is exit 5 too. Exit 3 and 4 go on to David's close; on exit 5, or no `RESULT:`
   line, the Director removes nothing and tells David what the block printed. The record's
@@ -80,11 +96,11 @@ as they were (VIL-1156, VIL-1190).
 
 ## Tested
 
-On hal, 2026-11-26, Orca 1.4.277, all four runs started from a session that was itself an Orca
+On hal, 2026-11-26, Orca 1.4.277, all five runs started from a session that was itself an Orca
 worker, with the code blocks extracted from `SKILL.md` as it stood for that run and only the
 placeholders and the record directory replaced. The first three ran the blocks as first written;
-the fourth ran them after the review fixes (start, setup and release blocks), which this
-release ships.
+the fourth ran them after the first review fixes (start, setup and release blocks); the fifth ran
+the release block with its terminal check (step 5), which this release ships.
 
 - **First run, before the merge with 0.39.0** (one scratch worktree). Step 2a's command gave
   `mode: structured` and `keptOpen: true`. The stand-in held custody until its closeout stand-in
@@ -154,8 +170,39 @@ release ships.
   malformed ticket id all wrote no record), and the start block 5 (a write that failed or came
   out short, a failed `mktemp` and a prompt without its supervised line started nothing; a whole
   prompt reached `worker-start` byte for byte).
+- **Fifth run, the terminal check, on this text after merging 0.39.4** (a fresh scratch worktree,
+  `scratch-vil-1190-q4-383171`, a child of the integration worktree). The start and setup blocks
+  ran as written. `worker-show`'s `effects` listed the Setup terminal (with its tab and pane) and
+  the agent, and not the terminal the stand-in then opened without `--keep-open` (`AUX-LIVE`,
+  running `while [ ! -e <stop file> ]; do sleep 1; done`). With the stand-in settled after its
+  note and that loop running, the block refused with no `worker-release` call, naming `AUX-LIVE`
+  (`sleep 1` in front, not a shell) and the Projects/axiom terminal Orca's older pty daemon holds
+  (no process in `orca diagnostics memory`, no `lastOutputAt`); afterwards the loop's shell was
+  still running, both terminals were listed, the chat was listed and the terminal still
+  `retained`. With the loop ended by its stop file (no signal), real Orca refused on the axiom
+  terminal alone. With that one terminal hidden, it refused, again with no `worker-release` call,
+  on each injected gap: `orca diagnostics memory` failing, or naming no process for the Setup
+  terminal or for `AUX-LIVE`; no `effects`; no `createdAt`; a `truncated` list; a host left out.
+  With only the axiom terminal hidden it released the chat (`released`, `closed_agent_terminal`):
+  Orca closed `AUX-LIVE` and the Setup terminal, both idle shells; the sibling chat stayed listed;
+  the six terminals open since before the dispatch stayed listed; the workspace instance, HEAD and
+  a 64 KiB random sentinel (SHA-256, inode, size, mtime) were unchanged; the record moved to
+  `_released/`; `GONE` passed for the chat's wrapper and `claude` processes; and check 4's
+  removal-form scan failed on the sibling's `claude` process, so the worktree would have been kept.
+- **Fixtures for the terminal check.** Step 5's shell test, run from the block's own code on
+  shells in throwaway ptys, refused a foreground job, a background job, a `nohup … & disown` job,
+  a Python REPL, a busy builtin loop (its CPU time moved), an open regular file, a `zsh -c` script,
+  a non-shell pty process and `bash --norc -i`, and passed an idle `zsh -i` or `zsh -l`, an idle
+  nested `bash -i`, and a builtin `read` at the prompt (the known limit). With a stand-in `orca`
+  answering from scenario files, the whole block released when the start's Setup terminal was gone
+  and three older terminals stayed; gave exit 5 after a release when an older terminal went
+  missing, or the terminal list after failed or was `truncated`; and refused with no
+  `worker-release` call for the start's pane under a new handle with no process, a new terminal on
+  another host, an unreadable `createdAt`, no `residualResources`, a start terminal with no handle,
+  and two processes for one pty. The 36 fixture cases above ran on the block before step 5 and
+  were not rerun; steps 1 to 4 and the other proofs after a release are unchanged.
 
-What stood in, in the second to fourth runs. The caller was a worker session in a worktree, not a
+What stood in, in the second to fifth runs. The caller was a worker session in a worktree, not a
 Director in the main checkout. In the second and third runs every block ran from the main
 checkout; in the fourth they ran from the integration worktree, which shares its git common
 directory. In the third and fourth runs the caller was the worker integrating this release, and
@@ -191,15 +238,31 @@ check`, and Orca then told them "Your coordinator stopped without answering your
 Decide it yourself". For the third the caller waited with `check --peek`, which left the question
 open, and the stand-in read the reply before `worker_done`.
 
+In the fifth run the ticket was again `VIL-0`, and the caller read each stand-in's question with
+`check --peek`. The supervised stand-in opened its terminal on its own, as its prompt said, so
+Orca bound it to that worker. The sibling was a second worker in the same worktree, started
+without `--keep-open`, which waited on a question until the end and then finished and was closed
+by Orca. To let the release run on hal at all, a wrapper hid one terminal from `orca terminal list`
+(the Projects/axiom one, not part of the test) and passed every other call to the real Orca; the
+same wrapper injected the gaps. The `claude` pid came from `ps -E` as before, and the note's
+timestamp was Orca's message time.
+
 These runs are pre-merge fixtures. They don't stand in for the live check below.
 
 ## Not in this release
 
 - Not tested: a Director in an ordinary Orca chat (whether its starts come out structured follows
-  the Chat or CLI setting for new agent tabs; all four runs started from a worker session, whose
+  the Chat or CLI setting for new agent tabs; all five runs started from a worker session, whose
   `structured` mode may come from that lineage), a Director restarted between the start and the
   release, a session that works again after `worker_done`, and a supervised session's own mail to
   a real Head.
 - A real ticket from kickoff through merge, closeout and release is checked live after this
   release ships (VIL-1043).
 - Ordinary chats still need David's click: Orca has no command to close them.
+- Orca 1.4.277 has no command that lists the terminals a worker made, so the release counts every
+  live terminal it can't show to be older than the dispatch, and one Orca can't date or map to a
+  process refuses every release while it is open. On hal that is the Projects/axiom terminal held
+  by Orca's older pty daemon; until it is closed, supervised chats there take David's close.
+- The terminal check can't tell a shell builtin waiting at the prompt (such as `read`) from an
+  idle prompt, and doesn't see a process that starts in one of those terminals after its second
+  read; check 4's removal form afterwards still catches one left in the worktree.

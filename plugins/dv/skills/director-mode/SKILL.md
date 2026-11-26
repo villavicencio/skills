@@ -4,7 +4,7 @@ description: "Switch this session into Director Mode, the mode for the home sess
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.39.2"
+  version: "0.39.3"
 ---
 
 # /director-mode — the home session directs; worktree managers hire

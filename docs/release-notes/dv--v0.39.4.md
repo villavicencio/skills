@@ -1,0 +1,3 @@
+# dv 0.39.4
+
+- Make closeout's recheck catch a build-output file edited in place. Each build-output line in closeout's Step 1 now ends with a fingerprint, a hash over its entries' paths, regular files' contents and symlink targets (links are not followed), and the verdict, the note's Worktree line and the question that asks you to accept losing them name it. Closeout's recheck before acting on your yes, and director-mode's closeout recheck, which compares the note's Worktree line word for word, both stop when it changed, even with every count the same. If a file cannot be hashed, the fingerprint reads `unknown` and the verdict is "not confirmed safe".

@@ -4,7 +4,7 @@ description: Rename and colorize tmux windows with a glyph and curated palette. 
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.38.0"
+  version: "0.39.3"
 ---
 
 # tmux-window-namer

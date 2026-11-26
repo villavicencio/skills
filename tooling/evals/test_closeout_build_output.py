@@ -117,7 +117,7 @@ def ignored_section(stdout: str) -> list[str] | None:
 def run_case(shell: str, path_env: str, block: str, main_files: dict[str, str],
              wt_files: dict[str, str], wt_repos: tuple[str, ...] = (),
              wt_broken: tuple[str, ...] = (), wt_bare_git: tuple[str, ...] = (),
-             submodule: bool = False) -> tuple[list[str] | None, str]:
+             submodule: bool = False, bare_repos: tuple[str, ...] = ()) -> tuple[list[str] | None, str]:
     with tempfile.TemporaryDirectory(prefix="vil869-") as work:
         root = Path(work).resolve()
         home = root / "home"
@@ -170,6 +170,10 @@ def run_case(shell: str, path_env: str, block: str, main_files: dict[str, str],
             git(env, wt / rel, "init", "-q")
             git(env, wt / rel, "commit", "-q", "--allow-empty", "-m", "unpushed")
             (wt / rel / ".git" / "HEAD").unlink()
+        for rel in bare_repos:
+            (wt / rel).mkdir(parents=True, exist_ok=True)
+            git(env, wt / rel, "init", "--bare", "-q")
+            (wt / rel / "HEAD").unlink()  # still detected when Git cannot open it
         p = subprocess.run([shell, "-c", block], cwd=wt, env=env, capture_output=True,
                            text=True, timeout=120)
         return ignored_section(p.stdout), f"rc={p.returncode} stdout={p.stdout!r} stderr={p.stderr!r}"
@@ -185,9 +189,10 @@ def scenario(shell: str, awk_label: str, path_env: str, block: str) -> None:
 
     def section(name: str, main_files: dict[str, str], wt_files: dict[str, str],
                 wt_repos: tuple[str, ...] = (), wt_broken: tuple[str, ...] = (),
-                wt_bare_git: tuple[str, ...] = (), submodule: bool = False):
+                wt_bare_git: tuple[str, ...] = (), submodule: bool = False,
+                bare_repos: tuple[str, ...] = ()):
         sec, detail = run_case(shell, path_env, block, main_files, wt_files, wt_repos, wt_broken,
-                               wt_bare_git, submodule)
+                               wt_bare_git, submodule, bare_repos)
         if sec is None:
             failures.append(f"{tag} {name}: no 'Ignored entries' section in the output\n     {detail}")
         return sec, detail
@@ -321,6 +326,17 @@ def scenario(shell: str, awk_label: str, path_env: str, block: str) -> None:
               not any("nested-repo" in l or "libs" in l for l in sec), detail)
         check(f"{tag} j. the listing still ran (the ignored file is there)",
               any(l.startswith("  x.local  1 entries:") for l in sec), detail)
+
+    # k. Bare repositories, even without HEAD, are never build output.
+    sec, detail = section("k", {}, {".venv/lib/ok.py": "x\n"},
+                          bare_repos=(".venv/src/demo.git", "scratch/bare"))
+    if sec is not None:
+        examples = sorted(EXAMPLE.match(l).groups() for l in sec if EXAMPLE.match(l))
+        check(f"{tag} k. bare repos listed by path", examples == [
+            ("nested-repo", ".venv/src/demo.git/"), ("nested-repo", "scratch/bare/")], detail)
+        check(f"{tag} k. ordinary build output remains",
+              "  .venv/ (any depth): 1 entry in 1 directory: 0 same as the main checkout, "
+              "1 only here, 0 different, 0 not examined" in sec, detail)
 
 
 def main() -> int:

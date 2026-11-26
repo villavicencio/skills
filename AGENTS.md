@@ -101,6 +101,7 @@ checkout.
   - plugin.json ↔ skill version-parity — plugin manifest version must match skills'
 
 ## Conventions
+- Head: Head of Skills, Orca address `bot:Head of Skills`. He runs this department for David, the CEO; the dv skills route escalations to him as `dv:director-mode` ("The Head and the CEO's 1%") says.
 - Push to main is NOT pre-authorized on this repo — confirm before `git push origin main`
 - All file paths in docs are repo-relative
 - Apache-2.0 root LICENSE; no per-skill LICENSE/CHANGELOG in v0.1.0

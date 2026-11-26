@@ -96,13 +96,14 @@ says. A split, a target, a pull
 condition or a fork that offers a new milestone (step 3, "Milestone") is never the Director's.
 When the project has a Head, the Head of <department> (`dv:director-mode`, "The Head and the CEO's 1%"), it goes to the
 Director like any other fork, and the Director forwards it to the Head, whose call it is. Two
-exceptions still need my explicit yes, relayed in his answer's `Approved by:` field, as
-manager-mode's check on an `Answer from the Head` says:
+exceptions still need my explicit yes, relayed in his answer's `Approved by:` field and verified
+by this session against my own words in the source it names, as manager-mode's check on an
+`Answer from the Head` says:
 - Keeping a ticket pointed 13 whole (step 4). The Head may approve its split, but his "no split"
-  settles it only when that field carries my explicit yes for that ticket.
+  settles it only when that verified yes is for that ticket.
 - Creating a new milestone (step 3, "Milestone"). The Director forwards the proposal (its name and
   one line on what done means) to the Head. His answer that creates it settles the fork only when
-  that field carries my explicit yes for that milestone, by name. A specific yes I gave earlier
+  that verified yes is for that milestone, by name. A specific yes I gave earlier
   for that milestone counts, with its source, and he relays it; when there is none, he asks me
   once. Where the shared rules' "Milestones" would ask me again (the milestone finished or gone
   since the draft, a name conflict at creation), that ask goes the same way and creating still
@@ -117,9 +118,10 @@ to me. A fork the Director forwards to the Head
 (`Forwarded to the Head`) or holds for me (`Held for David`) does not stop grooming: record it
 under Decisions as open, take the way forward the reply names, and manager-mode settles it as its
 "Questions go to the Director first" says. With a Head, a fork on its way forward is not a gap
-for the ready test (step 8), except a fork only the Head decides (a target, a split, a pull
-condition, a new milestone): until his answer comes it is a gap, as `dv:director-mode`'s "What no
-default decides" says. Run no Director
+for the ready test (step 8), except anything under `dv:director-mode`'s "What no default decides"
+(a fork only the Head decides, a choice that can't be undone, a safety-boundary decline, one of
+the CEO's 1%, a choice a written rule reserves): until its required answer comes it is a gap, and
+its way forward never settles it. Run no Director
 probe of your own; if manager-mode has not sent its probe yet, it sends it before the first fork
 goes out. With no Director that can be verified, or for each fork whose answer doesn't count, ask
 me as step 6 says, except a held kind (spending money, reaching outside, or declining a high or
@@ -699,7 +701,8 @@ reply-format rules when the session's instructions give any:
    none came back). Ready means no gaps, Done means lines that can be proved, nothing it waits on,
    every overlap search finished (step 1), no needed fix declined or not landed, no duplicate search
    left unfinished, no target unconfirmed (with a Head, a fork on its way forward counts as
-   settled, except a fork only the Head decides: "From a worktree session"), and the team's backlog or ready-to-start state as
+   settled, except anything under `dv:director-mode`'s "What no default decides": "From a worktree
+   session"), and the team's backlog or ready-to-start state as
    `list_issue_statuses` names them. A started, finished or canceled ticket is not ready to start.
    After a split, name the child that is ready and the one that comes first, as links; do not call
    the parent ready when the work is in its children. A ticket whose points Linear did not store

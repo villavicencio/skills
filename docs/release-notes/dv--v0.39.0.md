@@ -6,7 +6,7 @@ CEO's 1% reaches David, through him, unless the Director replies `Ask David`, an
 `dv:closeout`'s own reply, which still asks David until VIL-1191. With no Director that can be
 verified, a session sends its question straight to the Head under the same Qk, and keeps it
 pending, asking David nothing, if that send can't be verified.
-Two exceptions need David's explicit yes, relayed by the Head: keeping a 13-point ticket whole (`dv:groom` step 4), and creating a new milestone (`dv:groom` step 3, "Milestone"). These routing changes apply only when a project names a
+Two exceptions need David's explicit yes, relayed by the Head and verified by the acting session against his own words: keeping a 13-point ticket whole (`dv:groom` step 4), and creating a new milestone (`dv:groom` step 3, "Milestone"). These routing changes apply only when a project names a
 Head. Three changes apply always: an answer with a short note, mail before a question card, and
 a kickoff that counts a ticket as groomed only by its `groomed` label (VIL-993).
 David's role is renamed from the Chairman to the CEO. The other thirteen skills have no behaviour
@@ -34,7 +34,9 @@ schedule time in a dialog, and the dialog kept the Director's reply from reachin
   and keeps it pending if that send can't be verified.
 - **`dv:groom`.** With a Head, in forks-only mode from a worktree session, its David-only forks
   go through the Director to the Head; keeping a 13 whole and creating a new milestone still need
-  David's explicit yes, which the Head relays.
+  David's explicit yes, which the Head relays and the session verifies against his own words.
+  Anything no default decides stays a gap for the ready test. A Head answer on a ticket counts
+  only with matching mail from his bot address.
 - **`dv:closeout`.** Unchanged apart from the version: its note reaches the
   Director as before, and with a Head the Director forwards the note's open items, the CEO's 1%
   included, to him. Closeout's own reply, delivery and Head routing are unchanged until VIL-1191.

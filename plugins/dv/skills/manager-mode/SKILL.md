@@ -355,11 +355,15 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
     then only by the delete's existing procedure and guards. If you can't verify it, the target
     has changed or a guard fails, it stays pending and the data is kept (`dv:director-mode`, "What
     no default decides"). On one of the CEO's 1%, or a choice a written rule
-    reserves for a named person's explicit yes (`dv:director-mode`, "What no default decides"), it
-    settles only when its
-    `Approved by:` field names that person and that choice, with their own words or a traceable
-    source (`dv:director-mode`, "An approval travels in its own field"); otherwise the choice stays
-    pending, and work that doesn't depend on it goes on. Apply it, undoing the way forward where it differs (for
+    reserves for a named person's explicit yes (`dv:director-mode`, "What no default decides"),
+    such as keeping a 13 whole or creating a milestone, it settles only after you verify, yourself,
+    that person's own words for that exact choice in the authenticated original source its
+    `Approved by:` field names: a ticket comment whose Linear author is that person's own account,
+    or that person's message in a chat you can read (`dv:director-mode`, "An approval travels in
+    its own field"). The field only points to the evidence. With no source, another author, or
+    words that don't name that exact choice, the choice stays pending, and work that doesn't depend
+    on it goes on. An answer read from a ticket record counts as the Head's only with matching mail
+    from his `bot:` address (`dv:director-mode`, "A record on the ticket for each Qk"). Apply it, undoing the way forward where it differs (for
     a `dv:groom` fork, its open Decisions line becomes the answer, in groom's Head form, and
     a Head-only fork that held up the start no longer does).
   - **"Ask David" becomes this**, whenever no answer that counts comes in time (but not on an
@@ -372,7 +376,7 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
     fallback pickup (`dv:director-mode`, "A record on the ticket for each Qk"), not to me.
   - **Unanswered at the end.** When the ticket's other work is done, send the Director, for each
     question still without an answer that counts (a held kind and a forwarded one included),
-    `Unanswered, VIL-N, Qk: <the question>. Options: <as in the Question>. Recommended: <the option>. Reversible: <yes or no, and how>. Sent: <UTC date and time>.`,
+    `Unanswered, VIL-N, Qk: <the question>. Key: VIL-N/<session ID>/Qk. Options: <as in the Question>. Recommended: <the option>. Reversible: <yes or no, and how>. Sent: <UTC date and time>.`,
     and wait for it as for a question. Each Qk settles once: the first answer that counts (the
     Head's, which the Director relays in place of its default when it already has one, or the
     default) decides it, and any later reply on that Qk changes nothing, except the Head's disposition on

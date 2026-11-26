@@ -4,8 +4,9 @@ Minor release. When a project names a department Head, `dv:director-mode`, `dv:m
 `dv:groom` send the escalations that went to David to that Head, and only the
 CEO's 1% reaches David, through him, unless the Director replies `Ask David`, and apart from
 `dv:closeout`'s own reply, which still asks David until VIL-1191. With no Director that can be
-verified, a session sends its question straight to the Head under the same Qk, and keeps it
-pending, asking David nothing, if that send can't be verified.
+verified, a session sends its questions straight to the Head under their keys, as advice only,
+and asks David nothing; review findings past the fix-round budget and a passed PR's merge stay
+pending until a Director is verified, and the ticket's record names who resumes each.
 The routing to the Head is in place, but his answers are advisory for now: A Head's mailed answer is advisory until verified Head decision delivery ships (VIL-1193). Head-only choices stay pending, and reserved choices need the person's authenticated original approval.
 Two exceptions need David's explicit yes, relayed by the Head and verified by the acting session against his own words: keeping a 13-point ticket whole (`dv:groom` step 4), and creating a new milestone (`dv:groom` step 3, "Milestone"). These routing changes apply only when a project names a
 Head. Three changes apply always: an answer with a short note, mail before a question card, and
@@ -28,10 +29,11 @@ schedule time in a dialog, and the dialog kept the Director's reply from reachin
   failed, unclear or interrupted send is never sent again: the record gets the Head's Linear
   mention, and the question never falls back to David.
 - **`dv:manager-mode`.** With a Head, the session sends every question to the Director, keeps
-  working while the Head decides, and asks David nothing outside the CEO's 1% (apart from
+  working while the Head advises, and asks David nothing outside the CEO's 1% (apart from
   `dv:closeout`'s own reply until VIL-1191), unless the Director replies `Ask David`. With no
-  Director that can be verified, it sends the question straight to the Head under the same Qk,
-  and keeps it pending if that send can't be verified.
+  Director that can be verified, it sends the question straight to the Head under its key, as
+  advice only; review findings past the fix-round budget and a passed PR's merge stay pending,
+  with the ticket's record naming who resumes each once a Director is verified.
 - **`dv:groom`.** With a Head, in forks-only mode from a worktree session, its David-only forks
   go through the Director to the Head; keeping a 13 whole and creating a new milestone still need
   David's explicit yes, which the Head relays and the session verifies against his own words.

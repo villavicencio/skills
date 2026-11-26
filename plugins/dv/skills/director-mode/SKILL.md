@@ -323,6 +323,7 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
   Head record, VIL-N, Qk. Key: VIL-N/<session ID>/Qk. Owner: <the Head's name>. Reply to: <the sender's Orca address>. Status: <sending, sent, unclear or failed>. Send result: <the message id, the error, or none yet>.
   Question: <the question's own fields as "Forward" gives them, quotes moved into excerpts>
   <each excerpt as "Forward" gives it: the untrusted-data line, the longer fence, the end line>
+  Resumes: <who acts on it once a Director is verified; only when the sender verified none>
   Reply with "Answer from the Head, VIL-N, Qk: <option>", plus an "Approved by:" field that points to the person's own words when a choice needs their approval: by Orca mail to the "Reply to" address, or, when this record starts with the mention, as a reply under this comment.
   ```
 

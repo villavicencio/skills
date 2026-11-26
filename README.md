@@ -33,7 +33,8 @@ One plugin, invoked `dv:<skill>` — modeled on how `compound-engineering` holds
 
 **Supervised worktree sessions.** When the Director runs in Orca, `dv:director-mode`'s
 `open worktree VIL-N` starts the session as a supervised Orca worker
-(`orca orchestration worker-start --worktree new-child --keep-open`) and records its dispatch,
+(`orca orchestration worker-start --worktree new-child --keep-open`) once the kickoff prompt was
+written whole, links the ticket and reads the link back, and only then records its dispatch,
 chat and workspace instance in `<git-common-dir>/orca-supervised/`. The session sends
 `worker_done` only as its last act, after the Director replied to its closeout note with nothing
 waiting on anyone, a department Head included (`dv:manager-mode`, "A supervised session"). The
@@ -41,8 +42,12 @@ Director then releases that one chat
 through Orca (`worker-release`) once its closeout checks pass and the record, the note's sender,
 the settled owned dispatch and the live workspace instance all match, and proves the chat gone
 with the worktree and any other chat in it untouched. An ordinary chat, a start Orca made in a
-terminal, and any check that fails or can't run still go to you to close in Orca, as the
-`dv:director-mode` entry above says.
+terminal, a start whose setup didn't complete, and any check before the release that fails or
+can't run still go to you to close in Orca, as the `dv:director-mode` entry above says, and so
+does a chat Orca answers it kept (`retained`). If the release runs and its outcome is unknown
+(any other answer, an error or a timeout), or a check after it fails or can't run (`orca agent
+show` must give the chat no place or answer `agent_unknown`), the Director removes nothing and
+tells you what it saw.
 
 ## Install
 

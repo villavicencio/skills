@@ -610,13 +610,16 @@ finds when I ask again.
 
 **2a. Supervised start.** From the main checkout, with the kickoff prompt (step 3, with its
 supervised line) written to a file by a quoted heredoc, so its quotes and link reach Orca as they
-are, and stopping if the file comes out empty:
+are. The block starts nothing unless the write succeeded and the file begins with the prompt's
+first line and ends with its supervised line, so a failed or cut-short write never reaches Orca:
 
 ```bash
-PF=$(mktemp) && cat > "$PF" <<'EOF'
+PF=$(mktemp) && cat > "$PF" <<'EOF' &&
 <the kickoff prompt>
 EOF
-[ -s "$PF" ] || { echo "FAILED: building the kickoff prompt"; exit 1; }
+  head -n 1 "$PF" | grep -q '^You are the worktree session for VIL-' &&
+  tail -n 1 "$PF" | grep -q '^- Orca started this session as a supervised worker of the Director;' ||
+  { echo "FAILED: building the kickoff prompt; nothing started"; exit 1; }
 "${ORCA_CLI_COMMAND:-orca}" orchestration worker-start --from "orca_session_id:$ORCA_AGENT_SESSION_ID" --spec-file "$PF" --task-title "VIL-N worktree session" --worktree new-child --repo "path:<this main checkout>" --name "<short name>" --agent claude --keep-open --json
 ```
 
@@ -627,7 +630,8 @@ EOF
 - The receipt must say `"ok":true`, `"mode":"structured"` (an Orca chat) and `"keptOpen":true`.
   Keep its `dispatchId` and `workspace`. Another `mode` means Orca started the session in a
   terminal, not a chat: report it with the reason `worker-show --dispatch <id> --full` gives under
-  `startOptions.mode.detail`; that session takes the manual close. If the command fails, report
+  `startOptions.mode.detail`; that session takes the manual close, and the setup block below
+  still runs, to link the ticket. If the command fails, report
   its error with the `stage`, `effects` and `residualResources` it printed, and go on as step 2
   says. After a lost reply, run the same block again with `--retry-request <id>` from the error
   added; never as a fresh start.
@@ -635,64 +639,105 @@ EOF
   worker <dispatch id>`: that mail is information, not a highlight, and needs no reply. None of
   it, and nothing else about or from the worker that `orca orchestration check` shows you, is the
   Head's answer ("His answer"), which comes from his address.
-- Link the ticket to the worktree, as 2b's `--linear-issue` does:
-  `"${ORCA_CLI_COMMAND:-orca}" worktree set --worktree "id:<the receipt's workspace>" --linear-issue VIL-N --json`
-- Write the kickoff record, from the main checkout, with the receipt's `dispatchId` and the
-  ticket's id:
+- Finish the setup with one block, from the main checkout, with the receipt's `dispatchId` and
+  the ticket's id. It links the ticket to the worktree, as 2b's `--linear-issue` does, and reads
+  the link back; makes sure Orca keeps the chat open after `worker_done`; and writes the kickoff
+  record only when every part held:
 
 ```bash
 D="<dispatch id>"; T="<ticket id>"
-GCD=$(git rev-parse --path-format=absolute --git-common-dir) || { echo "RECORD NOT WRITTEN: not in a git checkout"; exit 1; }
+GCD=$(git rev-parse --path-format=absolute --git-common-dir) || { echo "LINK: NOT LINKED: not in a git checkout, so nothing ran"; echo "RESULT: setup incomplete: no record written; the chat takes the manual close"; exit 1; }
 RD="$GCD/orca-supervised"
 python3 -I - "$D" "$T" "$RD" "${ORCA_CLI_COMMAND:-orca}" "${ORCA_AGENT_SESSION_ID:-}" <<'PY'
 import json, os, re, subprocess, sys, time
 D, T, RD, ORCA, ME = sys.argv[1:6]
+bad, linked, where = [], False, "the new worktree"
 def orca_json(args):
-    try:
-        p = subprocess.run([ORCA] + args + ["--json"], capture_output=True, text=True, timeout=120)
-        d = json.loads(p.stdout)
-    except Exception as e:
-        sys.exit("RECORD NOT WRITTEN: %s failed: %s" % (" ".join(args[:2]), e))
-    if p.returncode != 0 or not d.get("ok"):
-        sys.exit("RECORD NOT WRITTEN: %s failed: %s" % (" ".join(args[:2]), json.dumps(d.get("error", d))[:300]))
+    # The reply's result, or None with the reason added to bad.
+    name = " ".join(args[:2])
+    try: p = subprocess.run([ORCA] + args + ["--json"], capture_output=True, text=True, timeout=120)
+    except Exception as e: bad.append("%s failed: %s" % (name, e)); return None
+    try: d = json.loads(p.stdout)
+    except Exception: bad.append("%s exited %d with no JSON: %s" % (name, p.returncode, (p.stderr or p.stdout).strip()[:200])); return None
+    if p.returncode != 0 or not isinstance(d, dict) or d.get("ok") is not True or not isinstance(d.get("result"), dict):
+        bad.append("%s failed (exit %d): %s" % (name, p.returncode, json.dumps(d.get("error", d) if isinstance(d, dict) else d)[:300])); return None
     return d["result"]
-s = orca_json(["orchestration", "worker-show", "--dispatch", D, "--full"])
-dp, wk, tr = s.get("dispatch") or {}, s.get("worker") or {}, s.get("terminalResource") or {}
-if tr.get("releaseState") != "retained" or tr.get("retainedReason") != "user_requested":
-    orca_json(["orchestration", "worker-keep-open", "--dispatch", D])
-    s = orca_json(["orchestration", "worker-show", "--dispatch", D, "--full"]); tr = s.get("terminalResource") or {}
-keep = tr.get("releaseState") == "retained" and tr.get("retainedReason") == "user_requested"
-mode = ((wk.get("startOptions") or {}).get("mode") or {}).get("mode")
-m = re.fullmatch(r"structured:([0-9a-f-]{36})", dp.get("processIncarnation") or "")
-wid = wk.get("worktreeId") or ""
-if not m or "::" not in wid:
-    sys.exit("RECORD NOT WRITTEN: worker-show names no structured chat or workspace: %r %r" % (dp.get("processIncarnation"), wid))
-wt = orca_json(["worktree", "show", "--worktree", "id:" + wid])["worktree"]
-rec = {"schema": 1, "ticket": T, "dispatchId": D, "taskId": dp.get("taskId"), "runId": dp.get("runId"),
-       "coordinator": "orca_session_id:" + ME if ME else None, "orcaSessionId": m.group(1),
-       "terminalHandle": wk.get("agentTerminalHandle"), "mode": mode, "keptOpen": keep,
-       "worktreeId": wt.get("id"), "instanceId": wt.get("instanceId"), "identityKey": (wt.get("identity") or {}).get("key"),
-       "path": wt.get("path"), "branch": wt.get("branch"), "head": wt.get("head"),
-       "recordedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
-os.makedirs(RD, exist_ok=True)
-f = os.path.join(RD, D + ".json")
+def finish():
+    for b in bad: print("FAIL", b)
+    print("LINK:", "%s linked to %s" % (T, where) if linked else "NOT LINKED: %s runs without its %s link" % (where, T))
+    print("RESULT: setup incomplete: no record written; the chat takes the manual close"); sys.exit(1)
 try:
-    with open(f, "x") as fh: json.dump(rec, fh, indent=1)
-except FileExistsError:
-    sys.exit("RECORD NOT WRITTEN: %s already exists; read it instead" % f)
+    if not re.fullmatch(r"[A-Z][A-Z0-9]*-[0-9]+", T) or not re.fullmatch(r"[A-Za-z0-9_-]+", D):
+        bad.append("malformed ticket id %r or dispatch id %r" % (T, D)); finish()
+    # 1. The worker as Orca has it now, kept open after worker_done.
+    s = orca_json(["orchestration", "worker-show", "--dispatch", D, "--full"])
+    if s is None: finish()
+    dp, wk, tr = s.get("dispatch") or {}, s.get("worker") or {}, s.get("terminalResource") or {}
+    wid = wk.get("worktreeId") or ""
+    if dp.get("id") != D: bad.append("worker-show names dispatch %r, not %s" % (dp.get("id"), D))
+    if "::" not in wid: bad.append("worker-show names no workspace: %r" % wid); finish()
+    where = wid.split("::", 1)[1]
+    if not (tr.get("releaseState") == "retained" and tr.get("retainedReason") == "user_requested"):
+        if orca_json(["orchestration", "worker-keep-open", "--dispatch", D]) is not None:
+            tr = (orca_json(["orchestration", "worker-show", "--dispatch", D, "--full"]) or {}).get("terminalResource") or {}
+    keep = tr.get("releaseState") == "retained" and tr.get("retainedReason") == "user_requested"
+    if not keep: bad.append("Orca recorded no keep-open (%r, %r), so it would close the chat about 2 minutes after worker_done" % (tr.get("releaseState"), tr.get("retainedReason")))
+    mode = ((wk.get("startOptions") or {}).get("mode") or {}).get("mode")
+    if mode != "structured": bad.append("the worker runs as %r, not a structured chat" % mode)
+    m = re.fullmatch(r"structured:([0-9a-f-]{36})", dp.get("processIncarnation") or "")
+    if not m: bad.append("worker-show names no structured chat: %r" % dp.get("processIncarnation"))
+    for k, v in (("task", dp.get("taskId")), ("Run", dp.get("runId")), ("agent terminal", wk.get("agentTerminalHandle"))):
+        if not isinstance(v, str) or not v: bad.append("worker-show names no " + k)
+    # 2. Link the ticket and read the link back from Orca.
+    wt, ident = None, {}
+    if orca_json(["worktree", "set", "--worktree", "id:" + wid, "--linear-issue", T]) is not None:
+        wt = (orca_json(["worktree", "show", "--worktree", "id:" + wid]) or {}).get("worktree")
+        if not isinstance(wt, dict): bad.append("worktree show named no worktree after the link"); wt = None
+        elif str(wt.get("linkedLinearIssue") or "").upper() != T.upper(): bad.append("the link reads back as %r, not %s" % (wt.get("linkedLinearIssue"), T))
+        else: linked = True
+    # 3. The workspace's identity, as the release checks it.
+    if wt is not None:
+        ident = wt.get("identity") if isinstance(wt.get("identity"), dict) else {}
+        if wt.get("id") != wid: bad.append("worktree show names workspace %r, not %r" % (wt.get("id"), wid))
+        for k, v in (("instance", wt.get("instanceId")), ("identity key", ident.get("key")), ("path", wt.get("path"))):
+            if not isinstance(v, str) or not v: bad.append("Orca gives no workspace " + k)
+    if bad: finish()
+    rec = {"schema": 2, "ticket": T, "dispatchId": D, "taskId": dp["taskId"], "runId": dp["runId"],
+           "coordinator": "orca_session_id:" + ME if ME else None, "orcaSessionId": m.group(1),
+           "terminalHandle": wk["agentTerminalHandle"], "mode": mode, "keptOpen": keep,
+           "worktreeId": wid, "instanceId": wt["instanceId"], "identityKey": ident["key"],
+           "path": wt["path"], "branch": wt.get("branch"), "head": wt.get("head"),
+           "recordedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+    data = json.dumps(rec, indent=1)
+    os.makedirs(RD, exist_ok=True)
+    f = os.path.join(RD, D + ".json")
+    try:
+        with open(f, "x") as fh: fh.write(data)
+    except FileExistsError: bad.append("%s already exists; read it instead" % f); finish()
+except SystemExit: raise
+except BaseException as e: bad.append("the block failed: %r (a partial record file fails the release's read)" % e); finish()
 print("record:", f)
-for k in ("dispatchId", "orcaSessionId", "terminalHandle", "mode", "keptOpen", "worktreeId", "identityKey", "branch", "head"):
+for k in ("dispatchId", "taskId", "runId", "orcaSessionId", "terminalHandle", "mode", "keptOpen", "worktreeId", "instanceId", "identityKey", "path", "branch", "head"):
     print(" ", k + ":", rec[k])
-if mode != "structured": print("WARNING: the worker is not a structured chat; it takes the manual close, not a release")
-if not keep: print("WARNING: Orca recorded no keep-open; it may close the chat about 2 minutes after an early worker_done")
+print("LINK: %s linked to %s" % (T, where))
+print("RESULT: setup complete")
 PY
 ```
 
-  The record is `<git-common-dir>/orca-supervised/<dispatch id>.json`, read from Orca, not from
-  the receipt alone: the dispatch, the chat's Orca session id, its agent terminal, the workspace's
-  id, instance and path, and the branch and HEAD. "Release a supervised Manager chat" checks each
-  against Orca again before it releases anything. When the block prints `RECORD NOT WRITTEN` or a
-  `WARNING`, the chat takes the manual close (I close it, as for 2b): say so in step 4.
+  The record is `<git-common-dir>/orca-supervised/<dispatch id>.json` (schema 2), read from Orca,
+  not from the receipt: the ticket; the dispatch with its task and Run; the chat's Orca session
+  id, its agent terminal, its mode and that it is kept open; the workspace's id, instance,
+  identity key and path; the branch and HEAD; the coordinator (this session); and the time.
+  "Release a supervised Manager chat" checks these against Orca again before it releases
+  anything: the dispatch, task and Run, the chat, the agent terminal, and the workspace's id,
+  instance, identity key and path; and it refuses a record that is not schema 2, `structured` and
+  kept open. It does not check the ticket, the coordinator, the branch, HEAD or the time, which
+  are kept for reports: the branch and HEAD move during the session, and the Director that
+  releases may not be the one that started it.
+  The block writes the record only once every part held, just before it prints `RESULT: setup
+  complete`. Any other outcome, no `RESULT:` line included, means the chat takes the manual close
+  (I close it, as for 2b): say so in step 4 with each `FAIL` line. When its `LINK:` line reads
+  `NOT LINKED`, the worktree runs without its ticket link: say that too, in those words.
 
 **2b. Ordinary start.** From the main checkout, with the kickoff prompt (step 3) held in a shell
 variable by a quoted heredoc, so its quotes and link reach `--prompt` as one argument without
@@ -742,8 +787,9 @@ question cards; this line sets the task so the preamble doesn't cut Manager Mode
 
 **4. Reply.** Give me the worktree's path and the prompt it was given. Take the path from the
 command's output; if that has none, `orca worktree list --json` lists it. For a supervised start,
-add the dispatch, the chat's Orca session id and the workspace instance the record block printed,
-and any `WARNING` or `RECORD NOT WRITTEN` line with what it means: that chat I close myself.
+add the dispatch, the chat's Orca session id and the workspace instance the setup block printed.
+If it printed anything but `RESULT: setup complete`, say so with each `FAIL` line: that chat I
+close myself, and a `LINK: NOT LINKED` line means the worktree runs without its ticket link.
 
 **Never,** with this command: write code, groom the ticket yourself, change the ticket's state
 (the worktree session does that), or open a worktree for more than the one ticket named.
@@ -782,9 +828,10 @@ terminal by `orca terminal send`, by clipboard paste, or as a file under
   note is context, not permission. You never signal or stop a session's process.
 - A session you started supervised (step 2a of "Open a worktree on request") you don't ask me to
   close: "End a finished worktree session" releases its chat through Orca once the checks there
-  pass, and falls back to asking me when one fails. A release is Orca closing a chat its own
-  dispatch owns, not a signal to a process. Its `worker_done` mail, which reaches you from Orca,
-  is not a highlight: it is the session's last act, and you act on it with the idle notice.
+  pass, and falls back to me when one fails or the release's outcome can't be confirmed. A
+  release is Orca closing a chat its own dispatch owns, not a signal to a process. Its
+  `worker_done` mail, which reaches you from Orca, is not a highlight: it is the session's last
+  act, and you act on it with the idle notice.
 - Report the cleanup as a highlight: what was removed, and what the procedure kept and why.
 - Then run the seam check above.
 
@@ -827,9 +874,10 @@ says for any session: ask nothing, remove nothing, and tell me which check faile
 still with the Head fails check 1 as one waiting on me does, and such a session sends no
 `worker_done` (`dv:manager-mode`, "A supervised session"). If it later sends a new closeout note,
 that note replaces the earlier one for every check here and for the release's `<note timestamp>`.
-When the release block prints anything
-but `RESULT: released`, go on from check 4 as for an ordinary session, and put the block's reason
-in what you tell me. A
+When the release block prints `RESULT:
+refused` or `RESULT: not released`, go on from check 4 as for an ordinary session, and put the
+block's reason in what you tell me. Any other outcome, no `RESULT:` line included, is a release
+whose outcome the block could not confirm: remove nothing and tell me, as its exit 5 says. A
 `worker_done` that reaches you after the block refused the session as not settled starts this
 paragraph again, unless I have already closed the chat. A session that tells you it worked again
 after its `worker_done` takes the manual path: ask me to close it, never release it.
@@ -1002,7 +1050,7 @@ python3 -I - "$W" "$CP" "$NT" "$RD" "${ORCA_CLI_COMMAND:-orca}" <<'PY'
 import glob, json, os, re, subprocess, sys
 W, CP, NT, RD, ORCA = sys.argv[1:6]
 W = W.rstrip("/") or W
-bad = []
+bad, phase = [], "before"
 def stop(code, line):
     for b in bad: print("FAIL", b)
     print("RESULT:", line); sys.exit(code)
@@ -1011,155 +1059,227 @@ def run(args):
     except Exception as e: return None, str(e)
     return p, None
 def orca_json(args):
+    # (reply, error, exit code): error is None only for exit 0 with "ok": true and a result object.
     p, err = run([ORCA] + args + ["--json"])
-    if p is None: return None, err
+    if p is None: return None, err, None
     try: d = json.loads(p.stdout)
-    except Exception: return None, "exit %d, no JSON: %s" % (p.returncode, (p.stderr or p.stdout).strip()[:200])
-    if p.returncode != 0 or not d.get("ok"): return d, "exit %d: %s" % (p.returncode, json.dumps(d.get("error", d))[:300])
-    return d, None
+    except Exception: return None, "exit %d, no JSON: %s" % (p.returncode, (p.stderr or p.stdout).strip()[:200]), p.returncode
+    if not isinstance(d, dict): return None, "exit %d, not a JSON object" % p.returncode, p.returncode
+    if p.returncode != 0 or d.get("ok") is not True or not isinstance(d.get("result"), dict):
+        return d, "exit %d: %s" % (p.returncode, json.dumps(d.get("error", d))[:300]), p.returncode
+    return d, None, 0
+def agents(d):
+    # The rows of an agent list, or None unless every row names its Orca session.
+    rows = d["result"].get("agents")
+    ok = isinstance(rows, list) and all(isinstance(a, dict) and isinstance(a.get("orcaSessionId"), str) and a["orcaSessionId"] for a in rows)
+    return rows if ok else None
+def ident(w):
+    # A workspace's id, instance, identity key and path, as Orca gives them.
+    i = w.get("identity") if isinstance(w.get("identity"), dict) else {}
+    return (w.get("id"), w.get("instanceId"), i.get("key"), str(w.get("path") or "").rstrip("/"))
+def head(path):
+    p, _ = run(["git", "-C", path, "rev-parse", "--verify", "HEAD"])
+    h = p.stdout.strip() if p is not None and p.returncode == 0 else ""
+    return h if re.fullmatch(r"[0-9a-f]{40}([0-9a-f]{24})?", h) else None
 def ts(s):
     # "2026-11-26 05:32:15", "2026-11-26T05:32:15.415Z" or "20261126T053215Z" -> "20261126T053215"
     s = re.sub(r"[^0-9]", "", s or "")
     return s[:8] + "T" + s[8:14] if len(s) >= 14 else None
-if not re.fullmatch(r"\d{8}T\d{6}Z", NT): stop(3, "refused: the note's timestamp is missing or malformed")
-# 1. The kickoff record: exactly one whose path is this worktree and whose instance is the live one.
-recs = []
-for f in sorted(glob.glob(os.path.join(RD, "*.json"))):
-    try: r = json.load(open(f))
-    except Exception: bad.append("unreadable record " + f); continue
-    if (r.get("path") or "").rstrip("/") == W: recs.append((f, r))
-if not recs: stop(3, "refused: no supervised record for this worktree; it is an ordinary chat, so ask David to close it")
-wt, err = orca_json(["worktree", "show", "--worktree", "path:" + W])
-if err: stop(3, "refused: orca worktree show failed: " + err)
-live = wt["result"]["worktree"]
-mine = [(f, r) for f, r in recs if r.get("instanceId") == live.get("instanceId")]
-if len(mine) != 1:
-    stop(3, "refused: %d records for this path, %d for the live workspace instance %s" % (len(recs), len(mine), live.get("instanceId")))
-RF, R = mine[0]
-D, SID, H = R.get("dispatchId"), R.get("orcaSessionId"), R.get("terminalHandle")
-print("record:", RF); print("dispatch:", D, "| chat: orca_session_id:%s" % SID, "| terminal:", H)
-print("workspace:", live.get("identity", {}).get("key"), live.get("path"), "HEAD", live.get("head"))
-for k, v in (("dispatchId", D), ("orcaSessionId", SID), ("terminalHandle", H)):
-    if not v: bad.append("record has no " + k)
-if R.get("mode") != "structured": bad.append("record mode is %r, not structured" % R.get("mode"))
-for k in ("worktreeId", "path"):
-    if (R.get(k) or "").rstrip("/") != (live.get("id" if k == "worktreeId" else k) or "").rstrip("/"): bad.append("record %s %r is not the live %r" % (k, R.get(k), live.get("id" if k == "worktreeId" else k)))
-if R.get("identityKey") != live.get("identity", {}).get("key"): bad.append("record identity key is not the live one")
-if bad: stop(3, "refused: the record does not match the live workspace")
-# 2. The note's sender is that chat: Orca sets these in the claude process's environment.
-if not re.fullmatch(r"\d+", CP or ""): stop(3, "refused: no claude pid from the note's from address")
-p, err = run(["ps", "-E", "-ww", "-o", "command=", "-p", CP])
-if p is None or p.returncode != 0 or not p.stdout.strip(): stop(3, "refused: ps could not read the note sender's process %s" % CP)
-env = {}
-for tok in p.stdout.split():
-    m = re.match(r"(ORCA_AGENT_SESSION_ID|ORCA_TERMINAL_HANDLE|ORCA_STRUCTURED_SESSION)=(\S+)$", tok)
-    if m: env.setdefault(m.group(1), set()).add(m.group(2))
-for k, want in (("ORCA_AGENT_SESSION_ID", SID), ("ORCA_TERMINAL_HANDLE", H), ("ORCA_STRUCTURED_SESSION", "1")):
-    got = env.get(k, set())
-    if got != {want}: bad.append("note sender %s %s is %s, not %s" % (CP, k, sorted(got) or "unset", want))
-if bad: stop(3, "refused: the closeout note did not come from the supervised chat")
-print("note sender: pid", CP, "is orca_session_id:%s on %s" % (SID, H))
-# 3. The dispatch: owned, structured, exact chat and workspace, settled after the note.
-sh, err = orca_json(["orchestration", "worker-show", "--dispatch", D, "--full"])
-if err: stop(3, "refused: worker-show failed: " + err)
-s = sh["result"]; dp = s.get("dispatch") or {}; wk = s.get("worker") or {}; tr = s.get("terminalResource") or {}
-mode = ((wk.get("startOptions") or {}).get("mode") or {}).get("mode")
-checks = [
-    ("dispatch id", dp.get("id"), D),
-    ("mode", mode, "structured"),
-    ("chat", dp.get("processIncarnation"), "structured:" + SID),
-    ("agent terminal", wk.get("agentTerminalHandle"), H),
-    ("assignee", dp.get("assigneeHandle"), H),
-    ("workspace", wk.get("worktreeId"), live.get("id")),
-    ("terminal owner", tr.get("ownerDispatchId"), D),
-    ("terminal origin", tr.get("originDispatchId"), D),
-    ("terminal ownership", tr.get("ownershipState"), "owned"),
-    ("terminal handle", tr.get("terminalHandle"), H),
-    ("terminal workspace", tr.get("worktreeId"), live.get("id")),
-    ("terminal incarnation", tr.get("endpointIncarnation"), "structured:" + SID),
-    ("worker state", wk.get("state"), "succeeded"),
-    ("dispatch status", dp.get("status"), "completed"),
-]
-for name, got, want in checks:
-    if got != want: bad.append("%s is %r, not %r" % (name, got, want))
-if tr.get("releaseState") not in ("retained", "not_requested"): bad.append("release state is %r" % tr.get("releaseState"))
-done = ts(dp.get("completedAt"))
-if not done or done <= NT[:15]: bad.append("settled at %r, not after the note (%s): early settlement" % (dp.get("completedAt"), NT))
-if bad: stop(3, "refused: the dispatch is not this chat's settled owned dispatch")
-print("dispatch: succeeded, completed", dp.get("completedAt"), "UTC; terminal", tr.get("releaseState"), tr.get("retainedReason") or "")
-# 4. The chat is listed, idle, in this workspace; note every other agent there.
-al, err = orca_json(["agent", "list", "--worktree", "path:" + W])
-if err: stop(3, "refused: orca agent list failed: " + err)
-rows = al["result"]["agents"]; me = [a for a in rows if a.get("orcaSessionId") == SID]
-if len(me) != 1 or me[0].get("kind") != "chat" or me[0].get("state") != "done" or me[0].get("worktreeId") != live.get("id"):
-    stop(3, "refused: the chat is not listed exactly once as a done chat in this workspace: %r" % [(a.get("kind"), a.get("state")) for a in me])
-others = sorted(a["orcaSessionId"] for a in rows if a.get("orcaSessionId") != SID)
-print("others in the workspace before:", others or "none")
-hp, _ = run(["git", "-C", W, "rev-parse", "HEAD"]); head0 = hp.stdout.strip() if hp and hp.returncode == 0 else None
-# 5. Release that one dispatch.
-rl, err = orca_json(["orchestration", "worker-release", "--dispatch", D])
-st = ((rl or {}).get("result") or {}).get("state")
-print("worker-release:", json.dumps((rl or {}).get("result") or (rl or {}).get("error"))[:400])
-if st not in ("released", "already_released"):
-    stop(4, "not released (%s): the chat may still be open; ask David to close it%s" % (st or err, "" if not rl else ", or check again with worker-show"))
-# 6. Prove the exact chat is gone and nothing else moved.
-al2, err2 = orca_json(["agent", "list", "--worktree", "path:" + W])
-if err2: bad.append("agent list after: " + err2)
-else:
-    rows2 = al2["result"]["agents"]
-    if any(a.get("orcaSessionId") == SID for a in rows2): bad.append("agent list still lists orca_session_id:" + SID)
-    gone = [o for o in others if o not in {a.get("orcaSessionId") for a in rows2}]
-    if gone: bad.append("other agents no longer listed: %s" % gone)
-ag, err3 = orca_json(["agent", "show", "orca_session_id:" + SID])
-if ag and not err3:
-    if ag["result"].get("places"): bad.append("agent show still has places: %r" % ag["result"]["places"])
-else: print("agent show:", err3)
-wt2, err4 = orca_json(["worktree", "show", "--worktree", "path:" + W])
-if err4: bad.append("worktree show after: " + err4)
-elif (wt2["result"]["worktree"].get("instanceId"), wt2["result"]["worktree"].get("path")) != (live.get("instanceId"), live.get("path")): bad.append("workspace instance changed")
-hp2, _ = run(["git", "-C", W, "rev-parse", "HEAD"])
-if not os.path.isdir(W) or not hp2 or hp2.returncode != 0 or hp2.stdout.strip() != head0: bad.append("worktree directory or HEAD changed")
-if bad: stop(5, "released, but a check after it failed: tell David what still shows")
-os.makedirs(os.path.join(RD, "_released"), exist_ok=True)
-os.replace(RF, os.path.join(RD, "_released", os.path.basename(RF)))
-print("after: chat absent from agent list and agent show; others still listed:", others or "none", "| workspace", live.get("instanceId"), "HEAD", head0)
-print("RESULT: released")
+def main():
+    global phase
+    if not re.fullmatch(r"\d{8}T\d{6}Z", NT): stop(3, "refused: the note's timestamp is missing or malformed")
+    # 1. The kickoff record: exactly one whose path is this worktree and whose instance is the live one.
+    recs = []
+    for f in sorted(glob.glob(os.path.join(RD, "*.json"))):
+        try:
+            with open(f) as fh: r = json.load(fh)
+        except Exception: r = None
+        if not isinstance(r, dict): bad.append("unreadable record " + f); continue
+        if str(r.get("path") or "").rstrip("/") == W: recs.append((f, r))
+    if not recs: stop(3, "refused: no supervised record for this worktree; it is an ordinary chat, so ask David to close it")
+    wt, err, _ = orca_json(["worktree", "show", "--worktree", "path:" + W])
+    if err: stop(3, "refused: orca worktree show failed: " + err)
+    live = wt["result"].get("worktree")
+    if not isinstance(live, dict) or not all(isinstance(v, str) and v for v in ident(live)):
+        stop(3, "refused: Orca gives no workspace id, instance, identity key or path for " + W)
+    LID, LINST, LKEY, LPATH = ident(live)
+    mine = [(f, r) for f, r in recs if r.get("instanceId") == LINST]
+    if len(mine) != 1:
+        stop(3, "refused: %d records for this path, %d for the live workspace instance %s" % (len(recs), len(mine), LINST))
+    RF, R = mine[0]
+    D, SID, H = R.get("dispatchId"), R.get("orcaSessionId"), R.get("terminalHandle")
+    print("record:", RF); print("dispatch:", D, "| chat: orca_session_id:%s" % SID, "| terminal:", H)
+    print("workspace:", LKEY, LPATH, "HEAD", live.get("head"))
+    for k in ("dispatchId", "orcaSessionId", "terminalHandle", "taskId", "runId"):
+        if not isinstance(R.get(k), str) or not R.get(k): bad.append("record has no " + k)
+    if R.get("schema") != 2: bad.append("record schema is %r, not 2 (written before the start's setup was verified)" % R.get("schema"))
+    if R.get("mode") != "structured": bad.append("record mode is %r, not structured" % R.get("mode"))
+    if R.get("keptOpen") is not True: bad.append("record keptOpen is %r, not true" % R.get("keptOpen"))
+    for k, want in (("worktreeId", LID), ("identityKey", LKEY), ("path", LPATH)):
+        if str(R.get(k) or "").rstrip("/") != want: bad.append("record %s %r is not the live %r" % (k, R.get(k), want))
+    if bad: stop(3, "refused: the record does not match the live workspace")
+    # 2. The note's sender is that chat: Orca sets these in the claude process's environment.
+    if not re.fullmatch(r"\d+", CP or ""): stop(3, "refused: no claude pid from the note's from address")
+    p, err = run(["ps", "-E", "-ww", "-o", "command=", "-p", CP])
+    if p is None or p.returncode != 0 or not p.stdout.strip(): stop(3, "refused: ps could not read the note sender's process %s" % CP)
+    env = {}
+    for tok in p.stdout.split():
+        m = re.match(r"(ORCA_AGENT_SESSION_ID|ORCA_TERMINAL_HANDLE|ORCA_STRUCTURED_SESSION)=(\S+)$", tok)
+        if m: env.setdefault(m.group(1), set()).add(m.group(2))
+    for k, want in (("ORCA_AGENT_SESSION_ID", SID), ("ORCA_TERMINAL_HANDLE", H), ("ORCA_STRUCTURED_SESSION", "1")):
+        got = env.get(k, set())
+        if got != {want}: bad.append("note sender %s %s is %s, not %s" % (CP, k, sorted(got) or "unset", want))
+    if bad: stop(3, "refused: the closeout note did not come from the supervised chat")
+    print("note sender: pid", CP, "is orca_session_id:%s on %s" % (SID, H))
+    # 3. The dispatch: owned, structured, exact chat and workspace, settled after the note.
+    sh, err, _ = orca_json(["orchestration", "worker-show", "--dispatch", D, "--full"])
+    if err: stop(3, "refused: worker-show failed: " + err)
+    s = sh["result"]; dp = s.get("dispatch") or {}; wk = s.get("worker") or {}; tr = s.get("terminalResource") or {}
+    mode = ((wk.get("startOptions") or {}).get("mode") or {}).get("mode")
+    checks = [
+        ("dispatch id", dp.get("id"), D),
+        ("task", dp.get("taskId"), R.get("taskId")),
+        ("Run", dp.get("runId"), R.get("runId")),
+        ("mode", mode, "structured"),
+        ("chat", dp.get("processIncarnation"), "structured:" + SID),
+        ("agent terminal", wk.get("agentTerminalHandle"), H),
+        ("assignee", dp.get("assigneeHandle"), H),
+        ("workspace", wk.get("worktreeId"), LID),
+        ("terminal owner", tr.get("ownerDispatchId"), D),
+        ("terminal origin", tr.get("originDispatchId"), D),
+        ("terminal ownership", tr.get("ownershipState"), "owned"),
+        ("terminal handle", tr.get("terminalHandle"), H),
+        ("terminal workspace", tr.get("worktreeId"), LID),
+        ("terminal incarnation", tr.get("endpointIncarnation"), "structured:" + SID),
+        ("worker state", wk.get("state"), "succeeded"),
+        ("dispatch status", dp.get("status"), "completed"),
+    ]
+    for name, got, want in checks:
+        if got != want: bad.append("%s is %r, not %r" % (name, got, want))
+    if tr.get("releaseState") not in ("retained", "not_requested"): bad.append("release state is %r" % tr.get("releaseState"))
+    done = ts(dp.get("completedAt"))
+    if not done or done <= NT[:15]: bad.append("settled at %r, not after the note (%s): early settlement" % (dp.get("completedAt"), NT))
+    if bad: stop(3, "refused: the dispatch is not this chat's settled owned dispatch")
+    print("dispatch: succeeded, completed", dp.get("completedAt"), "UTC; terminal", tr.get("releaseState"), tr.get("retainedReason") or "")
+    # 4. The chat is listed once, done, in this workspace; note every other agent there and HEAD.
+    al, err, _ = orca_json(["agent", "list", "--worktree", "path:" + W])
+    if err: stop(3, "refused: orca agent list failed: " + err)
+    rows = agents(al)
+    if rows is None: stop(3, "refused: orca agent list gave a row with no Orca session id, so the other agents can't be noted")
+    me = [a for a in rows if a["orcaSessionId"] == SID]
+    if len(me) != 1 or me[0].get("kind") != "chat" or me[0].get("state") != "done" or me[0].get("worktreeId") != LID:
+        stop(3, "refused: the chat is not listed exactly once as a done chat in this workspace: %r" % [(a.get("kind"), a.get("state")) for a in me])
+    others = sorted(a["orcaSessionId"] for a in rows if a["orcaSessionId"] != SID)
+    print("others in the workspace before:", others or "none")
+    head0 = head(W) if os.path.isdir(W) else None
+    if not head0: stop(3, "refused: could not read the worktree's HEAD, so a change after a release could not be seen")
+    # 5. Release that one dispatch, once.
+    phase = "called"
+    rl, err, _ = orca_json(["orchestration", "worker-release", "--dispatch", D])
+    res = rl.get("result") if isinstance(rl, dict) and isinstance(rl.get("result"), dict) else {}
+    st = res.get("state")
+    print("worker-release:", json.dumps(res or (rl or {}).get("error") or err)[:400])
+    if not err and st == "retained": stop(4, "not released (retained): Orca kept the chat open; ask David to close it")
+    if err or st not in ("released", "already_released"):
+        stop(5, "release attempted, outcome unknown (%s): the chat may or may not be closed; remove nothing and tell David" % (st or err))
+    phase = "released"
+    # 6. Prove the exact chat is gone and nothing else moved; every proof must run.
+    al2, err2, _ = orca_json(["agent", "list", "--worktree", "path:" + W])
+    rows2 = None if err2 else agents(al2)
+    if rows2 is None: bad.append("agent list after could not be read: %s" % (err2 or "a row with no Orca session id"))
+    else:
+        ids2 = {a["orcaSessionId"] for a in rows2}
+        if SID in ids2: bad.append("agent list still lists orca_session_id:" + SID)
+        gone = [o for o in others if o not in ids2]
+        if gone: bad.append("other agents no longer listed: %s" % gone)
+    ag, err3, rc3 = orca_json(["agent", "show", "orca_session_id:" + SID])
+    shown = None
+    if not err3:
+        r3 = ag["result"]
+        if r3.get("orcaSessionId") != SID or not isinstance(r3.get("places"), list): bad.append("agent show gave a malformed reply: %s" % json.dumps(r3)[:300])
+        elif r3["places"]: bad.append("agent show still has places: %s" % json.dumps(r3["places"])[:300])
+        else: shown = "no place"
+    elif rc3 == 1 and isinstance(ag, dict) and ag.get("ok") is False and isinstance(ag.get("error"), dict) and ag["error"].get("code") == "agent_unknown":
+        shown = "agent_unknown"
+    else: bad.append("agent show could not prove the chat gone: %s" % err3)
+    wt2, err4, _ = orca_json(["worktree", "show", "--worktree", "path:" + W])
+    lv2 = None if err4 else wt2["result"].get("worktree")
+    if not isinstance(lv2, dict): bad.append("worktree show after could not be read: %s" % (err4 or "no worktree"))
+    elif ident(lv2) != (LID, LINST, LKEY, LPATH): bad.append("workspace changed: %r, was %r" % (ident(lv2), (LID, LINST, LKEY, LPATH)))
+    head1 = head(W) if os.path.isdir(W) else None
+    if head1 != head0: bad.append("worktree directory or HEAD changed or could not be read: %r, was %s" % (head1, head0))
+    if bad: stop(5, "released, but a check after it failed or could not run: remove nothing and tell David what still shows")
+    # 7. Archive the record, never over a file already there.
+    dst = os.path.join(RD, "_released", os.path.basename(RF))
+    try:
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        with open(RF, "rb") as fh: data = fh.read()
+        with open(dst, "xb") as fh: fh.write(data)
+        os.remove(RF)
+    except FileExistsError: bad.append("%s already exists, so the record stays at %s" % (dst, RF))
+    except Exception as e: bad.append("archiving the record failed: %r; check %s and %s" % (e, RF, dst))
+    if bad: stop(5, "released, but a check after it failed or could not run: remove nothing and tell David what still shows")
+    print("after: chat absent from agent list, agent show gives %s; others still listed: %s | workspace %s HEAD %s" % (shown, others or "none", LINST, head0))
+    print("RESULT: released")
+try: main()
+except SystemExit: raise
+except BaseException as e:
+    bad.append("the block failed: %r" % e)
+    if phase == "before": stop(3, "refused: the block failed before any release")
+    if phase == "called": stop(5, "release attempted, outcome unknown: remove nothing and tell David")
+    stop(5, "released, but a check after it failed or could not run: remove nothing and tell David what still shows")
 PY
 ```
 
 It releases nothing unless all of these hold, checked in this order:
 
 1. **The record.** Exactly one kickoff record names this worktree's path and the workspace
-   instance Orca shows there now, with the same workspace id and identity key. A worktree removed
-   and made again at the same path has a new instance, so an old record never matches it. No
-   record means an ordinary chat.
+   instance Orca shows there now, with the same workspace id, identity key and path, all of them
+   non-empty. It must be a schema 2 record (written by the setup block above, only after the
+   ticket link, keep-open and the chat's identity were verified) that says `structured` and kept
+   open. A worktree removed and made again at the same path has a new instance, so an old record
+   never matches it. No record means an ordinary chat; any unreadable record in the directory
+   refuses.
 2. **The note came from that chat.** Orca sets `ORCA_AGENT_SESSION_ID`, `ORCA_TERMINAL_HANDLE` and
    `ORCA_STRUCTURED_SESSION` in the environment of a chat's `claude` process. `ps -E` reads them
    (for this user's processes only), and they must name the record's chat and agent terminal. The
    block prints those three values and nothing else from the environment.
-3. **The dispatch.** `worker-show` names that dispatch, a structured chat, that chat
-   (`structured:<session id>`), that agent terminal and that workspace; the terminal is owned by
-   that dispatch; the worker `succeeded` and the dispatch `completed` after the note's timestamp
-   (a `worker_done` from before the note is early settlement, and refused); and the terminal is
-   not already released or being released.
-4. **The chat.** `orca agent list` lists it once, in that workspace, as a `done` chat. The block
-   notes every other agent listed there.
+3. **The dispatch.** `worker-show` names that dispatch, with the record's task and Run, a
+   structured chat, that chat (`structured:<session id>`), that agent terminal and that workspace;
+   the terminal is owned by that dispatch; the worker `succeeded` and the dispatch `completed`
+   after the note's timestamp (a `worker_done` from before the note is early settlement, and
+   refused); and the terminal is not already released or being released.
+4. **The chat and the worktree.** `orca agent list` lists the chat once, in that workspace, as a
+   `done` chat, and every row it gives names its Orca session. The block notes every other agent
+   listed there and reads the worktree's HEAD. A list it can't read whole, or a HEAD it can't
+   read, releases nothing: without them it could not see afterwards what changed.
 
-Then it runs `orca orchestration worker-release --dispatch <dispatch>` once, and proves the
-result: the chat is gone from `orca agent list` and has no place in `orca agent show`, every other
-agent it noted is still listed, and the workspace's instance, directory and HEAD are unchanged.
-Only then does it move the record to `orca-supervised/_released/` and print `RESULT: released`.
+Then it runs `orca orchestration worker-release --dispatch <dispatch>` once. Only Orca's answer
+`released` or `already_released` counts as a release; `retained` means Orca kept the chat; any
+other answer (`release_pending`, `release_unknown`, an error, a timeout, no JSON) leaves the
+outcome unknown. After a release it proves the result, and each proof must run and pass: the
+chat is gone from `orca agent list`; `orca agent show` answers with no place for it, or fails with
+exactly the error `agent_unknown` (any other failure, a timeout or a malformed reply proves
+nothing); every other agent it noted is still listed; and the workspace's id, instance, identity
+key and path, its directory and HEAD are unchanged. Only then does it move the record to
+`orca-supervised/_released/`, never over a file already there, and print `RESULT: released`.
 
 - **`RESULT: released`:** go on with "After I close it" as if I had closed the chat (the `GONE`
   check with the wrapper and `claude` pids, check 4 in its removal form, check 3 again, then the
   removal), and report it as a highlight: `Released the chat for <worktree folder> (dispatch
   <id>); removing the worktree next.`
-- **`RESULT: refused: …` (exit 3):** nothing was released. Go on from check 4 as for an ordinary
-  session, and give the reason when you tell me.
-- **`RESULT: not released (…)` (exit 4):** Orca kept the chat (`retained`), hasn't finished
-  (`release_pending`), or the call failed. Ask me to close the chat, giving that state. Retry a
-  failed release only with the `--retry-request` id its error names.
-- **`RESULT: released, but …` (exit 5):** remove nothing, and tell me what still shows.
+- **`RESULT: refused: …` (exit 3):** nothing was released: `worker-release` never ran. Go on from
+  check 4 as for an ordinary session, and give the reason when you tell me.
+- **`RESULT: not released (retained)` (exit 4):** Orca answered that it kept the chat open. Go on
+  from check 4 as for an ordinary session, giving that state when you ask me to close it.
+- **`RESULT: release attempted, outcome unknown …` or `RESULT: released, but …` (exit 5), or no
+  `RESULT:` line at all:** the release ran, or may have, and the block could not confirm that
+  only that chat closed: Orca's answer was neither a release nor `retained`, or a check after it
+  failed or could not run, or the record could not be archived without overwriting a file.
+  Remove nothing, and don't run `worker-release` again, not even with a `--retry-request` id.
+  Tell me the worktree folder, what the block printed and each `FAIL` line, and wait for my
+  word: go on with "After I close it", whose checks still gate any removal, only once I say the
+  chat is closed.
 
 Never run `worker-release` outside this block or for a dispatch with no record here, and never end
 a session with `worker-stop` or `worker-abandon`. A release also closes the Setup terminal and
@@ -1194,17 +1314,30 @@ supervised chat in the same worktree stayed listed; the `GONE` check passed, and
 removal-form scan then failed on that second chat's `claude` process, so the worktree would have
 been kept.
 
-A third run, on the final text after dv 0.39.3 was merged in (same day, host and Orca, from a
-worker session, in a fresh scratch worktree), repeated the second with the same result, for the
-same dispatch: refused while a question was pending with the Head, with nothing changed; released
-after a new note and its reply, the chat absent from `orca agent list` and `orca agent show`,
-`GONE` passed, and a sibling chat, the workspace instance, HEAD and a sentinel file left as they
-were. In the second and third runs the notes and replies traveled by `orca orchestration` mail,
-not SendMessage, and no real `dv:closeout` or Head took part (dv 0.40.0's release notes list
-every stand-in).
+A third run, on the text after dv 0.39.3 was merged in and before the review fixes the fourth run
+tested (same day, host and Orca, from a worker session, in a fresh scratch worktree), repeated the
+second with the same result, for the same dispatch: refused while a question was pending with the
+Head, with nothing changed; released after a new note and its reply, the chat absent from `orca
+agent list` and `orca agent show`, `GONE` passed, and a sibling chat, the workspace instance, HEAD
+and a sentinel file left as they were. In the second and third runs the notes and replies traveled
+by `orca orchestration` mail, not SendMessage, and no real `dv:closeout` or Head took part (dv
+0.40.0's release notes list every stand-in).
+
+A fourth run, after the review fixes to the start, setup and release blocks (same day, host and
+Orca, from a worker session, in a fresh scratch worktree), used this text's blocks. The start block
+passed the prompt to Orca and the setup block linked the ticket, read the link back and wrote the
+record; with `orca worktree set` made to fail, it wrote no record and said the worktree ran
+unlinked. The release block refused, changing nothing, while a question was pending with the
+Head, for a note sender that was a sibling chat, and when `orca agent list` was made to fail
+before the release. After a final note, its reply and `worker_done`, it released exactly that
+chat: a sibling chat that had not finished stayed listed, the workspace instance, HEAD and a
+sentinel file were unchanged, and `GONE` passed. When `orca agent show` was made to fail after a
+real release of another stand-in, it printed `RESULT: released, but …` (exit 5), kept the record
+in place and archived nothing. Fixture runs with a stand-in `orca` covered the other failures:
+each check that can't run refuses before the release, and each one after it gives exit 5.
 
 Not tested: a Director in an ordinary Orca chat (its starts follow my Chat or CLI setting for new
-agent tabs, so check the first receipt's `mode`; all three runs started from a worker session, whose
+agent tabs, so check the first receipt's `mode`; all four runs started from a worker session, whose
 `structured` mode may come from that lineage), a Director restarted between the start and the
 release, a session that works again after `worker_done`, a supervised session's own mail to a
 real Head, and a real ticket from kickoff through merge and closeout (VIL-1043).

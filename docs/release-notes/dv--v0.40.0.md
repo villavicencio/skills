@@ -19,13 +19,20 @@ as they were (VIL-1156, VIL-1190).
 
 - **`dv:director-mode`, "Open a worktree on request", step 2.** When the Director runs in Orca,
   the session starts with `orca orchestration worker-start --worktree new-child --keep-open` (2a)
-  instead of `orca worktree create --surface chat` (2b, kept as the fallback). The receipt must
-  say `mode: structured` and `keptOpen: true`. `orca worktree set --linear-issue` links the
-  ticket, and a record block writes `<git-common-dir>/orca-supervised/<dispatch id>.json` with the
-  dispatch, the chat's Orca session id, its agent terminal and the workspace's id, instance,
-  path, branch and HEAD, all read from Orca. Without `--keep-open`, Orca would close the chat
-  about 2 minutes after the session's `worker_done`. Orca's mail about the worker is information,
-  and none of it is the Head's answer.
+  instead of `orca worktree create --surface chat` (2b, kept as the fallback). The start block
+  starts nothing unless the prompt file was written whole: the write succeeded, and the file
+  begins with the prompt's first line and ends with its supervised line. The receipt must say
+  `mode: structured` and `keptOpen: true`. One setup block then links the ticket with
+  `orca worktree set --linear-issue` and reads the link back, makes sure Orca keeps the chat open,
+  and only when every part held writes `<git-common-dir>/orca-supervised/<dispatch id>.json`
+  (schema 2, never over an existing file) with the ticket, the dispatch with its task and Run,
+  the chat's Orca session id, its agent terminal, its mode and keep-open, the workspace's id,
+  instance, identity key and path, the branch, HEAD, the coordinator and the time, all read from
+  Orca. It prints `RESULT: setup complete`; any other outcome writes no record, so the chat takes
+  the manual close, and a `LINK: NOT LINKED` line says the worktree runs without its ticket link.
+  Without `--keep-open`, Orca would close the chat about 2 minutes after the session's
+  `worker_done`. Orca's mail about the worker is information, and none of it is the Head's
+  answer.
 - **`dv:director-mode`, kickoff prompt.** A supervised start adds one line: the worker preamble
   is Orca's default, the task asks for Manager Mode as written (its hires, and its questions
   routed to the Director, through it to the Head, and to David only where Manager Mode says so),
@@ -37,15 +44,26 @@ as they were (VIL-1156, VIL-1190).
   as for any session; a decision still with the Head fails check 1. A newer closeout note from
   the same session replaces the earlier one for the checks and the release.
 - **`dv:director-mode`, new "Release a supervised Manager chat".** One block checks, in order:
-  exactly one record for this worktree's path and live workspace instance; the closeout note's
-  sender carries the record's chat id and agent terminal in the environment Orca set for its
-  `claude` process (`ps -E`, three values printed, nothing else); `worker-show` names that
-  dispatch, a structured chat, that chat, terminal and workspace, a terminal the dispatch owns,
-  and a worker that succeeded after the note's timestamp (earlier is early settlement, refused);
-  and `orca agent list` lists the chat once as `done`. Then it runs `worker-release` once and
-  proves the chat absent from `orca agent list` and `orca agent show`, every other agent there
-  still listed, and the workspace instance, directory and HEAD unchanged. Exit 3 (refused), 4
-  (not released) and 5 (released but a check after it failed) each fall back to David.
+  exactly one schema 2 record, `structured` and kept open, for this worktree's path and live
+  workspace instance, with the same workspace id, identity key and path, none of them empty; the
+  closeout note's sender carries the record's chat id and agent terminal in the environment Orca
+  set for its `claude` process (`ps -E`, three values printed, nothing else); `worker-show` names
+  that dispatch with the record's task and Run, a structured chat, that chat, terminal and
+  workspace, a terminal the dispatch owns, and a worker that succeeded after the note's
+  timestamp (earlier is early settlement, refused); `orca agent list` lists the chat once as
+  `done`, with every row naming its session; and the worktree's HEAD can be read. Any of these
+  that fails or can't run refuses with nothing released (exit 3). Then it runs `worker-release`
+  once. `released` or `already_released` goes on; `retained` is exit 4 (not released, David
+  closes the chat); any other answer, an error or a timeout is exit 5 (release attempted, outcome
+  unknown). After a release it proves, with every proof required to run: the chat absent from
+  `orca agent list`; `orca agent show` giving it no place, or failing with exactly
+  `agent_unknown` (any other failure, a timeout or a malformed reply proves nothing); every other
+  agent there still listed; and the workspace's id, instance, identity key, path, directory and
+  HEAD unchanged. Only then does it move the record to `_released/`, never over an existing
+  file, and print `RESULT: released`. A proof that fails or can't run, or an archive that would
+  overwrite, is exit 5 too. Exit 3 and 4 go on to David's close; on exit 5, or no `RESULT:`
+  line, the Director removes nothing and tells David what the block printed. The record's
+  ticket, coordinator, branch, HEAD and time are kept for reports and not checked.
 - **`dv:director-mode`, "The Head and the CEO's 1%".** Closing a chat stays David's only for an
   ordinary chat, or a supervised one the release doesn't close.
 - **`dv:manager-mode`, new "A supervised session".** Send `worker_done` once, as the last act,
@@ -62,9 +80,11 @@ as they were (VIL-1156, VIL-1190).
 
 ## Tested
 
-On hal, 2026-11-26, Orca 1.4.277, all three runs started from a session that was itself an Orca
-worker, with the code blocks extracted from this release's `SKILL.md` and only the placeholders
-and the record directory replaced.
+On hal, 2026-11-26, Orca 1.4.277, all four runs started from a session that was itself an Orca
+worker, with the code blocks extracted from `SKILL.md` as it stood for that run and only the
+placeholders and the record directory replaced. The first three ran the blocks as first written;
+the fourth ran them after the review fixes (start, setup and release blocks), which this
+release ships.
 
 - **First run, before the merge with 0.39.0** (one scratch worktree). Step 2a's command gave
   `mode: structured` and `keptOpen: true`. The stand-in held custody until its closeout stand-in
@@ -83,44 +103,100 @@ and the record directory replaced.
   Given the new note's timestamp, the block released it while a second supervised chat stayed
   listed in the same worktree; `GONE` passed, and check 4's removal-form scan failed on the second
   chat's `claude` process, so the worktree would have been kept.
-- **Third run, on the final text after merging 0.39.3** (a fresh scratch worktree cut from main at
-  394abbf; `dv:director-mode` and `dv:manager-mode` byte for byte as at this release's merge, so
-  every code block is the one the first two runs used). Orca stored the kickoff spec byte for
-  byte. The stand-in sent no `worker_done` while its first note listed a question pending with the
-  Head, and said why; the block refused it (worker `ready`, dispatch not `completed`), and agent
-  list, agent show, the worktree, HEAD, terminals and the sentinel read the same before and after.
-  Told that everything had settled, the same stand-in sent a second note, read the reply to it and
-  sent `worker_done` 12 seconds after that note. Given that note's timestamp, the block released
-  the same dispatch (`released`, `closed_agent_terminal`): the chat left `orca agent list`,
-  `orca agent show` gave it no place, and `GONE` passed for its wrapper and `claude` processes. A
-  sibling supervised chat in the same worktree stayed listed, and the workspace instance, HEAD and
-  a sentinel file of random content (inode, size, mtime and SHA-256) were unchanged. Check 4's
-  removal-form scan failed on the sibling's `claude` process, so the worktree would have been
-  kept.
+- **Third run, on the text after merging 0.39.3** (a fresh scratch worktree cut from main at
+  394abbf; `dv:director-mode` and `dv:manager-mode` byte for byte as they stood at 77102a5, before
+  the review fixes, so every code block is the one the first two runs used). Orca stored the
+  kickoff spec byte for byte. The stand-in sent no `worker_done` while its first note listed a
+  question pending with the Head, and said why; the block refused it (worker `ready`, dispatch not
+  `completed`), and agent list, agent show, the worktree, HEAD, terminals and the sentinel read
+  the same before and after. Told that everything had settled, the same stand-in sent a second
+  note, read the reply to it and sent `worker_done` 12 seconds after that note. Given that note's
+  timestamp, the block released the same dispatch (`released`, `closed_agent_terminal`): the chat
+  left `orca agent list`, `orca agent show` gave it no place, and `GONE` passed for its wrapper
+  and `claude` processes. A sibling supervised chat in the same worktree stayed listed, and the
+  workspace instance, HEAD and a sentinel file of random content (inode, size, mtime and SHA-256)
+  were unchanged. Check 4's removal-form scan failed on the sibling's `claude` process, so the
+  worktree would have been kept.
+- **Fourth run, after the MergeWren review fixes** (a fresh scratch worktree,
+  `scratch-vil-1190-fix6-26b34d`, a child of the integration worktree; four stand-ins, numbered
+  as under "What stood in" below). The start block passed the first stand-in's prompt to Orca
+  (`structured`, `keptOpen: true`). With `orca worktree set` made to fail, the setup block printed
+  `LINK: NOT LINKED` and `RESULT: setup incomplete` and wrote no record; run for real it linked
+  the ticket, read the link back and wrote the schema 2 record. For the first stand-in the
+  release block refused, changing nothing (agent list, workspace, HEAD, sentinel, terminals and
+  both workers' states read the same before and after): while its first note had a question
+  pending with the Head (worker `ready`, dispatch not `completed`); for a note sender that was the
+  second stand-in's `claude` process; and, once it had settled, with `orca agent list` made to
+  fail before the release (no `worker-release` call). It then released the first stand-in
+  (`released`, `closed_agent_terminal`) while the second stayed listed, and released the third,
+  which had read the caller's reply to its final note before `worker_done`, while the fourth,
+  not yet finished, stayed listed. Each time the workspace instance, HEAD and a 64 KiB random
+  sentinel (SHA-256, inode, size, mtime) were unchanged, the record moved to `_released/`, and
+  `GONE` passed for the released chat's wrapper and `claude` processes; the first release also
+  closed the worktree's Setup terminal, as Orca documents. For the second stand-in, released for
+  real with `orca agent show` made to fail after the release, the block printed `RESULT:
+  released, but …` (exit 5), kept the record in place and archived nothing, although Orca had
+  closed the chat.
+- **Fixtures, after the review fixes**, with a stand-in `orca` that answers from a scenario file,
+  a throwaway git repository and a stand-in sender process, run in bash and zsh. The release
+  block passed 36 cases: clean releases with `agent show` giving no place or `agent_unknown`;
+  exit 5 when, after a release, `agent show` timed out, failed, gave another error or exit code,
+  or a malformed reply, when `agent list` or `worktree show` failed or changed, when a sibling
+  went missing, when HEAD moved, or when the archive file already existed (both files left as
+  they were); exit 4 for `retained`; exit 5 for `release_pending`, `release_unknown` and a failed
+  call; and exit 3 with no `worker-release` call for an unreadable HEAD, a missing or empty
+  workspace identity on both sides, a list row with no session id, failed reads, the wrong
+  sender, a schema 1 or not-kept-open record, a different Run, an unsettled worker and a
+  malformed `worker-show` reply. The blocks as first written failed 17 of those cases, among them
+  `RESULT: released` after a failed `agent show`, a release with no HEAD read, and an overwritten
+  archive. The setup block passed 10 cases (a failed or unconfirmed link, a failed keep-open, a
+  terminal-mode worker, a failed `worker-show`, a missing identity key, an existing record and a
+  malformed ticket id all wrote no record), and the start block 5 (a write that failed or came
+  out short, a failed `mktemp` and a prompt without its supervised line started nothing; a whole
+  prompt reached `worker-start` byte for byte).
 
-What stood in, in the second and third runs. The caller was a worker session in a worktree, not a
-Director in the main checkout, though every block ran from the main checkout; in the third run it
-was the worker integrating this release, and the workers it started joined its own coordinator's
-Run. The supervised session was an Orca worker told to invoke no skill, to follow the kickoff
-prompt's supervised line and the quoted "A supervised session", and to take as given that the PR
-had merged and `dv:closeout` had run: no real `dv:manager-mode`, grooming, PR or `dv:closeout`.
-Its closeout notes were one-line stand-ins sent by `orca orchestration ask`, and the Director's
-replies were `orca orchestration reply`, not SendMessage with `notify_when_idle`. The note's
-timestamp was Orca's message time, not a saved copy's file name, and the `claude` pid came from
-matching the chat's session id with `ps -E`, not from a `from` address, so checks 1 to 3 of "End a
-finished worktree session" never ran. No Head took part: "pending with the Head" was text in the
-note, and "settled" was the caller's reply. The ticket was fake, so `orca worktree set
---linear-issue` didn't run, and the record directory was a scratch directory. The sibling had no
-record; after it sent `worker_done`, the caller released it with a direct `worker-release`,
-outside the block, as cleanup. In the third run Orca labeled the caller's mail with the caller's
-own dispatch rather than its session, and the sibling held back its "finish" once until told why.
+What stood in, in the second to fourth runs. The caller was a worker session in a worktree, not a
+Director in the main checkout. In the second and third runs every block ran from the main
+checkout; in the fourth they ran from the integration worktree, which shares its git common
+directory. In the third and fourth runs the caller was the worker integrating this release, and
+the workers it started joined its own coordinator's Run. The supervised session was an Orca
+worker told to invoke no skill, to follow the kickoff prompt's supervised line and the quoted "A
+supervised session" (in the fourth run, only its `worker_done` timing), and to take as given that
+the PR had merged and `dv:closeout` had run: no real `dv:manager-mode`, grooming, PR or
+`dv:closeout`. Its closeout notes were one-line stand-ins sent by `orca orchestration ask`, and
+the Director's replies were `orca orchestration reply`, not SendMessage with `notify_when_idle`.
+The note's timestamp was Orca's message time, not a saved copy's file name, and the `claude` pid
+came from matching the chat's session id with `ps -E`, not from a `from` address, so checks 1 to
+3 of "End a finished worktree session" never ran. No Head took part: "pending with the Head" was
+text in the note, and "settled" was the caller's reply. Every record directory was a scratch
+directory.
+
+In the second and third runs the ticket was fake, so `orca worktree set --linear-issue` didn't
+run; the sibling had no record, and after it sent `worker_done` the caller released it with a
+direct `worker-release`, outside the block, as cleanup. In the third run Orca labeled the
+caller's mail with the caller's own dispatch rather than its session, and the sibling held back
+its "finish" once until told why.
+
+In the fourth run the ticket id was a placeholder Linear doesn't have (`VIL-0`), which the real
+`orca worktree set --linear-issue` stored. The injected failures came from a wrapper that passed
+every other call to the real Orca. Four stand-ins took part. The first, held back by its pending
+question, then settled, was released while the second stayed listed. The second, a supervised
+sibling with its own record in a separate scratch directory, was released by the block with
+`orca agent show` made to fail. The third, started in the same worktree, gave the release after
+a final reply that it read, while the fourth, a sibling started without `--keep-open` that had
+not yet finished, stayed listed; once told to finish, the fourth sent `worker_done` and Orca
+closed it about 2 minutes later on its own. The first two sent `worker_done` before reading the
+caller's reply to their last note: the caller had taken each question with `orca orchestration
+check`, and Orca then told them "Your coordinator stopped without answering your question …
+Decide it yourself". For the third the caller waited with `check --peek`, which left the question
+open, and the stand-in read the reply before `worker_done`.
 
 These runs are pre-merge fixtures. They don't stand in for the live check below.
 
 ## Not in this release
 
 - Not tested: a Director in an ordinary Orca chat (whether its starts come out structured follows
-  the Chat or CLI setting for new agent tabs; all three runs started from a worker session, whose
+  the Chat or CLI setting for new agent tabs; all four runs started from a worker session, whose
   `structured` mode may come from that lineage), a Director restarted between the start and the
   release, a session that works again after `worker_done`, and a supervised session's own mail to
   a real Head.

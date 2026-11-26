@@ -24,10 +24,15 @@ schedule time in a dialog, and the dialog kept the Director's reply from reachin
 - **`dv:director-mode`.** New section "The Head and the CEO's 1%": the one copy of the routing
   rule, the CEO's 1% and what no default decides. The Director forwards to the Head what it
   doesn't decide and relays his answers as advice; it decides the routine matters delegated to it
-  as its own, taking his advice into account. Each question sent to the Head has one record on its
-  ticket, keyed by the ticket, the asking session's ID and its Qk, and claimed before the send. A
-  failed, unclear or interrupted send is never sent again: the record gets the Head's Linear
-  mention, and the question never falls back to David.
+  as its own, taking his advice into account. Each question keeps one original key (the ticket,
+  the asking session's ID and its Qk) on every hop; no session mints a fresh one for it after a
+  restart, a handoff or a change of Director. Each delivery to the Head has its own hop key and
+  ticket record, which only the session named in that key posts, edits and mails under; a
+  Director that forwards a question uses its own hop key, linked to the original. A re-sent
+  question, a failed, unclear or interrupted send, or two records for one question gets no
+  further mail: it is held on the ticket for the Head's Linear pickup, and the question never
+  falls back to David. Linear's read-then-post isn't atomic, so the guarantee is one sender per
+  hop key, not one record per question.
 - **`dv:manager-mode`.** With a Head, the session sends every question to the Director, keeps
   working while the Head advises, and asks David nothing outside the CEO's 1% (apart from
   `dv:closeout`'s own reply until VIL-1191), unless the Director replies `Ask David`. With no

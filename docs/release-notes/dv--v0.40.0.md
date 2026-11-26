@@ -5,9 +5,10 @@ that session as a supervised Orca worker, so David no longer closes those chats 
 `dv:director-mode` and `dv:manager-mode` change. The other fourteen skills have no behaviour
 changes; their version moves to `0.40.0` only because the suite is released as one plugin.
 
-Numbering: 0.40.0 follows 0.39.0, which routes escalations to a department's Head, and is built
-on it. Where the two meet, the Head routing wins: a session with anything still pending with the
-Head is not released.
+Numbering: 0.40.0 follows 0.39.3 and carries everything released through it. It is built on
+0.39.0, which routes escalations to a department's Head; where the two meet, the Head routing
+wins: a session with anything still pending with the Head is not released. 0.39.1 to 0.39.3
+(`dv:groom`, `dv:ticket` and `dv:closeout` fixes) are unchanged here.
 
 Why: Orca 1.4.277 has no command to close an ordinary chat, but `orca orchestration
 worker-release` closes a settled chat that one of its own dispatches owns. On hal on 2026-11-26 it

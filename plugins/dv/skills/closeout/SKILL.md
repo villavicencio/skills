@@ -555,9 +555,9 @@ one: the block saves it under a new `<branch slug>.<YYYYMMDDTHHMMSSZ>.txt` name 
 clash), the send uses that path, and the reply shows that copy and names its path. The Director
 reads the saved copy, and its check on the note (`dv:director-mode`, "End a finished worktree
 session", check 1) refuses `not confirmed safe`, so it leaves the worktree and tells me instead
-of asking me to close the session or releasing it. Known limit: if the session ends anyway,
-director-mode's later removal runs the global removal procedure's checks, which do not read the
-note.
+of asking me to close the session or releasing it. Known limit (VIL-1209): if the session ends
+anyway, director-mode's later removal runs the global removal procedure's checks, which do not
+read the note.
 
 Leave out secrets, credentials and tokens. Then save the note and attempt to copy it, with the note's text
 in place of the placeholder line:
@@ -615,33 +615,67 @@ other worktrees stops listing a closed session. It also covers a detached worktr
 under the name `/pickup` looks for. Nothing is deleted and no earlier archive is overwritten.
 
 ```bash
-if git rev-parse --git-dir >/dev/null 2>&1; then
-  TOP=$(git rev-parse --show-toplevel)
-  MAIN=$(git worktree list --porcelain | sed -n 's/^worktree //p' | head -1)
-  STORE=""
-  if GCD=$(git rev-parse --git-common-dir) && GA=$(cd "$GCD" && pwd -P) && [ -n "$GA" ]; then STORE="$GA/handoffs"; fi
-  B=$(git branch --show-current)
-  SLUG=$(printf '%s' "${B:-detached-$(git rev-parse HEAD 2>/dev/null)}" | sed -e 's/%/%25/g' -e 's#/#%2F#g')
-  if [ -z "$TOP" ] || [ -z "$STORE" ]; then
-    echo "!! ARCHIVE INCOMPLETE: the worktree or the handoff store could not be resolved — offer no removal until this is fixed"
+# Fails closed: every command whose failure could look like success adds to PFAIL (before
+# anything moves) or AFAIL (after), and either one prints ARCHIVE INCOMPLETE instead of a success
+# line. Only the last line's two success forms confirm the archive.
+if ! git rev-parse --git-dir >/dev/null 2>&1; then
+  echo "!! ARCHIVE INCOMPLETE: not a git repository — nothing archived"
+else
+  PFAIL=""; TOP=""; MAIN=""; STORE=""; B=""; SLUG=""
+  TOP=$(git rev-parse --show-toplevel) && [ -d "$TOP" ] || PFAIL="$PFAIL; the worktree's top could not be read"
+  if WTL=$(git worktree list --porcelain); then MAIN=$(printf '%s\n' "$WTL" | sed -n '/^worktree /{s/^worktree //p;q;}'); fi
+  [ -n "$MAIN" ] || PFAIL="$PFAIL; the main checkout could not be read"
+  if GCD=$(git rev-parse --git-common-dir) && GA=$(cd "$GCD" && pwd -P) && [ -n "$GA" ]; then STORE="$GA/handoffs"
+  else PFAIL="$PFAIL; the handoff store could not be resolved"; fi
+  B=$(git branch --show-current) || PFAIL="$PFAIL; git branch --show-current failed"
+  if [ -n "$B" ]; then SLUG=$(printf '%s' "$B" | sed -e 's/%/%25/g' -e 's#/#%2F#g')
+  elif HS=$(git rev-parse HEAD) && [ -n "$HS" ]; then SLUG="detached-$HS"
+  else PFAIL="$PFAIL; HEAD could not be read"; fi
+  [ -n "$SLUG" ] || PFAIL="$PFAIL; the handoff name could not be worked out"
+  if [ -n "$STORE" ] && { [ -e "$STORE" ] || [ -L "$STORE" ]; } && [ ! -d "$STORE" ]; then PFAIL="$PFAIL; $STORE is not a directory"; fi
+  if [ -n "$STORE" ] && { [ -e "$STORE/_done" ] || [ -L "$STORE/_done" ]; } && [ ! -d "$STORE/_done" ]; then PFAIL="$PFAIL; $STORE/_done is not a directory"; fi
+  if [ -n "$TOP" ] && { [ -e "$TOP/HANDOFF.md" ] || [ -L "$TOP/HANDOFF.md" ]; } && [ ! -f "$TOP/HANDOFF.md" ]; then PFAIL="$PFAIL; $TOP/HANDOFF.md is not a regular file"; fi
+  # The tree must be clean, HANDOFF.md aside. Filtered in the shell, not by grep, so a failing
+  # filter cannot read as a clean tree. Each here-doc that decides a result ends with a sentinel
+  # line: a here-doc that could not be written (zsh writes them to temp files) skips its loop,
+  # and the missing sentinel then fails the block instead of reading as "nothing there".
+  DIRTY=""; ST=""; SEEN=""
+  if [ -z "$PFAIL" ] && [ "$TOP" != "$MAIN" ]; then
+    if ST=$(git status --porcelain --untracked-files=all); then
+      while IFS= read -r l; do case "$l" in __ST_END__) SEEN=1 ;; ""|??" HANDOFF.md") ;; *) DIRTY=1 ;; esac; done <<ST_END
+$ST
+__ST_END__
+ST_END
+      [ -n "$SEEN" ] || PFAIL="$PFAIL; the clean-tree check did not run"
+    else PFAIL="$PFAIL; git status failed"; fi
+  fi
+  if [ -n "$PFAIL" ]; then
+    echo "!! ARCHIVE INCOMPLETE: ${PFAIL#; } — nothing archived; offer no removal until this is fixed"
   elif [ "$TOP" = "$MAIN" ]; then
     echo "(this is the main checkout — nothing archived)"
-  elif [ -n "$(git status --porcelain --untracked-files=all | grep -v '^.. HANDOFF\.md$')" ]; then
+  elif [ -n "$DIRTY" ]; then
     echo "!! uncommitted changes — not safe to delete, nothing archived"
   else
-    TS=$(date -u +%Y%m%dT%H%M%SZ); AFAIL=""; LIST=""
-    # find alone, then sort, so a find that fails is caught (a pipe reports only sort's status).
+    AFAIL=""; LIST=""
+    TS=$(date -u +%Y%m%dT%H%M%SZ) && [ -n "$TS" ] || AFAIL="$AFAIL; date failed"
+    # find alone, then sort, each checked: a pipe reports only its last command's status.
     if [ -d "$STORE" ]; then
-      if LIST=$(find "$STORE" -maxdepth 1 -type f -name '*.md'); then LIST=$(printf '%s\n' "$LIST" | sort)
-      else AFAIL="listing the handoff store failed"; fi
+      if FL=$(find "$STORE" -maxdepth 1 -type f -name '*.md'); then
+        LIST=$(printf '%s\n' "$FL" | sort) || AFAIL="$AFAIL; sorting the handoff store's listing failed"
+      else AFAIL="$AFAIL; listing the handoff store failed"; fi
     fi
     [ -f "$TOP/HANDOFF.md" ] && LIST=$(printf '%s\n%s\n' "$LIST" "$TOP/HANDOFF.md")
-    # A here-doc, not a pipe, so AFAIL survives the loop in bash.
+    # A here-doc, not a pipe, so AFAIL survives the loop in bash. An AFAIL set above stops every move.
+    [ -n "$AFAIL" ] && LIST=""
+    LSEEN=""
     while IFS= read -r f; do
+      [ "$f" = __LIST_END__ ] && { LSEEN=1; continue; }
       [ -n "$f" ] || continue
-      fm=$(sed -n '2,/^---$/{/^---$/!p;}' "$f")
-      fb=$(printf '%s\n' "$fm" | sed -n 's/^branch: *"\{0,1\}\([^"]*\)"\{0,1\} *$/\1/p' | head -1)
-      fw=$(printf '%s\n' "$fm" | sed -n 's/^worktree: *"\{0,1\}\([^"]*\)"\{0,1\} *$/\1/p' | head -1)
+      if ! fm=$(sed -n '2,/^---$/{/^---$/!p;}' "$f"); then AFAIL="$AFAIL; reading $f failed"; continue; fi
+      if ! fb=$(printf '%s\n' "$fm" | sed -n '/^branch:/{s/^branch: *"\{0,1\}\([^"]*\)"\{0,1\} *$/\1/p;q;}') ||
+         ! fw=$(printf '%s\n' "$fm" | sed -n '/^worktree:/{s/^worktree: *"\{0,1\}\([^"]*\)"\{0,1\} *$/\1/p;q;}'); then
+        AFAIL="$AFAIL; reading the front matter of $f failed"; continue
+      fi
       mine=""
       [ "$f" = "$STORE/$SLUG.md" ] && mine=1
       [ "$fw" = "$TOP" ] && [ "$fb" = "${B:-(detached)}" ] && mine=1
@@ -651,25 +685,33 @@ if git rev-parse --git-dir >/dev/null 2>&1; then
       [ -n "$mine" ] || continue
       # The store file is always moved, so the active slot is cleared even on a rerun. HANDOFF.md is
       # copied only when no archived file already matches it byte for byte (it mirrors the store copy).
-      if [ "$f" = "$TOP/HANDOFF.md" ]; then
-        dup=$(find "$STORE/_done" -maxdepth 1 -type f -name "$SLUG.*.md" 2>/dev/null | while IFS= read -r a; do cmp -s "$a" "$f" && echo 1; done)
+      if [ "$f" = "$TOP/HANDOFF.md" ] && [ -d "$STORE/_done" ]; then
+        if ! DL=$(find "$STORE/_done" -maxdepth 1 -type f -name "$SLUG.*.md"); then AFAIL="$AFAIL; listing $STORE/_done failed"; continue; fi
+        dup=""
+        while IFS= read -r a; do [ -n "$a" ] && cmp -s "$a" "$f" && dup=1; done <<DL_END
+$DL
+DL_END
         [ -n "$dup" ] && continue
       fi
       n=0; dest="$STORE/_done/$SLUG.$TS.md"
-      while [ -e "$dest" ]; do n=$((n+1)); dest="$STORE/_done/$SLUG.$TS-$n.md"; done
-      if ! mkdir -p "$STORE/_done"; then AFAIL="$AFAIL; mkdir $STORE/_done failed"; continue; fi
+      while [ -e "$dest" ] || [ -L "$dest" ]; do n=$((n+1)); dest="$STORE/_done/$SLUG.$TS-$n.md"; done
+      if ! mkdir -p "$STORE/_done" || [ ! -d "$STORE/_done" ]; then AFAIL="$AFAIL; mkdir $STORE/_done failed"; continue; fi
       if [ "$f" = "$TOP/HANDOFF.md" ]; then
-        if cp "$f" "$dest"; then echo "archived a copy of HANDOFF.md: $dest"; else AFAIL="$AFAIL; copying HANDOFF.md failed"; fi
-      elif mv "$f" "$dest" && [ ! -e "$f" ]; then echo "archived: $f -> $dest"
+        if cp "$f" "$dest" && cmp -s "$f" "$dest"; then echo "archived a copy of HANDOFF.md: $dest"; else AFAIL="$AFAIL; copying HANDOFF.md failed"; fi
+      elif mv "$f" "$dest" && [ ! -e "$f" ] && [ -f "$dest" ]; then echo "archived: $f -> $dest"
       else AFAIL="$AFAIL; moving $f failed"; fi
     done <<LIST_END
 $LIST
+__LIST_END__
 LIST_END
-    [ -e "$STORE/$SLUG.md" ] && AFAIL="$AFAIL; $STORE/$SLUG.md is still in the store"
+    [ -n "$LSEEN" ] || AFAIL="$AFAIL; the handoff list could not be read"
+    { [ -e "$STORE/$SLUG.md" ] || [ -L "$STORE/$SLUG.md" ]; } && AFAIL="$AFAIL; $STORE/$SLUG.md is still in the store"
     # A failed listing of _done is not "no handoff": only a _done that is absent, or listed with
     # no match, counts as nothing archived.
     DONE=""
-    if [ -e "$STORE/_done" ] && ! DONE=$(find "$STORE/_done" -maxdepth 1 -type f -name "$SLUG.*.md"); then AFAIL="$AFAIL; listing $STORE/_done failed"; fi
+    if [ -d "$STORE/_done" ]; then
+      DONE=$(find "$STORE/_done" -maxdepth 1 -type f -name "$SLUG.*.md") || AFAIL="$AFAIL; listing $STORE/_done failed"
+    elif [ -e "$STORE/_done" ] || [ -L "$STORE/_done" ]; then AFAIL="$AFAIL; $STORE/_done is not a directory"; fi
     if [ -n "$AFAIL" ]; then echo "!! ARCHIVE INCOMPLETE: ${AFAIL#; } — offer no removal until this is fixed"
     elif [ -z "$DONE" ]; then echo "(no handoff for this session — nothing to archive)"
     else echo "archive complete: this session's handoff is in $STORE/_done"; fi
@@ -680,9 +722,13 @@ fi
 The archive is confirmed only when the block's last line is one of its two success lines:
 `archive complete: this session's handoff is in <store>/_done` or `(no handoff for this session —
 nothing to archive)`. The `archived:` lines alone do not confirm it. Every other outcome leaves
-the archive not confirmed: `ARCHIVE INCOMPLETE` (say what failed), `uncommitted changes`, `this is
-the main checkout`, no output at all (outside a git repo, or the block stopped early), or Step 4
-not run. Then offer and name no removal: the session would stay listed by `/pickup`, and a
+the archive not confirmed: `ARCHIVE INCOMPLETE` (say what failed; the block prints it when a
+command whose failure could look like success fails, when the store, `_done` or `HANDOFF.md` path
+is of the wrong kind, when a here-doc it reads could not be written, when a `HANDOFF.md` in the
+worktree does not name this branch and worktree, when this session's store file is still there
+afterwards, and outside a git repository), `uncommitted changes`, `this is the main
+checkout`, no output at all (the block stopped early), or Step 4 not run. Step 1's recheck, not
+this block, decides the verdict; the block's own `git status` only guards the archive. Then offer and name no removal: the session would stay listed by `/pickup`, and a
 handoff copy that exists only in the worktree would go with it. The `HANDOFF.md` in the worktree is left in place; it goes with the worktree. When Step 2 did not
 say safe (or I have not yet accepted the listed losses), skip this step and say the handoff was
 left where it is.

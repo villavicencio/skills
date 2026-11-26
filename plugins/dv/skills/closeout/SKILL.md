@@ -605,10 +605,12 @@ note"), take the chat path instead of asking me which. Only the Director reaches
 the note ends up not sent (no Director verified, or its sends failed), give me then, in that turn,
 the Needs you and the questions as with no Head. The Head's answers come back by the Director, one
 line each, `WAITING ON answered, VIL-N: <the item>: <his answer>`, and it records them on the
-ticket. Once every item has one, recheck as below, run Step 4 if the losses were accepted by an
-answer that says it carries my decision (only that counts as my yes: `dv:director-mode`, "What no
-default decides"), and write and send the note again (Step 3, "Deliver the note" step 5)
-with those items out of WAITING ON.
+ticket. An answer alone doesn't clear an item: it stays under WAITING ON, marked pending, until
+what the answer calls for is done and you have verified it (for example, the ticket's state read
+back as moved). For the losses, that is: accepted by an answer that says it carries my decision
+(only that counts as my yes: `dv:director-mode`, "What no default decides"), then the recheck
+below passes and Step 4 runs. Whenever items have been cleared this way, write and send the note
+again (Step 3, "Deliver the note" step 5) without them.
 
 **Recheck in every later turn.** A yes arrives in a later turn, and the worktree may have changed
 since the verdict. Before acting on any yes (accepting losses, archiving, removing), run the Step 1

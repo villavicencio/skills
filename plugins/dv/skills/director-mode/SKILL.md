@@ -566,7 +566,9 @@ carries no session id or more than one, ends nothing.
 1. **The note.** Its closeout note reached you, and the header names this worktree's path. Its
    Worktree verdict is `safe to delete`, or `safe once you accept losing: …` with every listed
    loss covered by a standing yes of mine (in the global instructions, this project's
-   instructions or memory). `NOT safe to delete` and `not confirmed safe` fail the check. The
+   instructions or memory), or, with a Head, by my explicit approval of that exact list of
+   losses, traceable to me: relayed by the Head in my words, or recorded in a comment on the
+   ticket. Nothing broader counts. `NOT safe to delete` and `not confirmed safe` fail the check. The
    section under its `WAITING ON` heading is `none`, and its `REPLY NEEDED` line reads
    `REPLY NEEDED: no` (with a Head, the note the session sends again once his answers came back,
    Step 5 of `dv:closeout`). A decision waiting on me or the Head, or a question waiting for a reply, fails the

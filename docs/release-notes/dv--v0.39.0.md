@@ -20,7 +20,8 @@ schedule time in a dialog, and the dialog kept the Director's reply from reachin
 - **`dv:manager-mode`.** With a Head, the session sends every question to the Director, keeps
   working while the Head decides, and asks David nothing outside the CEO's 1%, unless no
   Director can be verified or the Director replies `Ask David`.
-- **`dv:groom`.** With a Head, its David-only forks go through the Director to the Head.
+- **`dv:groom`.** With a Head, in forks-only mode from a worktree session, its David-only forks
+  go through the Director to the Head.
 - **`dv:closeout`.** With a Head, the note's `WAITING ON` goes to the Head through the Director.
 - **Always on: an answer with a short note counts.** An `Answer` that names an offered option
   and adds a `. Note:` counts, unless the note changes what the option does.

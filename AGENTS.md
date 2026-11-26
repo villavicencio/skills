@@ -33,8 +33,10 @@ checkout.
   the release with `docs/release-notes/<plugin>--v<version>.md` as its notes, and starts
   `validate` on the tag. If `validate` didn't pass, the run fails naming the commit and the
   `validate` run, and nothing is released. A person still does three things: bump the version
-  (plugin.json and every skill's `metadata.version`), write that notes file, and merge. Don't
-  tag or create a release by hand for a version the workflow will release; that races it.
+  (plugin.json and every skill's `metadata.version`), write that notes file, and merge. Bump
+  only when the change ships in a plugin (anything under `plugins/<plugin>/`). A change only to
+  `tooling/`, `.github/` or `docs/` ships in no plugin, so it gets no bump and no notes file
+  (skills PR 117, VIL-924). Don't tag or create a release by hand for a version the workflow will release; that races it.
   Logic and rules are in `tooling/release_plugins.py` (unit tests:
   `python3 tooling/test_release_plugins.py`, which both jobs run first). Its checks run before
   it creates anything; any of these fails the run with nothing tagged or released: a directory

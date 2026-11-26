@@ -599,8 +599,8 @@ may offer this instead of patches: show the complete new description, say that t
 in Linear's history, and ask one plain question to replace the whole description. Relations, the
 title, the `groomed` label and filings stay numbered items beside it. A no leaves the description
 exactly as it was.
-When an unwanted-link removal needs a text edit, use a patch if the description has headings.
-In default mode, if the description has text but no headings, you may show the complete
+When an unwanted-link removal needs a text edit, use a patch if "Patches" gives it a safe anchor.
+In default mode, when "Patches" allows a whole-description replacement, you may show the complete
 replacement and say the old text stays in Linear's history. Put that replacement and the removals
 that depend on it in one numbered item. A yes to a question naming that item approves both.
 Just before saving, read the ticket again; if its description is no longer the one the

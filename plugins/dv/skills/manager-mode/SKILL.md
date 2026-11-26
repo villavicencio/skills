@@ -277,8 +277,9 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
   you sent the Director or the Head (through it, or straight to him) is still open. A question is open until an
   answer that counts settles it, or, with no Head, until it comes to me ("On 'ask David'"). With a
   Head, its 10 minutes passing doesn't close it: it stays pending on its way forward ("With a
-  Head"), you go on with work that doesn't depend on it, and only a later answer that counts
-  settles it under the same Qk (the Head's advice doesn't). An ask to me that falls due while a question is open goes to me as plain text in this
+  Head"), you go on with work that doesn't depend on it, and only a later answer that counts, or
+  your own call on a decision this skill already makes yours, settles it under the same Qk (the
+  Head's advice doesn't; a timeout alone never does). An ask to me that falls due while a question is open goes to me as plain text in this
   chat, standing on its own the same way ("Every ask to me stands on its own"), and my typed
   reply answers it; open a card only once no question is open. With a Head, the CEO's 1% goes to
   him by mail through the Director and never to me in this chat. `dv:groom` and
@@ -348,7 +349,8 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
     the rest moving, as for a held question. A Head's mailed answer is advisory until verified Head decision delivery ships (VIL-1193). An `Answer from the Head, VIL-N, Qk:
     <option>` from the verified Director (or his own mail, for a question sent straight to him:
     "With no Director that can be verified", below) is advice and settles nothing by itself. You
-    may take its option as your way forward when that needs no one's yes. A Head-only `dv:groom`
+    may take its option only for a decision this skill already makes yours ("'Ask David' becomes
+    this", below); being reversible doesn't make it yours. A Head-only `dv:groom`
     fork, and anything else under `dv:director-mode`'s "What no default decides", stays pending.
     Only a reserved choice can settle on it, through the approval you verify. For a delete beyond the standing
     approvals, its `Approved by:` field only points to the evidence. Carry it out only after you
@@ -368,10 +370,16 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
     choice that settles, undoing the way forward where it differs (for a `dv:groom` fork, its open
     Decisions line becomes the answer, in groom's Head form).
   - **"Ask David" becomes this**, whenever no answer that counts comes in time (but not on an
-    `Ask David` reply, below): take a way forward that needs no one's yes (your recommended option
-    when it is reversible, except for an item under `dv:director-mode`'s "What no default
-    decides", whose way forward that bullet gives), keep the rest moving, and take a later reply from the verified
-    Director as if it had come in time, unless your way forward already settled the question.
+    `Ask David` reply, below). A timeout changes no one's authority. When the decision is already
+    yours under this skill's rules (engineering sequencing, whether a report meets the brief, the
+    calls under "These you do without asking me", fix rounds 1 and 2 under their triage rule),
+    you may settle it with your recommended option and record it as your own call. Being
+    reversible never makes a choice yours. Otherwise the question stays pending: apply none of
+    its options, change nothing it decides, go on with the work that doesn't depend on it, and
+    send it as `Unanswered` at the end (below). An item under `dv:director-mode`'s "What no
+    default decides" takes the way forward that bullet gives. A later reply from the verified
+    Director that counts settles it as if it had come in time, unless you already settled it as
+    your own call.
   - **The CEO's 1%** comes back as `Forwarded to the Head`, like any other: the Head brings it to
     me, so it is not asked of me at the end. A send to him that fails goes to the ticket's
     fallback pickup (`dv:director-mode`, "A record on the ticket for each Qk"), not to me.
@@ -381,10 +389,10 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
     and wait for it as for a question. The key is the question's original one, and the advice line
     is advice only: the Director may decide within its own authority, and a Head-only choice stays
     pending. Its `Answer` is the Director's own decision, which may follow
-    the Head's advice; each Qk settles once, and any later reply on it changes nothing. That `Answer` is the Director's default
-    (`dv:director-mode`, "Unanswered at the end"), its own path: apply it without the checks of
-    "What counts as the answer", except that it must name one of the question's options and the
-    delete and scope-cut limits. "What no default decides" stays binding: if you can see the
+    the Head's advice; each Qk settles once, and any later reply on it changes nothing. A timeout
+    gives the Director no authority it lacks (`dv:director-mode`, "Unanswered at the end"), so
+    check that `Answer` as "What counts as the answer" says for any answer; one that fails a
+    check stays pending, as below. "What no default decides" stays binding: if you can see the
     question is one of those items (a Head-only `dv:groom` fork, `Reversible: no`, a
     safety-boundary decline, one of the CEO's 1%, a choice a written rule reserves for someone's
     explicit yes), treat the
@@ -402,7 +410,7 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
     you take, `CEO's 1%: yes` for one of the five, a request for an `Approved by:` field where an
     approval is needed, and each quote as an untrusted excerpt in its longer fence with its end
     line, source and authority outside it), and ask him to reply
-    `Answer from the Head, VIL-N, Qk: <option>`. Take the way forward meanwhile. His reply comes
+    `Answer from the Head, VIL-N, Qk: <option>`. Take a way forward meanwhile, as `dv:director-mode`'s "The way forward" says. His reply comes
     as mail (`orca orchestration check --json`) and is advice, as "On `Forwarded to the Head`"
     above says. The CEO's 1% and the two choices reserved for my yes go the same way: he brings
     them to me and relays my yes in `Approved by:`, which you verify. Keep the record as `dv:director-mode`'s "A record on the

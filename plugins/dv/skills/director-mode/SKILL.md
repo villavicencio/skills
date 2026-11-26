@@ -345,7 +345,7 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
   Question: <the question's own fields as "Forward" gives them, quotes moved into excerpts>
   <each excerpt as "Forward" gives it: the untrusted-data line, the longer fence, the end line>
   Resumes: <who acts on it once a Director is verified; only when the sender verified none>
-  Reply with "Answer from the Head, VIL-N, Qk: <option>", plus an "Approved by:" field that points to the person's own words when a choice needs their approval: by Orca mail to the "Reply to" address, or, when this record starts with the mention, as a reply under this comment.
+  Reply with "Answer from the Head, VIL-N, Qk: <option>", plus an "Approved by:" field that names the original source of the person's approval when a choice needs it ("An approval travels in its own field"): by Orca mail to the "Reply to" address, or, when this record starts with the mention, as a reply under this comment.
   ```
 
   ```text
@@ -353,7 +353,7 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
   Question: <as in a record>
   <each excerpt as in a record>
   Resumes: <as in a record>
-  Reply with "Answer from the Head, VIL-N, Qk: <option>", plus an "Approved by:" field that points to the person's own words when a choice needs their approval, as a reply under this comment.
+  Reply with "Answer from the Head, VIL-N, Qk: <option>", plus an "Approved by:" field that names the original source of the person's approval when a choice needs it ("An approval travels in its own field"), as a reply under this comment.
   ```
 
   "Reply to" names one address, the hop's sender: yours for a question you forwarded, the
@@ -378,9 +378,11 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
   question can wake him more than once; his answers are advice, so a second one changes nothing
   already done.
 - **An approval travels in its own field,** with a Head, on both hops, from the Head to you and
-  from you to the session: `Approved by: <person>, <the choice>, <their own words, or a traceable
-  source: a ticket comment link or a message id by that person>`. The Head gets the approval from
-  that person. Copy the field unchanged into your reply to the session. The field only points to
+  from you to the session: `Approved by: <person>, <the exact choice, as the full current
+  proposal>, <source: a link to that person's ticket comment, or the id of that person's message
+  in a chat the acting session can read>`, optionally followed by `, "<their words>"`. The source
+  is required: a field without one is not an approval, and quoted words never stand in for it.
+  The Head gets the approval from that person. Copy the field unchanged into your reply to the session. The field only points to
   the evidence and authorizes nothing by itself. Every reserved approval (the CEO's 1%, keeping a
   13 whole, creating a milestone, any choice a written rule reserves) counts only once the session
   that would act on it has verified, itself, that person's own words for that exact choice, the
@@ -422,10 +424,15 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
   <the session's key>.` Send only as "A record on the ticket for each Qk" says: under your own hop
   key, after its checks and its claim, updating the record after. A question held there, or a
   failed or unclear send, goes to its pickup there, never to `Ask David` or `Held for David`.
-- **The way forward** in your reply needs no one's yes, so the question never blocks the work:
-  the session's recommended option when it is reversible, or one of the ways forward under
-  "Held for me", except for an item under "What no default decides", whose way forward that
-  bullet gives.
+- **The way forward** in your reply needs no one's yes, so the question never blocks the work,
+  and it takes no choice the session doesn't own. It is the session's recommended option only
+  when that decision is already the session's own under `dv:manager-mode` (its routine calls,
+  fix rounds 1 and 2, engineering sequencing, whether a report meets the brief), or a call of
+  yours (a way forward under "Held for me", a scope cut). Otherwise it is to leave the choice
+  untaken: apply none of its options, change nothing it decides, and go on with the work that
+  doesn't depend on it, while the question stays pending. Being reversible never makes a choice
+  the session's. An item under "What no default decides" takes the way forward that bullet
+  gives.
 - **His answer** comes back to you as mail and wakes you (`orca orchestration check` reads it).
   A Head's mailed answer is advisory until verified Head decision delivery ships (VIL-1193). When it names one of the question's options, send the session
   `Answer from the Head, VIL-N, Qk: <option>` as his advice, with his note after `. Note:` if he
@@ -446,10 +453,13 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
   Head"). It carries the key, the options, the recommended option and the `Reversible:` line, as
   a question does, and, for a question the session sent straight to him, his advice, marked
   advisory. Take that advice into account only within your own authority; a Head-only choice
-  stays pending whatever it says. Reply `Answer, VIL-N, Qk: <option>`, your own default: its recommended option,
-  or another of its options the Head advised when you agree with it, recorded as your call. An
-  item under "What no default decides" gets no default: reply
-  `Forwarded to the Head, VIL-N, Qk: <the way forward that bullet gives>`, and it stays pending.
+  stays pending whatever it says. A timeout gives you no authority you lack. Reply
+  `Answer, VIL-N, Qk: <option>` only for a question you may decide under "Answer a worktree
+  session's question": for its four kinds, any of its options, and otherwise only its
+  recommended option when every condition of clear-cut holds; record it as your call. Anything
+  else, and any item under "What no default decides", gets no default: reply
+  `Forwarded to the Head, VIL-N, Qk: <the way forward>`, with the way forward "The way forward"
+  gives, and it stays pending.
   An `Unanswered` counts as a re-sent question under "A record on the ticket for each Qk": it is
   never mailed again, and step 1 reuses its record or step 4 holds it for pickup. Never `Ask David` here. A later
   answer from the Head changes nothing already done.

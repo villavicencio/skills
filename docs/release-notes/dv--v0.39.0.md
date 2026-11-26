@@ -4,7 +4,7 @@ Minor release. When a project names a department Head, `dv:director-mode`, `dv:m
 `dv:groom` send the escalations that went to David to that Head, and only the
 CEO's 1% reaches David, through him, unless no Director can be verified or the Director replies
 `Ask David`, and apart from `dv:closeout`'s own reply, which still asks David until VIL-1191.
-The one exception: keeping a 13-point ticket whole needs David's explicit yes, relayed by the Head (`dv:groom` step 4). These routing changes apply only when a project names a
+Two exceptions need David's explicit yes, relayed by the Head: keeping a 13-point ticket whole (`dv:groom` step 4), and creating a new milestone (`dv:groom` step 3, "Milestone"). These routing changes apply only when a project names a
 Head. Three changes apply always: an answer with a short note, mail before a question card, and
 a kickoff that counts a ticket as groomed only by its `groomed` label (VIL-993).
 David's role is renamed from the Chairman to the CEO. The other twelve skills have no behaviour
@@ -25,8 +25,8 @@ schedule time in a dialog, and the dialog kept the Director's reply from reachin
   `dv:closeout`'s own reply until VIL-1191), unless no
   Director can be verified or the Director replies `Ask David`.
 - **`dv:groom`.** With a Head, in forks-only mode from a worktree session, its David-only forks
-  go through the Director to the Head; keeping a 13 whole still needs David's explicit yes, which
-  the Head relays.
+  go through the Director to the Head; keeping a 13 whole and creating a new milestone still need
+  David's explicit yes, which the Head relays.
 - **`dv:closeout`.** Unchanged apart from the version: its note reaches the
   Director as before, and with a Head the Director forwards the note's open items, the CEO's 1%
   included, to him. Closeout's own reply, delivery and Head routing are unchanged until VIL-1191.

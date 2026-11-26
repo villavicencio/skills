@@ -50,7 +50,8 @@ overrule it.
   conflicting rules (Current rules);
 - anything destructive or hard to undo;
 - a target only I can set (step 3, Targets), or a missing pull condition only I can supply (with
-  a Head, these and the split and new milestone below are his: "From a worktree session");
+  a Head, these and the split and new milestone below are his, though keeping a 13 whole and
+  creating a milestone still need my yes, relayed by him: "From a worktree session");
 - a split, with the parent's replacement description when it stays as the parent;
 - a prerequisite that the shared rules' "Prerequisites" sends to a question (step 3; no relation
   is set on a guess);
@@ -94,13 +95,25 @@ note, or that relays the Head's decision, counts as manager-mode's "What counts 
 says. A split, a target, a pull
 condition or a fork that offers a new milestone (step 3, "Milestone") is never the Director's.
 When the project has a Head, the Head of <department> (`dv:director-mode`, "The Head and the CEO's 1%"), it goes to the
-Director like any other fork, and the Director forwards it to the Head, whose call it is. The one
-exception is keeping a ticket pointed 13 whole, which still needs my explicit yes (step 4): the
-Head may approve its split, but his "no split" settles it only when its `Approved by:` field
-carries my explicit yes for that ticket, as manager-mode's check on an `Answer from the Head` says.
-Until then the unsplit 13 is not ready and gets no `groomed` label, and its Decisions line, once
-settled, records my yes, relayed by the Head, with the source that field gives. With no
-Head, only I can settle it, and it comes straight to me. A fork the Director forwards to the Head
+Director like any other fork, and the Director forwards it to the Head, whose call it is. Two
+exceptions still need my explicit yes, relayed in his answer's `Approved by:` field, as
+manager-mode's check on an `Answer from the Head` says:
+- Keeping a ticket pointed 13 whole (step 4). The Head may approve its split, but his "no split"
+  settles it only when that field carries my explicit yes for that ticket.
+- Creating a new milestone (step 3, "Milestone"). The Director forwards the proposal (its name and
+  one line on what done means) to the Head. His answer that creates it settles the fork only when
+  that field carries my explicit yes for that milestone, by name. A specific yes I gave earlier
+  for that milestone counts, with its source, and he relays it; when there is none, he asks me
+  once. Where the shared rules' "Milestones" would ask me again (the milestone finished or gone
+  since the draft, a name conflict at creation), that ask goes the same way and creating still
+  needs my relayed yes. His answer that picks another option (leave it with none, keep it out of
+  milestones) settles it as usual, and choosing an existing milestone follows the cases in step 3,
+  unchanged.
+
+Until that yes comes, the fork stays pending: nothing is created, the ticket is not ready and gets
+no `groomed` label, and its Decisions line, once settled, records my yes, relayed by the Head,
+with the source that field gives. With no Head, only I can settle either, and it comes straight
+to me. A fork the Director forwards to the Head
 (`Forwarded to the Head`) or holds for me (`Held for David`) does not stop grooming: record it
 under Decisions as open, take the way forward the reply names, and manager-mode settles it as its
 "Questions go to the Director first" says. With a Head, a fork on its way forward is not a gap
@@ -305,11 +318,11 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
   - It has no milestone and none fits: leave the field empty, and the report says so. A new
     milestone (its name and one line on what done means) is an open decision, with "leave it
     with none" and "keep it out of milestones" (which records "No milestone") as options. It is
-    created only on my yes.
+    created only on my yes (with a Head, relayed by him: "From a worktree session").
   - Its goal no longer fits the milestone it has, or that milestone is finished: an open
     decision, to move it (to the milestone that fits, or out of milestones, which records "No
     milestone"), to put it in a new milestone when no other one fits (its name and one line on
-    what done means; created only on my yes), or to keep it. Grooming never moves a ticket out of
+    what done means; created only on my yes, relayed by the Head when there is one), or to keep it. Grooming never moves a ticket out of
     a milestone as a routine call.
   - It fits the milestone it has: nothing to do.
 - **Other open decisions.** Also collect: a reason in the ticket that checking suggests may be

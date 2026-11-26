@@ -77,7 +77,7 @@ Decisions line (not "Title keeps its [scratch] prefix"). A fork keeps the defaul
 the answer, a keep included: "<decision>. <my name>, <date>". A fork the Director answered for me
 (below) names both: "<decision>. Director (<its ListAgents name>) for <my name>, <date>". One the
 Head answered (below) is the Head form: "<decision>. <the Head's name>, through the Director (<its
-ListAgents name>), <date>". Size and
+ListAgents name>), <date>", plus its `Approved by:` field when it has one. Size and
 its points are recorded when they are set or changed. So is the no-split verdict (step 4), unless
 the ticket already records the same verdict; for a ticket pointed 13 it is my answer to a fork
 instead (step 4). Each is a verdict, not a field left as it was. A routine call that settles a
@@ -96,10 +96,10 @@ condition or a fork that offers a new milestone (step 3, "Milestone") is never t
 When the project has a Head, the Head of <department> (`dv:director-mode`, "The Head and the CEO's 1%"), it goes to the
 Director like any other fork, and the Director forwards it to the Head, whose call it is. The one
 exception is keeping a ticket pointed 13 whole, which still needs my explicit yes (step 4): the
-Head may approve its split, but his "no split" settles it only when it carries my explicit yes for
-that ticket, as manager-mode's check on an `Answer from the Head` says. Until then the unsplit 13
-is not ready and gets no `groomed` label, and its Decisions line, once settled, records my yes as
-relayed by the Head. With no
+Head may approve its split, but his "no split" settles it only when its `Approved by:` field
+carries my explicit yes for that ticket, as manager-mode's check on an `Answer from the Head` says.
+Until then the unsplit 13 is not ready and gets no `groomed` label, and its Decisions line, once
+settled, records my yes, relayed by the Head, with the source that field gives. With no
 Head, only I can settle it, and it comes straight to me. A fork the Director forwards to the Head
 (`Forwarded to the Head`) or holds for me (`Held for David`) does not stop grooming: record it
 under Decisions as open, take the way forward the reply names, and manager-mode settles it as its
@@ -385,9 +385,11 @@ answers may change it, and step 6 settles it. A "no split" verdict becomes an ad
 Decisions: "No split: <reason>. Groomed, <date>."
 
 **Forks-only mode:** a proposed split is a fork and is asked, so a ticket pointed 13 always comes
-to me. The "no split" line reads "No split: <reason>. Decided by dv:groom (forks-only), <date>."
-For a ticket pointed 13, "no split" is my answer to that fork, not a routine call, and is recorded
-in the fork form.
+to me, or, with a Head and from a worktree session, to him through the Director, where keeping it
+whole still needs my explicit
+yes ("From a worktree session"). The "no split" line reads "No split: <reason>. Decided by dv:groom
+(forks-only), <date>." For a ticket pointed 13, "no split" is my answer to that fork, not a routine
+call, and is recorded in the fork form (with a Head, my yes as relayed by the Head).
 
 ## 5. Scout
 

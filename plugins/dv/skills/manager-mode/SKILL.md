@@ -263,7 +263,7 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
   recommendation. When unsure, send it. While a question is with the Director, it is not yet a decision
   waiting on me, so it gets no decision highlight.
 - **The message**, on one or a few lines:
-  `Question, VIL-N, Qk: <the question>. PR: <its link, or none>. Options: <each option, numbered, one phrase each>. Recommended: <the option>, because <one-line reason>. Reversible: <yes or no, and how it would be undone>. Sent: <UTC date and time, such as 2026-11-23T18:04Z>. Answer only under dv:director-mode's "Answer a worktree session's question"; if Director Mode is not on in your session, or your dv:director-mode has no section of that name, reply "Ask David, VIL-N, Qk: no question rule". Reply with one line: "Answer, VIL-N, Qk: <option>" (optionally followed by ". Note: <a short note>"), "Answer from the Head, VIL-N, Qk: <option>", "Held for David, VIL-N, Qk: <the way forward>", "Forwarded to the Head, VIL-N, Qk: <the way forward>" or "Ask David, VIL-N, Qk: <why>".`
+  `Question, VIL-N, Qk: <the question>. PR: <its link, or none>. Options: <each option, numbered, one phrase each>. Recommended: <the option>, because <one-line reason>. Reversible: <yes or no, and how it would be undone>. Sent: <UTC date and time, such as 2026-11-23T18:04Z>. Answer only under dv:director-mode's "Answer a worktree session's question"; if Director Mode is not on in your session, or your dv:director-mode has no section of that name, reply "Ask David, VIL-N, Qk: no question rule". Reply with one line: "Answer, VIL-N, Qk: <option>" (optionally followed by ". Note: <a short note>"), "Answer from the Head, VIL-N, Qk: <option>" (with an "Approved by:" field when it relays someone's approval), "Held for David, VIL-N, Qk: <the way forward>", "Forwarded to the Head, VIL-N, Qk: <the way forward>" or "Ask David, VIL-N, Qk: <why>".`
 - **Mail before a card, always** (with or without a Head). An open question card
   (AskUserQuestion) blocks this session's turn, Orca has no command to answer or dismiss one, and
   mail to and from the session queues behind it (`orca orchestration send` warns "Queued behind an
@@ -337,10 +337,12 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
     one of the question's options settles it, as does one that comes as your first reply. It is
     the Head's call, so whether it is the option you recommended, and the clear-cut conditions,
     don't matter; check only the delete and scope-cut limits "What counts as the answer" gives,
-    and treat a note as that bullet says. On a choice a written rule reserves for a named person's
-    explicit yes (`dv:director-mode`, "What no default decides"), it settles only when it carries
-    that person's explicit answer to that choice; otherwise the choice stays pending, and work
-    that doesn't depend on it goes on. Apply it, undoing the way forward where it differs (for
+    and treat a note as that bullet says. On one of the CEO's 1%, or a choice a written rule
+    reserves for a named person's explicit yes (`dv:director-mode`, "What no default decides"), it
+    settles only when its
+    `Approved by:` field names that person and that choice, with their own words or a traceable
+    source (`dv:director-mode`, "An approval travels in its own field"); otherwise the choice stays
+    pending, and work that doesn't depend on it goes on. Apply it, undoing the way forward where it differs (for
     a `dv:groom` fork, its open Decisions line becomes the answer, in groom's Head form, and
     a Head-only fork that held up the start no longer does).
   - **"Ask David" becomes this**, whenever no answer that counts comes in time (but not on an
@@ -391,7 +393,7 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
   `<question>: <answer>. Director (<its ListAgents name>) for <my name>, <date>.` A held question
   gets `<question>: held for <my name>; way forward: <what you did>. Director (<its ListAgents
   name>), <date>.` An answer from the Head gets `<question>: <answer>. <the Head's name>, through
-  the Director (<its ListAgents name>), <date>.`, and one still with him gets `<question>:
+  the Director (<its ListAgents name>), <date>.`, plus its `Approved by:` field when it has one, and one still with him gets `<question>:
   forwarded to <the Head's name>; way forward: <what you did>. Director (<its ListAgents name>),
   <date>.` My name is
   my full name from Linear `whoami` or the session's instructions. A call made before the PR

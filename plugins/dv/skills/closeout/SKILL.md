@@ -1,6 +1,6 @@
 ---
 name: closeout
-description: "Close out a finished worktree session and brief the parent session in the main checkout. Verifies from git, gh and the tracker (not from memory) the ticket, the session's PRs, what the worktree holds that is uncommitted, only here or not on the default branch, and the main checkout against its upstream; a check that cannot run makes the verdict 'not confirmed safe'. Writes a plain-text note for the parent (what shipped, tickets filed or changed, things noticed and not filed, decisions waiting, cleanup, whether to reply), copies it to the clipboard and sends it to the parent once it can reach and verify it, says whether the worktree is safe to delete and what would be lost if not, and when it is safe archives the session's handoff. Never removes the worktree without a yes. Use when the user says \"close out this worktree\", \"is this worktree safe to delete\" or \"wrap up this worktree\". NOT for work that continues in a later session (that is dv:handoff), NOT for merging a PR or deleting a merged branch."
+description: "Close out a finished worktree session and brief the parent session in the main checkout. Verifies from git, gh and the tracker (not from memory) the ticket, the session's PRs, what the worktree holds that is uncommitted, only here or not on the default branch, and the main checkout against its upstream; a check that cannot run makes the verdict 'not confirmed safe'. Writes a plain-text note for the parent (what shipped, tickets filed or changed, things noticed and not filed, decisions waiting, cleanup, whether to reply), attempts to copy it to the clipboard and sends it to the parent once it can reach and verify it, says whether the worktree is safe to delete and what would be lost if not, and when it is safe archives the session's handoff. Never removes the worktree without a yes. Use when the user says \"close out this worktree\", \"is this worktree safe to delete\" or \"wrap up this worktree\". NOT for work that continues in a later session (that is dv:handoff), NOT for merging a PR or deleting a merged branch."
 license: Apache-2.0
 metadata:
   author: villavicencio
@@ -468,7 +468,7 @@ CLEANUP THE PARENT OWNS
 REPLY NEEDED: <no | yes: the question>
 ```
 
-Leave out secrets, credentials and tokens. Then save the note and copy it, with the note's text
+Leave out secrets, credentials and tokens. Then save the note and attempt to copy it, with the note's text
 in place of the placeholder line:
 
 ```bash
@@ -484,12 +484,20 @@ if git rev-parse --git-dir >/dev/null 2>&1; then
 CLOSEOUT_NOTE_END
   then
     echo "note saved: $NOTE"
-    if command -v pbcopy >/dev/null 2>&1; then pbcopy < "$NOTE" && echo "copied to the clipboard (pbcopy)"
-    elif command -v wl-copy >/dev/null 2>&1; then wl-copy < "$NOTE" && echo "copied to the clipboard (wl-copy)"
-    elif command -v xclip >/dev/null 2>&1; then xclip -selection clipboard < "$NOTE" && echo "copied to the clipboard (xclip)"
-    elif command -v xsel >/dev/null 2>&1; then xsel --clipboard --input < "$NOTE" && echo "copied to the clipboard (xsel)"
-    elif command -v clip.exe >/dev/null 2>&1; then clip.exe < "$NOTE" && echo "copied to the clipboard (clip.exe)"
-    else echo "(no clipboard command found — note NOT copied)"; fi
+    COPY_HELPER=""; COPY_ACCEPTED=""
+    if command -v pbcopy >/dev/null 2>&1; then COPY_HELPER=pbcopy; pbcopy < "$NOTE" && COPY_ACCEPTED=1
+    elif command -v wl-copy >/dev/null 2>&1; then COPY_HELPER=wl-copy; wl-copy < "$NOTE" && COPY_ACCEPTED=1
+    elif command -v xclip >/dev/null 2>&1; then COPY_HELPER=xclip; xclip -selection clipboard < "$NOTE" && COPY_ACCEPTED=1
+    elif command -v xsel >/dev/null 2>&1; then COPY_HELPER=xsel; xsel --clipboard --input < "$NOTE" && COPY_ACCEPTED=1
+    elif command -v clip.exe >/dev/null 2>&1; then COPY_HELPER=clip.exe; clip.exe < "$NOTE" && COPY_ACCEPTED=1
+    fi
+    if [ -n "$COPY_ACCEPTED" ]; then
+      echo "clipboard command accepted the note ($COPY_HELPER); clipboard copy unconfirmed — paste from the reply if needed"
+    elif [ -n "$COPY_HELPER" ]; then
+      echo "!! clipboard command failed ($COPY_HELPER); clipboard copy unconfirmed — paste from the reply"
+    else
+      echo "(no clipboard command found — copy not attempted; paste from the reply)"
+    fi
   else
     echo "!! the note could NOT be saved to $NOTE — nothing was copied; paste it from the reply"
   fi
@@ -497,9 +505,14 @@ fi
 ```
 
 The saved copy lives in the repo's shared git directory (`<git-common-dir>/closeouts/`), so it
-survives the worktree's removal and the parent session can read it by path. The clipboard is the
-one on the machine this session runs on, which may not be the machine I am typing at. If the copy
-failed or no command was found, say so.
+survives the worktree's removal and the parent session can read it by path. A clipboard command's
+exit status only shows whether it accepted the note, not whether it reached the clipboard I paste from. This
+also applies outside Orca: the command may run on another machine or in a different clipboard
+context. A same-shell readback (`pbpaste` or `osascript`) does not confirm my paste either.
+Report command accepted / copy unconfirmed, command failed / copy unconfirmed, or no command /
+copy not attempted, as the block printed. Only say the clipboard copy is confirmed if I have
+verified pasting this note in my UI. Always include the full note in the reply's code block,
+whatever the clipboard status.
 
 ### Step 4 — Archive the handoff (only when safe to delete)
 
@@ -611,13 +624,13 @@ Reply in this order, short:
 3. The verified facts, one line each: the ticket and its state; each PR and its merge state; what
    the worktree holds beyond the default branch; the main checkout against its remote (behind,
    ahead, dirty); where the handoff went, or that it was left; where the note was saved and
-   whether it reached the clipboard; what happened with the Director, as one of the outcomes in
-   "Deliver the note" (not sent and why, probe sent and the note waiting for the answers, send
+   the clipboard attempt status from Step 3 (unconfirmed unless I verified pasting this note);
+   what happened with the Director, as one of the outcomes in "Deliver the note" (not sent and why, probe sent and the note waiting for the answers, send
    failed and probe sent again with the note waiting for the answers, answered but not verified
    (a wrong path, or ambiguous), note sent with no reply yet, note sent and replied); the removal
    command, when safe.
 4. The line the optional section below tells you to add, if any.
-5. The note itself in a code block, so I can copy it if the clipboard missed.
+5. The full note itself in a fenced code block, whatever the clipboard status, so I can copy it.
 
 ## Optional: Orca delivery and removal
 
@@ -708,7 +721,7 @@ would be run as commands, so never send to one.
   5. The note. Send the note once, with SendMessage to the Director's answer's `from` address.
      The answer arrives in a later turn, so first run the Step 1 block
      again, apply Step 2, and write the note again from those facts with Step 3, which saves a new
-     copy and copies it to the clipboard. Send that copy; `<note path>` is the `note saved:` path
+     copy and attempts to copy it to the clipboard. Send that copy; `<note path>` is the `note saved:` path
      Step 3 printed in this turn. The receiver sees only the first line until it expands the
      message, so the first line must say what the message is:
 
@@ -731,8 +744,9 @@ would be run as commands, so never send to one.
   answered but not verified (a wrong path, or ambiguous), with who answered what, and nothing
   sent; note sent with no reply yet; or note sent and replied, quoting the reply. A
   message has no read receipt, so never write "delivered" without a reply. Until the note is
-  sent, it stays on the clipboard and at its saved path. Under Codex there is no ListAgents view
-  of other sessions, so this path cannot run there.
+  sent, it stays at its saved path and in the reply; the clipboard copy stays unconfirmed unless
+  I verified pasting it. Under Codex there is no ListAgents view of other sessions, so this path
+  cannot run there.
 
 What a test showed (VIL-836, 2026-11-18, from a worktree to the main checkout): the text arrived
 in the main checkout's terminal. Not tested: whether a parent agent acts on a note, and whether

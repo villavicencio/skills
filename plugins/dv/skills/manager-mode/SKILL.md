@@ -327,7 +327,10 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
   a dialog, the CEO's 1% included: it reaches me through him. Every question you would ask me,
   anywhere in this skill, goes to the Director. What no message can grant (a permission prompt, a
   harness approval, a barrier set for me) is not a question and still comes to me ("Decisions and
-  escalation", "Limits"). A question forwarded to the Head never blocks:
+  escalation", "Limits"). A question forwarded to the Head never blocks other work. Only the
+  grooming work that depends on a `dv:groom` fork only the Head decides (a target, a split, a pull
+  condition, a new milestone) waits for his answer: the ticket's start and its `groomed` label
+  (`dv:director-mode`, "What no default decides"):
   - **On `Forwarded to the Head, VIL-N, Qk: <the way forward>`**, take the way forward and keep
     the rest moving, as for a held question. Until the Director answers its `Unanswered` with an
     `Answer` (below), an `Answer from the Head, VIL-N, Qk: <option>` from the verified Director that names

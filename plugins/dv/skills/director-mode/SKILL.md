@@ -570,8 +570,8 @@ carries no session id or more than one, ends nothing.
    losses, traceable to me: relayed by the Head in my words, or recorded in a comment on the
    ticket. Nothing broader counts. `NOT safe to delete` and `not confirmed safe` fail the check. The
    section under its `WAITING ON` heading is `none`, and its `REPLY NEEDED` line reads
-   `REPLY NEEDED: no` (with a Head, the note the session sends again once his answers came back,
-   Step 5 of `dv:closeout`). A decision waiting on me or the Head, or a question waiting for a reply, fails the
+   `REPLY NEEDED: no` (with a Head, the note the session sends again once what his answers call
+   for is done and verified, Step 5 of `dv:closeout`). A decision waiting on me or the Head, or a question waiting for a reply, fails the
    check: the session may still be waiting for the answer, so do not ask me to close it, and tell me.
 2. **Idle after the note.** Your reply to the note went with `notify_when_idle: true`, so the
    session takes a turn to read it and the notice comes when that turn ends. The check holds

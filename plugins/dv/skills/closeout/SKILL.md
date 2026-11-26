@@ -1,6 +1,6 @@
 ---
 name: closeout
-description: "Close out a finished worktree session and brief the parent session in the main checkout. Verifies from git, gh and the tracker (not from memory) the ticket, the session's PRs, what the worktree holds that is uncommitted, only here or not on the default branch, and the main checkout against its upstream; a check that cannot run makes the verdict 'not confirmed safe'. Writes a plain-text note for the parent (what shipped, tickets filed or changed, things noticed and not filed, decisions waiting, cleanup, whether to reply), copies it to the clipboard and sends it to the parent once it can reach and verify it, says whether the worktree is safe to delete and what would be lost if not, and when it is safe archives the session's handoff. Never removes the worktree without a yes. Use when the user says \"close out this worktree\", \"is this worktree safe to delete\" or \"wrap up this worktree\". NOT for work that continues in a later session (that is dv:handoff), NOT for merging a PR or deleting a merged branch."
+description: "Close out a finished worktree session and brief the parent session in the main checkout. Verifies from git, gh and the tracker (not from memory) the ticket, the session's PRs, what the worktree holds that is uncommitted, only here or not on the default branch, and the main checkout against its upstream; a check that cannot run makes the verdict 'not confirmed safe'. Writes a plain-text note for the parent (what shipped, tickets filed or changed, things noticed and not filed, decisions waiting, cleanup, whether to reply), attempts to copy it to the clipboard and sends it to the parent once it can reach and verify it, says whether the worktree is safe to delete and what would be lost if not, and when it is safe archives the session's handoff. Never removes the worktree without a yes. Use when the user says \"close out this worktree\", \"is this worktree safe to delete\" or \"wrap up this worktree\". NOT for work that continues in a later session (that is dv:handoff), NOT for merging a PR or deleting a merged branch."
 license: Apache-2.0
 metadata:
   author: villavicencio
@@ -109,7 +109,18 @@ else
       # unopenable bare repos). Checking only those candidates avoids a process per directory.
       # Each one is listed as a nested repo, except an initialized submodule's (those have
       # their own checks below); one git already listed is listed once.
-      # The case patterns open with "(" so bash 3.2 parses them inside the command substitution.
+      # Each build-output line ends with a fingerprint: the first 12 hex digits of a hash over the
+      # line's entries, one line each in the order git lists them (sorted by path, byte by byte):
+      # the entry's path with the hash of its regular file's contents or of its symlink's target
+      # (as readlink prints it, into a temp file; the link is never followed), or with neither for
+      # an entry not examined. One xargs run of git hash-object --no-filters hashes them all. A
+      # path with a newline, shown with "?", also adds all its bytes in hex (od -v, so repeated
+      # rows are not shortened to "*"), so it never matches the same path written with "?". A file edited, replaced or renamed in place, or a symlink
+      # pointed elsewhere, changes it even when every count stays the same; file modes and times
+      # are not part of it. Every fingerprint is worked out before any line is printed: if anything
+      # cannot be hashed, they all read "unknown" and the check is listed as not run.
+      # The case patterns open with "(" (bash 3.2 needs that inside a command substitution).
+      BOL=".venv/venv/node_modules/__pycache__/.pytest_cache/.mypy_cache/.ruff_cache"
       NRF=""; SUBP=""
       if [ "$TOP" != "$MAIN" ]; then
         if NRF=$(mktemp 2>/dev/null) && find "$TOP" -mindepth 1 \( -name .git -prune -print0 -o -name objects -print0 \) > "$NRF"; then :
@@ -119,65 +130,120 @@ else
             || FAILS="$FAILS- listing submodule paths failed: a submodule may be listed as a nested repo$NL"
         fi
       fi
-      if IGNOUT=$( { while IFS= read -r -d '' r; do
-        case "$r" in ('!! '*) ;; (*) continue ;; esac
-        p=${r#'!! '}; [ "$p" = HANDOFF.md ] && continue
-        a="$TOP/$p"; m="$MAIN/$p"
-        if [ "$TOP" = "$MAIN" ]; then k=listed
-        elif [ -L "$a" ]; then
-          if [ -L "$m" ] && [ "$(readlink "$a")" = "$(readlink "$m")" ]; then k=same
-          elif [ -e "$m" ] || [ -L "$m" ]; then k=different; else k=only-here; fi
-        elif [ -f "$a" ]; then
-          if [ -f "$m" ] && [ ! -L "$m" ]; then if cmp -s "$a" "$m"; then k=same; else k=different; fi
-          elif [ -e "$m" ] || [ -L "$m" ]; then k=different; else k=only-here; fi
-        elif [ -d "$a" ] && { [ -e "$a/.git" ] || [ -L "$a/.git" ] || { [ -d "$a/objects" ] && [ -d "$a/refs" ]; }; }; then k=nested-repo
-        else k=not-examined; fi
-        if [ "$k" != listed ] && [ "$k" != nested-repo ]; then
-          d=${p%/}
-          while :; do
-            case "$d" in (*/*) d=${d%/*} ;; (*) break ;; esac
-            if [ -e "$TOP/$d/.git" ] || [ -L "$TOP/$d/.git" ] || { [ -d "$TOP/$d/objects" ] && [ -d "$TOP/$d/refs" ]; }; then k=nested-repo; p="$d/"; break; fi
-          done
-        fi
-        case "$p" in (*"$NL"*) p=$(printf '%s' "$p" | tr '\n' '?') ;; esac
-        printf '%s\t%s\n' "$k" "$p"
-      done < "$IGNF"
-      [ -n "$NRF" ] && while IFS= read -r -d '' g; do
-        p=${g#"$TOP"/}
-        case "$p" in
-          (.git|objects) continue ;;
-          (*/.git) p=${p%/.git} ;;
-          (*/objects) [ -d "$g" ] && [ -d "${g%/objects}/refs" ] || continue; p=${p%/objects} ;;
-        esac
-        case "$p" in (*"$NL"*) ;; (*) [ -n "$SUBP" ] && printf '%s\n' "$SUBP" | grep -q -x -F -e "$p" && continue ;; esac
-        case "$p" in (*"$NL"*) p=$(printf '%s' "$p" | tr '\n' '?') ;; esac
-        printf 'nested-repo\t%s/\n' "$p"
-      done < "$NRF"; } | awk '
-        BEGIN { nb=split(".venv venv node_modules __pycache__ .pytest_cache .mypy_cache .ruff_cache", bn, " ")
-                for (i=1; i<=nb; i++) isb[bn[i]]=1 }
-        # The kind is the text before the first tab; the path is all of the rest, tabs included.
-        { k=substr($(0), 1, index($(0), "\t") - 1); path=substr($(0), length(k) + 2)
+      # One record per entry: kind, tab, what the fingerprint takes from it, tab, path. In build
+      # output a regular file is marked F and a symlink L, and the file, or the temp file holding
+      # the link's target, goes NUL-terminated to fd 3 in the same order, so the batch's hashes
+      # line up with the F and L records. The "end" record is written only when the loop over
+      # git's list ran, so a redirection that failed cannot pass as no entries.
+      FPD=$(mktemp -d "${TMPDIR:-/tmp}/closeout-fp.XXXXXX" 2>/dev/null) || FPD=""
+      ARC=1; FPOK=1; SLN=0
+      if [ -n "$FPD" ]; then
+        { { while IFS= read -r -d '' r; do
+          case "$r" in ('!! '*) ;; (*) continue ;; esac
+          p=${r#'!! '}; [ "$p" = HANDOFF.md ] && continue
+          a="$TOP/$p"; m="$MAIN/$p"; t=-; bo=""
+          if [ "$TOP" = "$MAIN" ]; then k=listed
+          elif [ -L "$a" ]; then
+            t=l
+            if [ -L "$m" ] && [ "$(readlink "$a")" = "$(readlink "$m")" ]; then k=same
+            elif [ -e "$m" ] || [ -L "$m" ]; then k=different; else k=only-here; fi
+          elif [ -f "$a" ]; then
+            t=f
+            if [ -f "$m" ] && [ ! -L "$m" ]; then if cmp -s "$a" "$m"; then k=same; else k=different; fi
+            elif [ -e "$m" ] || [ -L "$m" ]; then k=different; else k=only-here; fi
+          elif [ -d "$a" ] && { [ -e "$a/.git" ] || [ -L "$a/.git" ] || { [ -d "$a/objects" ] && [ -d "$a/refs" ]; }; }; then k=nested-repo
+          else k=not-examined; fi
+          if [ "$k" != listed ] && [ "$k" != nested-repo ]; then
+            d=${p%/}
+            while :; do
+              case "$d" in (*/*) d=${d%/*} ;; (*) break ;; esac
+              if [ -e "$TOP/$d/.git" ] || [ -L "$TOP/$d/.git" ] || { [ -d "$TOP/$d/objects" ] && [ -d "$TOP/$d/refs" ]; }; then k=nested-repo; p="$d/"; break; fi
+              case "/$BOL/" in (*"/${d##*/}/"*) bo=1 ;; esac
+            done
+          fi
+          if [ -n "$bo" ] && [ "$k" != nested-repo ]; then
+            case "$t" in
+              (f) printf '%s\0' "$a" >&3; t=F ;;
+              (l) SLN=$((SLN + 1))
+                if readlink "$a" > "$FPD/link$SLN"; then printf '%s\0' "$FPD/link$SLN" >&3; t=L; else t=-; fi ;;
+            esac
+          fi
+          case "$p" in (*"$NL"*) t="$t $(printf '%s' "$p" | od -v -An -tx1 | tr -d ' \n')"; p=$(printf '%s' "$p" | tr '\n' '?') ;; esac
+          printf '%s\t%s\t%s\n' "$k" "$t" "$p"
+        done; printf 'end\t-\t-\n'; } < "$IGNF" 3> "$FPD/paths"
+        if [ -n "$NRF" ]; then while IFS= read -r -d '' g; do
+          p=${g#"$TOP"/}
+          case "$p" in
+            (.git|objects) continue ;;
+            (*/.git) p=${p%/.git} ;;
+            (*/objects) [ -d "$g" ] && [ -d "${g%/objects}/refs" ] || continue; p=${p%/objects} ;;
+          esac
+          case "$p" in (*"$NL"*) ;; (*) [ -n "$SUBP" ] && printf '%s\n' "$SUBP" | grep -q -x -F -e "$p" && continue ;; esac
+          case "$p" in (*"$NL"*) p=$(printf '%s' "$p" | tr '\n' '?') ;; esac
+          printf 'nested-repo\t-\t%s/\n' "$p"
+        done < "$NRF"; fi; } > "$FPD/recs"
+        : > "$FPD/hashes"
+        if [ -s "$FPD/paths" ]; then xargs -0 git hash-object --no-filters -- < "$FPD/paths" > "$FPD/hashes" || FPOK=""; fi
+        # awk exits 2 when the loop did not run, and 3 when it printed the listing but a
+        # fingerprint is unknown. LC_ALL=C keeps it reading bytes, so the fingerprint does not
+        # depend on the locale.
+        IGNOUT=$(BOL="$BOL" FPD="$FPD" FPOK="$FPOK" LC_ALL=C awk '
+        BEGIN { nb=split(ENVIRON["BOL"], bn, "/")
+                for (i=1; i<=nb; i++) { isb[bn[i]]=1; gi[bn[i]]=i }
+                fpd=ENVIRON["FPD"]; hs=fpd "/hashes"; if (ENVIRON["FPOK"] == "") fpbad=1 }
+        # The kind and the fingerprint part come before the first two tabs; the path is all of the
+        # rest, tabs included.
+        { j=index($(0), "\t"); k=substr($(0), 1, j - 1); rest=substr($(0), j + 1)
+          j=index(rest, "\t"); t=substr(rest, 1, j - 1); path=substr(rest, j + 1)
+          if (k == "end") { ended=1; next }
+          nrec++
+          tc=substr(t, 1, 1)
+          if (tc == "F" || tc == "L") { h=""; if ((getline h < hs) <= 0 || length(h) < 40 || h ~ /[^0-9a-f]/) fpbad=1
+            t=(tc == "F" ? "f " : "l ") h substr(t, 2) }
           if (k == "listed") { print "  " path; next }
           if (k == "nested-repo") { if (path in nr_seen) next; nr_seen[path]=1 }
           np=split(path, part, "/"); g=""; dir=""
           # Every component but the last is a directory; the last is the entry itself.
           for (i=1; i<np; i++) { dir=dir part[i] "/"; if (part[i] in isb) { g=part[i]; break } }
-          if (g != "" && k != "nested-repo") { bn_n[g]++; bn_c[g, k]++; if (!((g, dir) in seen)) { seen[g, dir]=1; bn_d[g]++ }; next }
+          if (g != "" && k != "nested-repo") { bn_n[g]++; bn_c[g, k]++; if (!((g, dir) in seen)) { seen[g, dir]=1; bn_d[g]++ }
+            # A file or symlink here that the loop did not hash means the two build-output tests
+            # disagree, or its link could not be read; a hex name part must be there in full.
+            if (k == "not-examined") { if (t !~ /^-( [0-9a-f]+)?$/) fpbad=1 }
+            else if (t !~ /^[fl] [0-9a-f]+( [0-9a-f]+)?$/) fpbad=1
+            print t "\t" path > (fpd "/" gi[g]); next }
           top=path; if (index(top, "/")) top=substr(top, 1, index(top, "/")); n[top]++; c[top, k]++
           if (k == "nested-repo") ex[++shown]=k ": " path
           else if (k != "same" && k != "only-here" && capped < 10) { capped++; ex[++shown]=k ": " path } }
-        END { if (NR == 0) print "(none)"
+        END { if (!ended) exit 2
+              if (!nrec) print "(none)"
+              if ((getline h < hs) > 0) fpbad=1
+              for (i=1; i<=nb; i++) { g=bn[i]; if (!(g in bn_n) || fpbad) continue
+                close(fpd "/" i); fp=""; cmd="git hash-object --stdin < \"$FPD/" i "\""
+                if ((cmd | getline fp) <= 0 || length(fp) < 40 || fp ~ /[^0-9a-f]/) fpbad=1
+                else fps[g]=substr(fp, 1, 12)
+                close(cmd) }
               for (i=1; i<=nb; i++) { g=bn[i]; if (!(g in bn_n)) continue
-                printf "  %s/ (any depth): %d entr%s in %d director%s: %d same as the main checkout, %d only here, %d different, %d not examined\n",
+                printf "  %s/ (any depth): %d entr%s in %d director%s: %d same as the main checkout, %d only here, %d different, %d not examined; fingerprint %s\n",
                   g, bn_n[g], (bn_n[g] == 1 ? "y" : "ies"), bn_d[g], (bn_d[g] == 1 ? "y" : "ies"),
-                  bn_c[g,"same"], bn_c[g,"only-here"], bn_c[g,"different"], bn_c[g,"not-examined"] }
+                  bn_c[g,"same"], bn_c[g,"only-here"], bn_c[g,"different"], bn_c[g,"not-examined"], (fpbad ? "unknown" : fps[g]) }
               for (t in n) printf "  %s  %d entries: %d same as the main checkout, %d only here, %d different, %d not examined, %d nested git repos\n",
                 t, n[t], c[t,"same"], c[t,"only-here"], c[t,"different"], c[t,"not-examined"], c[t,"nested-repo"]
-              for (i=1; i<=shown; i++) print "    " ex[i] }'); then
+              for (i=1; i<=shown; i++) print "    " ex[i]
+              exit (fpbad ? 3 : 0) }' < "$FPD/recs"); ARC=$?
+      fi
+      if [ "$ARC" = 0 ] || [ "$ARC" = 3 ]; then
         printf '%s\n' "$IGNOUT"
+        [ "$ARC" = 3 ] && FAILS="$FAILS- fingerprinting the build output failed: a fingerprint is unknown, so a file edited in place may go unnoticed$NL"
       else
         FAILS="$FAILS- grouping the ignored entries failed: ignored files unknown$NL"
         echo "(not listed — see the checks that did not run)"
+      fi
+      # Remove only this run's own folder, named as mktemp made it above.
+      if [ -n "$FPD" ]; then
+        case "${FPD##*/}" in
+          (closeout-fp.??????) command rm -rf -- "$FPD" || echo "!! could not remove the temp folder $FPD" ;;
+          (*) echo "!! left the temp folder $FPD: it is not named as this run made it" ;;
+        esac
       fi
     else
       FAILS="$FAILS- git status -z for the ignored entries failed: ignored files unknown$NL"
@@ -413,8 +479,9 @@ clone in `.venv/src/<pkg>/`; an initialized submodule is not one) is never build
 under a build-output name: it can hold unpushed commits, Step 1 lists it on its
 top-level line and by path, and any one of them rules this verdict out. And commits listed as
 reachable only from this worktree's HEAD reflog or ORIG_HEAD (usually commits amended or reset away; removal ends their recovery path).
-The verdict names every build-output line Step 1 printed, with its name, entry count and
-directory count (for example `__pycache__/ (any depth): 666 entries in 87 directories`), and the
+The verdict names every build-output line Step 1 printed in a short form: its name, entry count,
+directory count and fingerprint word for word as printed, without the per-kind counts (for example
+`__pycache__/ (any depth): 666 entries in 87 directories; fingerprint 3f9a0c1e2b7d`), and the
 reflog-only commits with their count, list id and the commits as listed (all of them, or the
 first 50 when there are more). It is not "safe" until I accept losing them: nothing in Steps 4
 and 5 that needs "safe" runs before that yes, and the question that asks for it names the
@@ -454,7 +521,7 @@ Use these headings in this order, and write "none" under one with nothing to say
 
 ```
 CLOSEOUT NOTE from <branch or "detached"> at <worktree path>, <date and time with zone>
-Worktree: <safe to delete | safe once you accept losing: <each build-output line as name, entry count and directory count; reflog-only commits with count and list id> | NOT safe to delete: what would be lost, each nested git repo by path | not confirmed safe: what is unverified>, by these checks
+Worktree: <safe to delete | safe once you accept losing: <each build-output line as name, entry count, directory count and fingerprint; reflog-only commits with count and list id> | NOT safe to delete: what would be lost, each nested git repo by path | not confirmed safe: what is unverified>, by these checks
 Not checked: <the fixed list from Step 2>
 
 WHAT SHIPPED
@@ -475,7 +542,7 @@ CLEANUP THE PARENT OWNS
 REPLY NEEDED: <no | yes: the question>
 ```
 
-Leave out secrets, credentials and tokens. Then save the note and copy it, with the note's text
+Leave out secrets, credentials and tokens. Then save the note and attempt to copy it, with the note's text
 in place of the placeholder line:
 
 ```bash
@@ -491,12 +558,20 @@ if git rev-parse --git-dir >/dev/null 2>&1; then
 CLOSEOUT_NOTE_END
   then
     echo "note saved: $NOTE"
-    if command -v pbcopy >/dev/null 2>&1; then pbcopy < "$NOTE" && echo "copied to the clipboard (pbcopy)"
-    elif command -v wl-copy >/dev/null 2>&1; then wl-copy < "$NOTE" && echo "copied to the clipboard (wl-copy)"
-    elif command -v xclip >/dev/null 2>&1; then xclip -selection clipboard < "$NOTE" && echo "copied to the clipboard (xclip)"
-    elif command -v xsel >/dev/null 2>&1; then xsel --clipboard --input < "$NOTE" && echo "copied to the clipboard (xsel)"
-    elif command -v clip.exe >/dev/null 2>&1; then clip.exe < "$NOTE" && echo "copied to the clipboard (clip.exe)"
-    else echo "(no clipboard command found — note NOT copied)"; fi
+    COPY_HELPER=""; COPY_ACCEPTED=""
+    if command -v pbcopy >/dev/null 2>&1; then COPY_HELPER=pbcopy; pbcopy < "$NOTE" && COPY_ACCEPTED=1
+    elif command -v wl-copy >/dev/null 2>&1; then COPY_HELPER=wl-copy; wl-copy < "$NOTE" && COPY_ACCEPTED=1
+    elif command -v xclip >/dev/null 2>&1; then COPY_HELPER=xclip; xclip -selection clipboard < "$NOTE" && COPY_ACCEPTED=1
+    elif command -v xsel >/dev/null 2>&1; then COPY_HELPER=xsel; xsel --clipboard --input < "$NOTE" && COPY_ACCEPTED=1
+    elif command -v clip.exe >/dev/null 2>&1; then COPY_HELPER=clip.exe; clip.exe < "$NOTE" && COPY_ACCEPTED=1
+    fi
+    if [ -n "$COPY_ACCEPTED" ]; then
+      echo "clipboard command accepted the note ($COPY_HELPER); clipboard copy unconfirmed — paste from the reply if needed"
+    elif [ -n "$COPY_HELPER" ]; then
+      echo "!! clipboard command failed ($COPY_HELPER); clipboard copy unconfirmed — paste from the reply"
+    else
+      echo "(no clipboard command found — copy not attempted; paste from the reply)"
+    fi
   else
     echo "!! the note could NOT be saved to $NOTE — nothing was copied; paste it from the reply"
   fi
@@ -504,9 +579,14 @@ fi
 ```
 
 The saved copy lives in the repo's shared git directory (`<git-common-dir>/closeouts/`), so it
-survives the worktree's removal and the parent session can read it by path. The clipboard is the
-one on the machine this session runs on, which may not be the machine I am typing at. If the copy
-failed or no command was found, say so.
+survives the worktree's removal and the parent session can read it by path. A clipboard command's
+exit status only shows whether it accepted the note, not whether it reached the clipboard I paste from. This
+also applies outside Orca: the command may run on another machine or in a different clipboard
+context. A same-shell readback (`pbpaste` or `osascript`) does not confirm my paste either.
+Report command accepted / copy unconfirmed, command failed / copy unconfirmed, or no command /
+copy not attempted, as the block printed. Only say the clipboard copy is confirmed if I have
+verified pasting this note in my UI. Always include the full note in the reply's code block,
+whatever the clipboard status.
 
 ### Step 4 — Archive the handoff (only when safe to delete)
 
@@ -592,25 +672,28 @@ after this session has ended. Do not run it.
 When the worktree is not safe, or not confirmed safe, name no removal command and offer none.
 When it is safe once I accept losing (never while a nested git repo is listed: that is not safe),
 end the reply with one plain question that names what would be lost: each build-output line with
-its name, entry count and directory count (for example
-`__pycache__/ (any depth): 666 entries in 87 directories`), and the reflog-only commits with their
-count and list id. Accept losing them? On my yes, recheck first (below), then run Step 4, then
+its name, entry count, directory count and fingerprint (for example
+`__pycache__/ (any depth): 666 entries in 87 directories; fingerprint 3f9a0c1e2b7d`), and the
+reflog-only commits with their count and list id. Accept losing them? On my yes, recheck first (below), then run Step 4, then
 name the removal command (or make the Orca offer below).
 
 **Recheck in every later turn.** A yes arrives in a later turn, and the worktree may have changed
 since the verdict. Before acting on any yes (accepting losses, archiving, removing), run the Step 1
 block again and apply Step 2 to its output. Act only if the verdict is the same and, for "safe
 once you accept losing", every build-output line is the same as printed, word for word: its
-name, entry count, directory count and every per-kind count (same, only here, different, not
-examined). The reflog-only commit count and list id must be the same too, and no nested git repo
-may be listed. This compares counts, not paths or contents: a file edited in place, with every
-count unchanged, is not caught. If anything changed, act on nothing: report the new verdict, update the saved note if it no longer holds, and
+name, entry count, directory count, every per-kind count (same, only here, different, not
+examined) and its fingerprint. The fingerprint covers each entry's path and a regular file's
+contents or a symlink's target, so a build-output file edited, replaced or renamed in place, or a
+symlink pointed elsewhere, changes it even when every count stays the same; file modes and times
+are not part of it. A fingerprint that reads `unknown` comes with a check that did not run, so
+the verdict is not the same. The reflog-only commit count and list id must be the same too, and
+no nested git repo may be listed. If anything changed, act on nothing: report the new verdict, update the saved note if it no longer holds, and
 ask again.
 
 Reply in this order, short:
 
 1. One line: safe to delete; safe once you accept losing (each build-output line with its name,
-   entry count and directory count, and the reflog-only commits); not safe to delete (and what
+   entry count, directory count and fingerprint, and the reflog-only commits); not safe to delete (and what
    would be lost, each nested git repo by path); or not confirmed safe (and which check is
    missing). Then the Not checked list from Step 2.
 2. **Needs you:** decisions waiting on me, and anything still owed on the ticket that this
@@ -618,13 +701,13 @@ Reply in this order, short:
 3. The verified facts, one line each: the ticket and its state; each PR and its merge state; what
    the worktree holds beyond the default branch; the main checkout against its remote (behind,
    ahead, dirty); where the handoff went, or that it was left; where the note was saved and
-   whether it reached the clipboard; what happened with the Director, as one of the outcomes in
-   "Deliver the note" (not sent and why, probe sent and the note waiting for the answers, send
+   the clipboard attempt status from Step 3 (unconfirmed unless I verified pasting this note);
+   what happened with the Director, as one of the outcomes in "Deliver the note" (not sent and why, probe sent and the note waiting for the answers, send
    failed and probe sent again with the note waiting for the answers, answered but not verified
    (a wrong path, or ambiguous), note sent with no reply yet, note sent and replied); the removal
    command, when safe.
 4. The line the optional section below tells you to add, if any.
-5. The note itself in a code block, so I can copy it if the clipboard missed.
+5. The full note itself in a fenced code block, whatever the clipboard status, so I can copy it.
 
 ## Optional: Orca delivery and removal
 
@@ -656,15 +739,25 @@ screen reader, which is why the block does not try it there.)
 field: that marks a running agent. A terminal without it is a plain shell, and a note sent there
 would be run as commands, so never send to one.
 
-- Exactly one qualifying terminal: send the saved note from Step 3, once, with the CLI path the
-  block printed in place of `<orca CLI>`, kept inside the quotes (no variable from that block survives to this call):
+A supervised session (`dv:manager-mode`, "A supervised session": its first message opened with
+Orca's worker preamble, naming a task ID and a dispatch ID) skips both terminal bullets below and
+takes the chat path (the "None" case, steps 1 to 5), even when the parent has exactly one
+qualifying terminal. The Director releases that session's chat only on a note sent by
+SendMessage, whose `from` address names this session's `claude` process, and only once it has
+replied; a terminal input receipt (`input_accepted`, a turn seen to start) is neither, and never
+authorizes a release or `worker_done`. Wait for the Director's reply (the outcome "note sent and
+replied") before `dv:manager-mode` lets the session send `worker_done`. Every other session
+routes as the bullets say.
+
+- Exactly one qualifying terminal (not for a supervised session): send the saved note from
+  Step 3, once, with the CLI path the block printed in place of `<orca CLI>`, kept inside the quotes (no variable from that block survives to this call):
   `"<orca CLI>" terminal send --terminal <handle> --text "$(cat "<note path>")" --enter --wait-submit 20 --json`
   Report what the result says (`input_accepted`, and whether a turn was seen to start), not
   "delivered". Do not resend on a timeout. After a transport error, reissue the same command with
   the `--retry-request` id the error reports.
-- More than one: ask me which, as a plain question, before sending.
-- None, or the Orca steps were skipped: the parent may run as an Orca chat, which is not a
-  terminal, or outside Orca, and a chat is never sent a note through `terminal send`. Look for
+- More than one (not for a supervised session): ask me which, as a plain question, before sending.
+- None, the Orca steps were skipped, or a supervised session: the parent may run as an Orca
+  chat, which is not a terminal, or outside Orca, and a chat is never sent a note through `terminal send`. Look for
   the Director with ListAgents instead, and send the note only after it answers a probe with the
   main checkout's path:
   1. Candidates. A candidate is a peer session in ListAgents, other than this one, whose name is
@@ -715,7 +808,7 @@ would be run as commands, so never send to one.
   5. The note. Send the note once, with SendMessage to the Director's answer's `from` address.
      The answer arrives in a later turn, so first run the Step 1 block
      again, apply Step 2, and write the note again from those facts with Step 3, which saves a new
-     copy and copies it to the clipboard. Send that copy; `<note path>` is the `note saved:` path
+     copy and attempts to copy it to the clipboard. Send that copy; `<note path>` is the `note saved:` path
      Step 3 printed in this turn. The receiver sees only the first line until it expands the
      message, so the first line must say what the message is:
 
@@ -738,8 +831,9 @@ would be run as commands, so never send to one.
   answered but not verified (a wrong path, or ambiguous), with who answered what, and nothing
   sent; note sent with no reply yet; or note sent and replied, quoting the reply. A
   message has no read receipt, so never write "delivered" without a reply. Until the note is
-  sent, it stays on the clipboard and at its saved path. Under Codex there is no ListAgents view
-  of other sessions, so this path cannot run there.
+  sent, it stays at its saved path and in the reply; the clipboard copy stays unconfirmed unless
+  I verified pasting it. Under Codex there is no ListAgents view of other sessions, so this path
+  cannot run there.
 
 What a test showed (VIL-836, 2026-11-18, from a worktree to the main checkout): the text arrived
 in the main checkout's terminal. Not tested: whether a parent agent acts on a note, and whether

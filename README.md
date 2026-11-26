@@ -39,10 +39,13 @@ option, `dv:director-mode`'s `open worktree VIL-N` starts the session as a super
 `"${ORCA_CLI_COMMAND:-orca}"`). Orca 1.4.277 has no such option, and no supported command reads
 the setting for new agent tabs that `worker-start` follows, so there every start is the ordinary
 chat. A supervised start that still comes up as a terminal is left running and reported with its
-dispatch id: the Director doesn't stop or release it, the setup still links the ticket, and you
-close it. A supervised start runs only once the kickoff prompt was written whole; when
-it comes up as a chat, the setup links the ticket and reads the link back, and only then records
-its dispatch, chat and workspace instance in `<git-common-dir>/orca-supervised/`. The session sends
+dispatch id: the Director doesn't stop or release it, the setup still tries to link the ticket
+and reports `LINK: NOT LINKED` when it can't, and you close it. Its closeout can't pass the
+Director's checks and the release refuses it, so the Director leaves its worktree in place and
+tells you (VIL-1217 covers a closeout and close path for it). A supervised start runs only once
+the kickoff prompt was written whole; when it comes up as a chat, the setup links the ticket and
+reads the link back, and only then records its dispatch, chat and workspace instance in
+`<git-common-dir>/orca-supervised/`. The session sends
 `worker_done` only as its last act, after the Director replied to its closeout note (sent by
 SendMessage even when the Director has an agent terminal, since a terminal input receipt never
 authorizes the release; `dv:closeout`, "Deliver the note") with nothing waiting on anyone, a

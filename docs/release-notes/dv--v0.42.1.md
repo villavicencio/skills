@@ -23,9 +23,12 @@ Director's checks. No supported Orca command reads that setting (Orca 1.4.277).
   ordinary start (2b) for now. Don't read Orca's settings files to decide.
 - **A 2a start that came up as a terminal anyway** is reported and left for David. The Director
   doesn't stop it, release it or send it anything about its start, and starts nothing more for the
-  ticket. The setup block still runs, so the ticket gets linked; it writes no record. Step 4 says
-  the session is a terminal that David closes, with its dispatch id and Orca's
-  `startOptions.mode.detail` reason.
+  ticket. The setup block still runs: it tries to link the ticket, reports `LINK: NOT LINKED` when
+  it can't, and writes no record. Step 4 says the session is a terminal that David closes, with
+  its dispatch id and Orca's `startOptions.mode.detail` reason. "End a finished worktree session"
+  can't end that session (VIL-1043 found its `claude` with no `--session-id` and a login-shell
+  wrapper), and the release refuses it (it has no record), so at its closeout the Director leaves
+  the worktree in place and tells David. VIL-1217 is the follow-up for a closeout and close path.
 - **2b** passes `--json` and checks that `result.launch.outcome.kind` is `structured` (a chat); any
   other answer is reported with Orca's `receipt.detail`, and that session is left for David to
   close.

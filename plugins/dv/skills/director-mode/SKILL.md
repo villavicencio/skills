@@ -776,14 +776,21 @@ session in a terminal, for example because a chat could not open there. That ses
 neither released nor closed through your checks (step 2), so leave it running and report it:
 
 - Don't stop it, release it or send it anything about its start, and start nothing more for the
-  ticket: no second start and no chat beside it. Otherwise it is a worktree session like any
-  other, and I close it myself.
-- Still run the setup block above with the receipt's `dispatchId`, so the ticket gets linked. It
-  writes no record: its `FAIL` lines include `FAIL the worker runs as 'terminal', not a structured
-  chat` and `FAIL worker-show names no structured chat: …`, and its `RESULT:` line says the chat
-  takes the manual close.
+  ticket: no second start and no chat beside it. Otherwise it works as any worktree session does,
+  and I close it myself.
+- Still run the setup block above with the receipt's `dispatchId`. It tries to link the ticket and
+  prints `LINK: NOT LINKED` when it can't, and it writes no record: its `FAIL` lines include
+  `FAIL the worker runs as 'terminal', not a structured chat` and
+  `FAIL worker-show names no structured chat: …`, and its `RESULT:` line says the chat takes the
+  manual close.
 - In step 4, say that the session is a terminal and takes my close, with its dispatch id and the
   reason `worker-show --dispatch <id> --full` gives under `startOptions.mode.detail`.
+- When it closes out, "End a finished worktree session" can't end it: VIL-1043 found such a
+  session's `claude` with no `--session-id` and a login shell as its wrapper, so its closeout note
+  ends nothing ("The note's header, time and sender") and the wrapper check under "Asking me to
+  close it" can't run. "Release a supervised Manager chat" refuses it too, as it has no record. So
+  leave its worktree in place, and tell me which check can't run and that the session is mine to
+  close. A closeout and close path for such a session is VIL-1217.
 
 **2b. Ordinary start.** From the main checkout, with the kickoff prompt (step 3) held in a shell
 variable by a quoted heredoc, so its quotes and link reach `--prompt` as one argument without

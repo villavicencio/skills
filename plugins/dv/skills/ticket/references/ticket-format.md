@@ -110,14 +110,21 @@ skill says what it does with the result.
 - **A new milestone is my call.** Propose one only as a question to me: its name and one line on
   what done means. Create it only on my yes, with `save_milestone` (the project, the name, and
   that line as the description). Never set a target date; only I set one.
-- **Re-read before the save (`dv:groom`).** The milestone grooming settled in step 3 is the one
-  the groomed ticket will have after the approved edit list (kept, set or none). Just before the
-  first save that uses it, and before creating a new one, call `list_milestones` again and
-  `get_issue` for the groomed ticket. If that milestone has finished, gone or changed its goal
-  since step 3, or the groomed ticket's milestone changed since then, save nothing that sets it
-  and ask me again, in forks-only mode too. A milestone I chose to keep while it was finished does
-  not count as having finished. For a new milestone, "Look first" below checks the milestone
-  itself; the groomed ticket is still read. `dv:ticket` re-reads in its own File step 7.
+- **Re-read before the save.** For an existing milestone the run settled on, call
+  `get_milestone` with its project and the milestone id from the first read. Compare its name,
+  description and finished status to that read. A confirmed missing milestone counts as gone.
+  Never skip the re-read because tool output is large. If the read fails without confirming the
+  milestone is gone, or the result cannot be read, stop before writing and report the error.
+  Known limit: Linear's progress can lag the last ticket's completion by about a minute, so the re-read can miss a recent finish.
+  - **`dv:ticket`.** File step 7 handles a milestone that finished, went away or changed.
+  - **`dv:groom`.** The milestone settled in step 3 is the one the groomed ticket will have after
+    the approved edit list (kept, set or none). At each re-read in Order of writes, also call
+    `get_issue` for the groomed ticket, including when the settled result is none or a new
+    milestone. If the settled milestone finished, went away or changed name or description, or
+    the groomed ticket's milestone changed since step 3, save nothing that sets it and ask me
+    again, in forks-only mode too. A milestone I chose to keep while it was finished does not
+    count as having finished.
+  - **An approved new milestone.** "Look first" below still uses the list to check its name.
 - **Creating an approved milestone.** Both skills follow these steps, and each says where they
   fall in its own run:
   1. **Last.** Create it right before the first save that sets it, after every re-read or check

@@ -1,0 +1,3 @@
+- `dv:ticket` checks whether an existing milestone's name or description changed after it was selected.
+- `dv:ticket` and `dv:groom` re-read the selected milestone by ID before saving, and stop if the read is inconclusive. The name lookup for an approved new milestone still uses the project list.
+- The shared milestone rules document that Linear's progress can lag the last ticket's completion by about a minute.

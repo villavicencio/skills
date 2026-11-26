@@ -113,11 +113,12 @@ else
       # line's entries, one line each in the order git lists them (sorted by path, byte by byte):
       # the entry's path with the hash of its regular file's contents or of its symlink's target
       # (as readlink prints it, into a temp file; the link is never followed), or with neither for
-      # an entry not examined. One batch of git hash-object --no-filters hashes them all. A file
-      # edited, replaced or renamed in place, or a symlink pointed elsewhere, changes it even when
-      # every count stays the same; file modes and times are not part of it, and a newline in a
-      # path counts as "?", as in the listing. If anything cannot be hashed, every fingerprint
-      # reads "unknown" and the check is listed as not run.
+      # an entry not examined. One xargs run of git hash-object --no-filters hashes them all. A
+      # path with a newline, shown with "?", also adds its bytes in hex, so it never matches the
+      # same path written with "?". A file edited, replaced or renamed in place, or a symlink
+      # pointed elsewhere, changes it even when every count stays the same; file modes and times
+      # are not part of it. Every fingerprint is worked out before any line is printed: if anything
+      # cannot be hashed, they all read "unknown" and the check is listed as not run.
       # The case patterns open with "(" (bash 3.2 needs that inside a command substitution).
       BOL=".venv/venv/node_modules/__pycache__/.pytest_cache/.mypy_cache/.ruff_cache"
       NRF=""; SUBP=""
@@ -134,7 +135,7 @@ else
       # the link's target, goes NUL-terminated to fd 3 in the same order, so the batch's hashes
       # line up with the F and L records. The "end" record is written only when the loop over
       # git's list ran, so a redirection that failed cannot pass as no entries.
-      FPD=$(mktemp -d 2>/dev/null) || FPD=""
+      FPD=$(mktemp -d "${TMPDIR:-/tmp}/closeout-fp.XXXXXX" 2>/dev/null) || FPD=""
       ARC=1; FPOK=1; SLN=0
       if [ -n "$FPD" ]; then
         { { while IFS= read -r -d '' r; do
@@ -167,7 +168,7 @@ else
                 if readlink "$a" > "$FPD/link$SLN"; then printf '%s\0' "$FPD/link$SLN" >&3; t=L; else t=-; fi ;;
             esac
           fi
-          case "$p" in (*"$NL"*) p=$(printf '%s' "$p" | tr '\n' '?') ;; esac
+          case "$p" in (*"$NL"*) t="$t $(printf '%s' "$p" | od -An -tx1 | tr -d ' \n')"; p=$(printf '%s' "$p" | tr '\n' '?') ;; esac
           printf '%s\t%s\t%s\n' "$k" "$t" "$p"
         done; printf 'end\t-\t-\n'; } < "$IGNF" 3> "$FPD/paths"
         if [ -n "$NRF" ]; then while IFS= read -r -d '' g; do
@@ -196,8 +197,9 @@ else
           j=index(rest, "\t"); t=substr(rest, 1, j - 1); path=substr(rest, j + 1)
           if (k == "end") { ended=1; next }
           nrec++
-          if (t == "F" || t == "L") { h=""; if ((getline h < hs) <= 0 || length(h) < 40 || h ~ /[^0-9a-f]/) fpbad=1
-            t=(t == "F" ? "f " : "l ") h }
+          tc=substr(t, 1, 1)
+          if (tc == "F" || tc == "L") { h=""; if ((getline h < hs) <= 0 || length(h) < 40 || h ~ /[^0-9a-f]/) fpbad=1
+            t=(tc == "F" ? "f " : "l ") h substr(t, 2) }
           if (k == "listed") { print "  " path; next }
           if (k == "nested-repo") { if (path in nr_seen) next; nr_seen[path]=1 }
           np=split(path, part, "/"); g=""; dir=""
@@ -205,8 +207,9 @@ else
           for (i=1; i<np; i++) { dir=dir part[i] "/"; if (part[i] in isb) { g=part[i]; break } }
           if (g != "" && k != "nested-repo") { bn_n[g]++; bn_c[g, k]++; if (!((g, dir) in seen)) { seen[g, dir]=1; bn_d[g]++ }
             # A file or symlink here that the loop did not hash means the two build-output tests
-            # disagree, or its link could not be read.
-            if (k != "not-examined" && t !~ /^[fl] /) fpbad=1
+            # disagree, or its link could not be read; a hex name part must be there in full.
+            if (k == "not-examined") { if (t !~ /^-( [0-9a-f]+)?$/) fpbad=1 }
+            else if (t !~ /^[fl] [0-9a-f]+( [0-9a-f]+)?$/) fpbad=1
             print t "\t" path > (fpd "/" gi[g]); next }
           top=path; if (index(top, "/")) top=substr(top, 1, index(top, "/")); n[top]++; c[top, k]++
           if (k == "nested-repo") ex[++shown]=k ": " path
@@ -214,14 +217,15 @@ else
         END { if (!ended) exit 2
               if (!nrec) print "(none)"
               if ((getline h < hs) > 0) fpbad=1
-              for (i=1; i<=nb; i++) { g=bn[i]; if (!(g in bn_n)) continue
+              for (i=1; i<=nb; i++) { g=bn[i]; if (!(g in bn_n) || fpbad) continue
                 close(fpd "/" i); fp=""; cmd="git hash-object --stdin < \"$FPD/" i "\""
-                if (fpbad || (cmd | getline fp) <= 0 || length(fp) < 40 || fp ~ /[^0-9a-f]/) { fp="unknown"; fpbad=1 }
-                else fp=substr(fp, 1, 12)
-                close(cmd)
+                if ((cmd | getline fp) <= 0 || length(fp) < 40 || fp ~ /[^0-9a-f]/) fpbad=1
+                else fps[g]=substr(fp, 1, 12)
+                close(cmd) }
+              for (i=1; i<=nb; i++) { g=bn[i]; if (!(g in bn_n)) continue
                 printf "  %s/ (any depth): %d entr%s in %d director%s: %d same as the main checkout, %d only here, %d different, %d not examined; fingerprint %s\n",
                   g, bn_n[g], (bn_n[g] == 1 ? "y" : "ies"), bn_d[g], (bn_d[g] == 1 ? "y" : "ies"),
-                  bn_c[g,"same"], bn_c[g,"only-here"], bn_c[g,"different"], bn_c[g,"not-examined"], fp }
+                  bn_c[g,"same"], bn_c[g,"only-here"], bn_c[g,"different"], bn_c[g,"not-examined"], (fpbad ? "unknown" : fps[g]) }
               for (t in n) printf "  %s  %d entries: %d same as the main checkout, %d only here, %d different, %d not examined, %d nested git repos\n",
                 t, n[t], c[t,"same"], c[t,"only-here"], c[t,"different"], c[t,"not-examined"], c[t,"nested-repo"]
               for (i=1; i<=shown; i++) print "    " ex[i]
@@ -234,7 +238,13 @@ else
         FAILS="$FAILS- grouping the ignored entries failed: ignored files unknown$NL"
         echo "(not listed — see the checks that did not run)"
       fi
-      [ -n "$FPD" ] && rm -rf "$FPD"
+      # Remove only this run's own folder, named as mktemp made it above.
+      if [ -n "$FPD" ]; then
+        case "${FPD##*/}" in
+          (closeout-fp.??????) command rm -rf -- "$FPD" || echo "!! could not remove the temp folder $FPD" ;;
+          (*) echo "!! left the temp folder $FPD: it is not named as this run made it" ;;
+        esac
+      fi
     else
       FAILS="$FAILS- git status -z for the ignored entries failed: ignored files unknown$NL"
       echo "(not listed — see the checks that did not run)"
@@ -662,7 +672,7 @@ name, entry count, directory count, every per-kind count (same, only here, diffe
 examined) and its fingerprint. The fingerprint covers each entry's path and a regular file's
 contents or a symlink's target, so a build-output file edited, replaced or renamed in place, or a
 symlink pointed elsewhere, changes it even when every count stays the same; file modes and times
-are not part of it, and a newline in a path counts as "?". A fingerprint that reads `unknown` comes with a check that did not run, so
+are not part of it. A fingerprint that reads `unknown` comes with a check that did not run, so
 the verdict is not the same. The reflog-only commit count and list id must be the same too, and
 no nested git repo may be listed. If anything changed, act on nothing: report the new verdict, update the saved note if it no longer holds, and
 ask again.

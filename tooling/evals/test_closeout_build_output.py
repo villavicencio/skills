@@ -32,10 +32,13 @@ main repo and a linked worktree made here:
   m. each build-output line ends with a fingerprint over its entries' paths, file contents and
      symlink targets: a second run on an unchanged tree prints every line the same, and a file
      edited in place (same size, every count unchanged), a symlink pointed elsewhere (also to a
-     target that differs only by a tab against "?"), a file renamed in its directory, or a file
-     with a newline in its name edited changes that line's fingerprint and nothing else; a change
-     to the main checkout's copy alone changes no fingerprint
-  n. when hashing fails, every fingerprint reads "unknown" and the check is listed as not run
+     target that differs only by a tab against "?"), a file renamed in its directory, a file with
+     a newline in its name edited or renamed to the same name with "?" changes that line's
+     fingerprint and nothing else; a change to the main checkout's copy alone changes no
+     fingerprint
+  n. when hashing fails, in the batch or for one line after another line's succeeded, every
+     fingerprint reads "unknown" and the check is listed as not run
+  o. no run leaves a file or folder behind in TMPDIR
 
 Step 1 also calls gh and git fetch. A gh shim that always fails keeps the run off the network
 (the block then lists "gh missing" among the checks that did not run, which these checks
@@ -144,6 +147,7 @@ def run_steps(shell: str, path_env: str, block: str, main_files: dict[str, str],
               submodule: bool = False, bare_repos: tuple[str, ...] = (),
               bare_links: bool = False, wt_links: dict[str, str] | None = None,
               steps: tuple[tuple[str, Step], ...] = (),
+              extra_env: dict[str, str] | None = None,
               label: str = "") -> list[tuple[list[str] | None, str]]:
     """Run the block on a fresh tree, then once more after each step(main, wt) changes it."""
     with tempfile.TemporaryDirectory(prefix="vil869-") as work:
@@ -152,7 +156,9 @@ def run_steps(shell: str, path_env: str, block: str, main_files: dict[str, str],
         home.mkdir()
         env = {"PATH": path_env, "HOME": str(home), "LC_ALL": "C", "GIT_CONFIG_NOSYSTEM": "1",
                "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid",
-               "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.invalid"}
+               "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.invalid",
+               "TMPDIR": str(root / "tmp"), **(extra_env or {})}
+        (root / "tmp").mkdir()
         main = root / "main"
         main.mkdir()
         git(env, main, "init", "-q")
@@ -228,6 +234,9 @@ def run_steps(shell: str, path_env: str, block: str, main_files: dict[str, str],
                   f"rc={p.returncode} stdout={p.stdout!r} stderr={p.stderr!r}")
             results.append((ignored_section(p.stdout),
                             f"rc={p.returncode} stdout={p.stdout!r} stderr={p.stderr!r}"))
+            # o. The block removes every temp file and folder it made.
+            left = sorted(x.name for x in (root / "tmp").iterdir())
+            check(f"{label} ({name}): o. nothing is left in TMPDIR", not left, f"left: {left}")
         return results
 
 
@@ -440,6 +449,20 @@ def scenario(shell: str, awk_label: str, path_env: str, block: str) -> None:
 
     # m. The fingerprint changes with what is in build output, and only then.
     nl_name = ".venv/lib/line\nbreak.py"
+    # Each step: what it does, and whether it changes the .venv/ and node_modules/ lines.
+    plan = (("rerun, nothing changed", unchanged, False, False),
+            ("a.py edited in place", edit(".venv/lib/a.py", "hellp\n"), True, False),
+            ("symlink pointed elsewhere", relink(".venv/bin/python", "python3.13"), True, False),
+            ("file renamed in its directory",
+             rename(".venv/lib/sp ace.py", ".venv/lib/sp ade.py"), True, False),
+            ("file with a newline in its name edited", edit(nl_name, "NL\n"), True, False),
+            ("that file renamed to the same name with ?",
+             rename(nl_name, ".venv/lib/line?break.py"), True, False),
+            ("symlink target with a tab", relink(".venv/bin/python", "py\tthon"), True, False),
+            ("symlink target with ? for the tab", relink(".venv/bin/python", "py?thon"), True, False),
+            ("only the main checkout's copy edited",
+             edit(".venv/lib/d.py", "main copy, edited\n", where="main"), False, False),
+            ("node_modules file edited in place", edit("node_modules/x/i.js", "JS\n"), False, True))
     runs = run_steps(
         shell, path_env, block,
         {".venv/lib/d.py": "main copy\n", "node_modules/x/same.js": "same\n"},
@@ -447,16 +470,7 @@ def scenario(shell: str, awk_label: str, path_env: str, block: str) -> None:
          ".venv/lib/sp ace.py": "x\n", nl_name: "nl\n", "node_modules/x/same.js": "same\n",
          "node_modules/x/i.js": "js\n"},
         wt_links={".venv/bin/python": "python3.12"},
-        steps=(("rerun, nothing changed", unchanged),
-               ("a.py edited in place", edit(".venv/lib/a.py", "hellp\n")),
-               ("symlink pointed elsewhere", relink(".venv/bin/python", "python3.13")),
-               ("file renamed in its directory", rename(".venv/lib/sp ace.py", ".venv/lib/sp ade.py")),
-               ("file with a newline in its name edited", edit(nl_name, "NL\n")),
-               ("symlink target with a tab", relink(".venv/bin/python", "py\tthon")),
-               ("symlink target with ? for the tab", relink(".venv/bin/python", "py?thon")),
-               ("only the main checkout's copy edited",
-                edit(".venv/lib/d.py", "main copy, edited\n", where="main")),
-               ("node_modules file edited in place", edit("node_modules/x/i.js", "JS\n"))),
+        steps=tuple((name, step) for name, step, _, _ in plan),
         label=f"{tag} m")
     secs = [sec for sec, _ in runs]
     detail = "\n     ".join(d for _, d in runs)
@@ -472,17 +486,14 @@ def scenario(shell: str, awk_label: str, path_env: str, block: str) -> None:
               all(unprinted(sec) == unprinted(secs[0]) for sec in secs), detail)
         check(f"{tag} m. a rerun on an unchanged tree prints every line the same",
               secs[1] == secs[0], detail)
-        venv = [f.get(".venv/") for f in fps]
-        nm = [f.get("node_modules/") for f in fps]
-        # Runs: 0 first, 1 rerun, 2 edit, 3 relink, 4 rename, 5 newline-name edit, 6 tab target,
-        # 7 "?" target, 8 main-only edit, 9 node_modules edit. Each change to .venv/ gives a
-        # fingerprint not seen before.
-        check(f"{tag} m. each change in .venv/ changes its fingerprint",
-              len(set(venv[1:8])) == 7, f"{venv}\n     {detail}")
-        check(f"{tag} m. a change to the main checkout's copy alone keeps it",
-              venv[8] == venv[7] and venv[9] == venv[8], f"{venv}\n     {detail}")
-        check(f"{tag} m. node_modules/ keeps its fingerprint until a file in it changes",
-              len(set(nm[:9])) == 1 and nm[9] != nm[8], f"{nm}\n     {detail}")
+        # A change gives a fingerprint not seen before on that line; no change keeps the last one.
+        for i, (name, _, venv_changes, nm_changes) in enumerate(plan, start=1):
+            for line, changes in ((".venv/", venv_changes), ("node_modules/", nm_changes)):
+                now, seen = fps[i].get(line), [f.get(line) for f in fps[:i]]
+                check(f"{tag} m. {name}: {line} fingerprint "
+                      + ("changes to a new value" if changes else "stays the same"),
+                      (now not in seen) if changes else now == seen[-1],
+                      f"{[f.get(line) for f in fps]}\n     {detail}")
 
 
 def main() -> int:
@@ -544,6 +555,30 @@ def main() -> int:
                   sec is not None and fingerprints(sec) == {".venv/": "unknown",
                                                             "node_modules/": "unknown"}, detail)
             check(f"[{shell}] n. failed hashing makes safety unconfirmed",
+                  "- fingerprinting the build output failed" in detail, detail)
+        # n. The second line's hash fails after the first line's succeeded: both read unknown.
+        real_git = shutil.which("git") or "git"
+        git_dir = os.path.join(shim_root, "second-hash-fails")
+        os.mkdir(git_dir)
+        with open(os.path.join(git_dir, "git"), "w") as f:
+            f.write('#!/bin/sh\n'
+                    'if [ "$1" = hash-object ] && [ "$2" = --stdin ]; then\n'
+                    '  echo x >> "$HASH_CALLS"\n'
+                    '  [ "$(grep -c x "$HASH_CALLS")" -ge 2 ] && exit 1\n'
+                    'fi\n'
+                    'exec "$REAL_GIT" "$@"\n')
+        os.chmod(os.path.join(git_dir, "git"), 0o755)
+        for shell in shells:
+            calls = os.path.join(shim_root, f"hash-calls-{shell}")
+            sec, detail = run_steps(shell, git_dir + os.pathsep + gh_dir + os.pathsep + base,
+                                    block, {}, {".venv/ordinary.py": "x\n",
+                                                "node_modules/a.js": "y\n"},
+                                    extra_env={"REAL_GIT": real_git, "HASH_CALLS": calls},
+                                    label=f"[{shell}] second line's hash fails")[0]
+            check(f"[{shell}] n. a later line's failed hash makes every fingerprint unknown",
+                  sec is not None and fingerprints(sec) == {".venv/": "unknown",
+                                                            "node_modules/": "unknown"}, detail)
+            check(f"[{shell}] n. a later line's failed hash makes safety unconfirmed",
                   "- fingerprinting the build output failed" in detail, detail)
     finally:
         shutil.rmtree(shim_root, ignore_errors=True)

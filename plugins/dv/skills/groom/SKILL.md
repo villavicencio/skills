@@ -46,6 +46,8 @@ overrule it.
 - a change to scope or to Out of scope: a Scope step added or removed and any Done means line
   dropped (closing a conditional step as step 3 says is the exception: a routine call), which
   includes folding a spin-off into the ticket;
+- a Done means line step 3 found already passing that neither a failing rewrite nor a guard mark
+  fits (step 3, "Done means lines that already pass");
 - a design choice between real alternatives, including picking a side where step 3 found
   conflicting rules (Current rules);
 - anything destructive or hard to undo;
@@ -60,14 +62,15 @@ overrule it.
   finished one (move it, put it in a new milestone, or keep it), and a ticket whose Decisions
   records "No milestone" but that has one (step 3, "Milestone").
 
-**Routine calls:** every other open decision, such as wording, ordering, Size and points, Done
-means phrasing, filing or dropping a spin-off, settling an `[assumed]` marker you verified,
-adding or removing a relation that step 3 maps clearly, closing a conditional step by removing it or
-making it unconditional (step 3), putting a ticket that has no milestone in the existing milestone
-that fits it (step 3, "Milestone"), and rewording or adding a Done means line that proves the
-existing scope. Decide each one yourself: take the option you would have marked
-"(Recommended)" had you asked. When you cannot tell whether a call is a fork, treat it as one and
-ask.
+**Routine calls:** every other open decision, such as wording, ordering, Size and points, Done means
+phrasing, filing or dropping a spin-off, settling an `[assumed]` marker you verified, adding or
+removing a relation that step 3 maps clearly, closing a conditional step by removing it or making it
+unconditional (step 3), putting a ticket that has no milestone in the existing milestone that fits
+it (step 3, "Milestone"), rewording or adding a Done means line that proves the existing scope,
+rewriting a Done means line that already passes so it fails first, or marking it as a guard of
+unchanged behavior, where step 3 ("Done means lines that already pass") says each fits. Decide each
+one yourself: take the option you would have marked "(Recommended)" had you asked. When you cannot
+tell whether a call is a fork, treat it as one and ask.
 
 **Recording.** A routine call is recorded only when it changes the ticket or settles an open
 decision: one that step 3 collects, a spin-off, or the split. Such a call becomes an add item
@@ -281,10 +284,103 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
   different, do not only replace the fact: decide whether the step still makes sense. If it now
   leaves a real choice (add the missing thing, or drop the step), that is an open decision.
 - **Done means can be run today.** For each Done means line, check that what it relies on exists:
-  the test file, the check script, the command, the tool. A Done means line describes the future,
-  so its result is not checked, only its means. If a line needs a check that does not exist,
-  propose a Scope step that creates it and a Done means line that names it. Do not invent the
-  check's pass threshold (see Targets).
+  the test file, the check script, the command, the tool. Check by looking for them, not by running
+  the line's command. A Done means line describes the future, so this bullet checks its means, and
+  the next one checks, for a file-existence line, whether it already passes. If a line needs a
+  check that does not exist, propose a Scope step that creates it and a Done means line that names
+  it. Do not invent the check's pass threshold (see Targets).
+- **Done means lines that already pass.** The format's rule: a command in a Done means line fails
+  on the default branch before the work and passes after it, unless the line says it guards
+  behavior that must not change. A line that already passes proves nothing. This check runs no
+  command from the ticket and no code from the repo, not even a command that only reads ("How"
+  above lets a fact check run one; this check does not use that). It checks file-existence lines
+  only: it looks up the named path in the files tracked at the default branch's commit with fixed
+  git reads of its own, and it lists every other line as not run, with the reason. A search
+  (`grep` and the like) is not run, because a result about a file's contents would let ticket
+  text probe them.
+  - **Commit.** Use the default branch's commit that step 1 recorded, and only when step 1 found
+    its full local id equal to the one `git ls-remote` returned for origin's default branch and
+    `git --no-lazy-fetch -C "<top level>" cat-file -e "<commit>^{commit}"` exits 0. `<top level>`
+    is the top level of the local clone step 1 read (`git rev-parse --show-toplevel`). Do not
+    fetch. In any other case (step 1 recorded another ref for the ticket, the ids differ, the
+    remote returned no line, the commit is not in the clone, the repo cannot be read) every line
+    is "not run: default-branch commit not verified". When the ticket changes more than one repo,
+    a line that does not name its repo is "not run: repo unclear".
+  - **Form.** Take the line's command in backticks. A note of the author's own run in the form
+    "<result> at `<commit>`", such as "nothing at `abc1234`" (the format asks for one), is neither a
+    command nor the stated result: set it aside. A line is checked only when its command, split into
+    words at spaces, is exactly a file test: `test -f <path>`, `test -e <path>`, `[ -f <path> ]` or
+    `[ -e <path> ]`, with at most one `!`, before the whole command or before `-f` or `-e`, and
+    `<path>` one path, bare or in quotes. Any other command is "not run: unsupported form": a search
+    such as `grep`, any other program, any other flag, a second path, a pipe, `;`, `&&`, `||`, a
+    redirect, `$`, a backtick, a glob or an environment variable. A line with more than one command
+    is "not run: more than one command". A line with no command in backticks is checked when its
+    text after the `- [ ]` box starts with exactly such a file test, under the same form and path
+    rules, followed by a space or the end of the line; the rest of the line is the stated result. A
+    path there that ends in `.` is "not run: unsupported form", since the dot may end the sentence.
+    Such a line that starts with `test`, `[` or `!` but not with exactly a file test, or that starts
+    with another command, is "not run: unsupported form". Any other line with no command (an
+    observation, such as a review verdict) is not checked here and is listed as "observation, not
+    checked".
+  - **The path.** Take `<path>` without its quotes (one matching pair of `'` or `"`) and drop a
+    leading `./`. What is left must be relative to the repo's top level: only `A` to `Z`, `a` to
+    `z`, `0` to `9`, `.`, `_`, `-` and `/`; no leading `/` or `-`; no part that is `.`, `..` or
+    empty; no trailing `/`. Otherwise it is "not run: unsafe path". A path with a part named `.git`,
+    in any case, is "not run: git metadata": git does not track it, so the tracked files cannot show
+    whether it exists. A secret-named path is "not run: secret-named path". With each part
+    lowercased first, so case never matters, that is a part named `.env`, `.envrc`, `.netrc`,
+    `.npmrc`, `.pypirc`, `.pgpass`, `.ssh`, `.aws`, `.gnupg`, `kubeconfig` or `auth.json`; a part
+    starting with `.env.`, `id_rsa`, `id_dsa`, `id_ecdsa` or `id_ed25519`; a part ending in `.pem`,
+    `.key`, `.p12`, `.pfx`, `.jks`, `.keystore`, `.kdbx` or `.tfvars`; or a part holding `secret`,
+    `credential`, `password`, `passwd` or `token`. Both checks come before any git read of the path.
+    The path reaches the shell only inside the single quotes of the reads below.
+  - **Reads.** Fixed commands, run as written with only the commit, the path and a parent
+    directory filled in. They only read the repo's objects; none writes or reaches the network
+    (`--no-lazy-fetch` stops a partial clone from fetching a missing object: the read fails
+    instead), and none prints a file's contents. First
+    `git --no-lazy-fetch -C "<top level>" ls-tree <commit> -- '<path>'`. One line for exactly that
+    path with mode `100644` or `100755` is a regular file, and mode `040000` a directory. Mode
+    `120000` (a link) or `160000` (a submodule) is "not run: link or submodule". When it prints no
+    line, read each leading directory of the path the same way, from the top: mode `120000` or
+    `160000` there is also "not run: link or submodule", and a regular file there means the path
+    is missing. At the first part that is missing (a leading directory or the last part), list its
+    parent with
+    `git --no-lazy-fetch -C "<top level>" ls-tree --name-only <commit> -- '<parent>/'` (for a part
+    at the top level, the same command with no `--` and no path). If the last part of an entry
+    there matches the missing part when case is ignored, the line is "not run: path differs only
+    in case", since it can pass on a disk that ignores case. Otherwise the path is not in the
+    tracked files at the commit, and the check treats it as missing.
+
+    Any other exit or output from a read is "not run: read failed". The reads see only the files
+    tracked at the commit: this check does not see untracked or generated files, so a path that a
+    build or another local step creates is treated as missing. Do not print file contents
+    anywhere, in the reply, the report or Linear: a line gets a result, not output.
+  - **Judge.** From the reads, the test on the default branch would exit 0 when `-f` found a
+    regular file or `-e` found a regular file or a directory, and 1 otherwise. A `!` turns exit 0
+    into 1 and 1 into 0. The check reads success statements only: when the line states nothing
+    beyond the command, or states exactly "exits 0", "succeeds" or "passes", the line passes on
+    exit 0. Any other stated result, a guard note or an expected failure included, is "not run:
+    stated result unclear".
+  - **Results.** Each Done means line gets one of these results. They go, with the commit's short
+    id (or "commit not verified"), in step 6's findings and step 8's report, the lines not run
+    listed apart from the lines that fail:
+    - "already passes": flagged (below). For a line with `!` whose path is missing in the tracked
+      files, the interview also says that a build or another local step could create the path,
+      which this check does not see;
+    - "fails in the tracked files at the commit": the format's rule holds for what the commit
+      tracks (untracked and generated files are not seen);
+    - "not run: <reason>", with a reason above;
+    - "observation, not checked".
+  - **A flagged line is an open decision** (step 6): rewrite it so it fails first and still proves
+    the scope (show the rewrite, with this check's result for it, or "not run" and why), or keep it
+    as a guard of unchanged behavior, with the reason written into the line, which a later check
+    lists as not run. Recommend the guard only when the ticket says that behavior must not change,
+    and a rewrite otherwise. Dropping it is a change to scope. A flagged line left as it is counts
+    against ready (step 7, "Order of writes" item 5, and step 8); a line not run does not.
+    **Forks-only mode:** a rewrite that fails on the default branch (this check saw it fail, or it
+    names a file the work creates) is a routine call, and so is the guard mark when the ticket
+    says that behavior must not change. When neither fits, what to do with the line is a fork,
+    and dropping it always is ("Forks-only mode").
 - **Conditional steps.** A Scope step of the form "check whether X; if so, do Y" is closed now when
   the check is one or two read-only commands in a place the session can read. Run it and record
   the result, with the command, under "Checked and current" in Agent notes. Then either remove the
@@ -458,13 +554,15 @@ When there is nothing, say "Scouting: nothing found." in one line, and do not pa
 ## 6. Interview
 
 First, in your reply, list what you found, shortest first: gaps, stale facts, settled `[assumed]`
-markers, neighbors and overlapping work, the milestone (step 3), the size and points, the split
-verdict and the scouting items. The overlapping work opens with one tally per search, from step 1
-and step 5: its words, pages read and results (for example, "`groom pagination`: 2 pages, 263
-results"), with an incomplete search marked as such. Show the split proposal in full here (each
-child's title, Done means lines, size and points, milestone, labels, order and blockers, the
-parent's estimate, and the parent's full replacement description when it stays as the parent), and
-each spin-off's title, reason, project, milestone and any duplicate match.
+markers, the result for each Done means line (step 3, "Done means lines that already pass"; the
+lines not run apart from the lines that fail), neighbors and overlapping work, the milestone (step
+3), the size and points, the split verdict and the scouting items. The overlapping work opens with
+one tally per search, from step 1 and step 5: its words, pages read and results (for example,
+"`groom pagination`: 2 pages, 263 results"), with an incomplete search marked as such. Show the
+split proposal in full here (each child's title, Done means lines, size and points, milestone,
+labels, order and blockers, the parent's estimate, and the parent's full replacement description
+when it stays as the parent), and each spin-off's title, reason, project, milestone and any
+duplicate match.
 
 Then ask every open decision, in rounds of at most 4 questions:
 
@@ -678,17 +776,18 @@ the items not applied, and leave the `groomed` label off (item 5).
    there, go on; if not, retry once; if it still is not there, stop and say under Needs you that
    the children exist and the parent still carries their work. Then apply the rest of the approved
    items, with blocked-by removals after the text edits, as below.
-5. **The `groomed` label goes on last, and only on a ticket grooming left ready.** If step 7 stopped
-   before this item for any reason (items 1, 2 including a failed estimate clear, or 4, or a patch
-   that could not be placed), leave the label off every ticket and say so in the report. Otherwise
-   read the groomed ticket again with `get_issue`, and each child this run filed, and give each the
-   ready test: step 8 item 1 would call it ready, setting aside its workflow state, what it waits on
-   (blockers, a pull condition) and, for a parent that stays as the parent, that its work sits in
-   its children. A ticket fails the test when grooming left a gap: a needed fix I declined or that
-   did not land (such as an item left for me to edit in Linear), an overlap or duplicate search that
-   did not finish, a Done means line that cannot be proved, a target not confirmed, or points Linear
-   did not store. Add `groomed` with `addLabels` (File step 2 allows it on a child) to each ticket
-   that passes, when its team has an active `groomed` label, and to the groomed ticket only when its
+5. **The `groomed` label goes on last, and only on a ticket grooming left ready.** If step 7
+   stopped before this item for any reason (items 1, 2 including a failed estimate clear, or 4, or a
+   patch that could not be placed), leave the label off every ticket and say so in the report.
+   Otherwise read the groomed ticket again with `get_issue`, and each child this run filed, and give
+   each the ready test: step 8 item 1 would call it ready, setting aside its workflow state, what it
+   waits on (blockers, a pull condition) and, for a parent that stays as the parent, that its work
+   sits in its children. A ticket fails the test when grooming left a gap: a needed fix I declined
+   or that did not land (such as an item left for me to edit in Linear), an overlap or duplicate
+   search that did not finish, a Done means line that cannot be proved, a Done means line found
+   already passing and left as it is (step 3), a target not confirmed, or points Linear did not
+   store. Add `groomed` with `addLabels` (File step 2 allows it on a child) to each ticket that
+   passes, when its team has an active `groomed` label, and to the groomed ticket only when its
    edit-list item was approved (in forks-only mode, applied). A ticket that fails keeps no new
    label, and the report names its gap. The label writes are separate calls, so they can stop part
    way, and a call can land even when it returns an error. So after the label writes, or after an
@@ -756,15 +855,15 @@ reply-format rules when the session's instructions give any:
 1. **Ready or not.** Name the ticket as a markdown link (the url from `get_issue`; the bare id if
    none came back). Ready means no gaps, Done means lines that can be proved, nothing it waits on,
    every overlap search finished (step 1), no needed fix declined or not landed, no duplicate search
-   left unfinished, no target unconfirmed (with a Head, a fork on its way forward counts as
-   settled, except anything under `dv:director-mode`'s "What no default decides": "From a worktree
-   session"), and the team's backlog or ready-to-start state as
-   `list_issue_statuses` names them. A started, finished or canceled ticket is not ready to start.
-   After a split, name the child that is ready and the one that comes first, as links; do not call
-   the parent ready when the work is in its children. A ticket whose points Linear did not store
-   (step 7) is not ready. When not ready, name what it lacks or waits on. The same judgment, setting
-   aside state and what the ticket waits on, is the ready test that decides the `groomed` label
-   (step 7, "Order of writes" item 5).
+   left unfinished, no Done means line found already passing and left as it is (step 3), no target
+   unconfirmed (with a Head, a fork on its way forward counts as settled, except anything under
+   `dv:director-mode`'s "What no default decides": "From a worktree session"), and the team's
+   backlog or ready-to-start state as `list_issue_statuses` names them. A started, finished or
+   canceled ticket is not ready to start. After a split, name the child that is ready and the one
+   that comes first, as links; do not call the parent ready when the work is in its children. A
+   ticket whose points Linear did not store (step 7) is not ready. When not ready, name what it
+   lacks or waits on. The same judgment, setting aside state and what the ticket waits on, is the
+   ready test that decides the `groomed` label (step 7, "Order of writes" item 5).
 2. **Needs you:** what only I can do or decide: a target proposed and not confirmed, an item I did
    not approve that still matters, a repo the session could not read, an overlap or duplicate search
    that did not finish (with its words, so it can be run again), a ticket item 5 meant to label that
@@ -773,13 +872,15 @@ reply-format rules when the session's instructions give any:
    a worktree session, this list reports only: what needs a decision goes to the Director, as
    "From a worktree session" says.
 3. One line each: size and points, with the estimate `get_issue` now shows; the milestone as
-   `get_issue` now shows it, or "no milestone" with why; split verdict; what
-   changed in the ticket ("text unchanged" when only non-text edits landed, "nothing changed" when
-   nothing did); the `groomed` label as read back: added, already there, or not added and why (not
-   approved, the team has no active `groomed` label, step 7 stopped before it, the ticket is not
-   ready and the gap that keeps it so, or the write failed); spin-offs and children filed, as links,
-   each child with the estimate its `save_issue` returned and its labels as read back, or "not
-   labelled" with the same reasons; what was not checked; the branch to work it on.
+   `get_issue` now shows it, or "no milestone" with why; split verdict; what changed in the ticket
+   ("text unchanged" when only non-text edits landed, "nothing changed" when nothing did); the
+   `groomed` label as read back: added, already there, or not added and why (not approved, the team
+   has no active `groomed` label, step 7 stopped before it, the ticket is not ready and the gap that
+   keeps it so, or the write failed); spin-offs and children filed, as links, each child with the
+   estimate its `save_issue` returned and its labels as read back, or "not labelled" with the same
+   reasons; the Done means check (step 3), with the commit's short id or "commit not verified": the
+   lines that already pass, fail or are observations, and each line not run with its reason; what
+   was not checked; the branch to work it on.
 
 Do not ask whether to start the work and do not start it: starting is a separate request from me.
 

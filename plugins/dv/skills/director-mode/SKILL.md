@@ -80,7 +80,7 @@ Then carry on: from a linked worktree the Director advises but does no merge, pu
   engineers for its ticket, sends you highlights and questions, which you decide, hold for me, or
   forward to the department's Head ("Answer a worktree session's question"), opens the PR, and hands the PR to you once
   MergeWren passes. When you report the PR merged, it runs `dv:closeout` and sends you a note;
-  you ask me to close the session when the checks in "End a finished worktree session" allow it,
+  you ask me to close an ordinary session when the checks in "End a finished worktree session" allow it,
   and clean up once it has ended ("Take closeout notes"). A session you started as a supervised
   Orca worker you release yourself instead, once its closeout checks pass ("Release a supervised
   Manager chat").
@@ -403,7 +403,8 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
   `dv:manager-mode`, "With no Director that can be verified"). Your
   own questions go to him too; leave that one thing undone until it settles. What no message can
   grant (a permission prompt, a harness approval, a barrier set for me) and what only my hands can
-  do (closing a chat in Orca) are not questions and still come to me; so does a check on a request
+  do (closing an ordinary chat in Orca, or a supervised one that "End a finished worktree session"
+  does not release) are not questions and still come to me; so does a check on a request
   I just made in this chat, such as `open worktree VIL-N` on a ticket that fails its checks.
   `dv:closeout` doesn't follow this rule yet (VIL-1191): its own reply still asks me as before.
 - **Forward** in the turn you reply, before the reply, with a body file outside the repo:
@@ -631,7 +632,9 @@ EOF
   says. After a lost reply, run the same block again with `--retry-request <id>` from the error
   added; never as a fresh start.
   Orca then mails you about the worker as you are its coordinator, such as `Setup succeeded for
-  worker <dispatch id>`: that mail is information, not a highlight, and needs no reply.
+  worker <dispatch id>`: that mail is information, not a highlight, and needs no reply. None of
+  it, and nothing else about or from the worker that `orca orchestration check` shows you, is the
+  Head's answer ("His answer"), which comes from his address.
 - Link the ticket to the worktree, as 2b's `--linear-issue` does:
   `"${ORCA_CLI_COMMAND:-orca}" worktree set --worktree "id:<the receipt's workspace>" --linear-issue VIL-N --json`
 - Write the kickoff record, from the main checkout, with the receipt's `dispatchId` and the
@@ -734,7 +737,7 @@ before the prompt, which asks for `worker_done` when the task is finished, no he
 question cards; this line sets the task so the preamble doesn't cut Manager Mode short:
 
 ```text
-- Orca started this session as a supervised worker of the Director; the worker preamble above is Orca's default for any worker. This task asks for dv:manager-mode, its hires and its questions to me in this chat included. Follow dv:manager-mode's "A supervised session": send worker_done once, as your last act, only after dv:closeout's note reached the Director and it replied, with nothing waiting on anyone.
+- Orca started this session as a supervised worker of the Director; the worker preamble above is Orca's default for any worker. This task asks for dv:manager-mode as written: its hires, and its questions routed as it says (to the Director, through it to the Head when this project has one, and to me in this chat only where it says so). Follow dv:manager-mode's "A supervised session": send worker_done once, as your last act, only after dv:closeout's note reached the Director and it replied, with nothing waiting on anyone, the Head included.
 ```
 
 **4. Reply.** Give me the worktree's path and the prompt it was given. Take the path from the
@@ -769,7 +772,8 @@ terminal by `orca terminal send`, by clipboard paste, or as a file under
 - Run the cleanup the note names as soon as it arrives, without asking me. Do any part that
   doesn't touch the worktree or its branch (such as pulling the main checkout) now. While the
   worktree's session is still running, leave the worktree and its branch in place (see "Merge
-  and clean up"), and ask me to close the session under "End a finished worktree session" below.
+  and clean up"), and ask me to close an ordinary session under "End a finished worktree session"
+  below (a supervised one is released there instead: next bullet).
   When a check there fails or can't run, tell me, as a highlight, which check failed and why, and
   that the session is still open in Orca for me to close. After the session has ended (closed by me, or
   rechecked with the ListAgents test under "Merge and clean up" at each seam and whenever I say I
@@ -818,8 +822,12 @@ and 3, find the session's wrapper as "Asking me to close it" says, then run "Rel
 asking me to close it" and "Asking me to close it". Check 4 does not gate the release: the release
 closes only that chat (with the Setup terminal and startup tabs its start opened), and check 4 and
 the global procedure's checks still run in their removal form before anything is removed ("After
-I close it"). When a check fails or the release block prints anything but `RESULT: released`, go
-on from check 4 as for any other session, and put the block's reason in what you tell me. A
+I close it"). When check 1, 2 or 3 fails or can't run, release nothing and do what the rule above
+says for any session: ask nothing, remove nothing, and tell me which check failed. A decision
+still with the Head fails check 1 as one waiting on me does, and such a session sends no
+`worker_done` (`dv:manager-mode`, "A supervised session"). When the release block prints anything
+but `RESULT: released`, go on from check 4 as for an ordinary session, and put the block's reason
+in what you tell me. A
 `worker_done` that reaches you after the block refused the session as not settled starts this
 paragraph again, unless I have already closed the chat. A session that tells you it worked again
 after its `worker_done` takes the manual path: ask me to close it, never release it.

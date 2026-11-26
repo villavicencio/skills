@@ -473,18 +473,25 @@ this chat, not that the PR is done.
   `--outcome succeeded`, and only when all of these hold: the Director reported the PR merged;
   `dv:closeout` ran and its note was sent and replied (its outcome "note sent and replied"); the
   note's `WAITING ON` is `none` and its `REPLY NEEDED` line reads `REPLY NEEDED: no`; no question
-  to me, the Director or anyone else still waits for an answer; and no agent you hired is still
-  running. Never earlier: not when the PR opens, passes review or merges.
-- **If the work ends any other way** (handed to a later session, blocked, abandoned, or the note
-  not sent or not replied), don't send `worker_done`, and say so in this chat and to the
-  Director. I then close the chat myself, as for an ordinary one.
+  to me, the Director, the Head or anyone else still waits for an answer that counts; and no
+  agent you hired is still running. With a Head, a question still pending on its way forward, or
+  written on the ticket as an open decision, still waits ("With a Head"); a timeout or his advice
+  doesn't settle it. `dv:closeout`'s own offer to remove the worktree is not such a question: the
+  Director removes it ("End a finished worktree session"). Never earlier: not when the PR opens,
+  passes review or merges.
+- **If the work ends any other way** (handed to a later session, blocked, abandoned, a decision
+  still waiting on me, the Director or the Head, or the note not sent or not replied), don't send
+  `worker_done`, and say so in this chat and to the Director. I then close the chat myself, as
+  for an ordinary one.
 - **After `worker_done`, start nothing new.** If a message comes in after it anyway, answer it,
   and in the same turn tell the Director that this session worked again after `worker_done`, so
   that it asks me to close the chat instead of releasing it.
 - **The preamble's limits are Orca's defaults for any worker; the kickoff prompt sets this task.**
-  It asks for this skill: hire as it says, ask me in this chat as it says, and reach the Director
-  as it says (by SendMessage, with highlights, questions, the PR handoff and the closeout note).
-  Use `orca orchestration` only for `worker_done`.
+  It asks for this skill: hire as it says, route each question as it says (to the Director, with
+  a Head through it to him, and to me in this chat only where this skill says so), and reach the
+  Director as it says (by SendMessage, with highlights, questions, the PR handoff and the closeout
+  note). Use `orca orchestration` only for `worker_done` and, with a Head, for the mail "With a
+  Head" sends him and the replies `orca orchestration check` reads.
 
 ## Reporting to me
 

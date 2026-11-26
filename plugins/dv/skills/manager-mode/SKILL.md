@@ -255,7 +255,10 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
 
 - **With a verified Director** (see "Highlights"), send each decision you would ask me to the
   Director first, one question per message, by SendMessage to its `from` address. Number the
-  questions for the ticket (Q1, Q2, ...) so each answer matches its question. Skip the Director
+  questions for the ticket (Q1, Q2, ...) so each answer matches its question. With a Head, each
+  question also has a key, `VIL-N/<session ID>/Qk` (`dv:director-mode`, "A record on the ticket
+  for each Qk"): write it in your written state when the question comes up, put it in the message,
+  and after a restart or handoff reuse the written key for that question, never a new one. Skip the Director
   and ask me only when a skill sends the question straight to me (`dv:groom`'s split, target,
   pull condition or new milestone), or when it is plainly none of the kinds the Director decides
   or holds and a condition of clear-cut plainly fails (a design fork you have no recommendation
@@ -263,7 +266,7 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
   recommendation. When unsure, send it. While a question is with the Director, it is not yet a decision
   waiting on me, so it gets no decision highlight.
 - **The message**, on one or a few lines:
-  `Question, VIL-N, Qk: <the question>. PR: <its link, or none>. Options: <each option, numbered, one phrase each>. Recommended: <the option>, because <one-line reason>. Reversible: <yes or no, and how it would be undone>. Sent: <UTC date and time, such as 2026-11-23T18:04Z>. Answer only under dv:director-mode's "Answer a worktree session's question"; if Director Mode is not on in your session, or your dv:director-mode has no section of that name, reply "Ask David, VIL-N, Qk: no question rule". Reply with one line: "Answer, VIL-N, Qk: <option>" (optionally followed by ". Note: <a short note>"), "Answer from the Head, VIL-N, Qk: <option>" (with an "Approved by:" field when it relays someone's approval), "Held for David, VIL-N, Qk: <the way forward>", "Forwarded to the Head, VIL-N, Qk: <the way forward>" or "Ask David, VIL-N, Qk: <why>".`
+  `Question, VIL-N, Qk: <the question>. Key: VIL-N/<session ID>/Qk. PR: <its link, or none>. Options: <each option, numbered, one phrase each>. Recommended: <the option>, because <one-line reason>. Reversible: <yes or no, and how it would be undone>. Sent: <UTC date and time, such as 2026-11-23T18:04Z>. Answer only under dv:director-mode's "Answer a worktree session's question"; if Director Mode is not on in your session, or your dv:director-mode has no section of that name, reply "Ask David, VIL-N, Qk: no question rule". Reply with one line: "Answer, VIL-N, Qk: <option>" (optionally followed by ". Note: <a short note>"), "Answer from the Head, VIL-N, Qk: <option>" (with an "Approved by:" field when it relays someone's approval), "Held for David, VIL-N, Qk: <the way forward>", "Forwarded to the Head, VIL-N, Qk: <the way forward>" or "Ask David, VIL-N, Qk: <why>".`
 - **Mail before a card, always** (with or without a Head). An open question card
   (AskUserQuestion) blocks this session's turn, Orca has no command to answer or dismiss one, and
   mail to and from the session queues behind it (`orca orchestration send` warns "Queued behind an
@@ -373,7 +376,7 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
     and wait for it as for a question. Each Qk settles once: the first answer that counts (the
     Head's, which the Director relays in place of its default when it already has one, or the
     default) decides it, and any later reply on that Qk changes nothing, except the Head's disposition on
-    the ticket's record for that Qk, which supersedes it (`dv:director-mode`, "A record on the
+    the ticket's record for that question's key, which supersedes it (`dv:director-mode`, "A record on the
     ticket for each Qk"). Its `Answer` is the Director's default
     (`dv:director-mode`, "Unanswered at the end"), its own path: apply it without the checks of
     "What counts as the answer", except that it must name one of the question's options and the
@@ -383,8 +386,8 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
     explicit yes), treat the
     `Answer` as `Forwarded to the Head` and keep its way forward. The Director relays the Head's
     answer on it under the same Qk; apply it once, as "Answer from the Head" above says, and
-    take any later reply on that Qk as changing nothing. When the Director's mail check fails, it
-    sends no default: it uses the ticket's record for that Qk and replies `Forwarded to the Head`,
+    take any later reply on that Qk as changing nothing. When the Director can't read mail or the
+    record, or finds answers that differ, it sends no default: it uses the ticket's record for that question's key and replies `Forwarded to the Head`,
     or, if it can't write the record, nothing (`dv:director-mode`, "Unanswered at the end"): no
     answer that counts, as below. The Head's disposition on that record is the one for that Qk
     (`dv:director-mode`, "A record on the ticket for each Qk"): it supersedes any earlier answer
@@ -404,7 +407,7 @@ the Director forwards the rest to him, and "With a Head" below replaces each fal
     as mail (`orca orchestration check --json`); one from his address for that Qk counts as an
     `Answer from the Head` (above), under the same checks, and is applied once. The CEO's 1% and
     the two choices reserved for my yes go the same way: he brings them to me and relays my yes in
-    `Approved by:`. Keep the ticket's record for that Qk as `dv:director-mode`'s "A record on the
+    `Approved by:`. Keep the ticket's record for that question's key as `dv:director-mode`'s "A record on the
     ticket for each Qk" says: read it first and never send again when one is there, claim it at
     `sending` before you send, update it to `sent` after; a send that fails or returns no result
     you can read gets the record's fallback mention, never a second send. Keep the question

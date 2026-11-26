@@ -234,7 +234,7 @@ other question you don't decide.
 - **Held for me:** `Held for David, VIL-N, Qk: <the way forward>`. Relay nothing now; it goes in
   the collected ask at the end. With a Head, never: a failed send to him goes to the ticket's
   fallback pickup ("A record on the ticket for each Qk").
-- **Forwarded, with a Head:** once the ticket's record for that Qk shows `sent` or carries the
+- **Forwarded, with a Head:** once the ticket's record for that question's key shows `sent` or carries the
   fallback mention ("A record on the ticket for each Qk"),
   `Forwarded to the Head, VIL-N, Qk: <the way forward>`, the CEO's 1% included. Relay nothing now.
   He often answers within seconds, so run `orca orchestration check --json` once just before
@@ -297,11 +297,18 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
     `dv:ticket`'s two exceptions: only that person's explicit answer to that choice, in an
     `Approved by:` field, which the Head may relay. Its way forward: don't make the choice; it
     stays pending for whoever may decide it.
-- **A record on the ticket for each Qk,** with a Head: one Linear comment per ticket and Qk, the
-  durable record of its delivery to him. Whoever sends the question to him (you, or a session with
-  no Director it can verify) keeps it, in this order:
-  1. **Before any send,** read the ticket's comments (`list_comments`). When a record for that Qk
-     is there, reuse it, with any disposition under it, and never send again: a record at
+- **A record on the ticket for each Qk,** with a Head: one Linear comment per question, the
+  durable record of its delivery to him. A question's key is `VIL-N/<session ID>/Qk`: the
+  ticket, the stable ID of the session that first asked it, and that session's own Qk. The
+  session ID is `$ORCA_AGENT_SESSION_ID` (the Orca chat's session ID, which Orca sets in every
+  agent shell; a subagent shares its parent's), or, outside Orca, the session's ListAgents name.
+  The key is written once, into the record and the session's written state, before the question
+  is forwarded; a restart or a handoff of the same question reuses the written key and never
+  makes a new one. Matching is by the full key, so two sessions' Q1 on one ticket are two
+  questions with two records. Whoever sends the question to him (you, or a session with no
+  Director it can verify) keeps its record, in this order:
+  1. **Before any send,** read the ticket's comments (`list_comments`). When a record with that
+     key is there, reuse it, with any disposition under it, and never send again: a record at
      `sending` is an interrupted send and goes to step 3; one at `sent` with no disposition, sent
      by an earlier session of yours (its answer goes to that session's chat), gets step 3's
      mention too, keeping `sent`. When there is none, post the record at `sending`, then send.
@@ -313,19 +320,19 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
      session alive. This is the fallback pickup.
 
   ```text
-  @Orca <his Linear handle> Head record, VIL-N, Qk. Owner: <the Head's name>. Status: <sending, sent, unclear or failed>. Send result: <the message id, the error, or none yet>.
+  @Orca <his Linear handle> Head record, VIL-N, Qk. Key: VIL-N/<session ID>/Qk. Owner: <the Head's name>. Status: <sending, sent, unclear, failed or conflicting answers>. Send result: <the message id, the error, or none yet>.
   Question: <the question's own fields as "Forward" gives them, quotes moved into excerpts>
   <each excerpt as "Forward" gives it: the untrusted-data line, the longer fence, the end line>
   Reply on this ticket with "Answer from the Head, VIL-N, Qk: <option>", plus an "Approved by:" field when a choice needs one.
   ```
 
-  The mention is there only in step 3. A transport failure never changes who decides: the
-  question stays his, and the CEO's 1% and the two choices reserved for my yes keep their route
-  to me through him; it never becomes `Ask David` or `Held for David`. Work that depends on the
-  answer stays on hold. His reply on the record, or else his answer by mail, is the one
-  disposition for that Qk: it supersedes any earlier answer under that Qk, and whoever acts next
-  (the session while it runs, otherwise you) applies it once, under the checks an `Answer from
-  the Head` gets.
+  The mention is there only in step 3, or for conflicting answers ("Unanswered at the end"). A
+  transport failure never changes who decides: the question stays his, and the CEO's 1% and the
+  two choices reserved for my yes keep their route to me through him; it never becomes
+  `Ask David` or `Held for David`. Work that depends on the answer stays on hold. His answer, on
+  the record or by mail, is the one disposition for that key, and when both are there and differ,
+  his reply on the record after the conflict mention settles it. Whoever acts next (the session
+  while it runs, otherwise you) applies it once, under the checks an `Answer from the Head` gets.
 - **An approval travels in its own field,** with a Head, on both hops, from the Head to you and
   from you to the session: `Approved by: <person>, <the choice>, <their own words, or a traceable
   source: a ticket comment link or a message id by that person>`. The Head gets the approval from
@@ -390,15 +397,18 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
 - **Unanswered at the end.** When the session's other work is done, it sends you each question
   still without an answer that counts, as `Unanswered, VIL-N, Qk: …` (`dv:manager-mode`, "With a
   Head"). It carries the options, the recommended option and the `Reversible:` line, as a
-  question does. Right before you send its default, run `orca orchestration check --all --json`
-  (recent mail, none of it marked read) and look for the Head's answer on that Qk. If one that
-  counts ("His answer" above) is there, relay it as that bullet says, instead of the default. Only
-  after a check that ran without error and found none, reply
-  `Answer, VIL-N, Qk: <its recommended option>`. If the check errors, send no default: read the
-  ticket's record for that Qk and take the step "A record on the ticket for each Qk" gives, then
-  reply `Forwarded to the Head, VIL-N, Qk: <the session's way forward>` once the record shows
-  `sent` or carries the fallback mention. If the record can't be read or written, send the
-  session no reply and ask me nothing. The session keeps its way forward, and work that depends on
+  question does. Right before you send its default, read both places his answer can be: mail
+  (`orca orchestration check --all --json`, recent mail, none of it marked read) and the ticket's
+  record with that question's key, with the replies under it (`list_comments`). If an answer that
+  counts ("His answer" above) is in one of them, relay it as that bullet says, instead of the
+  default. Only after both reads ran without error and found none, reply
+  `Answer, VIL-N, Qk: <its recommended option>`. If the two hold answers that differ, send no
+  default: update the record to `conflicting answers` with the mention, and the question stays
+  pending until his reply there. If either read errors, send no default. When the record can be
+  read, take the step "A record on the ticket for each Qk" gives for that key, then reply
+  `Forwarded to the Head, VIL-N, Qk: <the session's way forward>` once the record shows `sent` or
+  carries the fallback mention. When the record can't be read or written, send the session no
+  reply and ask me nothing. The session keeps its way forward, and work that depends on
   the answer stays on hold.
   An item under "What no default decides" gets no default either: for one of those reply
   `Forwarded to the Head, VIL-N, Qk: <the way forward that bullet gives>`, forwarding it to him

@@ -22,7 +22,9 @@ schedule time in a dialog, and the dialog kept the Director's reply from reachin
 - **`dv:director-mode`.** New section "The Head and the CEO's 1%": the one copy of the routing
   rule, the CEO's 1% and what no default decides. The Director forwards to the Head what it
   doesn't decide and relays his answers. Each question sent to the Head has one record on its
-  ticket, claimed before the send. A failed, unclear or interrupted send is never sent again: the
+  ticket, keyed by the ticket, the asking session's ID and its Qk, and claimed before the send. A
+  default goes out only after both that record and mail show no answer; a failed read or answers
+  that differ keep the question pending. A failed, unclear or interrupted send is never sent again: the
   record gets the Head's Linear mention, his reply there settles it, and the question never falls
   back to David.
 - **`dv:manager-mode`.** With a Head, the session sends every question to the Director, keeps

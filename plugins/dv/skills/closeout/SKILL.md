@@ -663,10 +663,21 @@ after this session has ended. Do not run it.
   replaces this command; otherwise keep the command above.
 - While the note waits for the probe answers ("Deliver the note", below), say that removing the
   worktree ends this session, and the note is then not sent.
-- When the worktree is safe (or safe once I accept losing) and the note has been sent to a
-  Director its probe verified ("Deliver the note", steps 4 and 5), say that the Director removes
-  this worktree after this session ends if its checks pass, and still name the command for me.
-  "Offer the removal", below, then asks nothing.
+- **Removal cleared.** Name a removal command only when Step 2 said safe to delete, or it said
+  safe once I accept losing and I accepted those build-output lines and reflog-only commits (the
+  recheck below still matching), and Step 4 did not print `ARCHIVE INCOMPLETE`. Otherwise, with
+  or without a verified Director, name no command and don't say the Director removes it: say why
+  removal is blocked (what would be lost, the check that did not run, or the failed archive), and
+  for losses not yet accepted ask the question in the paragraph below.
+- **The Director removes it.** When the removal is cleared, the note has been sent to a Director
+  its probe verified ("Deliver the note", steps 4 and 5), and either Step 2 said safe to delete or
+  a standing yes of mine (in the global instructions, this project's instructions or memory)
+  covers every accepted loss and my acceptance came before the note that was sent, say that the
+  Director removes this worktree after this session ends if its checks pass, and still name the
+  command for me; "Offer the removal", below, then asks nothing. Losses I accepted only in this
+  session fail the Director's check on the note (`dv:director-mode`, "End a finished worktree
+  session", check 1), and an acceptance after the note is a message from me after it (check 3), so
+  in either case the removal stays mine, as without a Director.
 - **Initialized submodules.** If Step 1 printed "initialized submodules" above 0, `wt done`,
   `git worktree remove` and a plain `orca worktree rm` all refuse this worktree. Say so, and point
   to the guarded procedure instead of a plain command: `dv:orca-setup` Step 5 (`orca worktree rm
@@ -709,8 +720,9 @@ Reply in this order, short:
    what happened with the Director, as one of the outcomes in "Deliver the note" (not sent and why, probe sent and the note waiting for the answers, send
    failed and probe sent again with the note waiting for the answers, answered but not verified
    (a wrong path, or ambiguous), note sent with no reply yet, note sent and replied); the removal
-   command, when safe; when safe and the note was sent to a probe-verified Director, also that the
-   Director removes the worktree after this session ends if its checks pass ("Offer the removal").
+   command only when the removal is cleared (Step 5's bullet "Removal cleared"; otherwise no
+   command, and why removal is blocked), and, when Step 5's bullet "The Director removes it"
+   applies, that the Director removes the worktree after this session ends if its checks pass.
 4. The line the optional section below tells you to add, if any.
 5. The full note itself in a fenced code block, whatever the clipboard status, so I can copy it.
 
@@ -848,14 +860,16 @@ step, run by hand from a worktree, found one candidate, `skills-03`. It answered
 one line, the main checkout's absolute path, under that same `from-name`; SendMessage accepted
 the answer's `from` address for the note, and the Director replied. Not tested: a Director that
 is mid-turn when a message arrives (that one was idle), a wrong or ambiguous answer, several
-candidates, and a full closeout run end to end. A send to a stale address fails (VIL-1141,
+candidates, and a full closeout run end to end with a real Director. Full runs in a throwaway lab
+(dv 0.42.0, 2026-11-26), with a stub Orca CLI and a stub peer session standing in for the
+Director, showed the probe, the note's send and the Director's reply over three turns, and a run
+with no candidate sending nothing. A send to a stale address fails (VIL-1141,
 2026-11-25): SendMessage returns `success: false` with "socket path is stale" for a session's old
 socket path, and "No agent named ... is reachable" for a name ListAgents no longer lists. Not
 tested: a socket file left behind by a session that crashed.
 
 **Offer the removal.** Only when the worktree lives in Orca, the block printed an Orca CLI, and
-Step 2 said safe to delete (or I have accepted the listed
-build-output lines and reflog-only commits), end the reply with one question. Before running the removal on my yes,
+the removal is cleared (Step 5's bullet "Removal cleared"), end the reply with one question. Before running the removal on my yes,
 recheck as Step 5 says; if the verdict changed, do not remove. While the note waits for the
 probe answers, say so before the question: the removal ends this session, and the note is
 then not sent. The question is: remove this worktree now? Run the removal only after my yes, in a later turn, as the last action
@@ -863,19 +877,24 @@ of the session, because it stops this worktree's sessions:
 
 `"<orca CLI>" worktree rm --worktree "path:<worktree path>" --json`
 
-**When the Director removes it, ask nothing.** From the turn the note is sent to a Director its
-probe verified ("Deliver the note", steps 4 and 5), in that turn and every later one, end the
-reply without this question, whether or not the Director has replied (the outcomes "note sent
-with no reply yet" and "note sent and replied"). Say instead that the Director removes this
-worktree after this session ends if its checks pass (`dv:director-mode`, "Take closeout notes"
-and "End a finished worktree session"), and name the command above for me, to run from the main
-checkout after this session ends (with an initialized submodule, the guarded procedure Step 5
-names instead). The Director keeps the worktree and tells me which check failed when, for
-example, the note's verdict needs my yes to losses that no standing yes of mine covers, the note
-has anything under WAITING ON or a REPLY NEEDED question, or I message this session after the
-note. With no verified Director the question stays as above: no note sent (a second note send
-that failed included), the note waiting for the probe answers (the outcome "send failed and
-probe sent again" included), an answer not verified, a note sent only by `terminal send`.
+**When the Director removes it, ask nothing.** This applies only where this question would be
+asked (above) and Step 5's bullet "The Director removes it" holds: the removal is cleared, the
+note has been sent to a Director its probe verified ("Deliver the note", steps 4 and 5), and
+Step 2 said safe to delete or a standing yes of mine covers every accepted loss and my
+acceptance came before the note that was sent. When the
+removal is not cleared there is no question and no command: say why removal is blocked (Step 5).
+Where it applies, from the turn the note is sent, in that turn and every later one, end the reply
+without this question, whether or not the Director has replied (the outcomes "note sent with no
+reply yet" and "note sent and replied"). Say instead that the Director removes this worktree
+after this session ends if its checks pass (`dv:director-mode`, "Take closeout notes" and "End a
+finished worktree session"), and name the command above for me, to run from the main checkout
+after this session ends (with an initialized submodule, the guarded procedure Step 5 names
+instead). The Director keeps the worktree and tells me which check failed when, for example, the
+note has anything under WAITING ON or a REPLY NEEDED question, or I message this session after
+the note. In every other case the question stays as above: no verified Director (no note sent, a
+second note send that failed included; the note waiting for the probe answers, the outcome "send
+failed and probe sent again" included; an answer not verified; a note sent only by `terminal
+send`), losses I accepted only in this session, or an acceptance after the note was sent.
 Skipping this question never stands in for my consent to losing data that exists nowhere else:
 while Step 2 says safe once you accept losing, Step 5's question still asks it, and nothing treats
 the worktree as safe before my yes. A yes I already gave to this question, asked before the note

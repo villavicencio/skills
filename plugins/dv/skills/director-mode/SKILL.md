@@ -406,7 +406,7 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
   do (closing an ordinary chat in Orca, or a supervised one that "End a finished worktree session"
   does not release) are not questions and still come to me; so does a check on a request
   I just made in this chat, such as `open worktree VIL-N` on a ticket that fails its checks.
-  `dv:closeout` doesn't follow this rule yet (VIL-1191): its own reply still asks me as before.
+  `dv:closeout` doesn't follow this rule yet (VIL-1191): its own reply still brings its questions to me, not to the Head.
 - **Forward** in the turn you reply, before the reply, with a body file outside the repo:
   `orca orchestration send --to "<his address>" --chat new --type question --subject "<VIL-N Qk: the question, in one line>" --body-file "<file>" --json`.
   The body is the question as the session sent it (or your own, in that form), in the form
@@ -810,8 +810,12 @@ terminal by `orca terminal send`, by clipboard paste, or as a file under
   worktree's verdict.
 - Bring each decision under "WAITING ON" to me with your recommendation, in the form "Every ask
   that reaches me stands on its own" gives; with a Head, forward each to him instead, the CEO's
-  1% marked as such ("The Head and the CEO's 1%"). `dv:closeout` itself is unchanged until
-  VIL-1191: its note reaches you as before, and its own reply still asks me as before. File each item under
+  1% marked as such ("The Head and the CEO's 1%"). `dv:closeout`'s delivery and Head routing are
+  unchanged until VIL-1191: its note reaches you as before, and its own reply still brings its
+  questions to me, not to the Head, except that once its note has reached you through its probe
+  and its verdict is safe to delete (or a standing yes of mine covers the losses I accepted
+  before the note) it asks no removal question and says you remove the worktree after its session
+  ends if your checks pass. File each item under
   "NOTICED, NOT FILED" with `dv:ticket`, under its exception (b) ("Filing without my
   confirmation"), and name the new ids in your reply to me.
 - Reply to a SendMessage note with one line saying you received it, sent to the note's `from`

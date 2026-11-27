@@ -4,7 +4,7 @@ description: "File a Linear ticket in the agreed format. Filing turns a rough re
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.43.0"
+  version: "0.44.0"
 ---
 
 # /ticket — file a Linear ticket
@@ -170,15 +170,16 @@ test or a build either, whether the request names it or the repo holds it.
 A fact the request states as what a command does is checked only the way `dv:groom` checks a fact
 stated as a command: its step 3, "How", which hands it to "Done means lines that already pass"
 (`../groom/SKILL.md` from this skill's directory; read those two parts there). That check needs
-the default branch's commit: take it from the local clone of the repo the fact is about, recorded
-and compared with origin's as `dv:groom` step 1 ("Repos") does. When the request ties the fact to
-another branch or version, the fact is `[assumed]` ("default-branch commit not verified"), and when
-the request names more than one repo and the fact does not name its repo, it is `[assumed]` ("repo
-unclear"). When the check finds the fact current or stale, say it was checked that way, with the
-commit's short id. Otherwise mark the fact `[assumed]` with the check's "not run" reason, such as
-"unsupported form", and do not check it any other way, such as with a command of your own that does
-what the request's command does. If `../groom/SKILL.md` cannot be read, every such fact is
-`[assumed]`. A fact the request states in words, even with a command written beside it as its
+the default branch's name and commit: take them from the local clone of the repo the fact is
+about, recorded and compared with origin's as `dv:groom` step 1 ("Repos") does. When the request
+ties the fact to another branch or version, the fact is `[assumed]` ("default-branch commit not
+verified"), and when the request names more than one repo and the fact does not name its repo, it
+is `[assumed]` ("repo unclear"). When the check finds the fact current or stale, say it was
+checked that way, with the commit's short id. Otherwise mark the fact `[assumed]` with the check's
+"not run" reason, such as "unsupported form", or "repo not public" for a search outside that
+check's disclosure boundary, and do not check it any other way, such as with a command of your own
+that does what the request's command does. If `../groom/SKILL.md` cannot be read, every such fact
+is `[assumed]`. A fact the request states in words, even with a command written beside it as its
 evidence, is checked with reads of your own, and that command is not run.
 
 The format's run of each Done means command on the default branch ("A Done means command fails
@@ -330,6 +331,7 @@ groom from this skill.
   to `Z`, `a` to `z`, `0` to `9`, `.`, `_`, `-` and `/` and does not start with `-` (a PR number:
   digits only), so no quote, `$`, backtick, space or other character the shell reads reaches the
   command. Otherwise that read is not made, and what depended on it is not checked, with the
-  reason.
+  reason. A search pattern is the one exception: `dv:groom`'s check (File step 5) says which
+  patterns it takes, and it reaches a read only inside single quotes, after `-e`.
 - Do not put secrets or credentials in a ticket.
 - A ticket that already meets the format stays as it is.

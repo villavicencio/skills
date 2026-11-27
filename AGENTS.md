@@ -96,6 +96,9 @@ checkout.
   `--allowed-tools` list (`Contains brace with quote character (expansion obfuscation)`;
   VIL-869, 2026-11-22): allow `Bash` in the throwaway clone (`--allowed-tools "Bash" -- "<prompt>"`) and say in the
   prompt which steps to skip. `--allowed-tools` takes every argument after it, so put the prompt after `--`.
+  Claude Code's Bash tool reports a search that exits 1 (`grep` or `git grep` with no match) as
+  "completed with no output", the same as exit 0 with `-q`, so a skill step that reads a
+  search's result must judge by printed output, such as `git grep -l` (VIL-1203, 2026-11-26).
 - CI gates (`.github/workflows/validate.yml`):
   - `agentskills validate plugins/*/skills/*` — spec conformance per skill
   - `tooling/check_skill_placeholders.py` — no `$` followed by a digit in any SKILL.md: Claude Code replaces `$0`, `$1`, ... with the words typed after the skill command, code blocks included (VIL-517). Write awk's `$0` as `$(0)`, don't use shell `$1`, write prices as `USD 350`

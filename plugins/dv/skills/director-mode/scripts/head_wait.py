@@ -115,7 +115,7 @@ import time
 import uuid
 from pathlib import Path
 
-VERSION = "0.53.0"
+VERSION = "0.54.0"
 ORCA = "orca"
 CALL_TIMEOUT_S = 60       # one orca call
 RUN_BUDGET_S = 540        # every orca call starts and ends inside this, so 10 minutes covers a run

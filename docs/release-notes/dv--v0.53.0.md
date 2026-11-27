@@ -34,8 +34,9 @@ session still loaded 0.48.0. The Head of Skills set the rule as his item 78, fro
     version (`installed unknown`).
 
   Its first line is one of `current` (exit 0), `stale` (exit 1; names the loaded, latest and
-  installed versions and says either that a fresh session picks up the update or that the install
-  itself is behind) or `not verified` (exit 2; the release or the base path can't be read, or the
+  installed versions and says that a fresh session picks up the update, that the install
+  itself is behind, or, when the installed version is unknown, to update dv on this machine if it is
+  behind and then start a fresh session) or `not verified` (exit 2; the release or the base path can't be read, or the
   loaded or the installed version of an installed plugin is ahead of every stable release, such
   as a merge whose release hasn't published yet). Only a development copy passes when it is ahead
   of the latest release.

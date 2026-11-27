@@ -26,7 +26,9 @@ The first printed line starts with the outcome, and the exit code matches it:
   dv-latest-check: current ...        exit 0  go on
   dv-latest-check: stale ...          exit 1  hold dv-dependent actions (names loaded, latest
                                               and installed, and whether a fresh session is
-                                              enough or the install itself is behind)
+                                              enough, the install itself is behind, or the
+                                              installed version is unknown: update if behind,
+                                              then start a fresh session)
   dv-latest-check: not verified ...   exit 2  hold dv-dependent actions until a rerun says
                                               current (release or base path unreadable, or the
                                               loaded or installed version of an installed

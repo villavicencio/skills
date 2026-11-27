@@ -1457,13 +1457,13 @@ def cmd_rewake(a: argparse.Namespace) -> tuple:
         if state == "enabled":
             return EXIT_OK, f"COVERED item {n} W{k}: wake {cur[1]} is due at {cur[2]}; no wake " \
                             "made"
-    held = item_hold(item, w, now_s() * 1000, reopened=False)
-    if held:
-        return EXIT_OTHER, f"HELD item {n} W{k}: {held}; no wake made. Rewake once that ends"
     if len(w.rewake_claims) >= REWAKE_MAX:
         return EXIT_UNCLEAR, f"UNCOVERED item {n} W{k}: it has {len(w.rewake_claims)} rewake " \
                              f"claims and gets at most {REWAKE_MAX}; no wake made. Reconcile it " \
                              "from your reads"
+    held = item_hold(item, w, now_s() * 1000, reopened=False)
+    if held:
+        return EXIT_OTHER, f"HELD item {n} W{k}: {held}; no wake made. Rewake once that ends"
     scratch = Scratch()
     try:
         nonce = str(uuid.uuid4())

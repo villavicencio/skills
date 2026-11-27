@@ -2225,6 +2225,10 @@ def test_fix_round2() -> None:
     for label, fault, want, creates in (
             ("a claim that lands and then errors is found by its nonce",
              dict(mode="after-error", code="items_unavailable"), "REWOKEN item 7 W1", 1),
+            ("an unclear claim the read after doesn't show",
+             dict(mode="error", code="items_unavailable"), "UNCOVERED item 7 W1: the rewake "
+             "claim's answer was unclear (items_unavailable: stubbed) and the read after it "
+             "doesn't show it; no wake made, and the claim counts if it landed", 0),
             ("a claim Orca refuses", dict(mode="error", code="invalid_argument",
                                           message="no"), "UNCOVERED item 7 W1: the rewake "
              "claim did not post", 0)):
@@ -2254,6 +2258,15 @@ def test_fix_round2() -> None:
         code, out, _ = c.run("rewake", "--item", "7", "--wait", "W1")
         check("rewake: an item closed and reopened after the record isn't held (REWOKEN)",
               out.startswith("REWOKEN item 7 W1"), out)
+    finally:
+        c.close()
+    c = spent_case()
+    try:  # a wait at the limit says so now, even under a hold
+        claims(c, 8)
+        c.fake.fixture_comment(7, "Snoozed until 23:00 PT Nov 28: away")
+        code, out, _ = c.run("rewake", "--item", "7", "--wait", "W1")
+        check("rewake: a wait at the limit under a hold -> UNCOVERED now, not HELD", code == 1
+              and out.startswith("UNCOVERED item 7 W1: it has 8 rewake claims"), out)
     finally:
         c.close()
     c = armed_case()

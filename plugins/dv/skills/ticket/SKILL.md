@@ -170,16 +170,16 @@ test or a build either, whether the request names it or the repo holds it.
 A fact the request states as what a command does is checked only the way `dv:groom` checks a fact
 stated as a command: its step 3, "How", which hands it to "Done means lines that already pass"
 (`../groom/SKILL.md` from this skill's directory; read those two parts there). That check needs
-the default branch's commit: take it from the local clone of the repo the fact is about, recorded
-and compared with origin's as `dv:groom` step 1 ("Repos") does. When the request ties the fact to
-another branch or version, the fact is `[assumed]` ("default-branch commit not verified"), and when
-the request names more than one repo and the fact does not name its repo, it is `[assumed]` ("repo
-unclear"). When the check finds the fact current or stale, say it was checked that way, with the
-commit's short id. Otherwise mark the fact `[assumed]` with the check's "not run" reason, such as
-"unsupported form", or "repo not public" for a search outside that check's disclosure boundary, and
-do not check it any other way, such as with a command of your own that does what the request's
-command does. If `../groom/SKILL.md` cannot be read, every such fact is
-`[assumed]`. A fact the request states in words, even with a command written beside it as its
+the default branch's name and commit: take them from the local clone of the repo the fact is
+about, recorded and compared with origin's as `dv:groom` step 1 ("Repos") does. When the request
+ties the fact to another branch or version, the fact is `[assumed]` ("default-branch commit not
+verified"), and when the request names more than one repo and the fact does not name its repo, it
+is `[assumed]` ("repo unclear"). When the check finds the fact current or stale, say it was
+checked that way, with the commit's short id. Otherwise mark the fact `[assumed]` with the check's
+"not run" reason, such as "unsupported form", or "repo not public" for a search outside that
+check's disclosure boundary, and do not check it any other way, such as with a command of your own
+that does what the request's command does. If `../groom/SKILL.md` cannot be read, every such fact
+is `[assumed]`. A fact the request states in words, even with a command written beside it as its
 evidence, is checked with reads of your own, and that command is not run.
 
 The format's run of each Done means command on the default branch ("A Done means command fails

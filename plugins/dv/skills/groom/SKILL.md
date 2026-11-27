@@ -229,9 +229,10 @@ them.
 
 **Repos.** Note the repo or repos the ticket changes. For each one the session can read, record
 the commit you check against: the branch or version the ticket names, or the default branch if it
-names none. Do not fetch; grooming writes nothing to a repo. Compare full commit ids: the local
-one from `git rev-parse "<ref>^{commit}"` and the remote one from
-`git ls-remote origin "refs/heads/<branch>"`, or for a version tag
+names none. For the default branch, record its name too: the `refs/heads/<name>` that
+`git ls-remote --symref origin HEAD` prints on its `ref:` line. Do not fetch; grooming writes
+nothing to a repo. Compare full commit ids: the local one from `git rev-parse "<ref>^{commit}"`
+and the remote one from `git ls-remote origin "refs/heads/<branch>"`, or for a version tag
 `git ls-remote origin "refs/tags/<tag>" "refs/tags/<tag>^{}"` (take the `^{}` line when there is
 one; it is the commit an annotated tag points to). Both commands only read. If the remote returns
 no line, say the ref is not on the remote and use the local commit. If the ids differ, say so
@@ -370,43 +371,53 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
     reach the shell only inside the single quotes of the reads below.
   - **Disclosure boundary.** A search's result tells whoever reads the findings whether the
     ticket's pattern is in the file, so ticket text could read a file one pattern at a time. A
-    search therefore runs only where every match discloses only what anyone can already read: a
-    repo GitHub serves as public, at the commit "Commit" verified, which is on origin since
-    `git ls-remote` returned it for origin's default branch. Read the boundary for each search
-    line just before that line's other reads and its search, which follow at once with nothing
-    else in between; never reuse a boundary read from another line or another run.
-    1. `git -C "<top level>" remote get-url --all origin` prints exactly one line, of the form
-       `https://github.com/<owner>/<repo>`, `git@github.com:<owner>/<repo>` or
-       `ssh://git@github.com/<owner>/<repo>`, with or without a trailing `.git`, where `<owner>`
-       and `<repo>` hold only `A` to `Z`, `a` to `z`, `0` to `9`, `.`, `_` and `-`, do not start
-       with `-`, and are not `.` or `..`. Do not quote the URL in the reply, the report or Linear,
-       since a URL can hold a credential; name the repo as `<owner>/<repo>`.
-    2. `gh repo view 'github.com/<owner>/<repo>' --json visibility --jq .visibility` exits 0 and
-       prints exactly `PUBLIC`. The `github.com/` keeps `GH_HOST` from sending the read to another
-       host.
+    search therefore runs only where every match discloses only what anyone can already read: the
+    commit it searches is, as GitHub reports it during that line's reads, the tip of the default
+    branch of a repo GitHub serves as public. Nothing the boundary relies on is taken from earlier
+    in the run, and no boundary read is reused for another line or another run. For each search
+    line, make these four reads, in this order, before any other read for the line:
+    - **Remote.** `git -C "<top level>" remote get-url --all origin` prints exactly one line, of
+      the form `https://github.com/<owner>/<repo>`, `git@github.com:<owner>/<repo>` or
+      `ssh://git@github.com/<owner>/<repo>`, with or without a trailing `.git`, where `<owner>` and
+      `<repo>` hold only `A` to `Z`, `a` to `z`, `0` to `9`, `.`, `_` and `-`, do not start with
+      `-`, and are not `.` or `..`. Do not quote the URL in the reply, the report or Linear, since a
+      URL can hold a credential; name the repo as `<owner>/<repo>`.
+    - **Branch.**
+      `gh repo view 'github.com/<owner>/<repo>' --json defaultBranchRef --jq .defaultBranchRef.name`
+      exits 0 and prints exactly the name of the default branch step 1 recorded, a name that holds
+      only the characters the Rules allow.
+    - **Tip.** `gh api --hostname github.com 'repos/<owner>/<repo>/commits/<branch>' --jq .sha`,
+      with that name as `<branch>`, exits 0 and prints exactly the full id of the commit "Commit"
+      verified. A default branch that moved since step 1 prints another id. Git names a commit by
+      its contents, so the local commit with that id is the one GitHub serves.
+    - **Visibility.** `gh repo view 'github.com/<owner>/<repo>' --json visibility --jq .visibility`
+      exits 0 and prints exactly `PUBLIC`.
 
-    In every other case (another host or URL form, `PRIVATE` or `INTERNAL`, a read that fails,
-    prints anything else or cannot be made) the line is "not run: repo not public", and nothing
-    else is read for it. The boundary only makes a match safe to report: the path and pattern
-    rules above, and the checkout and binary rules below, still apply to a search in a public
-    repo.
+    Then make the line's reads 1 and 2 (under Reads), then Visibility again, as the last read
+    before the search, and the search, with its `-I` run on a match, right after it, with nothing
+    else in between. The `github.com/` and `--hostname github.com` keep `GH_HOST` from sending a
+    read to another host. In every other case (another host or URL form, another branch name or
+    id, `PRIVATE` or `INTERNAL`, a read that fails, prints anything else or cannot be made) the
+    line is "not run: repo not public", never "read failed", and nothing more is read for it. The
+    boundary only makes a match safe to report: the path and pattern rules above, and the checkout
+    and binary rules below, still apply to a search in a public repo.
   - **Reads.** Fixed commands, run as written with only the commit, the path, a parent directory,
-    the pattern, and the line's matcher, `-i` and `-w` filled in (and, for the boundary, the owner
-    and the repo); the line's `-n` and `-q` are never passed on.
-    Each read of the repo's objects starts with `git --no-replace-objects --no-lazy-fetch`:
-    `--no-replace-objects` makes it read the verified commit's own objects, not a local
-    replacement (`refs/replace/`) that would show another tree or file, and `--no-lazy-fetch`
-    stops a partial clone from fetching a missing object (the read fails instead). The git reads
-    only read the repo's objects, attributes and config, and none writes or reaches the network;
-    the boundary's `gh` read only reads. None prints a file's contents.
+    the pattern, and the line's matcher, `-i` and `-w` filled in (and, for the boundary, the owner,
+    the repo and the branch name); the line's `-n` and `-q` are never passed on. Each read of the
+    repo's objects starts with `git --no-replace-objects --no-lazy-fetch`: `--no-replace-objects`
+    makes it read the verified commit's own objects, not a local replacement (`refs/replace/`)
+    that would show another tree or file, and `--no-lazy-fetch` stops a partial clone from fetching
+    a missing object (the read fails instead). The git reads only read the repo's objects,
+    attributes and config, and none writes or reaches the network; the boundary's `gh` reads only
+    read. None prints a file's contents.
     1. Every checked line, a search after its boundary:
        `git --no-replace-objects --no-lazy-fetch -C "<top level>" ls-tree <commit> -- '<path>'`.
        One line for exactly that path with mode `100644` or `100755` is a regular file, and mode
-       `040000` a directory. Mode `120000` (a link) or `160000` (a submodule) is "not run: link or
-       submodule". When it prints no line, read each leading directory of the path the same way,
-       from the top: mode `120000` or `160000` there is also "not run: link or submodule", and a
-       regular file there means the path is missing. At the first part that is missing (a leading
-       directory or the last part), list its parent with
+       `040000` a directory. For a file test, mode `120000` (a link) or `160000` (a submodule) is
+       "not run: link or submodule". When it prints no line, read each leading directory of the
+       path the same way, from the top: mode `120000` or `160000` there is also, for a file test,
+       "not run: link or submodule", and a regular file there means the path is missing. At the
+       first part that is missing (a leading directory or the last part), list its parent with
        `git --no-replace-objects --no-lazy-fetch -C "<top level>" ls-tree --name-only <commit> -- '<parent>/'`
        (for a part at the top level, the same command with no `--` and no path). If the last part
        of an entry there matches the missing part when case is ignored, the line is "not run: path
@@ -415,59 +426,67 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
        found (a regular file or a directory), list the parent of each of its parts the same way,
        from the top: an entry there other than that part whose last part matches it when case is
        ignored is also "not run: path differs only in case", since a checkout on a disk that
-       ignores case can put that other entry at the path.
+       ignores case can put that other entry at the path. A search goes on only when this read
+       found a regular file with no such entry: besides a path that differs only in case, any other
+       result (missing, a directory, a link or a submodule) is "not run: search path is not a
+       regular file", since `grep` would only report an error there.
     2. A search, when read 1 found a regular file. First, whether a checkout would change the
        file's bytes, so that `grep` in a checkout would see other text than the commit holds:
        `git --no-replace-objects --no-lazy-fetch -C "<top level>" check-attr --source <commit> filter working-tree-encoding ident crlf eol -- '<path>'`,
        then `git -C "<top level>" config --get core.autocrlf` and
-       `git -C "<top level>" config --get core.eol` (each prints nothing and exits 1 when unset).
-       The line is "not run: a checkout changes the file" when `filter`, `working-tree-encoding`,
-       `ident` or `crlf` has a value other than `unspecified`, `eol` has one other than
-       `unspecified` or `lf`, `core.autocrlf` is set to anything but `input` or a false value
-       (`false`, `no`, `off`, `0`), or `core.eol` is set to anything but `lf` or `native`, each
-       config value compared in any case; and for every search on Windows, where line endings
-       default to CRLF (Git LFS and CRLF line endings are such cases). The `text` attribute is not
-       read: on checkout git only adds a CR before an LF, and only under `eol=crlf`, a true
-       `core.autocrlf`, `core.eol=crlf` or Windows, each a case above; it never removes one, so a
-       file the commit holds with CRLF line endings checks out with the same bytes. Then the
-       search:
+       `git -C "<top level>" config --get core.eol` (each prints nothing and exits 1 when unset;
+       any other exit is "not run: read failed"). The line is "not run: a checkout changes the
+       file" when `filter`, `working-tree-encoding`, `ident` or `crlf` has a value other than
+       `unspecified`, `eol` has one other than `unspecified` or `lf`, `core.autocrlf` is set to
+       anything but `input` or a false value (`false`, `no`, `off`, `0`), or `core.eol` is set to
+       anything but `lf` or `native`, each config value compared in any case; and for every search
+       on Windows, where line endings default to CRLF (Git LFS and CRLF line endings are such
+       cases). The `text` attribute is not read: on checkout git only adds a CR before an LF, and
+       only under `eol=crlf`, a true `core.autocrlf`, `core.eol=crlf` or Windows, each a case above;
+       it never removes one, so a file the commit holds with CRLF line endings checks out with the
+       same bytes. Then the boundary's Visibility read again, and then the search:
        `git --no-replace-objects --no-lazy-fetch -C "<top level>" grep -l --no-color <matcher> -e '<pattern>' <commit> -- '<path>'`,
        with `<matcher>` `-F` or `-E` when the line has it and `-G` otherwise, so git config cannot
-       change the pattern syntax, plus `-i` and `-w` when the line has them. `-l` names the file and
-       prints none of its lines, and `--no-color` keeps `color.grep` out of that name. Judge by what it prints, not by the exit alone, since Claude
-       Code's Bash tool reports a search's exit 1 as a success with no output: exactly one line,
-       `<commit>:<path>`, is a match, and no output with no error is no match. On a match, run it
-       again with `-I` added after `--no-color`: no output there means git takes the file for
-       binary, and the line is "not run: binary file", since `grep` prints a notice for a binary
-       file, not its lines, and the `grep` in Claude Code's shell skips binary files.
+       change the pattern syntax, plus `-i` and `-w` when the line has them. `-l` names the file
+       and prints none of its lines, and `--no-color` keeps `color.grep` out of that name. Judge by
+       what it prints, not by the exit alone, since Claude Code's Bash tool reports a search's
+       exit 1 as a success with no output: exactly one line, `<commit>:<path>`, is a match; no
+       output and no error is no match; anything else, an error or an exit other than 0 or 1
+       included, is "not run: read failed", never a match or no match. On a match, run it again
+       with `-I` added after `--no-color`: the same one line again means git takes the file for
+       text; no output and no error means it takes the file for binary, and the line is "not run:
+       binary file", since `grep` prints a notice for a binary file, not its lines, and the `grep`
+       in Claude Code's shell skips binary files; anything else is "not run: read failed".
 
-    Any other exit or output from a read is "not run: read failed". The reads see only the files
+    Any other exit or output from a read outside the boundary is "not run: read failed". The
+    reads see only the files
     tracked at the commit: this check does not see untracked or generated files, so a path that a
     build or another local step creates is treated as missing. Do not print matched lines or file
     contents anywhere, in the reply, the report or Linear: a line gets a result, not output.
   - **Judge.** From the reads, the line's command on the default branch would: for a file test,
     exit 0 when `-f` found a regular file or `-e` found a regular file or a directory, and 1
-    otherwise; for a search, exit 0 on a match, 1 on no match, and 2, with an error, when the path
-    is missing or a directory. A `!` turns exit 0 into 1 and any other exit into 0. Then read what
-    the line states, taking the first rule that applies:
+    otherwise; for a search, which is judged only on a regular file, exit 0 on a match and 1 on no
+    match. A `!` turns exit 0 into 1 and 1 into 0. Then read what the line states, taking the first
+    rule that applies:
     1. Nothing beyond the command, or exactly "exits 0", "succeeds" or "passes": the line passes on
        exit 0.
-    2. A search of a regular file, with no `!` and no `-q`, stated to print or find one or more
-       lines, described or counted (such as "prints the release rule" or "prints one line"): on no
-       match the search prints nothing, so the stated result does not hold: the line fails in the
-       tracked files at the commit. On a match the reads cannot show whether the lines it prints
-       are the ones the line describes, so the line is "not run: output not checked".
+    2. A search, with no `!` and no `-q`, stated to print or find one or more lines, described or
+       counted (such as "prints the release rule" or "prints one line"): on no match the search
+       prints nothing, so the stated result does not hold: the line fails in the tracked files at
+       the commit. On a match the reads cannot show whether the lines it prints are the ones the
+       line describes, so the line is "not run: output not checked".
     3. Anything else, a guard note, an expected failure, a statement that a search prints or finds
-       nothing or two statements that disagree included: "not run: stated result unclear". A search that finds nothing exits 1, so an absence check passes only when it is
-       written with `!`, such as `! grep -q "<pattern>" <path>`, which rule 1 reads.
+       nothing or two statements that disagree included: "not run: stated result unclear". A
+       search that finds nothing exits 1, so an absence check passes only when it is written with
+       `!`, such as `! grep -q "<pattern>" <path>`, which rule 1 reads.
 
     So only rule 1 can give "already passes", and only by exit status.
   - **Results.** Each Done means line gets one of these results. They go, with the commit's short
     id (or "commit not verified"), in step 6's findings and step 8's report, the lines not run
     listed apart from the lines that fail:
-    - "already passes": flagged (below). For a line with `!` whose path is missing in the tracked
-      files, the interview also says that a build or another local step could create the path,
-      which this check does not see;
+    - "already passes": flagged (below). For a file test with `!` whose path is missing in the
+      tracked files, the interview also says that a build or another local step could create the
+      path, which this check does not see;
     - "fails in the tracked files at the commit": the format's rule holds for what the commit
       tracks (untracked and generated files are not seen);
     - "not run: <reason>", with a reason above;

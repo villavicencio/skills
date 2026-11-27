@@ -81,9 +81,11 @@ Each line is one claim the section, the script and its tests establish.
   uses it when its first check can't read the item, and the Head uses it after any `UNREADABLE`
   or `UNCLEAR` first line. When it can't make or record one, its first line starts `UNCOVERED` or
   `UNRECORDED`.
-- `rewake` makes nothing while the item holds the wait, by the same rules that stop a re-send
-  (Needs you, Orca's snooze, a `Snoozed until` line, the item closed after the record); its first
-  line starts `HELD` and says why.
+- `rewake` makes nothing while the item holds the wait and no wake is due, by the fresh check's
+  item rules that end (Needs you, Orca's snooze, a `Snoozed until` line); its first line starts
+  `HELD` and says why. It doesn't hold on the send-only rules (an earlier unclear send under the
+  key, a `Re-send` line, a closed session) or on an item closed and reopened after the record,
+  which never ends and which the wake itself closes as `no follow-up`.
 - A wait gets at most 8 rewakes, even when runs overlap or a create's answer is uncertain. Each run
   posts a `Rewake claim` line before it creates anything and creates only when fewer than 8 claims
   came before it in Orca's event order; the loser prints `NOT CLAIMED`, and a claim counts whether

@@ -275,6 +275,9 @@ class FakeOrca:
             if fault and fault["mode"] == "hide-link":  # Orca reads events before the item
                 evs = [e for e in evs if not (e["kind"] == "linked"
                                               and "file:" + fault["hide"] in e["data"]["links"])]
+            if fault and fault["mode"] == "hide-comment":
+                evs = [e for e in evs if not (e["kind"] == "commented"
+                                              and e["data"]["text"].startswith(fault["hide"]))]
             page = [{k: v for k, v in e.items() if k != "item"} for e in evs[:50]]
             result = {"item": self.view(st, int(n)), "events": page}
             if len(evs) > 50:
@@ -2163,10 +2166,7 @@ def test_fix_round2() -> None:
                 7, snoozedUntil=int((time.time() + 3600) * 1000)), "Orca's snooze is ahead"),
             ("a Snoozed until line", lambda c: c.fake.fixture_comment(
                 7, "Snoozed until 23:00 PT Nov 28 / 07:00 UTC Nov 29: away"),
-             "a Snoozed until line e"),
-            ("an item closed and reopened after the record", lambda c: (
-                c.fake.fixture_status(7, "done"), c.fake.fixture_status(7, "in_progress")),
-             "the item was closed after the record")):
+             "a Snoozed until line e")):
         c = spent_case()
         try:
             setup(c)
@@ -2203,7 +2203,7 @@ def test_fix_round2() -> None:
         c.fake.save(st)
         code, out, _ = c.run("rewake", "--item", "7", "--wait", "W1")
         check("rewake limit: after that, a later caller makes nothing", code == 1
-              and out.startswith("UNCOVERED item 7 W1: it has 8 rewake claims")
+              and out.startswith("UNCOVERED item 7 W1: it has 9 rewake claims and gets at most 8")
               and len(calls(c.fake.log(), "automations", "create")) == 1, out)
     finally:
         c.close()
@@ -2237,6 +2237,33 @@ def test_fix_round2() -> None:
                   and len(calls(c.fake.log(), "automations", "create")) == creates, out)
         finally:
             c.close()
+    c = spent_case()
+    try:  # a read after the claim that doesn't show it: its place is unknown
+        c.fake.fault(["bot", "item", "show"], "hide-comment", hide="Rewake claim", skip=1)
+        code, out, _ = c.run("rewake", "--item", "7", "--wait", "W1")
+        check("rewake claim: a read after the claim that doesn't show it -> UNCOVERED, nothing "
+              "created", code == 1 and out.startswith("UNCOVERED item 7 W1: claim e")
+              and "doesn't show it" in out
+              and not calls(c.fake.log(), "automations", "create"), out)
+    finally:
+        c.close()
+    c = spent_case()
+    try:  # an item closed and reopened after the record doesn't hold: a wake closes the wait
+        c.fake.fixture_status(7, "done")
+        c.fake.fixture_status(7, "in_progress")
+        code, out, _ = c.run("rewake", "--item", "7", "--wait", "W1")
+        check("rewake: an item closed and reopened after the record isn't held (REWOKEN)",
+              out.startswith("REWOKEN item 7 W1"), out)
+    finally:
+        c.close()
+    c = armed_case()
+    try:  # a hold with a wake still due reads COVERED
+        c.fake.fixture_comment(7, "Snoozed until 23:00 PT Nov 28: away")
+        code, out, _ = c.run("rewake", "--item", "7", "--wait", "W1")
+        check("rewake: a hold with the wake still due -> COVERED, not HELD", code == 0
+              and out.startswith("COVERED item 7 W1"), out)
+    finally:
+        c.close()
     c = spent_case()
     try:
         c.fake.fault(["bot", "item", "show"], "error", code="items_unavailable", skip=1)

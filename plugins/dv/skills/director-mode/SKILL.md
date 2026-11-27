@@ -610,22 +610,23 @@ authority, and changes nothing in Orca.
   `Retire unverified` line, and you say it in your first line (a run past its 5-minute window
   posts no such line, and its printed line says so). It holds up no later wait: once W<k> has
   its closing record, its old wake can only read `CLOSED` or get `NOT CLAIMED`.
-- **Rewake**: `rewake --item <n> --wait W<k>`, whenever a wait may have lost its wake: a wake's
-  or your own command printed `UNREADABLE` or `UNCLEAR`, or the restart list shows an open wait
-  whose wake is disabled or gone. For a wait with no closing record and no wake still due, it
-  makes one one-time wake 16 minutes out (past the 15-minute reconcile rule), checks it as arm
-  checks its wake, and posts a `Rewake` line naming it; it links nothing, and its run is a wake
-  like any other. It makes nothing while the item holds the wait, by the fresh check's own
-  rules (Needs you, Orca's snooze, a `Snoozed until` line, closed after the record): `HELD`
-  names why, and you rewake once that ends. A wait gets at most 8 rewakes, even when two runs
-  overlap: each run first posts a `Rewake claim` line and creates only when fewer than 8 claims
-  came before it in Orca's event order (Orca writes comments one at a time, in id order), so a
-  run that loses prints `NOT CLAIMED` and makes nothing, and a claim counts even when its create
-  went wrong. `COVERED` means the wait's latest wake is still due (its time ahead and Orca
-  showing it enabled; one whose state Orca can't show counts as not due); `CLOSED`, `BLOCKED` and
-  `NO WAIT` mean the wait needs none, and `REFUSED` sends a wait reserved with no record to
-  `close-unarmed` (Reconcile, below). On `UNCOVERED` (no wake made) or `UNRECORDED` (a wake made,
-  its line not posted), your first line says W<k> is uncovered.
+- **Rewake**: `rewake --item <n> --wait W<k>`, whenever a wait may have lost its wake: a wake's or
+  your own command printed `UNREADABLE` or `UNCLEAR`, or the restart list shows an open wait whose
+  wake is disabled or gone. For a wait with no closing record and no wake still due, it makes one
+  one-time wake 16 minutes out (past the 15-minute reconcile rule), checks it as arm checks its
+  wake, and posts a `Rewake` line naming it; it links nothing, and its run is a wake like any other.
+  With no wake due, it makes nothing while the item holds the wait by the fresh check's item rules
+  that end (Needs you, Orca's snooze, a `Snoozed until` line): `HELD` names why, and you rewake once
+  that ends. An item closed and reopened after the record doesn't hold it: that never ends, and the
+  wake closes the wait as `no follow-up`. A wait gets at most 8 rewakes, even when two runs overlap:
+  each run first posts a `Rewake claim` line and creates only when fewer than 8 claims came before
+  it in Orca's event order (Orca writes comments one at a time, in id order), so a run that loses
+  prints `NOT CLAIMED` and makes nothing, and a claim counts even when its create went wrong.
+  `COVERED` means the wait's latest wake is still due (its time ahead and Orca showing it enabled;
+  one whose state Orca can't show counts as not due); `CLOSED`, `BLOCKED` and `NO WAIT` mean the
+  wait needs none, and `REFUSED` sends a wait reserved with no record to `close-unarmed` (Reconcile,
+  below). On `UNCOVERED` (no wake made) or `UNRECORDED` (a wake made, its line not posted), your
+  first line says W<k> is uncovered.
 - **FULL**, Orca's permanent cap of 50 links on an item, is a blocker you show, never a reason to
   complete or cancel anything. When a claim answers `FULL`, the script posts a `Wait blocked`
   line (none when one is already there), retires the wake and sends nothing; that wait can't

@@ -60,8 +60,8 @@ Rules the code keeps:
     of a wait whose winner stopped (two at once can each post; the first counts, and the later
     one prints DUPLICATE); an arm whose item turned out closed retires the wake it made;
     `rewake` makes a one-time wake and posts a `Rewake` line, and links nothing.
-  - `rewake` makes nothing while the item holds the wait (Needs you, Orca's snooze, a Snoozed
-    until line, closed after the record): HELD. At most 8 rewakes per wait, even when runs
+  - `rewake` makes nothing while the item holds the wait and no wake is due (Needs you, Orca's
+    snooze, a Snoozed until line): HELD. At most 8 rewakes per wait, even when runs
     overlap: each run posts a `Rewake claim` line and creates only when fewer than 8 claims
     came before it in Orca's event order; a claim counts whether or not its create succeeded.
   - A send happens only inside the `close` run whose claim returned an event id, after a fresh
@@ -1146,10 +1146,11 @@ def unclear_send(item: Item, w: Wait) -> str | None:
     return f"the Carried from chain is longer than {CARRY_HOPS_MAX} items"
 
 
-def item_hold(item: Item, w: Wait, now_ms: float) -> str | None:
-    """What holds a wait's follow-up, a re-send or a new wake: the item reads Needs you or is
-    not open, Orca's snooze is ahead, the item was closed after the record, or a Snoozed until
-    line holds. None when nothing does."""
+def item_hold(item: Item, w: Wait, now_ms: float, reopened: bool = True) -> str | None:
+    """What holds a wait's follow-up: the item reads Needs you or is not open, Orca's snooze is
+    ahead, the item was closed after the record (only when `reopened`), or a Snoozed until line
+    holds. None when nothing does. A re-send checks all of them; a rewake leaves out the
+    closed-and-reopened item, which never ends and which a wake closes as no follow-up."""
     if item.status == "needs_you":
         return "the item reads Needs you"
     if item.status not in OPEN_STATUSES:
@@ -1157,7 +1158,7 @@ def item_hold(item: Item, w: Wait, now_ms: float) -> str | None:
     if isinstance(item.snoozed_until, (int, float)) and item.snoozed_until > now_ms:
         return "Orca's snooze is ahead"
     start = eid(w.record)
-    for e in item.events:
+    for e in (item.events if reopened else ()):
         data = e.get("data") if isinstance(e.get("data"), dict) else {}
         if e.get("kind") == "status" and eid(e) > start and data.get("to") in ("done", "canceled"):
             return f"the item was closed after the record ({e['id']})"
@@ -1423,8 +1424,8 @@ def cmd_rewake(a: argparse.Namespace) -> tuple:
     latest Armed or Rewake wake's time is ahead and Orca shows it enabled; a wake whose state
     can't be read counts as not due, so a spare can result, and a spare only runs check).
 
-    Nothing is made while the item holds the wait (item_hold: Needs you, Orca's snooze, a
-    Snoozed until line, closed after the record). The limit of REWAKE_MAX per wait holds when
+    Nothing is made while the item holds the wait (item_hold without the reopened rule: Needs
+    you, Orca's snooze, a Snoozed until line). The limit of REWAKE_MAX per wait holds when
     runs overlap: each run first posts a `Rewake claim` line with its own nonce and reads the
     item again. Orca writes each comment in its own BEGIN IMMEDIATE transaction with an
     AUTOINCREMENT event id, so ids follow commit order, and a read that starts after this run's
@@ -1450,18 +1451,19 @@ def cmd_rewake(a: argparse.Namespace) -> tuple:
         return EXIT_OTHER, f"REFUSED item {n} W{k}: reserved with no record, so a wake can't " \
                            "close it; once the reserving chat ended its turn, close it with " \
                            "close-unarmed --step reservation-without-record; no wake made"
-    held = item_hold(item, w, now_s() * 1000)
-    if held:
-        return EXIT_OTHER, f"HELD item {n} W{k}: {held}; no wake made. Rewake once that ends"
     cur = w.current_wake()
     if cur is not None and ms(cur[2]) > now_s() * 1000:
         state = wake_state(cur[1])
         if state == "enabled":
             return EXIT_OK, f"COVERED item {n} W{k}: wake {cur[1]} is due at {cur[2]}; no wake " \
                             "made"
+    held = item_hold(item, w, now_s() * 1000, reopened=False)
+    if held:
+        return EXIT_OTHER, f"HELD item {n} W{k}: {held}; no wake made. Rewake once that ends"
     if len(w.rewake_claims) >= REWAKE_MAX:
-        return EXIT_UNCLEAR, f"UNCOVERED item {n} W{k}: it has {REWAKE_MAX} rewake claims, the " \
-                             "most it gets; no wake made. Reconcile it from your reads"
+        return EXIT_UNCLEAR, f"UNCOVERED item {n} W{k}: it has {len(w.rewake_claims)} rewake " \
+                             f"claims and gets at most {REWAKE_MAX}; no wake made. Reconcile it " \
+                             "from your reads"
     scratch = Scratch()
     try:
         nonce = str(uuid.uuid4())
@@ -1472,15 +1474,19 @@ def cmd_rewake(a: argparse.Namespace) -> tuple:
         if mine is None and may_have_landed(res):
             found = [e for e in claims if nonce in e["data"]["text"]]
             mine = found[0]["id"] if found else None
+        if mine is None and may_have_landed(res):
+            return EXIT_UNCLEAR, f"UNCOVERED item {n} W{k}: the rewake claim's answer was " \
+                                 f"unclear ({res.describe()}) and " + (
+                                     "the read after it failed" if again is None else
+                                     "the read after it doesn't show it") + \
+                                 "; no wake made, and the claim counts if it landed"
         if mine is None:
             return EXIT_UNCLEAR, f"UNCOVERED item {n} W{k}: the rewake claim did not post " \
-                                 f"({res.describe()}); no wake made" + (
-                                     "; a claim that lands later still counts"
-                                     if may_have_landed(res) else "")
-        if again is None:
+                                 f"({res.describe()}); no wake made"
+        if again is None or not any(e["id"] == mine for e in claims):
             return EXIT_UNCLEAR, f"UNCOVERED item {n} W{k}: claim {mine} posted, but the read " \
-                                 f"after it failed ({why}), so its place is unknown; no wake " \
-                                 "made, and the claim counts"
+                                 "after it " + ("failed" if again is None else "doesn't show it") + \
+                                 ", so its place is unknown; no wake made, and the claim counts"
         ahead = [e for e in claims if eid(e) < eid({"id": mine})]
         if len(ahead) >= REWAKE_MAX:
             return EXIT_OTHER, f"NOT CLAIMED item {n} W{k}: claim {mine} came after the " \

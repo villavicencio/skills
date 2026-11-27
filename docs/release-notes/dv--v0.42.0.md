@@ -1,26 +1,32 @@
 # dv 0.42.0
 
-`dv:closeout` no longer asks "remove this worktree now?" once its note has been sent to a
-Director its probe verified and the verdict is safe to delete (or a standing yes of David's
-covers the losses he accepted, before the note was sent). From the turn the note is sent, in
-that turn and every later one, whether or not the Director has replied, the reply says the
-Director removes the worktree after the session ends if its checks pass (`dv:director-mode`,
-"Take closeout notes" and "End a finished worktree session"), and names the removal command for
-David, to run after the session ends. The skill names cases where the Director keeps the
-worktree instead when it ends the session itself: anything under WAITING ON or REPLY NEEDED, or
-a message from David to the session after the note. If the session ends another way, the
-Director's later removal runs the global removal procedure's checks, which do not read the note,
-so those items do not hold the worktree then (known limit, VIL-1209).
+`dv:closeout` no longer asks "remove this worktree now?" once its note has been sent to the
+peer session that answered its probe with the main checkout's path and the verdict is safe to
+delete (or a standing yes of David's covers the losses he accepted, before the note was sent).
+The probe proves only the directory that peer claims, not that it runs `dv:director-mode`
+(closeout's existing known limit: the answer is the session's own claim). Closeout skips the
+question because a Director Mode session in the main checkout removes a finished worktree after
+the session ends if its checks pass (`dv:director-mode`, "Take closeout notes" and "End a
+finished worktree session"); it does not claim that one will. From the turn the note is sent, in
+that turn and every later one, whether or not the peer has replied, the reply says that the note
+went to that peer, which answered from the main checkout, that no removal question is asked, and
+that if no Director removes the worktree after the session ends, David can run the removal
+command, which the reply always names. It never says the Director removes the worktree. The skill
+names cases where a Director keeps the worktree instead when it ends the session itself: anything
+under WAITING ON or REPLY NEEDED, or a message from David to the session after the note. If the
+session ends another way, a Director's later removal runs the global removal procedure's
+checks, which do not read the note, so those items do not hold the worktree then (known limit,
+VIL-1209).
 
 The removal command itself keeps Step 5's guard. Closeout names one, in its reply or its note,
 only when the worktree is safe to delete, or is safe once David accepts losing and he has
 accepted its build-output lines and reflog-only commits, and Step 4 confirmed the handoff
 archive in its latest run, before the note was written. Otherwise it names none, says why
-removal is blocked, and never says the Director removes it. On a yes to the removal question it
+removal is blocked, and never leaves the removal to a Director. On a yes to the removal question it
 runs Step 4 again along with the recheck, and removes nothing unless Step 4 prints one of its
 two success lines. Step 4 runs for "safe once you accept losing" only after David's yes in the
 session (a standing yes does not replace that question), with the recheck matching the lines he
-accepted. The question stays as before with no verified Director (no note sent, the note waiting
+accepted. The question stays as before when no peer the probe picked has the note (no note sent, the note waiting
 for the probe answers, an answer not verified, or a note sent only by `terminal send`), when the
 losses were accepted only in the session, and when the acceptance came after the note was sent,
 since the Director's checks on the note then fail while it ends the session itself (if the
@@ -104,7 +110,10 @@ worktrees and refuses every removal and send.
     the note waited for the probe's answer, the reply still asked "Remove this worktree now?"
     (in the first run the answer arrived before that turn ended, so there was no such reply).
     The replies after the send ("note sent with no reply yet", "note sent and replied") asked no
-    removal question and said the Director removes the worktree, naming the command.
+    removal question and named the command. They used the wording of that run, which said the
+    Director removes the worktree; the reply now says instead that the note went to the peer that
+    answered from the main checkout, and that David can run the command if no Director removes
+    the worktree (that wording has not been run live).
   - The same with the archive made to fail (`_done` a plain file), also run twice: Step 4
     printed `ARCHIVE INCOMPLETE` before each copy, every copy says `not confirmed safe: handoff
     archive not confirmed (Step 4 printed "…")`, and no note or reply names a removal command,
@@ -162,6 +171,7 @@ worktrees and refuses every removal and send.
   run adds a new copy and leaves the first unchanged; a name clash in the same second takes a
   `-<n>` name and overwrites nothing.
 - Not exercised: a real Director session's checks and removal, a terminal send, a "safe once you
-  accept losing" note sent to a Director, and a yes given before the note was sent.
+  accept losing" note sent to a Director, a yes given before the note was sent, and the reply's
+  final wording after the note's send (the probe proves only the directory).
 
 Refs VIL-932.

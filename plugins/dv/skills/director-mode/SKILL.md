@@ -812,10 +812,14 @@ terminal by `orca terminal send`, by clipboard paste, or as a file under
   that reaches me stands on its own" gives; with a Head, forward each to him instead, the CEO's
   1% marked as such ("The Head and the CEO's 1%"). `dv:closeout`'s delivery and Head routing are
   unchanged until VIL-1191: its note reaches you as before, and its own reply still brings its
-  questions to me, not to the Head, except that once its note has reached you through its probe
-  and its verdict is safe to delete (or a standing yes of mine covers the losses I accepted
-  before the note) it asks no removal question and says you remove the worktree after its session
-  ends if your checks pass (it writes the note after its handoff archive step, and where the
+  questions to me, not to the Head, except the removal question. Once it has sent its note to
+  the session that answered its probe with the main checkout's path (you, when you answered it;
+  the probe shows only that path, not that the session runs Director Mode) and its verdict is safe
+  to delete (or a standing yes of mine covers the losses I accepted before the note), it asks me
+  no removal question, because you remove a finished worktree after its session ends if your
+  checks pass. Its reply says only that the note went to that session, never that you will
+  remove the worktree, and names the removal command for me to run if no Director removes it
+  (it writes the note after its handoff archive step, and where the
   verdict would otherwise be safe, an archive it could not confirm or has not run makes it
   `not confirmed safe`, with no removal command in the note, which check 1 under "End a finished
   worktree session" refuses, so you don't ask me to close that session or release it on that

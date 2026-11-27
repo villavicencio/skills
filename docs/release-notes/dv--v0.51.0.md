@@ -1,4 +1,4 @@
-# dv — v0.49.0
+# dv — v0.51.0
 
 Minor release. `dv:director-mode` gains "Head's wake for a waiting item": when a department Head
 puts one of his Orca items in Waiting on an event another session owes him, the wait gets an
@@ -7,8 +7,11 @@ checks, closes, retires, reconciles or rewakes it goes through a new script,
 `plugins/dv/skills/director-mode/scripts/head_wait.py`, with offline tests in
 `tooling/evals/test_head_wait.py`. The section also tells the Director how to answer a `Re-sent by
 the Head` question. Only `dv:director-mode` changes (with the README's entry for it); the other
-fifteen skills have no behaviour changes, and their version moves to `0.49.0` only because the suite
+fifteen skills have no behaviour changes, and their version moves to `0.51.0` only because the suite
 is released as one plugin. Checked against Orca 1.4.277.
+
+Numbering: 0.51.0 follows 0.50.0. 0.49.0, which this work held, stays unreleased: 0.50.0
+merged first, and a release can't go below the highest one.
 
 Why: on 2026-11-26 a Head of Skills item sat Waiting for 5 h 39 min with nothing to wake him
 (VIL-1218). The first attempt (skills PR 124, held at `7bb4ad1`) used the item's status as its

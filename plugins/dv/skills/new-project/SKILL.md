@@ -4,7 +4,7 @@ description: "Bootstrap a new project on David's personal Mac in one run: a loca
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.52.0"
+  version: "0.53.0"
 ---
 
 # /new-project — bootstrap a new project on the personal Mac
@@ -16,6 +16,22 @@ onboarding ticket. A project brief then needs only the product and the tracker l
 <new_project_args>
 #$ARGUMENTS
 </new_project_args>
+
+## First step: dv-latest-check
+
+Before anything else, check that the dv this skill was loaded from is the latest stable release.
+Pass the base directory the client gave when it loaded this skill (Claude Code: "Base directory
+for this skill"; Codex: the directory of this SKILL.md), never a newer path found on disk now:
+
+```bash
+python3 -I "<base directory>/../../scripts/dv_latest_check.py" "<base directory>"
+```
+
+Quote its first line. On `current`, go on. On `stale` or `not verified`, hold every
+dv-dependent action (each step of this skill, and any commit, push, merge, hire, closeout, or
+Linear, GitHub or Orca write that dv's rules govern) and say why in that line's words; work
+that doesn't depend on dv can continue, and turning a mode `off` is never held. While a dv mode
+stays on, run the check again before each later dv-dependent action.
 
 ## Arguments
 

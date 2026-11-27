@@ -4,7 +4,7 @@ description: Stress-test a plan before implementing it by running three parallel
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.52.0"
+  version: "0.53.0"
 ---
 
 # /critique — Multi-Agent Plan Critique
@@ -19,6 +19,22 @@ the approach.
 Optionally scope it: `/dv:critique migrate from NVM to fnm` or `/dv:critique redesign the lazy loader pattern`.
 
 Optionally set the model and effort of the three critique agents at the start of the arguments: `/dv:critique model: opus effort: high migrate from NVM to fnm`. `model` takes `haiku`, `sonnet` or `opus`; `effort` takes `low`, `medium`, `high`, `xhigh` or `max`. Either may be left out. The defaults are today's behaviour (default: Sonnet, no effort set). A leading `model:` or `effort:` is a setting, not part of the change to critique. Under Codex, `model:` and `effort:` are not applied yet: the three agents run as they do today.
+
+## First step: dv-latest-check
+
+Before anything else, check that the dv this skill was loaded from is the latest stable release.
+Pass the base directory the client gave when it loaded this skill (Claude Code: "Base directory
+for this skill"; Codex: the directory of this SKILL.md), never a newer path found on disk now:
+
+```bash
+python3 -I "<base directory>/../../scripts/dv_latest_check.py" "<base directory>"
+```
+
+Quote its first line. On `current`, go on. On `stale` or `not verified`, hold every
+dv-dependent action (each step of this skill, and any commit, push, merge, hire, closeout, or
+Linear, GitHub or Orca write that dv's rules govern) and say why in that line's words; work
+that doesn't depend on dv can continue, and turning a mode `off` is never held. While a dv mode
+stays on, run the check again before each later dv-dependent action.
 
 ## Steps
 

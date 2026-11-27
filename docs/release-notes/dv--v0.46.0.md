@@ -5,16 +5,16 @@ the session's own reads now hold every path they take from that text (for `dv:gr
 comments too), or from anything it points to, to the path rules of `dv:groom`'s "Done means lines
 that already pass" check ("The path and the pattern"), with one rule before them (a path that
 starts with `/` or `~` is outside the repo and is not read) and link tests after them (a path that
-is, or sits under, a symbolic link, a submodule or a nested repository, or is a hard link, is
-refused, found by its git file mode at the commit and by `ls -ld` in the working tree). A path a
-name rule refuses is never read, not even to see whether it exists, one the link tests refuse has
-no contents read, and the fact is not checked (`dv:groom`) or `[assumed]` (`dv:ticket`), with the
-reason. A search across files for a word that text, or anything it points to, gives is not made at
-all, since it would open files no path rule has judged. This closes the limit that the dv 0.43.0
-and 0.44.0 release notes listed under "Not in this release": those reads took paths from the ticket
-without the check's path rules, secret-named paths included (VIL-1224). Only `dv:groom` and
-`dv:ticket` change. The other fourteen skills have no behaviour changes; their version moves to
-`0.46.0` only because the suite is released as one plugin.
+is, or sits under, a symbolic link or a submodule, or is a hard link, is refused, found by its git
+file mode at the commit and by `ls -ld` in the working tree). A path a name rule refuses is never
+read, not even to see whether it exists, one the link tests refuse has no contents read, and the
+fact is not checked (`dv:groom`) or `[assumed]` (`dv:ticket`), with the reason. A search across
+files for a word that text, or anything it points to, gives is not made at all, since it would open
+files no path rule has judged. This closes the limit that the dv 0.43.0 and 0.44.0 release notes
+listed under "Not in this release": those reads took paths from the ticket without the check's path
+rules, secret-named paths included (VIL-1224). Only `dv:groom` and `dv:ticket` change. The other
+fourteen skills have no behaviour changes; their version moves to `0.46.0` only because the suite
+is released as one plugin.
 
 Why: since dv 0.43.0 a fact stated as a command is checked only by the already-passing check,
 under its path rules, but a fact stated in words was still checked with reads that took any path
@@ -40,9 +40,8 @@ secret-named file and get back what it found.
     metadata" or "not checked: secret-named path" (the `.git` and secret-name tests ignore case, as
     before);
   - then the link tests: a path that is a symbolic link, a hard link or a submodule, or that sits
-    under a symbolic link, a submodule or another repository nested in this one, is "not checked:
-    link". A submodule or nested repository gets the same reason as a link, since each leads to
-    files the rules did not judge.
+    under a symbolic link or a submodule, is "not checked: link". A submodule gets the same reason
+    as a link, since both lead to files the rules did not judge.
 
   The link tests are the only reads of the path before it passes, and read modes, never contents,
   on each part of the path from the top; a path passes only when every part passes both. At the
@@ -50,13 +49,14 @@ secret-named file and get back what it found.
   and `--no-lazy-fetch`, the read the already-passing check makes: mode `040000` passes the part,
   `100644` or `100755` passes it and ends the test, `120000` is a symbolic link, `160000` a
   submodule, and a part that prints nothing passes and ends the test. In the working tree, whether
-  the commit tracks the path or not, one `ls -ld` naming every part and each part's `.git` entry: a
-  `d` line passes a part, and so does a `-` line (for the whole path, only with a link count of 1);
-  an `l` line is a symbolic link, a `-` line for the whole path with a link count above 1 a hard
-  link, and any line for a `.git` entry a submodule or nested repository; a missing entry passes
-  (for a part, it ends the test). Any other output, or a test that cannot be made (the commit not
-  in the local clone, or a repo with no local clone), is "not checked: read failed". Only a path
-  that passes both tests is read.
+  the commit tracks the path or not, one `ls -ld` naming every part, from the first directory to
+  the whole path; for `docs/notes/a.md` that is
+  `ls -ld -- "<top level>"/'docs' "<top level>"/'docs/notes' "<top level>"/'docs/notes/a.md'`.
+  A `d` line passes a part, and so does a `-` line (for the whole path, only with a link count of
+  1); an `l` line is a symbolic link, and a `-` line for the whole path with a link count above 1 a
+  hard link; a missing part passes and ends the test. Any other output, or a test that cannot be
+  made (the commit not in the local clone, or a repo with no local clone), is "not checked: read
+  failed". Only a path that passes both tests is read.
 
   A path a name rule refuses is not read in any way, not even to see whether it exists, one the
   link tests refuse has no contents read, and nothing about a refused path, or about a secret-named
@@ -102,6 +102,12 @@ secret-named file and get back what it found.
   session's own reads for a fact stated in words get the path rules and link tests only, not the
   disclosure boundary of the check's search, which would leave almost every content fact in a
   private repo unchecked. The same holds in any repo for a file the repo does not track.
+- **An untracked file, a file inside a nested repository included, is judged by its name alone.**
+  Apart from the working-tree link test (a symbolic or hard link), nothing looks at it beyond its
+  name: git's file mode does not cover it, and nothing checks whether it sits inside another
+  repository nested in this one that the commit does not record as a submodule (mode `160000`), so
+  that repository's files (a bare repository's `config` included) are read and reported when their
+  names pass the rules.
 - **A path outside the repo is not checked.** A path that starts with `/` or `~` is never read;
   the report says "not checked: path outside the repo" (in `dv:ticket`, `[assumed]` with that
   reason), and such a fact has to be checked by hand. A path that climbs out with `..` is refused

@@ -198,17 +198,18 @@ beyond its reason: mark the fact `[assumed]` and list it in the Agent notes unde
 checked, with the reason: "path outside the repo" for a path that starts with `/` or `~`, so
 whoever reads the ticket knows to check it by hand, or otherwise "unsafe path", "git metadata",
 "secret-named path", "link" (a symbolic link, a hard link or a submodule, or a path under a
-symbolic link, a submodule or a nested repository), "read failed" (a link test that cannot be made,
-or that gives output the tests do not name) or "default-branch commit not verified". A search
-across files (of a directory or of the whole repo) for a word the request, or a ticket, PR, file or
-page it points to, gives, such as one that would check "no file mentions X", is not made: the fact
-is `[assumed]` the same way ("search across files"). If `../groom/SKILL.md` cannot be read, every
-fact whose check would read a path taken from the request or from anything it points to is
-`[assumed]` ("dv:groom's path rules could not be read"). These reads are not held to the disclosure
-boundary; only the search in `dv:groom`'s check is. The rules judge a path by its name and its link
-tests, not by what the file holds, so in a private repo a fact the request states in words about a
-file whose path passes them is still read, and the draft says what was found; in any repo so is one
-about a file the repo does not track.
+symbolic link or a submodule), "read failed" (a link test that cannot be made, or that gives output
+the tests do not name) or "default-branch commit not verified". A search across files (of a
+directory or of the whole repo) for a word the request, or a ticket, PR, file or page it points to,
+gives, such as one that would check "no file mentions X", is not made: the fact is `[assumed]` the
+same way ("search across files"). If `../groom/SKILL.md` cannot be read, every fact whose check
+would read a path taken from the request or from anything it points to is `[assumed]` ("dv:groom's
+path rules could not be read"). These reads are not held to the disclosure boundary; only the
+search in `dv:groom`'s check is. The rules judge a path by its name and its link tests, not by what
+the file holds, so in a private repo a fact the request states in words about a file whose path
+passes them is still read, and the draft says what was found; in any repo so is one about a file
+the repo does not track, a file inside a nested repository included: nothing checks whether a path
+sits inside one.
 
 The format's run of each Done means command on the default branch ("A Done means command fails
 first") runs nothing either, whether the command came from the request or you wrote it: check each

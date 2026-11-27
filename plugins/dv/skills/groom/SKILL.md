@@ -310,10 +310,9 @@ refuses it gives the reason, and the fact is not checked, with that reason:
 - Otherwise, that section's rules for a path, in its order: "not checked: unsafe path", "not
   checked: git metadata" or "not checked: secret-named path".
 - Then, for a path those name rules let through, the link tests below: a path that is a symbolic
-  link, a hard link or a submodule, or that sits under a symbolic link, a submodule or another
-  repository nested in this one, is "not checked: link". A submodule or nested repository gets the
-  same reason as a link, since each leads to files these rules did not judge (they belong to
-  another repo).
+  link, a hard link or a submodule, or that sits under a symbolic link or a submodule, is "not
+  checked: link". A submodule gets the same reason as a link, since both lead to files these rules
+  did not judge (a submodule's files belong to another repo).
 
 **The link tests.** They are the only reads of the path before it passes, and they read modes,
 never contents; the working-tree test may read a later part's mode through a link that an earlier
@@ -329,14 +328,14 @@ when every part passes both:
   `160000` a submodule. A read that prints nothing passes and ends this test: that part, and what
   lies under it, is not tracked at the commit.
 - **In the working tree**, whether the commit tracks the path or not, in one read that names every
-  part and each part's `.git` entry, each as `"<top level>"/'<part>'`:
-  `ls -ld -- "<top level>"/'<part>' "<top level>"/'<part>'/.git …`. For a part, a line that starts
-  with `d` passes it, and so does one that starts with `-`, for the whole path only with a link
-  count (its second field) of 1; a line that starts with `l` is a symbolic link, and a `-` line for
-  the whole path with a link count above 1 is a hard link. Any line for a `.git` entry is a
-  submodule or a nested repository. An entry `ls` reports missing ("No such file or directory" or
-  "Not a directory") passes; for a part, it also ends this test, and the parts after it are
-  missing too.
+  part, from the first directory to the whole path, each as `"<top level>"/'<part>'`. For the path
+  `docs/notes/a.md` that read is
+  `ls -ld -- "<top level>"/'docs' "<top level>"/'docs/notes' "<top level>"/'docs/notes/a.md'`.
+  A line that starts with `d` passes its part, and so does one that starts with `-`, for the whole
+  path only with a link count (its second field) of 1; a line that starts with `l` is a symbolic
+  link, and a `-` line for the whole path with a link count above 1 is a hard link. A part `ls`
+  reports missing ("No such file or directory" or "Not a directory") passes and ends this test;
+  the parts after it are missing too.
 
 Any other output, or a test that cannot be made (the commit is not in the local clone, or the repo
 has no local clone, as for a URL of a file in a repo you have not cloned), leaves the fact "not
@@ -356,7 +355,8 @@ pass", which keep that check's own rules and results. Your own reads above are n
 disclosure boundary; only the check's search is. The rules judge a path by its name and its link
 tests, not by what the file holds, so in a private repo a fact stated in words about a file whose
 path passes them is still read and reported, and in any repo so is one about a file the repo does
-not track.
+not track, a file inside a nested repository included: nothing checks whether a path sits inside
+one.
 
 Report each fact as current, stale (with what is true now) or not checked. Treat each
 `[assumed]` marker as a fact to check: if it holds, propose removing the marker; if it is stale,

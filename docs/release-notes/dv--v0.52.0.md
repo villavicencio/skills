@@ -7,8 +7,7 @@ PR-body note. Any other round past two, and the declines the session asks about,
 Director as before. The other fourteen skills have no behaviour changes; their version moves to
 `0.52.0` only because the suite is released as one plugin.
 
-Numbering: 0.52.0 follows 0.50.0, with 0.51.0 held by open PR 130; the version is re-checked at
-the merge if that changes.
+Numbering: 0.52.0 follows 0.51.0 (PR 130, merged).
 
 Why: dotfiles "Fix rounds" now lets a low-risk third round go ahead without asking, but both
 skills still gave a worktree session only rounds 1 and 2 and sent every round past two to the

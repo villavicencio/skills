@@ -25,15 +25,20 @@ Commands (the first printed line starts with the outcome word):
              unreadably, so it may have gone; closing record posted) | RETIRE UNVERIFIED (closing
              record posted, the wake not confirmed disabled) | NOT CLAIMED | STOPPED | CLOSED |
              FULL | REFUSED | UNREADABLE | UNCLEAR
-  retire     --item --wait --id                RETIRED | GONE | UNVERIFIED
+  retire     --item --wait --id                RETIRED | GONE | UNVERIFIED | REFUSED (an id no
+                                               Armed, Rewake, UNARMED or Retire unverified
+                                               line of W<k> names) | UNREADABLE
   reconcile  --item --wait --text-file [--final <case>]
              NOTED | RECONCILED | DUPLICATE | UNCHECKED | REFUSED | UNREADABLE | UNCLEAR
   rewake     --item --wait                     REWOKEN | COVERED | HELD | UNCOVERED |
                                                UNRECORDED | NOT CLAIMED | CLOSED | BLOCKED |
                                                NO WAIT | REFUSED
-  restart    --bot                             read-only: RESTART <count> (INCOMPLETE RESTART when
-                                               an item can't be read), then one line each;
-                                               UNREADABLE when the item list can't be read
+  restart    --bot                             read-only, every open item and each done or
+                                               canceled one whose listed links show a marker:
+                                               RESTART <count> (INCOMPLETE RESTART when an item
+                                               can't be read or the list stops at its page
+                                               limit), then one line each; UNREADABLE when the
+                                               item list can't be read
   --version
 
 Step commands, the same code `arm` and `close` run, for the live tests and reconciliation:
@@ -42,6 +47,7 @@ Step commands, the same code `arm` and `close` run, for the live tests and recon
                                                UNREADABLE | UNCLEAR
   close-unarmed --item --wait --step [--wake-id]
              UNARMED | NOT CLAIMED | CLOSED | FULL | REFUSED | UNREADABLE | UNCLEAR
+             (--wake-id only for a wake Orca shows with the item's bot and W<k>'s prompt)
 A `claim` run alone is a winner that stopped: it never sends, and only `reconcile` gives that
 wait its closing record.
 
@@ -80,7 +86,8 @@ Rules the code keeps:
   - Each orca call stops after 60 s and starts only when those 60 s fit inside the command's
     first 540 s, so a command ends within 10 minutes. A command's first read of the item is
     tried up to 3 times (15 s, then 45 s apart) on an error that can pass; a read that shows a
-    marker link without its event is read again at once.
+    marker link without its event is read again at once, twice at most, and a third such read
+    is a failed read that can pass.
 
 Exit codes: 0 the command's normal outcome (ARMED, OPEN, IDLE, CLAIMED, RETIRED, GONE, NOTED,
 RECONCILED, REWOKEN, COVERED, RESTART; RESERVED for reserve); 1 UNCLEAR, UNREADABLE, UNCHECKED,
@@ -474,7 +481,7 @@ def unsettled_markers(item: Item) -> bool:
 def read_item(n: int, tries: int = 1) -> tuple:
     """Returns (Item, None) or (None, reason). Up to `tries` reads while the error is one that
     can pass, with READ_PAUSES_S between them; a read that shows a marker link without its event
-    is read again at once, up to twice."""
+    is read again at once, up to twice, and a third such read is a failed read that can pass."""
     why, done = "", 0
     for attempt in range(tries):
         if attempt:
@@ -487,6 +494,9 @@ def read_item(n: int, tries: int = 1) -> tuple:
             item, why, passing = read_pages(n)
             if item is None or not unsettled_markers(item):
                 break
+        else:
+            item, why, passing = None, "bot item show: a marker link without its linked " \
+                                       "event in 3 reads", True
         if item is not None:
             return item, None
         if not passing:
@@ -508,6 +518,8 @@ ARMED_LINE = re.compile(r"Armed, item (\d+) W(\d+): wake (" + UUID + r"), target
 REWAKE_CLAIM_LINE = re.compile(r"Rewake claim, item (\d+) W(\d+): (" + UUID + r")\.")
 REWAKE_LINE = re.compile(r"Rewake, item (\d+) W(\d+): wake (" + UUID + r"), target (" + TIME
                          + r")\.")
+WAKE_NAMED_LINE = re.compile(r"(?:UNARMED, item (\d+) W(\d+): [a-z-]+; wake|Retire unverified, "
+                             r"item (\d+) W(\d+): wake) (" + UUID + r")\.")
 SNOOZE_LINE = re.compile(r"Snoozed until (\S+)")
 UNSNOOZE_LINE = re.compile(r"Unsnoozed\b")
 SENT_RECEIPT = re.compile(r"\bSent: msg_[0-9a-f]{12} to ")
@@ -579,6 +591,20 @@ class Wait:
     def wake_id(self) -> str | None:
         cur = self.current_wake()
         return cur[1] if cur else None
+
+
+def recorded_wakes(item: Item, w: Wait) -> set:
+    """The wake ids the item's own lines name for W<k> after its reservation: its Armed and
+    Rewake lines, and the UNARMED and Retire unverified lines the script posts for a wake it made
+    or retired."""
+    ids = {x[1] for x in ([w.armed] if w.armed else []) + w.rewakes}
+    start = eid(w.reserved_ev)
+    for e in item.own_comments() if start >= 0 else ():
+        m = WAKE_NAMED_LINE.fullmatch(e["data"]["text"].split("\n", 1)[0])
+        if m and eid(e) > start and int(m.group(1) or m.group(3)) == item.number and int(
+                m.group(2) or m.group(4)) == w.k:
+            ids.add(m.group(5))
+    return ids
 
 
 def markers_on(item: Item) -> dict:
@@ -1016,6 +1042,11 @@ def cmd_close_unarmed(a: argparse.Namespace) -> tuple:
                            "an armed wait is closed by close, not unarmed"
     if a.step == "reservation-without-record" and w.record is not None:
         return EXIT_OTHER, f"REFUSED item {n} W{k}: it has a record {w.record['id']}"
+    if wake is not None:
+        word, problem = foreign_wake(item, k, wake)
+        if problem:
+            return (EXIT_UNCLEAR if word == "UNREADABLE" else EXIT_OTHER), \
+                f"{word} item {n} W{k}: --wake-id: {problem}; nothing written"
     detail = {"manual": "closed unarmed by hand",
               "reservation-without-record": "reservation without a record"}.get(
         a.step, "closed unarmed by hand at this step")
@@ -1336,6 +1367,12 @@ def send_once(n: int, k: int, w: Wait, body: str, scratch: Scratch) -> tuple:
 def cmd_retire(a: argparse.Namespace) -> tuple:
     n, k = int(need(RE_ITEM, a.item, "--item")), wait_number(a.wait)
     wake = need(RE_UUID, a.id, "--id")
+    item, why = read_item(n, READ_TRIES)
+    if item is None:
+        return EXIT_UNCLEAR, f"UNREADABLE item {n} W{k}: {why}; nothing edited"
+    if wake not in recorded_wakes(item, Wait(item, k)):
+        return EXIT_OTHER, f"REFUSED item {n} W{k}: no Armed, Rewake, UNARMED or Retire " \
+                           f"unverified line of W{k} names wake {wake}; nothing edited"
     scratch = Scratch()
     try:
         line = retire(n, k, wake, scratch)
@@ -1537,8 +1574,53 @@ def wake_state(wake: str) -> str:
     return "unreadable (" + res.describe() + ")"
 
 
+def foreign_wake(item: Item, k: int, wake: str) -> tuple:
+    """(None, None) when Orca shows `wake` as a wake for item n W<k>: the item's bot, and the
+    prompt wake_prompt gives that wait; else (REFUSED or UNREADABLE, the reason). An arm cut off
+    after its create leaves no line naming the wake, so close-unarmed checks the automation."""
+    res = run_orca(["automations", "show", "--id", wake, "--json"])
+    auto = res.result.get("automation") if res.state == "ok" else None
+    if res.state == "error" and res.message.strip() == "Automation not found.":
+        return "REFUSED", f"wake {wake} is gone (Automation not found.); run it without --wake-id"
+    if not isinstance(auto, dict) or auto.get("id") != wake:
+        return "UNREADABLE", f"Orca doesn't show wake {wake} ({res.describe()})"
+    bot = auto.get("bot") if isinstance(auto.get("bot"), dict) else {}
+    prompt = auto.get("prompt")
+    lead, tail = wake_prompt(item.number, k, "\0").split("\0")
+    if bot.get("botId") != item.owner_bot or not isinstance(prompt, str) or not re.fullmatch(
+            re.escape(lead) + TIME + re.escape(tail), prompt):
+        return "REFUSED", f"wake {wake} is not a wake for item {item.number} W{k} (its bot or " \
+                          "prompt differs)"
+    return None, None
+
+
+def closed_item_findings(item: Item) -> list:
+    """A done or canceled item: each wait with a marker and no closing record."""
+    n, out = item.number, []
+    for k in sorted(markers_on(item)):
+        w = Wait(item, k)
+        if not w.reserved:
+            out.append(f"ITEM {n} W{k}: W{k}-closed is linked with no W{k} (a stray marker)")
+        elif w.closing is not None:
+            continue
+        elif w.blocked is not None:
+            out.append(f"ITEM {n} W{k}: the item is {item.status}; W{k} is blocked at the link cap "
+                       f"({w.blocked['id']}), " + (f"carried ({w.carried['id']})" if w.carried
+                                                   else "not carried to a fresh item"))
+        elif w.closed:
+            out.append(f"ITEM {n} W{k}: the item is {item.status}; W{k} is closed with no "
+                       "closing record" + (f"; {len(w.notes)} reconcile note(s)" if w.notes
+                                           else ""))
+        else:
+            out.append(f"ITEM {n} W{k}: the item is {item.status}; W{k} was never closed, so it "
+                       "has no closing record")
+    return out
+
+
 def findings_for(item: Item) -> list:
     n, out = item.number, []
+    if item.status in ("done", "canceled"):
+        return closed_item_findings(item)
     seen = markers_on(item)
     now_ms = now_s() * 1000
     for k in sorted(seen):
@@ -1585,24 +1667,41 @@ def findings_for(item: Item) -> list:
     return out
 
 
+def has_own_marker(listed: dict) -> bool:
+    """Whether a listed item's links show a marker of its own; links that aren't a list count
+    as a yes, so the item is read."""
+    links = listed.get("links")
+    if not isinstance(links, list):
+        return True
+    for link in links:
+        m = RE_MARKER.fullmatch(str(link.get("ref"))) if isinstance(link, dict) else None
+        if m and int(m.group(1)) == listed["number"]:
+            return True
+    return False
+
+
 def cmd_restart(a: argparse.Namespace) -> tuple:
+    """Reads every open item, and each done or canceled item whose listed links show a marker."""
     bot = need(RE_BOT, a.bot, "--bot")
-    numbers, cursor = [], None
+    numbers, cursor, cut = [], None, False
     for _ in range(SHOW_PAGES_MAX):
         args = ["bot", "item", "list", "--bot", bot, "--status",
-                "planned,in-progress,waiting,needs-you", "--limit", "100"]
+                "planned,in-progress,waiting,needs-you,done,canceled", "--limit", "100"]
         res = run_orca(args + (["--cursor", cursor] if cursor else []) + ["--json"])
         items = res.result.get("items") if res.state == "ok" else None
         if not isinstance(items, list):
             return EXIT_UNCLEAR, f"UNREADABLE restart: bot item list: {res.describe()}"
-        numbers += [i.get("number") for i in items if isinstance(i, dict)
-                    and isinstance(i.get("number"), int)]
+        numbers += [i["number"] for i in items if isinstance(i, dict)
+                    and isinstance(i.get("number"), int)
+                    and (i.get("status") not in ("done", "canceled") or has_own_marker(i))]
         nxt = res.result.get("nextCursor")
         if not nxt:
             break
         if not isinstance(nxt, str) or not re.fullmatch(r"\d+:\d+", nxt) or nxt == cursor:
             return EXIT_UNCLEAR, "UNREADABLE restart: bot item list printed a bad cursor"
         cursor = nxt
+    else:
+        cut = True
     lines, unreadable = [], []
     for n in numbers:
         item, why = read_item(n)
@@ -1611,10 +1710,15 @@ def cmd_restart(a: argparse.Namespace) -> tuple:
             continue
         lines += findings_for(item)
     lines += unreadable
-    first = (f"INCOMPLETE RESTART {len(lines)} finding(s) on {len(numbers)} open item(s), "
-             f"{len(unreadable)} unreadable" if unreadable else
-             f"RESTART {len(lines)} finding(s) on {len(numbers)} open item(s)")
-    return (EXIT_UNCLEAR if unreadable else EXIT_OK), "\n".join([first] + lines)
+    if cut:
+        lines.append(f"ITEM LIST: stopped at {SHOW_PAGES_MAX} pages with more to read; the items "
+                     "past them were not read")
+    counted = f"{len(lines)} finding(s) on {len(numbers)} item(s) read"
+    if unreadable or cut:
+        first = f"INCOMPLETE RESTART {counted}, {len(unreadable)} unreadable" + (
+            f", the item list cut at {SHOW_PAGES_MAX} pages" if cut else "")
+        return EXIT_UNCLEAR, "\n".join([first] + lines)
+    return EXIT_OK, "\n".join([f"RESTART {counted}"] + lines)
 
 
 # ------------------------------------------------------------------------------ main

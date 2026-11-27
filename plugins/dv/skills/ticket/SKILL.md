@@ -184,22 +184,22 @@ evidence, is checked with reads of your own, and that command is not run.
 
 Each path those reads take from the request, or from a ticket, PR, file or page it points to, is
 checked first, before any read of it, under `dv:groom` step 3's "Paths in your own reads" (in
-`../groom/SKILL.md`; read that part there), which applies its "The path and the pattern": a file
-the request names only in words counts, worked out as that part says, and the first rule that
-refuses the path gives the reason. A refused path is not read in any way, not even to see whether
-it exists, and nothing about it, or about a secret-named entry any read shows, goes in the draft or
-the ticket beyond its reason: mark the fact `[assumed]` and list it in the Agent notes under what
-was not checked, with the reason: "path outside the repo" for a path that starts with `/` or `~`,
-so whoever reads the ticket knows to check it by hand, or otherwise "unsafe path", "git metadata"
-or "secret-named path". A search across files (of a directory or of the whole repo) for a word the
-request gives, such as one that would check "no file mentions X", is not made: the fact is
-`[assumed]` the same way ("search across files"). If `../groom/SKILL.md` cannot be read, every fact
-whose check would read a path taken from the request is `[assumed]` ("dv:groom's path rules could
-not be read"). These reads are not held to the disclosure boundary; only the search in `dv:groom`'s
-check is. The rules judge a path by its name alone, so in a private repo a fact the request states
-in words about a file whose path passes them is still read, and the draft says what was found; in
-any repo so is one about a file the repo does not track, or about a path that is a link or sits
-under one, wherever the link leads.
+`../groom/SKILL.md`; read that part there), which applies its "The path and the pattern": a link to
+a file in a repo and a file the request names only in words count, as that part says, and the first
+rule that refuses the path gives the reason. A refused path is not read in any way, not even to see
+whether it exists, and nothing about it, or about a secret-named entry any read shows, goes in the
+draft or the ticket beyond its reason: mark the fact `[assumed]` and list it in the Agent notes
+under what was not checked, with the reason: "path outside the repo" for a path that starts with
+`/` or `~`, so whoever reads the ticket knows to check it by hand, or otherwise "unsafe path", "git
+metadata" or "secret-named path". A search across files (of a directory or of the whole repo) for a
+word the request, or a ticket, PR, file or page it points to, gives, such as one that would check
+"no file mentions X", is not made: the fact is `[assumed]` the same way ("search across files"). If
+`../groom/SKILL.md` cannot be read, every fact whose check would read a path taken from the request
+is `[assumed]` ("dv:groom's path rules could not be read"). These reads are not held to the
+disclosure boundary; only the search in `dv:groom`'s check is. The rules judge a path by its name
+alone, so in a private repo a fact the request states in words about a file whose path passes them
+is still read, and the draft says what was found; in any repo so is one about a file the repo does
+not track, or about a path that is a symbolic link or sits under one, wherever the link leads.
 
 The format's run of each Done means command on the default branch ("A Done means command fails
 first") runs nothing either, whether the command came from the request or you wrote it: check each
@@ -353,6 +353,7 @@ groom from this skill.
   reason. A search pattern is the one exception: `dv:groom`'s check (File step 5) says which
   patterns it takes, and it reaches a read only inside single quotes, after `-e`. A path taken
   from that text also goes through the path rules File step 5 applies before any read of it, in
-  every step, and a search across files for a word that text gives is not made (File step 5).
+  every step, and a search across files for a word that text gives is not made ("search across
+  files", File step 5).
 - Do not put secrets or credentials in a ticket.
 - A ticket that already meets the format stays as it is.

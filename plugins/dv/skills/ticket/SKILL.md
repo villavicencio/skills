@@ -196,14 +196,14 @@ under what was not checked, with the reason: "path outside the repo" for a path 
 `/` or `~`, so whoever reads the ticket knows to check it by hand, or otherwise "unsafe path", "git
 metadata" or "secret-named path". A fact that search does not settle is `[assumed]` the same way,
 with the reason those steps give ("commit not in the clone", "file list incomplete", "search would
-open a secret-named path", "read failed" or "secret-named files not searched"). If
-`../groom/SKILL.md` cannot be read, every fact whose check would read a path taken from the
-request, or search more than one file for a word it gives, is `[assumed]` ("dv:groom's path rules
-could not be read"). These reads are not held to the disclosure boundary; only the search in
-`dv:groom`'s check is. The rules judge a path by its name alone, so in a private repo a fact the
-request states in words about a file whose path passes them is still read, and the draft says what
-was found; in any repo so is one about a file the repo does not track, or about a path that is a
-link or sits under one, wherever the link leads.
+open a refused path", "read failed" or "refused files not searched"). If `../groom/SKILL.md` cannot
+be read, every fact whose check would read a path taken from the request, or search more than one
+file for a word it gives, is `[assumed]` ("dv:groom's path rules could not be read"). These reads
+are not held to the disclosure boundary; only the search in `dv:groom`'s check is. The rules judge
+a path by its name alone, so in a private repo a fact the request states in words about a file
+whose path passes them is still read, and the draft says what was found; in any repo so is one
+about a file the repo does not track, or about a path that is a link or sits under one, wherever
+the link leads.
 
 The format's run of each Done means command on the default branch ("A Done means command fails
 first") runs nothing either, whether the command came from the request or you wrote it: check each

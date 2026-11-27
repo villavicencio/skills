@@ -6,8 +6,9 @@ the session's own reads now hold every path they take from that text to the path
 rule before them: a path that starts with `/` or `~` is outside the repo and is not read. A
 refused path is never read, not even to see whether it exists, and the fact is not checked
 (`dv:groom`) or `[assumed]` (`dv:ticket`), with the reason. A search of the session's own across
-more than one file, for a word the text gives, leaves out every tracked secret-named file, and it
-fails closed: it runs only after a complete, successful list of the commit's files. This
+more than one file, for a word the text gives, leaves out every tracked file whose path those rules
+refuse, secret-named ones included, and it fails closed: it runs only after a complete, successful
+list of the commit's files. This
 closes the limit that the dv 0.43.0 and 0.44.0 release notes listed under "Not in this release":
 those reads took paths from the ticket without the check's path rules, secret-named paths
 included (VIL-1224). Only `dv:groom` and `dv:ticket` change. The other fourteen skills have no
@@ -38,23 +39,26 @@ secret-named file and get back what it found.
   A refused path is not read in any way, not even to see whether it exists, and nothing about it,
   or about a secret-named entry any read shows, goes in the reply, the report or Linear beyond the
   reason. A search of the session's own across more than one file in a repo, for a word the text
-  gives (step 5's search for every spelling of a value included), opens no secret-named file, and
-  it fails closed. It runs at the commit step 1 recorded, in four steps:
+  gives (step 5's search for every spelling of a value included), opens no file whose path those
+  rules refuse, and it fails closed. It runs at the commit step 1 recorded, every read of the
+  repo's objects with `--no-replace-objects` and `--no-lazy-fetch` as the check's reads have, in
+  four steps:
   1. When that commit is not in the local clone (`cat-file -e` fails), the search is not made, and
      the working tree is not searched instead: "not checked: commit not in the clone".
   2. `git -c core.quotePath=true ls-tree -r --name-only <commit>` must exit 0 and be read in full
      (nothing cut by `head`, a filter or the tool's output limit); otherwise "not checked: file
-     list incomplete". Each name is judged with the secret-named rule, inside git's quotes for a
-     name git quotes. A secret-named name that git quotes, or that holds `'`, cannot be left out
-     by a pathspec, so the search is not made: "not checked: search would open a secret-named
-     path".
+     list incomplete". Each name is judged with all three path rules (unsafe path, git metadata,
+     secret-named path), inside git's quotes for a name git quotes, and each name a rule refuses is
+     left out. A refused name that git quotes, or that holds `'`, cannot be left out by a pathspec,
+     so the search is not made: "not checked: search would open a refused path". So a repo that
+     tracks such a name is not searched across files at all.
   3. `git grep -F -e '<word>' <commit> -- .`, the word only when it passes the Rules' test for a
-     value taken from ticket text, with a `':(exclude,literal)<path>'` pathspec for each
-     secret-named path, judged by what it prints: output whose every line starts with `<commit>:`
-     holds matches, no output and no error is no match, and anything else is "not checked: read
-     failed".
+     value taken from ticket text, with a `':(exclude,literal)<path>'` pathspec for each name left
+     out, judged by its output and exit: output whose every line starts with `<commit>:`, with
+     exit 0, holds matches; no output and no error, with exit 0 or 1, is no match; anything else,
+     an error or an exit other than 0 or 1 included, is "not checked: read failed".
   4. No match covers only the files searched: when a file was left out, a fact that the word
-     appears nowhere is "not checked: secret-named files not searched".
+     appears nowhere is "not checked: refused files not searched".
 
   The paragraph does not apply to the check's own reads, which keep the check's rules and results.
   It says plainly that these reads are not held to the disclosure boundary (only the check's search
@@ -72,7 +76,7 @@ secret-named file and get back what it found.
   steps at the default branch's commit, taken from the local clone and compared with origin's as
   `dv:groom` step 1 does, the same commit a fact stated as a command uses, and a fact it does not
   settle is `[assumed]` with that step's reason ("commit not in the clone", "file list
-  incomplete", "search would open a secret-named path", "read failed" or "secret-named files not
+  incomplete", "search would open a refused path", "read failed" or "refused files not
   searched"). If `../groom/SKILL.md` cannot be read, every fact whose check would read a path
   taken from the request, or search more than one file for a word it gives, is `[assumed]`
   ("dv:groom's path rules could not be read"). The step says plainly that in a private repo a fact

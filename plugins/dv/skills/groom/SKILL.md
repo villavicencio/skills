@@ -308,30 +308,36 @@ gives the reason, and the fact is not checked, with that reason:
 A refused path is not read in any way, not even to see whether it exists, and nothing about it,
 or about a secret-named entry any read of yours shows, goes in the reply, the report or Linear
 beyond the reason. A search of your own across more than one file in a repo, for a word the text
-gives (step 5's search for every spelling of a value included), opens no secret-named file either,
-and it fails closed. Make it in this order, at the commit step 1 recorded:
+gives (step 5's search for every spelling of a value included), opens no file whose path those
+rules refuse either, and it fails closed. Make it in this order, at the commit step 1 recorded,
+with every read of the repo's objects started with `git --no-replace-objects --no-lazy-fetch`, as
+the check's reads are and for the same reasons:
 
 1. **The commit.** When it is not in the local clone
-   (`git -C "<top level>" cat-file -e '<commit>^{commit}'` fails), do not make the search, and do
-   not search the working tree instead: "not checked: commit not in the clone".
-2. **The file list.** `git -c core.quotePath=true -C "<top level>" ls-tree -r --name-only <commit>`
+   (`git --no-replace-objects --no-lazy-fetch -C "<top level>" cat-file -e '<commit>^{commit}'`
+   fails), do not make the search, and do not search the working tree instead: "not checked:
+   commit not in the clone".
+2. **The file list.**
+   `git --no-replace-objects --no-lazy-fetch -c core.quotePath=true -C "<top level>" ls-tree -r --name-only <commit>`
    must exit 0, and you must read every line it prints, all of it even when the tool saves a long
    output to a file, with nothing cut by `head` or a filter. Otherwise do not make the search:
-   "not checked: file list incomplete". Judge each name with the secret-named rule; git prints a
-   name that holds a character outside printable ASCII, `"` or `\` in double quotes, with escapes,
-   so judge what is inside the quotes. A secret-named name that git quotes, or that holds `'`,
-   cannot be left out by a pathspec, so do not make the search: "not checked: search would open a
-   secret-named path".
+   "not checked: file list incomplete". Judge each name with that section's rules for a path
+   (unsafe path, git metadata, secret-named path); git prints a name that holds a character
+   outside printable ASCII, `"` or `\` in double quotes, with escapes, so judge what is inside the
+   quotes. A name that a rule refuses is left out of the search. One that git quotes, or that
+   holds `'`, cannot be left out by a pathspec, so do not make the search: "not checked: search
+   would open a refused path".
 3. **The search.** Pass the word only when it passes the Rules' test for a value taken from ticket
-   text: `git -C "<top level>" grep -F -e '<word>' <commit> -- .`, with `-n`, `-i` or `-l` added
-   as needed and a `':(exclude,literal)<path>'` pathspec for each secret-named path. Judge it by
-   what it prints, not by the exit alone, since Claude Code's Bash tool reports exit 1 as a
-   success with no output: output whose every line starts with `<commit>:` holds matches, no
-   output and no error is no match, and anything else, an error included, is "not checked: read
-   failed".
+   text:
+   `git --no-replace-objects --no-lazy-fetch -C "<top level>" grep -F -e '<word>' <commit> -- .`,
+   with `-n`, `-i` or `-l` added as needed and a `':(exclude,literal)<path>'` pathspec for each
+   name left out. Judge it by what it prints and how it exits, since Claude Code's Bash tool
+   reports exit 1 as a success with no output: output whose every line starts with `<commit>:`,
+   with exit 0, holds matches; no output and no error, with exit 0 or 1, is no match; anything
+   else, an error or an exit other than 0 or 1 included, is "not checked: read failed".
 4. **What it shows.** A match is reported as found. No match covers only the files searched: when
-   a file was left out, a fact that the word appears nowhere is "not checked: secret-named files
-   not searched".
+   a file was left out, a fact that the word appears nowhere is "not checked: refused files not
+   searched".
 
 This paragraph does not apply to the reads of "Done means lines that already pass", which keep
 that check's own rules and results. These reads are not held to the disclosure boundary; only the

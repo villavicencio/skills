@@ -615,12 +615,17 @@ authority, and changes nothing in Orca.
   whose wake is disabled or gone. For a wait with no closing record and no wake still due, it
   makes one one-time wake 16 minutes out (past the 15-minute reconcile rule), checks it as arm
   checks its wake, and posts a `Rewake` line naming it; it links nothing, and its run is a wake
-  like any other. `COVERED` means the wait's latest wake is still due (its time ahead and Orca
+  like any other. It makes nothing while the item holds the wait, by the fresh check's own
+  rules (Needs you, Orca's snooze, a `Snoozed until` line, closed after the record): `HELD`
+  names why, and you rewake once that ends. A wait gets at most 8 rewakes, even when two runs
+  overlap: each run first posts a `Rewake claim` line and creates only when fewer than 8 claims
+  came before it in Orca's event order (Orca writes comments one at a time, in id order), so a
+  run that loses prints `NOT CLAIMED` and makes nothing, and a claim counts even when its create
+  went wrong. `COVERED` means the wait's latest wake is still due (its time ahead and Orca
   showing it enabled; one whose state Orca can't show counts as not due); `CLOSED`, `BLOCKED` and
   `NO WAIT` mean the wait needs none, and `REFUSED` sends a wait reserved with no record to
-  `close-unarmed` (Reconcile, below). A wait gets at most 8 rewakes. On `UNCOVERED` (no wake
-  made) or `UNRECORDED` (a wake made, its line not posted), your first line says W<k> is
-  uncovered.
+  `close-unarmed` (Reconcile, below). On `UNCOVERED` (no wake made) or `UNRECORDED` (a wake made,
+  its line not posted), your first line says W<k> is uncovered.
 - **FULL**, Orca's permanent cap of 50 links on an item, is a blocker you show, never a reason to
   complete or cancel anything. When a claim answers `FULL`, the script posts a `Wait blocked`
   line (none when one is already there), retires the wake and sends nothing; that wait can't
@@ -661,14 +666,15 @@ authority, and changes nothing in Orca.
   can get a repeat. A run stopped inside one Orca call (a stopped process, a sleeping machine) can
   land that call after its window. A run killed before it can rewake, or Orca's items unreadable for
   longer than both a command's three tries and the rewake's, leaves a wait with no wake; the restart
-  list shows it. Two reconciliations at once can leave a wait two closing records (the first
-  counts). The per-key check sees only this item and its Carried from chain, not the same key armed
-  again on an unrelated item. Arm's Waiting write can overwrite a status set in the instant after
-  its last read; it starts only while T is at least a minute away, and the restart list flags a note
-  left on a spent wait. A wake due while Orca is down should run when Orca returns (read in Orca's
-  source, not tested). Markers don't survive restoring Orca's items database from a snapshot. The
-  step commands (`reserve`, `claim`, and `close-unarmed` with another step) are for the live tests
-  and reconciliation; `claim` alone leaves a winner that stopped, which only reconciliation closes.
+  list shows it, and so does a wait whose rewake was `HELD`, until you rewake it after the hold
+  ends. Two reconciliations at once can leave a wait two closing records (the first counts). The
+  per-key check sees only this item and its Carried from chain, not the same key armed again on an
+  unrelated item. Arm's Waiting write can overwrite a status set in the instant after its last read;
+  it starts only while T is at least a minute away, and the restart list flags a note left on a
+  spent wait. A wake due while Orca is down should run when Orca returns (read in Orca's source, not
+  tested). Markers don't survive restoring Orca's items database from a snapshot. The step commands
+  (`reserve`, `claim`, and `close-unarmed` with another step) are for the live tests and
+  reconciliation; `claim` alone leaves a winner that stopped, which only reconciliation closes.
 - **Your part, the Director's.** A message with the subject `Re-sent by the Head` is a question
   already asked. Answer it as that question, under its original key, to the asking session it
   names. If you already answered that key, send the same answer again, unchanged. If it isn't

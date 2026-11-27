@@ -28,8 +28,9 @@ Commands (the first printed line starts with the outcome word):
   retire     --item --wait --id                RETIRED | GONE | UNVERIFIED
   reconcile  --item --wait --text-file [--final <case>]
              NOTED | RECONCILED | DUPLICATE | UNCHECKED | REFUSED | UNREADABLE | UNCLEAR
-  rewake     --item --wait                     REWOKEN | COVERED | UNCOVERED | UNRECORDED |
-                                               CLOSED | BLOCKED | NO WAIT | REFUSED
+  rewake     --item --wait                     REWOKEN | COVERED | HELD | UNCOVERED |
+                                               UNRECORDED | NOT CLAIMED | CLOSED | BLOCKED |
+                                               NO WAIT | REFUSED
   restart    --bot                             read-only: RESTART <count> (INCOMPLETE RESTART when
                                                an item can't be read), then one line each;
                                                UNREADABLE when the item list can't be read
@@ -52,12 +53,17 @@ Rules the code keeps:
     file and passes that.
   - Only the run whose claim returned an event id sends for a wait, posts its closing record
     or retires its wake as part of closing it. Other lines close nothing (`Reconcile note`,
-    `Retire unverified`, `Carried`, `Rewake`, `Wait blocked`). The exceptions never send:
+    `Retire unverified`, `Carried`, `Rewake claim`, `Rewake`, `Wait blocked`). The exceptions
+    never send:
     FULL (the item is at Orca's 50-link cap, so the claim can't be linked) posts a `Wait blocked`
     line unless one is there and retires the wake; `reconcile --final` posts the closing record
     of a wait whose winner stopped (two at once can each post; the first counts, and the later
     one prints DUPLICATE); an arm whose item turned out closed retires the wake it made;
     `rewake` makes a one-time wake and posts a `Rewake` line, and links nothing.
+  - `rewake` makes nothing while the item holds the wait (Needs you, Orca's snooze, a Snoozed
+    until line, closed after the record): HELD. At most 8 rewakes per wait, even when runs
+    overlap: each run posts a `Rewake claim` line and creates only when fewer than 8 claims
+    came before it in Orca's event order; a claim counts whether or not its create succeeded.
   - A send happens only inside the `close` run whose claim returned an event id, after a fresh
     read of the item and of both sessions, and after a `Re-send` line posted. One send attempt
     per wait, never repeated, never from another command. No send under a key while an earlier
@@ -95,6 +101,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import uuid
 from pathlib import Path
 
 VERSION = "0.49.0"
@@ -496,6 +503,7 @@ RECORD_LINE = re.compile(
     r"Item at arm: ([a-z_]+), wait (\d+|none)\.(?: Carried from: item (\d+) W(\d+)\.)?")
 ARMED_LINE = re.compile(r"Armed, item (\d+) W(\d+): wake (" + UUID + r"), target (" + TIME
                         + r"), deadline (" + TIME + r")\.")
+REWAKE_CLAIM_LINE = re.compile(r"Rewake claim, item (\d+) W(\d+): (" + UUID + r")\.")
 REWAKE_LINE = re.compile(r"Rewake, item (\d+) W(\d+): wake (" + UUID + r"), target (" + TIME
                          + r")\.")
 SNOOZE_LINE = re.compile(r"Snoozed until (\S+)")
@@ -517,6 +525,7 @@ class Wait:
         self.resend = self.blocked = self.carried = None
         self.notes: list = []
         self.rewakes: list = []
+        self.rewake_claims: list = []
         start = eid(self.reserved_ev)
         tag = f", item {n} W{k}"
         for e in item.own_comments():
@@ -545,6 +554,10 @@ class Wait:
                 self.carried = e
             elif first.startswith(f"Reconcile note{tag}: "):
                 self.notes.append(e)
+            elif eid(e) > start >= 0 and first.startswith(f"Rewake claim{tag}: "):
+                m = REWAKE_CLAIM_LINE.fullmatch(first)
+                if m and int(m.group(1)) == n and int(m.group(2)) == k:
+                    self.rewake_claims.append(e)
             elif eid(e) > start >= 0 and first.startswith(f"Rewake{tag}: "):
                 m = REWAKE_LINE.fullmatch(first)
                 if m and int(m.group(1)) == n and int(m.group(2)) == k and real_times(m.group(4)):
@@ -1133,6 +1146,27 @@ def unclear_send(item: Item, w: Wait) -> str | None:
     return f"the Carried from chain is longer than {CARRY_HOPS_MAX} items"
 
 
+def item_hold(item: Item, w: Wait, now_ms: float) -> str | None:
+    """What holds a wait's follow-up, a re-send or a new wake: the item reads Needs you or is
+    not open, Orca's snooze is ahead, the item was closed after the record, or a Snoozed until
+    line holds. None when nothing does."""
+    if item.status == "needs_you":
+        return "the item reads Needs you"
+    if item.status not in OPEN_STATUSES:
+        return f"the item reads {item.status}"
+    if isinstance(item.snoozed_until, (int, float)) and item.snoozed_until > now_ms:
+        return "Orca's snooze is ahead"
+    start = eid(w.record)
+    for e in item.events:
+        data = e.get("data") if isinstance(e.get("data"), dict) else {}
+        if e.get("kind") == "status" and eid(e) > start and data.get("to") in ("done", "canceled"):
+            return f"the item was closed after the record ({e['id']})"
+    held = snooze_line(item, now_ms)
+    if held is not None:
+        return f"a Snoozed until line {held['id']} still holds"
+    return None
+
+
 def fresh_send_check(n: int, k: int, item: Item | None, w: Wait | None) -> tuple:
     """Right before a re-send: (None, None) when it may go, else (case, reason)."""
     if item is None or w is None or w.record is None:
@@ -1141,21 +1175,9 @@ def fresh_send_check(n: int, k: int, item: Item | None, w: Wait | None) -> tuple
         return "stop", f"a closing record {w.closing['id']} is already there"
     if w.resend is not None:
         return "not-settled", f"a Re-send line {w.resend['id']} is already there"
-    if item.status == "needs_you":
-        return "no-follow-up", "the item reads Needs you"
-    if item.status not in OPEN_STATUSES:
-        return "no-follow-up", f"the item reads {item.status}"
-    now_ms = now_s() * 1000
-    if isinstance(item.snoozed_until, (int, float)) and item.snoozed_until > now_ms:
-        return "no-follow-up", "Orca's snooze is ahead"
-    start = eid(w.record)
-    for e in item.events:
-        data = e.get("data") if isinstance(e.get("data"), dict) else {}
-        if e.get("kind") == "status" and eid(e) > start and data.get("to") in ("done", "canceled"):
-            return "no-follow-up", f"the item was closed after the record ({e['id']})"
-    held = snooze_line(item, now_ms)
-    if held is not None:
-        return "no-follow-up", f"a Snoozed until line {held['id']} still holds"
+    held = item_hold(item, w, now_s() * 1000)
+    if held:
+        return "no-follow-up", held
     problem = unclear_send(item, w)
     if problem:
         return "not-settled", problem
@@ -1400,7 +1422,15 @@ def cmd_rewake(a: argparse.Namespace) -> tuple:
     """A fresh one-time wake for a wait that has no closing record and no wake still due (its
     latest Armed or Rewake wake's time is ahead and Orca shows it enabled; a wake whose state
     can't be read counts as not due, so a spare can result, and a spare only runs check).
-    It adds no link: only a `Rewake` line, and the wake's run starts with check like any wake."""
+
+    Nothing is made while the item holds the wait (item_hold: Needs you, Orca's snooze, a
+    Snoozed until line, closed after the record). The limit of REWAKE_MAX per wait holds when
+    runs overlap: each run first posts a `Rewake claim` line with its own nonce and reads the
+    item again. Orca writes each comment in its own BEGIN IMMEDIATE transaction with an
+    AUTOINCREMENT event id, so ids follow commit order, and a read that starts after this run's
+    claim landed sees every claim with a lower id. Only a claim with fewer than REWAKE_MAX claims
+    before it creates a wake. A claim counts whether or not its create succeeds, and a run whose
+    claim's place is unknown creates nothing. It adds no link."""
     n, k = int(need(RE_ITEM, a.item, "--item")), wait_number(a.wait)
     item, why = read_item(n, READ_TRIES)
     if item is None:
@@ -1420,24 +1450,49 @@ def cmd_rewake(a: argparse.Namespace) -> tuple:
         return EXIT_OTHER, f"REFUSED item {n} W{k}: reserved with no record, so a wake can't " \
                            "close it; once the reserving chat ended its turn, close it with " \
                            "close-unarmed --step reservation-without-record; no wake made"
+    held = item_hold(item, w, now_s() * 1000)
+    if held:
+        return EXIT_OTHER, f"HELD item {n} W{k}: {held}; no wake made. Rewake once that ends"
     cur = w.current_wake()
     if cur is not None and ms(cur[2]) > now_s() * 1000:
         state = wake_state(cur[1])
         if state == "enabled":
             return EXIT_OK, f"COVERED item {n} W{k}: wake {cur[1]} is due at {cur[2]}; no wake " \
                             "made"
-    if len(w.rewakes) >= REWAKE_MAX:
-        return EXIT_UNCLEAR, f"UNCOVERED item {n} W{k}: it has had {REWAKE_MAX} rewakes, the " \
+    if len(w.rewake_claims) >= REWAKE_MAX:
+        return EXIT_UNCLEAR, f"UNCOVERED item {n} W{k}: it has {REWAKE_MAX} rewake claims, the " \
                              "most it gets; no wake made. Reconcile it from your reads"
-    target = rewake_time()
     scratch = Scratch()
     try:
+        nonce = str(uuid.uuid4())
+        res = post(n, f"Rewake claim, item {n} W{k}: {nonce}.", scratch, "claim.txt")
+        mine = posted(res)
+        again, why = read_item(n)
+        claims = Wait(again, k).rewake_claims if again is not None else []
+        if mine is None and may_have_landed(res):
+            found = [e for e in claims if nonce in e["data"]["text"]]
+            mine = found[0]["id"] if found else None
+        if mine is None:
+            return EXIT_UNCLEAR, f"UNCOVERED item {n} W{k}: the rewake claim did not post " \
+                                 f"({res.describe()}); no wake made" + (
+                                     "; a claim that lands later still counts"
+                                     if may_have_landed(res) else "")
+        if again is None:
+            return EXIT_UNCLEAR, f"UNCOVERED item {n} W{k}: claim {mine} posted, but the read " \
+                                 f"after it failed ({why}), so its place is unknown; no wake " \
+                                 "made, and the claim counts"
+        ahead = [e for e in claims if eid(e) < eid({"id": mine})]
+        if len(ahead) >= REWAKE_MAX:
+            return EXIT_OTHER, f"NOT CLAIMED item {n} W{k}: claim {mine} came after the " \
+                               f"{REWAKE_MAX}th ({ahead[REWAKE_MAX - 1]['id']}); no wake made"
+        target = rewake_time()
         wake, err, unknown = step_create(n, k, item, target,
-                                         f"Item {n} W{k} rewake {len(w.rewakes) + 1}")
+                                         f"Item {n} W{k} rewake {len(ahead) + 1}")
         if err:
             tail = retire(n, k, wake, scratch) if wake else (
                 "a wake may exist with an id Orca didn't print" if unknown else "no wake made")
-            return EXIT_UNCLEAR, f"UNCOVERED item {n} W{k}: no fresh wake ({err}); {tail}"
+            return EXIT_UNCLEAR, f"UNCOVERED item {n} W{k}: no fresh wake ({err}); {tail}; " \
+                                 f"claim {mine} counts"
         res = post(n, f"Rewake, item {n} W{k}: wake {wake}, target {target}.", scratch,
                    "rewake.txt")
         note = posted(res)
@@ -1445,7 +1500,8 @@ def cmd_rewake(a: argparse.Namespace) -> tuple:
             return EXIT_UNCLEAR, f"UNRECORDED item {n} W{k}: wake {wake} made for {target}, but " \
                                  f"the Rewake line did not post ({res.describe()}), so the item " \
                                  "may not name it"
-        return EXIT_OK, f"REWOKEN item {n} W{k}: wake {wake}, target {target}; line {note}"
+        return EXIT_OK, f"REWOKEN item {n} W{k}: wake {wake}, target {target}; claim {mine}, " \
+                        f"line {note}"
     finally:
         scratch.close()
 

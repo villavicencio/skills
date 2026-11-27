@@ -30,7 +30,9 @@ Checked (each name below is printed with ok or FAIL):
   send under the same key here or along the carry), an unclear send recorded with request-show run
   once, the winner's time window; notice rules; retire RETIRED, GONE, UNVERIFIED; reconcile note,
   the 15-minute rule, --final unarmed, DUPLICATE and UNCHECKED; close-unarmed's second read;
-  rewake's outcomes; the first read's tries and the spent budget; items past one page of events;
+  rewake's outcomes, each rewake hold with no create call, two rewakes that each read seven
+  claims of which exactly one creates, and an uncertain create counting against the limit; the
+  first read's tries and the spent budget; items past one page of events;
   a read missing a marker's event; FULL with the Wait blocked line, carrying to a fresh item;
   restart is read-only and lists each finding; argv lists only, every value checked before the
   first call, and free text reaching Orca byte for byte without running; a cleanup failure after
@@ -1762,6 +1764,21 @@ def test_recheck() -> None:
 RESENT = dict(body="Q.\n", text="Evidence: e\nBlocker: b\nNext check: n\n")
 
 
+def claims(c: Case, count: int, n: int = 7, k: int = 1) -> None:
+    for _ in range(count):
+        c.fake.fixture_comment(n, f"Rewake claim, item {n} W{k}: {uuid.uuid4()}.")
+
+
+def spent_case() -> Case:
+    """W1 armed on item 7, its wake gone (Orca deleted it after its run); the log starts empty."""
+    c = armed_case()
+    st = c.fake.load()
+    st["automations"] = {}
+    c.fake.save(st)
+    c.fake.log_path.unlink()
+    return c
+
+
 def resent(c: Case, n: int, k: int) -> list:
     return c.close_wait(n, k, "re-sent", **RESENT)
 
@@ -2036,14 +2053,14 @@ def test_fix_round1() -> None:
                 ["automations", "create"], "mutate", fields={"enabled": False}),
              "UNCOVERED item 7 W1: no fresh wake (verify", 1),
             ("a Rewake line that doesn't post", lambda c: c.fake.fault(
-                ["bot", "item", "comment"], "error", code="invalid_argument", text_prefix="Rewake"),
+                ["bot", "item", "comment"], "error", code="invalid_argument",
+                text_prefix="Rewake, item"),
              "UNRECORDED item 7 W1", 1),
             ("an item it can't read", lambda c: c.fake.fault(
                 ["bot", "item", "show"], "error", code="not_found", message="No item 7."),
              "UNCOVERED item 7 W1: the item can't be read", 1),
-            ("the most rewakes already", lambda c: [c.fake.fixture_comment(
-                7, f"Rewake, item 7 W1: wake {uuid.uuid4()}, target 2020-01-01T00:00:00+00:00.")
-                for _ in range(8)], "UNCOVERED item 7 W1: it has had 8 rewakes", 1)):
+            ("the most rewakes already", lambda c: claims(c, 8),
+             "UNCOVERED item 7 W1: it has 8 rewake claims", 1)):
         c = armed_case()
         try:
             st = c.fake.load()
@@ -2098,6 +2115,8 @@ def test_fix_round1() -> None:
     finally:
         c.close()
 
+    test_fix_round2()
+
     # Low 9: a cleanup error after a send doesn't replace the outcome line
     c = armed_case()
     try:
@@ -2131,6 +2150,100 @@ def test_fix_round1() -> None:
               bad == [2, 2, 2] and len(c.fake.log()) == 1, str(bad))
         check("exit: a REFUSED after a read exits 3, not 2", code == 3
               and out.startswith("REFUSED item 7 W1: no W1 marker"), out)
+    finally:
+        c.close()
+
+
+def test_fix_round2() -> None:
+    """Fix round 2: rewake holds like a re-send, and its limit holds when runs overlap."""
+    for label, setup, why in (
+            ("Needs you", lambda c: c.fake.fixture_status(7, "needs_you"),
+             "the item reads Needs you"),
+            ("Orca's snooze ahead", lambda c: c.fake.set_fields(
+                7, snoozedUntil=int((time.time() + 3600) * 1000)), "Orca's snooze is ahead"),
+            ("a Snoozed until line", lambda c: c.fake.fixture_comment(
+                7, "Snoozed until 23:00 PT Nov 28 / 07:00 UTC Nov 29: away"),
+             "a Snoozed until line e"),
+            ("an item closed and reopened after the record", lambda c: (
+                c.fake.fixture_status(7, "done"), c.fake.fixture_status(7, "in_progress")),
+             "the item was closed after the record")):
+        c = spent_case()
+        try:
+            setup(c)
+            n_log = len(c.fake.log())
+            code, out, _ = c.run("rewake", "--item", "7", "--wait", "W1")
+            new = c.fake.log()[n_log:]
+            check(f"rewake held: {label} -> HELD saying why, no automations create call",
+                  code == 3 and out.startswith(f"HELD item 7 W1: {why}") and "no wake made" in out
+                  and not calls(new, "automations", "create")
+                  and not calls(new, "bot", "item", "comment"), out)
+        finally:
+            c.close()
+
+    c = spent_case()
+    try:  # two callers each read seven claims; exactly one creates
+        claims(c, 7)
+        flag = c.root / "go"
+        c.fake.fault(["bot", "item", "comment"], "pause", times=2, text_prefix="Rewake claim",
+                     flag=str(flag))
+        x = c.popen("rewake", "--item", "7", "--wait", "W1")
+        y = c.popen("rewake", "--item", "7", "--wait", "W1")
+        both = wait_for_waiters(flag, 2)
+        flag.write_text("")
+        outs = sorted(p.communicate(timeout=60)[0].split("\n")[0] for p in (x, y))
+        made = calls(c.fake.log(), "automations", "create")
+        lines = [e for e in c.fake.comments(7)
+                 if e["data"]["text"].startswith("Rewake claim, item 7 W1:")]
+        check("rewake limit: two callers that each read seven claims -> exactly one creates "
+              "(REWOKEN), the other NOT CLAIMED", both and len(made) == 1 and len(lines) == 9
+              and outs[0].startswith("NOT CLAIMED item 7 W1") and outs[1].startswith(
+                  "REWOKEN item 7 W1"), str(outs))
+        st = c.fake.load()
+        st["automations"] = {}  # that wake ran too
+        c.fake.save(st)
+        code, out, _ = c.run("rewake", "--item", "7", "--wait", "W1")
+        check("rewake limit: after that, a later caller makes nothing", code == 1
+              and out.startswith("UNCOVERED item 7 W1: it has 8 rewake claims")
+              and len(calls(c.fake.log(), "automations", "create")) == 1, out)
+    finally:
+        c.close()
+
+    c = spent_case()
+    try:  # an uncertain create still counts against the limit
+        claims(c, 7)
+        c.fake.fault(["automations", "create"], "timeout")
+        code, out, _ = c.run("rewake", "--item", "7", "--wait", "W1")
+        n_log = len(c.fake.log())
+        code2, out2, _ = c.run("rewake", "--item", "7", "--wait", "W1")
+        check("rewake limit: a create with no answer counts (its claim), so the next caller "
+              "makes nothing", out.startswith("UNCOVERED item 7 W1: no fresh wake")
+              and "counts" in out and out2.startswith("UNCOVERED item 7 W1: it has 8 rewake")
+              and not calls(c.fake.log()[n_log:], "automations", "create"), out + " | " + out2)
+    finally:
+        c.close()
+
+    for label, fault, want, creates in (
+            ("a claim that lands and then errors is found by its nonce",
+             dict(mode="after-error", code="items_unavailable"), "REWOKEN item 7 W1", 1),
+            ("a claim Orca refuses", dict(mode="error", code="invalid_argument",
+                                          message="no"), "UNCOVERED item 7 W1: the rewake "
+             "claim did not post", 0)):
+        c = spent_case()
+        try:
+            c.fake.fault(["bot", "item", "comment"], fault.pop("mode"), text_prefix="Rewake claim",
+                         **fault)
+            code, out, _ = c.run("rewake", "--item", "7", "--wait", "W1")
+            check(f"rewake claim: {label} -> {want.split(' item')[0]}", out.startswith(want)
+                  and len(calls(c.fake.log(), "automations", "create")) == creates, out)
+        finally:
+            c.close()
+    c = spent_case()
+    try:
+        c.fake.fault(["bot", "item", "show"], "error", code="items_unavailable", skip=1)
+        code, out, _ = c.run("rewake", "--item", "7", "--wait", "W1")
+        check("rewake claim: a failed read after the claim -> UNCOVERED, nothing created",
+              code == 1 and out.startswith("UNCOVERED item 7 W1: claim e")
+              and not calls(c.fake.log(), "automations", "create"), out)
     finally:
         c.close()
 

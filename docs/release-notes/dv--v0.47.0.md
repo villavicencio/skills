@@ -27,11 +27,17 @@ even when the outcome was only to leave the ticket out of milestones. The VIL-12
     add items, and approving it records your name. In `forks-only` mode it is a routine call,
     recorded as "Decided by dv:groom (forks-only), <date>".
   - With one, it is one open decision: create the proposed milestone, or "No milestone". The old
-    "leave it with none" option is gone. No "No milestone" line is written before the answer, the
+    "leave it with none" option is gone. A "No milestone" answer adds "No milestone: <one-line
+    reason>" in that answer's form (yours, the Director's or the Head's). No "No milestone" line
+    is written before the answer, the
     milestone is created only on your yes, and from a worktree session with a Head the decision
     goes to the Head and stays pending, as before.
 - **`dv:groom`, "Forks-only mode".** "Routine calls" names recording "No milestone" when none fits
-  and there is no concrete proposal; the Forks list names a new milestone as a concrete proposal.
+  and there is no concrete proposal; the Forks list names a new milestone as a concrete proposal;
+  "From a worktree session" names that fork's "No milestone" answer among what only the Head
+  decides (it was "a new milestone's other options").
+- **`dv:groom`, Rules, the no-text-edits bullet.** It lists milestone-field items and says a "No
+  milestone" Decisions line is a text edit.
 - **`dv:groom`, step 7, the edit list.** The milestone item names the "No milestone" Decisions
   line as an add item that leaves the field empty.
 - **README.** The version, and the `dv:groom` entry.

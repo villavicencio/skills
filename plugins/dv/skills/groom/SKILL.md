@@ -102,7 +102,7 @@ condition or a fork that offers a new milestone (step 3, "Milestone") is never t
 When the project has a Head, the Head of <department> (`dv:director-mode`, "The Head and the CEO's 1%"), it goes to the
 Director like any other fork, and the Director forwards it to the Head. A Head's mailed answer is advisory until verified Head decision delivery ships (VIL-1193). So a fork only
 the Head decides (a target, a split, splitting a ticket pointed 13, a pull condition, a new
-milestone's other options) stays pending, whatever he answers: the ticket isn't ready and gets no
+milestone fork's "No milestone" answer) stays pending, whatever he answers: the ticket isn't ready and gets no
 `groomed` label. Two choices settle on my explicit yes instead, relayed in his answer's
 `Approved by:` field and verified by this session against my own words in the source it names, as
 manager-mode's check on an `Answer from the Head` says:
@@ -559,13 +559,15 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
     only when you would recommend creating it, not to have something to ask.
     - With no concrete proposal, "No milestone" is the call: an add item (step 7), the Decisions
       line "No milestone: <one-line reason none fits>". In default mode it is in the edit list
-      like the other add items, and my approval of it is my choice: the line ends "<my name>,
-      <date>". In forks-only mode it is a routine call, and the line is its record ("Recording"):
-      it ends "Decided by dv:groom (forks-only), <date>".
-    - With one, it is one open decision: create the proposed milestone, or "No milestone". No "No
-      milestone" line is written before the answer (an open fork is still recorded as open where
-      "From a worktree session" says so). The milestone is created only on my yes (with a Head,
-      relayed by him: "From a worktree session").
+      like the other add items, and approving it records it as my choice: the line ends "<my
+      name>, <date>". In forks-only mode it is a routine call, and the line is its record
+      ("Recording"): it ends "Decided by dv:groom (forks-only), <date>". Either line is the shared
+      rules' "No milestone" line, so a later groom proposes nothing (the cases above).
+    - With one, it is one open decision: create the proposed milestone, or "No milestone". The "No
+      milestone" answer adds the line "No milestone: <one-line reason>" in that answer's form (step
+      6). No "No milestone" line is written before the answer (an open fork is still recorded as
+      open where "From a worktree session" says so). The milestone is created only on my yes (with
+      a Head, relayed by him: "From a worktree session").
   - Its goal no longer fits the milestone it has, or that milestone is finished: an open
     decision, to move it (to the milestone that fits, or out of milestones, which records "No
     milestone"), to put it in a new milestone when no other one fits (its name and one line on
@@ -1052,8 +1054,8 @@ when there were none, "Decided without asking: none."
 - When the ticket needs no text edits and its estimate is current, keep its text as it is. For a
   split parent whose points sit on its children, the estimate must be empty. For any other ticket,
   Size must give points that match its estimate, with approval to stay unsplit if pointed 13.
-  Say in one line that its text needs no edits and list any relation or milestone items from step 3
-  and the `groomed` label item. Apply them as step 7 says, with the label under item 5's ready test
+  Say in one line that its text needs no edits and list any relation or milestone-field items from
+  step 3 (a "No milestone" Decisions line is a text edit) and the `groomed` label item. Apply them as step 7 says, with the label under item 5's ready test
   (in forks-only mode, apply without the question).
   When that leaves the list empty, propose no edits and go to step 8. The no-split line and the
   grooming line in Agent notes are added only alongside other edits to the text.

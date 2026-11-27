@@ -32,19 +32,29 @@ those two confirm the archive. The block fails closed: it prints `!! ARCHIVE INC
 failed>` instead of either success line when a command whose failure could look like success
 fails (`git rev-parse`, `git worktree list`, `git branch --show-current`, `git status`, `date`,
 `find` of the store or of `_done`, `sort`, the `sed` calls (status-checked) that read the main
-checkout, the handoff name and a handoff's front matter, `mkdir`, `cp` with a byte-for-byte
-check, `mv` with the source gone and the destination present, `cd` into the common git directory
+checkout, the handoff name and a handoff's front matter, `mkdir`, `cp` with the copy a regular
+file (not a symlink) checked byte for byte, `mv` with the source gone and the destination a
+regular file (not a symlink), `cd` into the common git directory
 (its output, such as a shell hook's, kept out of the path), and `cmp` in the duplicate check,
 where exit 1 means different and exit 2 or more fails the block; the clean-tree filter is done
 in the shell, not by `grep`, and all three here-docs that decide a result (the clean-tree check,
 the handoff list and the duplicate check against `_done`) end with a sentinel line, so one that
-could not be read to its end, such as one zsh could not write, fails the block), when the store
-or `_done` exists but is not a directory or `HANDOFF.md` exists but is not a regular file, when
-a `HANDOFF.md` in the worktree does not name this branch and worktree, when outside a git
-repository, and when this session's store file is still there afterwards. Before this release a
-failed listing of the store or of `_done` read as "no handoff". The uncommitted-changes and
-main-checkout lines, no output, or Step 4 not run also leave the archive not confirmed. Step 1's
-recheck stays the source of the verdict; Step 4's own `git status` only guards the archive.
+could not be read to its end, such as one zsh could not write, fails the block), when the store,
+`_done` or `HANDOFF.md` is a symlink, when the store or `_done` exists but is not a directory or
+`HANDOFF.md` exists but is not a regular file, when a `.md` entry at the store's top level is not
+a regular file (a symlink, say), when a file archived in the run is no longer a regular file in
+`_done` at the end (where the store, `_done` and `HANDOFF.md` are checked for a symlink again,
+and `HANDOFF.md` also right before its copy), when a `HANDOFF.md` in the worktree does not name
+this branch and worktree, when outside a git repository, and when this session's store file is
+still there afterwards. A symlink at those paths is rejected, never followed: `-d` and `-f`
+follow one and `find` does not. Before this release a `_done` linked to another directory let a handoff move through the link, the final
+listing miss it, and the block print the no-handoff line; with a linked store or `HANDOFF.md`,
+or a linked `.md` entry in the store, a handoff could likewise be archived outside the store,
+copied from a link's target, or skipped unread. Only the git common directory is resolved
+(`pwd -P`), as `dv:handoff` and `dv:pickup` resolve it. Before this release a failed listing of
+the store or of `_done` also read as "no handoff". The uncommitted-changes and main-checkout
+lines, no output, or Step 4 not run also leave the archive not confirmed. Step 1's recheck
+stays the source of the verdict; Step 4's own `git status` only guards the archive.
 
 Step 1 and the Orca block also status-check their reads of the main checkout's path (and Step 1
 its reads of the worktree's path, HEAD and branch): a failure makes the verdict `not confirmed
@@ -82,7 +92,9 @@ description of closeout's reply says the same.
 Live runs used a throwaway clone with linked worktrees and a stub Orca CLI that lists the
 worktrees and refuses every removal and send.
 
-- On the final run order (Step 4 before Step 3), 2026-11-26, with a stub `pbcopy` as well:
+- On the final run order (Step 4 before Step 3), 2026-11-26, with a stub `pbcopy` as well, and
+  Step 4 as it was before its symlink checks (in these states the final block prints the same
+  lines: its first 50 block cases below match the earlier block's line for line):
   - With a stub Director (an interactive closeout session and a stub peer in the clone's main
     checkout that answered the probe with that path) and a handoff in the store, run twice, the
     second time after the pre-push review fixes: Step 4 printed `archive complete: …` before
@@ -113,9 +125,11 @@ worktrees and refuses every removal and send.
 - Earlier wordings were run the same way (the removal question with a stub Director and with no
   Director, twice each; then, after the archive change, a handoff in the store, no handoff, and
   the archive made to fail), with the same removal-question outcomes.
-- The final Step 4 block, run on its own in bash and in zsh (`-f`) in a scratch repo, 50 cases
-  each, with PATH shims that make one command fail: no handoff, a store handoff, a rerun after
-  archiving, a matching `HANDOFF.md`, a store handoff with an identical `HANDOFF.md` (and its
+- The final Step 4 block, run on its own in bash and in zsh (`-f`) in a scratch repo, 82 cases
+  each, with PATH shims that make one command fail (or, in eight race cases, change a path
+  mid-run), with BSD `find`, GNU `find` and bfs (the `find` in Claude Code's shell), and with GNU
+  and BSD `mv`, `cp` and `mkdir`, each with the same results: no handoff, a store handoff, a
+  rerun after archiving, a matching `HANDOFF.md`, a store handoff with an identical `HANDOFF.md` (and its
   rerun), a store handoff under another name with quoted front matter, and a detached HEAD's
   store handoff ended in a success line, with the store emptied. Every failure case printed
   `ARCHIVE INCOMPLETE`: a non-matching `HANDOFF.md`; `_done` a plain file, with and without a
@@ -132,7 +146,18 @@ worktrees and refuses every removal and send.
   `cd` no longer bends the store path. The main-checkout `sed` printing the path and then
   failing printed `ARCHIVE INCOMPLETE`; the same failure in Step 1 listed the read under the
   checks that did not run (so the verdict is not confirmed safe), and in the Orca block skipped
-  the Orca steps.
+  the Orca steps. Symlinks: the store, `_done` and `HANDOFF.md` each as a symlink to a directory,
+  to a file and dangling (`HANDOFF.md` also to the store's copy), and a `.md` entry in the store
+  as a symlink, under the slot's name or another, dangling, or a directory, each printed
+  `ARCHIVE INCOMPLETE` with nothing moved or copied; a store symlink not named `.md`, dangling
+  symlinks at the destination names, a symlink in `_done` named as an archive (with a matching
+  `HANDOFF.md`, and alone), and the common directory given through a symlinked path ended in a
+  success line with nothing written through a link; an archive replaced by a symlink right after
+  its move or copy, an archive gone from `_done` before the final listing, `_done` swapped for a
+  symlink after the move or before the final listing, and `HANDOFF.md` swapped for a symlink
+  before its copy, right after it or before the duplicate check each printed `ARCHIVE
+  INCOMPLETE`. On the block before these checks, 17 of the 27 cases that now print `ARCHIVE
+  INCOMPLETE` ended in a success line instead.
 - The Step 3 save block, run on its own in bash and zsh: one run saves exactly one copy; a second
   run adds a new copy and leaves the first unchanged; a name clash in the same second takes a
   `-<n>` name and overwrites nothing.

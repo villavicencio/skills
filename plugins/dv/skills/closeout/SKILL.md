@@ -546,7 +546,10 @@ under the name `/pickup` looks for. Nothing is deleted and no earlier archive is
 ```bash
 # Fails closed: every command whose failure could look like success adds to PFAIL (before
 # anything moves) or AFAIL (after), and either one prints ARCHIVE INCOMPLETE instead of a success
-# line. Only the last line's two success forms confirm the archive.
+# line. Only the last line's two success forms confirm the archive. A symlink is never followed:
+# -d and -f follow one and find does not, so a link at the store, _done, HANDOFF.md or a store
+# .md entry could send a move or copy outside the store, or hide a handoff, and still end in a
+# success line. Each of those fails the block instead.
 if ! git rev-parse --git-dir >/dev/null 2>&1; then
   echo "!! ARCHIVE INCOMPLETE: not a git repository — nothing archived"
 else
@@ -562,9 +565,18 @@ else
   elif HS=$(git rev-parse HEAD) && [ -n "$HS" ]; then SLUG="detached-$HS"
   else PFAIL="$PFAIL; HEAD could not be read"; fi
   [ -n "$SLUG" ] || PFAIL="$PFAIL; the handoff name could not be worked out"
-  if [ -n "$STORE" ] && { [ -e "$STORE" ] || [ -L "$STORE" ]; } && [ ! -d "$STORE" ]; then PFAIL="$PFAIL; $STORE is not a directory"; fi
-  if [ -n "$STORE" ] && { [ -e "$STORE/_done" ] || [ -L "$STORE/_done" ]; } && [ ! -d "$STORE/_done" ]; then PFAIL="$PFAIL; $STORE/_done is not a directory"; fi
-  if [ -n "$TOP" ] && { [ -e "$TOP/HANDOFF.md" ] || [ -L "$TOP/HANDOFF.md" ]; } && [ ! -f "$TOP/HANDOFF.md" ]; then PFAIL="$PFAIL; $TOP/HANDOFF.md is not a regular file"; fi
+  # Each path's own kind, symlink first. GA is a real path already (pwd -P); TOP is the worktree
+  # itself, and only its HANDOFF.md entry is used.
+  if [ -n "$STORE" ]; then
+    if [ -L "$STORE" ]; then PFAIL="$PFAIL; $STORE is a symlink"
+    elif [ -e "$STORE" ] && [ ! -d "$STORE" ]; then PFAIL="$PFAIL; $STORE is not a directory"
+    elif [ -L "$STORE/_done" ]; then PFAIL="$PFAIL; $STORE/_done is a symlink"
+    elif [ -e "$STORE/_done" ] && [ ! -d "$STORE/_done" ]; then PFAIL="$PFAIL; $STORE/_done is not a directory"; fi
+  fi
+  if [ -n "$TOP" ]; then
+    if [ -L "$TOP/HANDOFF.md" ]; then PFAIL="$PFAIL; $TOP/HANDOFF.md is a symlink"
+    elif [ -e "$TOP/HANDOFF.md" ] && [ ! -f "$TOP/HANDOFF.md" ]; then PFAIL="$PFAIL; $TOP/HANDOFF.md is not a regular file"; fi
+  fi
   # The tree must be clean, HANDOFF.md aside. Filtered in the shell, not by grep, so a failing
   # filter cannot read as a clean tree. Each here-doc that decides a result ends with a sentinel
   # line: a here-doc that could not be written (zsh writes them to temp files) skips its loop,
@@ -586,12 +598,17 @@ ST_END
   elif [ -n "$DIRTY" ]; then
     echo "!! uncommitted changes — not safe to delete, nothing archived"
   else
-    AFAIL=""; LIST=""
+    AFAIL=""; LIST=""; ANAMES=""
     TS=$(date -u +%Y%m%dT%H%M%SZ) && [ -n "$TS" ] || AFAIL="$AFAIL; date failed"
     # find alone, then sort, each checked: a pipe reports only its last command's status.
     if [ -d "$STORE" ]; then
       if FL=$(find "$STORE" -maxdepth 1 -type f -name '*.md'); then
         LIST=$(printf '%s\n' "$FL" | sort) || AFAIL="$AFAIL; sorting the handoff store's listing failed"
+        # That listing takes regular files only, so any other .md entry there (a symlink, say)
+        # would be skipped unread, even one that is this session's handoff.
+        if NREG=$(find "$STORE" -maxdepth 1 -name '*.md' ! -type f); then
+          [ -z "$NREG" ] || AFAIL="$AFAIL; the handoff store holds a .md entry that is not a regular file: $(printf '%s' "$NREG" | tr '\n' ' ')"
+        else AFAIL="$AFAIL; listing the handoff store's other entries failed"; fi
       else AFAIL="$AFAIL; listing the handoff store failed"; fi
     fi
     [ -f "$TOP/HANDOFF.md" ] && LIST=$(printf '%s\n%s\n' "$LIST" "$TOP/HANDOFF.md")
@@ -635,9 +652,13 @@ DL_END
       n=0; dest="$STORE/_done/$SLUG.$TS.md"
       while [ -e "$dest" ] || [ -L "$dest" ]; do n=$((n+1)); dest="$STORE/_done/$SLUG.$TS-$n.md"; done
       if ! mkdir -p "$STORE/_done" || [ ! -d "$STORE/_done" ]; then AFAIL="$AFAIL; mkdir $STORE/_done failed"; continue; fi
+      # The archived file must be a regular file at dest, not a link. ANAMES keeps each name
+      # (no "/" in it: the slug encodes it) for the check at the end.
       if [ "$f" = "$TOP/HANDOFF.md" ]; then
-        if cp "$f" "$dest" && cmp -s "$f" "$dest"; then echo "archived a copy of HANDOFF.md: $dest"; else AFAIL="$AFAIL; copying HANDOFF.md failed"; fi
-      elif mv "$f" "$dest" && [ ! -e "$f" ] && [ -f "$dest" ]; then echo "archived: $f -> $dest"
+        if [ -L "$f" ]; then AFAIL="$AFAIL; $f is a symlink"
+        elif cp "$f" "$dest" && [ -f "$dest" ] && [ ! -L "$dest" ] && cmp -s "$f" "$dest"; then ANAMES="$ANAMES${dest##*/}/"; echo "archived a copy of HANDOFF.md: $dest"
+        else AFAIL="$AFAIL; copying HANDOFF.md failed"; fi
+      elif mv "$f" "$dest" && [ ! -e "$f" ] && [ -f "$dest" ] && [ ! -L "$dest" ]; then ANAMES="$ANAMES${dest##*/}/"; echo "archived: $f -> $dest"
       else AFAIL="$AFAIL; moving $f failed"; fi
     done <<LIST_END
 $LIST
@@ -646,11 +667,21 @@ LIST_END
     [ -n "$LSEEN" ] || AFAIL="$AFAIL; the handoff list could not be read"
     { [ -e "$STORE/$SLUG.md" ] || [ -L "$STORE/$SLUG.md" ]; } && AFAIL="$AFAIL; $STORE/$SLUG.md is still in the store"
     # A failed listing of _done is not "no handoff": only a _done that is absent, or listed with
-    # no match, counts as nothing archived.
+    # no match, counts as nothing archived. Each file archived in this run must still be a regular
+    # file there, and the store, _done and HANDOFF.md are checked for a symlink once more, last, so
+    # a success line speaks only for the store's own _done and the worktree's own HANDOFF.md.
     DONE=""
     if [ -d "$STORE/_done" ]; then
       DONE=$(find "$STORE/_done" -maxdepth 1 -type f -name "$SLUG.*.md") || AFAIL="$AFAIL; listing $STORE/_done failed"
-    elif [ -e "$STORE/_done" ] || [ -L "$STORE/_done" ]; then AFAIL="$AFAIL; $STORE/_done is not a directory"; fi
+    elif [ -e "$STORE/_done" ]; then AFAIL="$AFAIL; $STORE/_done is not a directory"; fi
+    rest=$ANAMES
+    while [ -n "$rest" ]; do
+      a=${rest%%/*}; rest=${rest#*/}
+      { [ -f "$STORE/_done/$a" ] && [ ! -L "$STORE/_done/$a" ]; } || AFAIL="$AFAIL; $STORE/_done/$a, archived in this run, is no longer a regular file there"
+    done
+    [ -L "$STORE" ] && AFAIL="$AFAIL; $STORE is a symlink"
+    [ -L "$STORE/_done" ] && AFAIL="$AFAIL; $STORE/_done is a symlink"
+    [ -L "$TOP/HANDOFF.md" ] && AFAIL="$AFAIL; $TOP/HANDOFF.md is a symlink"
     if [ -n "$AFAIL" ]; then echo "!! ARCHIVE INCOMPLETE: ${AFAIL#; } — offer no removal until this is fixed"
     elif [ -z "$DONE" ]; then echo "(no handoff for this session — nothing to archive)"
     else echo "archive complete: this session's handoff is in $STORE/_done"; fi
@@ -663,11 +694,16 @@ The archive is confirmed only when the block's last line is one of its two succe
 nothing to archive)`. The `archived:` lines alone do not confirm it. Every other outcome leaves
 the archive not confirmed: `ARCHIVE INCOMPLETE` (say what failed; the block prints it when a
 command whose failure could look like success fails, when the store, `_done` or `HANDOFF.md` path
-is of the wrong kind, when a here-doc it reads could not be read to its end (each of the three
+is a symlink or of the wrong kind (checked before anything moves, and for a symlink again at the
+end, `HANDOFF.md` also right before its copy), when a `.md` entry at the store's top level is not a regular file (a symlink, say),
+when a file it archived in this run is not a regular file in `_done` at the end, when a here-doc it reads could not be read to its end (each of the three
 ends with a sentinel line), when `cmp` errors (exit 2 or more) in the duplicate check, when a `HANDOFF.md` in the
 worktree does not name this branch and worktree, when this session's store file is still there
 afterwards, and outside a git repository), `uncommitted changes`, `this is the main
-checkout`, no output at all (the block stopped early), or Step 4 not run. Step 1's recheck, not
+checkout`, no output at all (the block stopped early), or Step 4 not run. A symlink at any of
+those paths is rejected, not resolved: `/handoff` and `/pickup` make none there, so one means the
+store is not as they left it. Only the git common directory is resolved (`pwd -P`), as `/handoff`
+and `/pickup` resolve it, so the store is the same real directory they use. Step 1's recheck, not
 this block, decides the verdict; the block's own `git status` only guards the archive. Then offer and name no removal: the session would stay listed by `/pickup`, and a
 handoff copy that exists only in the worktree would go with it. The `HANDOFF.md` in the worktree is left in place; it goes with the worktree. When Step 2 did not
 say safe (or I have not yet accepted the listed losses), skip this step and say the handoff was

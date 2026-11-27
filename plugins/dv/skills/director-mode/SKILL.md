@@ -491,7 +491,7 @@ no one.
   his can start on, so he knows whether the expected event has an Orca event of its own (such as
   `github.pr_merged`) or reaches him only as mail (a Director's or a Manager's reply is mail).
   Then `orca automations create --help` must still offer `--once`, `--by` and `--item` for bots.
-  The wake stays deadline-only either way, so only the flag check gates it: if `create --help`
+  The wake stays deadline-only either way, so only the flag check gates it: if `orca automations create --help`
   fails or lacks a flag, the wait is unarmed (below); if `trigger-options` fails, he arms anyway
   and records the event source as unknown.
 - **Arm** the wake from the item's chat. Use no `--on` (so it is a one-time reminder, independent
@@ -524,30 +524,46 @@ no one.
   the note one line of at most 200 characters (Orca's limit), the comment being:
 
   ```text
-  Wait record, item <n> W<k>. Waits on: <the event>. Owner: <who owes the event, by name and Orca session id>. Waiting work: <the session whose work waits on it, such as the asking session, by name and Orca session id>. Ticket: <VIL-N>. Key: <the question's original key, the PR as owner/repo#n at head <sha>, or the handoff's message id>. Event source: <the trigger-options event that also reports it, mail only, or unknown>. Message: <the id of the question or handoff as first sent, or none>. Wake target: <wake target>. Deadline: <deadline> (<PT>). Wake: automation <id>, verified armed at <time>.
+  Wait record, item <n> W<k>. Waits on: <the event>. Owner: <who owes the event, by name and Orca session id>. Waiting work: <the session whose work waits on it, such as the asking session, by name and Orca session id>. Ticket: <VIL-N>. Key: <the question's original key, the PR as owner/repo#n at head <sha>, or the handoff's message id>. Event source: <the trigger-options event that also reports it, mail only, or unknown>. Message: <the id of the question or handoff as first sent, or none>. Wake target: <wake target>. Deadline: <deadline> (<PT>). Wake: automation <id>, verified armed at <time>. Prior note: <the item's note before this write, or none>.
   ```
 
-- **If the `create --help` flag check, the create or the verify fails,** the wait is unarmed. The item
+  The new note replaces the old one, so the record keeps the old one as `Prior note`. Then reread
+  the item (`orca bot item show --id <n>`): the wait is recorded only once it shows Waiting with
+  this W<k> record. If the write errors or the reread doesn't show both, the wait is unarmed
+  (next bullet), and the wake is first disabled as below, so no wake runs without its record.
+- **If the `orca automations create --help` flag check, the create, the verify or the record fails,** the wait is
+  unarmed. A wake that exists is disabled first (`orca automations edit --id <id> --disabled --json`,
+  then `orca automations show --id <id> --json` reads `enabled: false`). The item
   is In progress (moved back if it was Waiting), so it stays actionable, and goes to Waiting only
   once a wake verifies. Post
   the wait record with `Wake: UNARMED, <the error or the check's output>`
   (`orca bot item set <n> --status in-progress --comment-file <file>`), and say so in that same
   turn's reply, in its first line, while he can still act: check the event now, or arm again once
-  the cause is fixed. An unarmed wait never reads as covered by a timer.
+  the cause is fixed. Arming again is a new wait, W<k+1>, by these same rules, and W<k>'s
+  disposition then says `next wake W<k+1>`. If the disable or this write fails too, the first
+  line says that as well. An unarmed wait never reads as covered by a timer.
 - **When either trigger comes** (the event's notice or the wake):
   1. Reread the item (`orca bot item show --id <n>`): the W<k> record and every event after it. If
-     the item is done or canceled, W<k> already has a disposition, or the item is snoozed, stop
-     there ("No follow-up", below). For a wake, note when this run started: a start after the
-     deadline is a missed deadline, recorded as one even when the recovery then works.
-  2. **Current check.** The item is still Waiting, its latest wait record is W<k> (no W<k+1> after
-     it), and the owner and key (the question key, the PR and head, or the handoff) are still the
-     ones W<k> names. A superseded wait (W1 once W2 exists, or one whose owner or head has
-     changed) gets no send, no disable and no rearm, only the line under "One disposition per
-     wait". Run this check again just before each send, disable or arm in steps 5 to 7, and just before
-     the disposition in step 7 reread the item for one already written: if there is one, write
-     none.
+     W<k> already has a disposition, stop there (the line under "One disposition per wait"). If
+     a wake finds no W<k> record on the item, the arm never finished: send nothing, post the wait as unarmed
+     (above, with `Wake: UNARMED, wake <id> ran with no W<k> record`) and stop. If the item is
+     done, canceled or snoozed, go to step 7 with `no follow-up` ("No follow-up", below). For a
+     wake, note when this run started: a start after the deadline is a missed deadline, recorded
+     as one even when the recovery then works.
+  2. **Current check.** W<k> is the item's latest wait record (no W<k+1> after it) and has no
+     disposition. A superseded wait (W1 once W2 exists) gets no send, no disable and no rearm,
+     only the line under "One disposition per wait". A send or a rearm (steps 5 and 6) needs more:
+     the item is still Waiting, and the owner and key (the question key, the PR and head, or the
+     handoff) are still the ones W<k> names. When the item has left Waiting, or the owner or head
+     has changed, this wait gets no send and no rearm: the run retires a pending wake and writes
+     the disposition (`settled` if step 4 shows it, otherwise `no follow-up` with what it found).
+     An unarmed W<k> is the one exception: it stays In progress, and its trigger checks the event
+     (steps 3 and 4) and, if that hasn't settled it, arms again as W<k+1>. Run this check again
+     just before each send, disable or arm in steps 5 to 7, and just before the disposition in
+     step 7 reread the item for one already written: if there is one, write none.
   3. Reread the ticket (its comments, with every record for the original key, `list_comments`) or
-     the PR at the recorded head (`gh pr view <N> --json state,headRefOid,mergedAt`), and the
+     the PR at the recorded head, in the repository the record names
+     (`gh pr view <n> --repo <owner/repo> --json state,headRefOid,mergedAt`), and the
      current owner: the Orca session the record names (`orca agent list`,
      `orca agent read <session id> --limit 20`).
   4. **Settled** means the event happened (the owner's answer, the handoff's acknowledgement, the
@@ -591,16 +607,16 @@ no one.
   (`orca bot item list --status waiting,in-progress`) and takes as a trigger each current W<k>
   whose deadline has passed with no disposition, and each unarmed wait.
 - **Retire the wake** when the wait settles before its wake target, after the current check:
-  `orca automations edit --id <id> --disabled --json`, then `orca automations show` reads
-  `enabled: false`; note it in the disposition. Never `orca automations remove`: it deletes the
-  automation and its run history, a delete beyond the standing approvals. A wake that has run
+  `orca automations edit --id <id> --disabled --json`, then
+  `orca automations show --id <id> --json` reads `enabled: false`; note it in the disposition.
+  Never `orca automations remove`: it deletes the automation and its run history, a delete beyond the standing approvals. A wake that has run
   needs nothing: Orca deletes a one-time automation after its run (`orca automations create
   --help`), and the item's link then reads `gone or off`. If disabling fails, say so in the disposition; the late wake then stops at step 1.
 - **No follow-up** for a completed or canceled item, a snoozed one (a snooze he or David recorded
   on the item or the ticket; Orca 1.4.277 items have no snooze status), or a wait whose next step
   is a decision reserved for a person (the CEO's 1%, or a choice under "What no default decides"
-  that only that person settles): send nothing and arm nothing; the disposition says
-  `no follow-up` and why.
+  that only that person settles): send nothing and arm nothing, retire a wake still pending, and
+  the disposition says `no follow-up` and why.
 - **The Director's part.** A message that starts `Re-sent by the Head` carries a question
   already asked, under its original key. Answer it as that question ("Answer a worktree session's
   question"; with a Head there is no `too late`), to the asking session's Orca id it names, and
@@ -621,7 +637,7 @@ no one.
   reread before the disposition and the reconcile before a re-send make a duplicate less likely,
   and that is all. The one close pair shows only that no duplicate came that time; it never shows
   that dispositions are atomic or that runs never overlap. A wake missed while Orca is down runs once
-  within the automation's missed-run grace (`missedRunGraceMinutes` in `orca automations show`),
+  within the automation's missed-run grace (`missedRunGraceMinutes` in `orca automations show --id <id> --json`),
   which is a missed deadline if it starts after it; a longer outage is caught by the restart
   check.
 

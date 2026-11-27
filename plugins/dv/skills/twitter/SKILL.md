@@ -13,9 +13,10 @@ Fetch and summarize an X/Twitter post with replies. The post URL is the argument
 
 ## First step: dv-latest-check
 
-Before anything else, check that the dv this skill was loaded from is the latest stable release.
-Pass the base directory the client gave when it loaded this skill (Claude Code: "Base directory
-for this skill"; Codex: the directory of this SKILL.md), never a newer path found on disk now:
+Before anything else, check that the dv this skill was loaded from is the latest stable release
+(a `--plugin-dir` development copy passes at or above it). Pass the base directory the client
+gave when it loaded this skill (Claude Code: "Base directory for this skill"; Codex: the
+directory of this SKILL.md), never a newer path found on disk now:
 
 ```bash
 python3 -I "<base directory>/../../scripts/dv_latest_check.py" "<base directory>"

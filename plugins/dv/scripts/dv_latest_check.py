@@ -14,8 +14,10 @@ it read). It reads three versions:
   latest     the highest dv--v<version> tag among the newest 100 stable releases of
              villavicencio/skills (drafts and pre-releases excluded, other plugins' tags
              ignored), read with `gh`.
-  installed  Claude Code: <home>/plugins/installed_plugins.json, entry dv@<marketplace> (the
-             user-scope entry when there is one). A home with no such file (Codex): the highest
+  installed  Claude Code: <home>/plugins/installed_plugins.json, entry dv@<marketplace>: a
+             project- or local-scope entry whose projectPath is the working directory or a
+             parent of it, else the user-scope entry (unknown when a non-user entry has no
+             projectPath). A home with no such file (Codex): the highest
              version directory in <home>/plugins/cache/<marketplace>/dv/. A development copy:
              unknown.
 
@@ -26,7 +28,8 @@ The first printed line starts with the outcome, and the exit code matches it:
                                               and installed, and whether a fresh session is
                                               enough or the install itself is behind)
   dv-latest-check: not verified ...   exit 2  hold dv-dependent actions until a rerun says
-                                              current (release or base path unreadable)
+                                              current (release or base path unreadable, or an
+                                              installed copy ahead of every stable release)
 
 DV_LATEST_CHECK_GH, when set, names the gh binary to run instead of the one on PATH: a stand-in for
 tests and live checks (a Codex shell rebuilds PATH from the login profile, so PATH alone can't).
@@ -169,6 +172,42 @@ def read_latest(repo: str = REPO) -> tuple:
     return best
 
 
+def active_entry_version(entries, manifest: Path, marketplace: str, cwd: str | None = None):
+    """The version of the Claude Code install that applies here, or None when that can't be told.
+
+    A project- or local-scope entry applies when its projectPath is the working directory or one
+    of its parents (the deepest one wins); otherwise the user-scope entry does. A non-user entry
+    with no readable projectPath makes the answer unknown rather than a guess.
+    """
+    cwd_path = Path(os.path.realpath(cwd or os.getcwd()))
+    scoped, user, unclear = [], [], False
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        try:
+            version = parse_version(str(entry["version"]))
+        except (KeyError, ValueError):
+            continue
+        if entry.get("scope", "user") == "user":
+            user.append(version)
+            continue
+        project = entry.get("projectPath")
+        if not isinstance(project, str) or not project:
+            unclear = True
+            continue
+        project_path = Path(os.path.realpath(project))
+        if project_path == cwd_path or project_path in cwd_path.parents:
+            scoped.append((len(project_path.parts), version))
+    label = "Claude Code"
+    if scoped:
+        return max(scoped)[1], label
+    if unclear:
+        return None, f"{label} ({manifest}: a dv@{marketplace} entry has no projectPath)"
+    if user:
+        return max(user), label
+    return None, f"{label} ({manifest} has no dv@{marketplace} entry for this directory)"
+
+
 def read_installed(loaded: dict):
     """(version, client) for the install the loaded copy came from; version None if unknown."""
     home, marketplace = loaded["home"], loaded["marketplace"]
@@ -181,16 +220,7 @@ def read_installed(loaded: dict):
             entries = (data.get("plugins", data) or {}).get(f"{PLUGIN}@{marketplace}") or []
             if isinstance(entries, dict):
                 entries = [entries]
-            versions = []
-            for entry in entries:
-                try:
-                    versions.append((entry.get("scope") == "user", parse_version(entry["version"])))
-                except (KeyError, TypeError, ValueError, AttributeError):
-                    continue
-            if not versions:
-                return None, f"Claude Code ({manifest} has no dv@{marketplace} version)"
-            user = [v for is_user, v in versions if is_user]
-            return max(user or [v for _, v in versions]), "Claude Code"
+            return active_entry_version(entries, manifest, marketplace)
         except (OSError, ValueError, AttributeError) as exc:
             return None, f"Claude Code ({manifest} unreadable: {exc})"
     cache = home / "plugins" / "cache" / marketplace / PLUGIN
@@ -231,8 +261,17 @@ def check(arg: str, repo: str = REPO):
             "check says current; work that doesn't depend on dv can continue.",
             where]
     latest_v = fmt(latest)
+    if loaded["version"] > latest and loaded["home"] is not None:
+        # An installed copy above every stable release isn't a released version (a merge whose
+        # release hasn't published yet, a draft or pre-release, a local marketplace).
+        return EXIT_NOT_VERIFIED, [
+            f"{PREFIX} not verified: loaded dv {loaded_v} is ahead of the latest stable release "
+            f"{latest_v} (installed {installed_text}), so it is not a released version. Hold "
+            "every dv-dependent action until a rerun of this check says current (once its "
+            "release is published); work that doesn't depend on dv can continue.",
+            where]
     if loaded["version"] >= latest:
-        ahead = "" if loaded["version"] == latest else " (ahead of the latest release)"
+        ahead = "" if loaded["version"] == latest else " (development copy ahead of the latest release)"
         return EXIT_CURRENT, [
             f"{PREFIX} current: loaded dv {loaded_v}{ahead}, latest release {latest_v}, "
             f"installed {installed_text}.",

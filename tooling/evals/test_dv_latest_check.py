@@ -10,7 +10,10 @@ real `gh` on PATH, the run checks the "gh missing" path.
 
 Checked (each name below is printed with ok or FAIL):
   current (Claude Code and Codex homes, a SKILL.md path given instead of its directory, a
-  development copy read by metadata.version, one ahead of the release); stale with the install
+  development copy read by metadata.version, one ahead of the release); an installed copy ahead
+  of every stable release is not verified; which Claude Code entry applies (a project-scope
+  entry for the working directory or a parent, one for another directory, one with no
+  projectPath); stale with the install
   current (a fresh session is enough) and with the install itself behind, on both clients, and
   with the installed version unreadable; the latest release ignoring drafts, pre-releases, other
   plugins' tags and malformed dv tags, and gh asked to exclude drafts and pre-releases; release
@@ -99,13 +102,18 @@ class Sandbox:
             self.skill(home, v)
         return home
 
-    def run(self, arg: str, mode: str = "", gh: bool = True, extra: dict | None = None):
+    def run(self, arg: str, mode: str = "", gh: bool = True, extra: dict | None = None,
+            cwd: str | None = None):
         env = {"PATH": f"{self.bin}:/usr/bin:/bin" if gh else str(self.root / "empty"),
                "FAKE_GH_DIR": str(self.bin), "FAKE_GH_MODE": mode, "HOME": str(self.root)}
         for k, v in (extra or {}).items():
             env[k] = v.replace("{bin}", str(self.bin))
+        run_dir = None
+        if cwd:
+            run_dir = Path(cwd.replace("{root}", str(self.root)))
+            run_dir.mkdir(parents=True, exist_ok=True)
         proc = subprocess.run([sys.executable, "-I", str(SCRIPT), arg], capture_output=True,
-                              text=True, env=env, timeout=60)
+                              text=True, env=env, timeout=60, cwd=run_dir)
         return proc.returncode, proc.stdout, proc.stderr
 
     def gh_argv(self):
@@ -127,12 +135,12 @@ def expect(name: str, cond: bool, detail: str = ""):
 
 
 def case(name, arg_fn, code, first_word, contains=(), absent=(), mode="", gh=True, setup=None,
-         env=None):
+         env=None, cwd=None):
     sb = Sandbox()
     try:
         if setup:
             setup(sb)
-        rc, out, err = sb.run(arg_fn(sb), mode=mode, gh=gh, extra=env)
+        rc, out, err = sb.run(arg_fn(sb), mode=mode, gh=gh, extra=env, cwd=cwd)
         first = out.splitlines()[0] if out else ""
         ok = (rc == code and first.startswith(f"dv-latest-check: {first_word}")
               and all(c in first for c in contains) and not any(a in first for a in absent))
@@ -165,7 +173,23 @@ def main() -> int:
          0, "current", ("loaded dv 0.51.0", "installed unknown"))
     case("current: loaded ahead of the latest release",
          lambda sb: str(make_dev(sb, "0.53.0")),
-         0, "current", ("loaded dv 0.53.0 (ahead of the latest release)",))
+         0, "current", ("loaded dv 0.53.0 (development copy ahead of the latest release)",))
+    case("not verified: an installed cache copy ahead of every stable release",
+         lambda sb: str(sb.skill(sb.claude_home("0.53.0"), "0.53.0")),
+         2, "not verified", ("loaded dv 0.53.0 is ahead of the latest stable release 0.51.0",
+                             "installed 0.53.0"))
+
+    # --- which Claude Code install applies ------------------------------------------------------
+    case("installed: a project-scope entry for this directory wins over the user entry",
+         lambda sb: str(scoped_home(sb, [user("0.51.0"), project("0.50.0", "{root}/proj")], "0.50.0")),
+         1, "stale", ("loaded dv 0.50.0", "installed 0.50.0", "install itself is behind"),
+         cwd="{root}/proj/sub")
+    case("installed: a project-scope entry for another directory is ignored",
+         lambda sb: str(scoped_home(sb, [user("0.51.0"), project("0.50.0", "{root}/other")], "0.50.0")),
+         1, "stale", ("installed 0.51.0", "a fresh session picks up"), cwd="{root}/proj")
+    case("installed: a non-user entry with no projectPath makes it unknown",
+         lambda sb: str(scoped_home(sb, [user("0.51.0"), {"scope": "project", "version": "0.50.0"}], "0.50.0")),
+         1, "stale", ("installed unknown",), cwd="{root}/proj")
 
     # --- latest release selection ------------------------------------------------------------
     def noisy(sb):
@@ -248,6 +272,26 @@ def main() -> int:
         return 1
     print("all dv_latest_check tests passed")
     return 0
+
+
+def user(version: str) -> dict:
+    return {"scope": "user", "version": version}
+
+
+def project(version: str, path: str) -> dict:
+    return {"scope": "project", "version": version, "projectPath": path}
+
+
+def scoped_home(sb: Sandbox, entries: list, loaded: str) -> Path:
+    home = sb.claude_home(None)
+    d = sb.skill(home, loaded)
+    for e in entries:
+        if "projectPath" in e:
+            e["projectPath"] = e["projectPath"].replace("{root}", str(sb.root))
+            Path(e["projectPath"]).mkdir(parents=True, exist_ok=True)
+    manifest = {"version": 2, "plugins": {"dv@villavicencio-skills": entries}}
+    (home / "plugins" / "installed_plugins.json").write_text(json.dumps(manifest))
+    return d
 
 
 def make_dev(sb: Sandbox, version: str | None) -> Path:

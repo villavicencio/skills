@@ -27,17 +27,22 @@ session still loaded 0.48.0. The Head of Skills set the rule as his item 78, fro
     (`gh release list --exclude-drafts --exclude-pre-releases --limit 100`; drafts, pre-releases
     and other plugins' tags are ignored);
   - the installed version: Claude Code's `<home>/plugins/installed_plugins.json` entry
-    `dv@<marketplace>` (the user-scope entry when there is one), or, in a home with no such file
-    (Codex), the highest version directory in `<home>/plugins/cache/<marketplace>/dv/`. A
-    development copy has no installed version (`installed unknown`).
+    `dv@<marketplace>` that applies here (a project- or local-scope entry whose `projectPath` is
+    the working directory or a parent of it, else the user-scope entry; unknown when a non-user
+    entry has no `projectPath`), or, in a home with no such file (Codex), the highest version
+    directory in `<home>/plugins/cache/<marketplace>/dv/`. A development copy has no installed
+    version (`installed unknown`).
 
   Its first line is one of `current` (exit 0), `stale` (exit 1; names the loaded, latest and
   installed versions and says either that a fresh session picks up the update or that the install
-  itself is behind) or `not verified` (exit 2; the release or the base path can't be read).
+  itself is behind) or `not verified` (exit 2; the release or the base path can't be read, or an
+  installed copy is ahead of every stable release, such as a merge whose release hasn't published
+  yet). Only a development copy passes when it is ahead of the latest release.
   `DV_LATEST_CHECK_GH`, when set, names a stand-in `gh` for tests and live checks (a Codex shell
   rebuilds `PATH` from the login profile, so a stand-in on `PATH` is not seen there).
 - **Every dv skill's first section, "First step: dv-latest-check"** (identical in all sixteen):
-  run the check with the base directory given at load time, never a newer path on disk; give it
+  run the check with the base directory given at load time, never a newer path on disk (a
+  `--plugin-dir` development copy passes at or above the latest release); give it
   network access (a Codex sandbox blocks it, and the check then says `not verified`); if an update
   removed the loaded copy, run the newest copy of the script in the same plugin cache with the
   same base directory; quote its first line (none counts as `not verified`); on `stale` or

@@ -24,7 +24,7 @@ secret-named file and get back what it found.
   path that a read of the session's own takes from the ticket's text, its comments, or a ticket,
   PR, file or page they point to, the session checks the path. A file the text names only in words
   counts, as the path the session would read, worked out from the words alone or from a listing
-  with every secret-named entry filtered out. The path is taken as "The path and the pattern"
+  whose command drops every secret-named entry before its output reaches the session. The path is taken as "The path and the pattern"
   takes a file test's `<path>` (without its quotes, a leading `./` dropped, relative to the top
   level of the repo the fact is about), and the first rule that refuses it gives the reason:
   - a path that starts with `/` or `~`: "not checked: path outside the repo", so whoever reads the
@@ -38,7 +38,8 @@ secret-named file and get back what it found.
   reason. A search of the session's own across more than one file in a repo, for a word the text
   gives (step 5's search for every spelling of a value included), opens no secret-named file: it
   is `git grep -F -e '<word>' <commit> -- .` at the commit step 1 recorded, which reads only that
-  commit's tracked files, with the word only when it passes the Rules' test for a value taken from
+  commit's tracked files (not made when that commit is not in the local clone: "not checked:
+  commit not in the clone"), with the word only when it passes the Rules' test for a value taken from
   ticket text, and with a `':(exclude,literal)<path>'` pathspec for each secret-named path that
   `git ls-tree -r -z --name-only <commit>` lists. When such a path holds `'` or a character outside
   printable ASCII, it cannot be left out that way, and the search is not made: "not checked:
@@ -54,9 +55,10 @@ secret-named file and get back what it found.
   anything it points to, goes through `dv:groom`'s "Paths in your own reads", with the same order
   and reasons. A refused path is not read in any way; the fact is marked `[assumed]` and listed in
   the Agent notes under what was not checked, with the reason ("path outside the repo", "unsafe
-  path", "git metadata", "secret-named path", or "search would open a secret-named path"). The
-  search runs at the default branch's commit the step already takes from the local clone for a
-  fact stated as a command. If `../groom/SKILL.md` cannot be read, every fact whose check would
+  path", "git metadata", "secret-named path", "commit not in the clone", or "search would open a
+  secret-named path"). The search runs at the default branch's commit, taken from the local clone
+  and compared with origin's as `dv:groom` step 1 does, the same commit a fact stated as a command
+  uses. If `../groom/SKILL.md` cannot be read, every fact whose check would
   read a path taken from the request, or search more than one file for a word it gives, is
   `[assumed]` ("dv:groom's path rules could not be read"). The step says plainly that in a private
   repo a fact stated in words about a file whose path passes the rules is still read, and the draft

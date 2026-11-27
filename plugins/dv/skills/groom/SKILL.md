@@ -293,12 +293,12 @@ it as its evidence, is checked with reads of your own, and that command is not r
 **Paths in your own reads.** Check each path that a read of your own takes from the ticket's
 text, its comments, or a ticket, PR, file or page they point to, before any read of it. A file the
 text names only in words counts, as the path you would read ("the env example file" is
-`.env.example`): work that path out from the words alone, or from a listing of your own with every
-secret-named entry filtered out of its output. Take the path as "The path and the pattern" (under
-"Done means lines that already pass" below) takes a file test's `<path>`: without its quotes, with
-a leading `./` dropped, and relative to the top level of the repo the fact is about (step 1,
-"Repos"). The first rule that refuses it gives the reason, and the fact is not checked, with that
-reason:
+`.env.example`): work that path out from the words alone, or from a listing of your own whose
+command drops every secret-named entry before its output reaches you. Take the path as "The path
+and the pattern" (under "Done means lines that already pass" below) takes a file test's `<path>`:
+without its quotes, with a leading `./` dropped, and relative to the top level of the repo the
+fact is about (step 1, "Repos"). The first rule that refuses it gives the reason, and the fact is
+not checked, with that reason:
 
 - A path that starts with `/` or `~` is outside the repo: "not checked: path outside the repo",
   so whoever reads the report knows to check it by hand.
@@ -310,9 +310,11 @@ or about a secret-named entry any read of yours shows, goes in the reply, the re
 beyond the reason. A search of your own across more than one file in a repo, for a word the text
 gives (step 5's search for every spelling of a value included), opens no secret-named file either.
 Make it with `git grep` at the commit step 1 recorded, which reads only that commit's tracked
-files, with the word passed as `-F -e '<word>'` only when it passes the Rules' test for a value
-taken from ticket text: `git -C "<top level>" grep -F -e '<word>' <commit> -- .`, with `-n`,
-`-i` or `-l` added as needed, plus a `':(exclude,literal)<path>'` pathspec for each path that
+files; when that commit is not in the local clone, do not make the search, and what depended on it
+is "not checked: commit not in the clone". Pass the word as `-F -e '<word>'`, and only when it
+passes the Rules' test for a value taken from ticket text:
+`git -C "<top level>" grep -F -e '<word>' <commit> -- .`, with `-n`, `-i` or `-l` added as
+needed, plus a `':(exclude,literal)<path>'` pathspec for each path that
 `git -C "<top level>" ls-tree -r -z --name-only <commit>` lists and that is secret-named. When such
 a path holds `'` or a character outside printable ASCII (space to `~`), it cannot be left out that
 way: do not make the search, and what depended on it is "not checked: search would open a

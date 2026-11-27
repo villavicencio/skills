@@ -7,9 +7,7 @@ name and one line on what done means) is asked, as one question: create it, or "
 Only `dv:groom` changes. The other fifteen skills have no behaviour changes; their version moves to `0.47.0` only
 because the suite is released as one plugin.
 
-Numbering: open PRs claim 0.45.0 (skills PR 124) and 0.46.0 (skills PR 127), so this release takes
-0.47.0 for now; when main is merged in before the merge, it becomes the next minor after main's
-version then.
+Numbering: 0.47.0 follows 0.46.0 (VIL-1224, skills PR 127), which has merged.
 
 Why: the "none fits" case was one open decision whose options included creating a milestone, so in
 `forks-only` mode from a worktree session the whole decision went to the Head and stayed pending,

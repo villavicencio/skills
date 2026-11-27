@@ -4,7 +4,7 @@ description: "Close out a finished worktree session and brief the parent session
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.48.0"
+  version: "0.50.0"
 ---
 
 # /closeout — close out a finished worktree session
@@ -46,7 +46,8 @@ Run the steps in this order: Step 1, Step 2, Step 4, Step 3, Step 5. They keep t
 and the sections below are in that run order. Step 4 (the handoff archive) runs before Step 3
 writes and saves the note, so the note is written once, after the archive, and its Worktree
 verdict and CLEANUP carry this turn's Step 4 result. When Step 4 is skipped (Step 2 did not say
-safe to delete, or the losses it lists wait on my yes), Step 3 follows Step 2 and the note
+safe to delete, or the losses it lists wait on my yes: no standing yes covers every one, Step 2),
+Step 3 follows Step 2 and the note
 records that the archive has not run. Run the first block under "Optional: Orca delivery and
 removal" before Step 3 as well (it only reads, and says when there is no Orca CLI): the removal
 command Step 5 picks, which a cleared note names in CLEANUP, depends on it. Writing the note
@@ -504,9 +505,35 @@ The verdict names every build-output line Step 1 printed in a short form: its na
 directory count and fingerprint word for word as printed, without the per-kind counts (for example
 `__pycache__/ (any depth): 666 entries in 87 directories; fingerprint 3f9a0c1e2b7d`), and the
 reflog-only commits with their count, list id and the commits as listed (all of them, or the
-first 50 when there are more). It is not "safe" until I accept losing them: nothing in Steps 4
-and 5 that needs "safe" runs before that yes, and the question that asks for it names the
-build-output lines and the reflog-only commits.
+first 50 when there are more). It is not "safe" until my answer for them is given: my yes, or a
+standing yes that covers every one ("A standing yes for the losses", below). Nothing in Steps 4
+and 5 that needs "safe" runs before that answer, and when no standing yes covers them, the
+question that asks for it names the build-output lines and the reflog-only commits.
+
+**A standing yes for the losses.** A standing yes I already wrote can be my answer for those
+losses, in place of my yes to Step 5's question (with a Head, in place of the losses item: "With
+a Head", "The losses"). It covers a listed loss (one build-output line, or the reflog-only
+commits as one) only when all three of these hold, judged in this run and never inferred:
+
+- **Where.** It is in the global instructions, this project's `AGENTS.md` or `CLAUDE.md` as the
+  default branch has them (`git show <what Step 1 compared against>:AGENTS.md`), or memory, read
+  from its file in this run. Words that only this branch has, or that this session wrote or
+  changed, are not one.
+- **What.** Its own words name that kind of loss, such as that build-output line's directory
+  name, or commits reachable only from the reflog. Words that leave it unclear whether they cover
+  the loss don't cover it.
+- **Conditions.** Every condition its words state matches (for the reflog-only commits, for
+  each commit), each shown by Step 1's output or a command run in this closeout, such as a merged
+  PR in Step 1's PR list. A condition nothing in this run shows does not match, with one
+  exception: a condition that this session has ended can't hold while it runs. That one is still
+  to be met: the yes then covers only a removal made after this session has ended (Step 5,
+  "Removal cleared"), and the note names it.
+
+It gives my answer only when every listed loss is covered, by one standing yes or several. If any
+loss is not covered, none is: all of them wait on my yes, as with no standing yes. Each run
+judges this afresh against its own Step 2 verdict; a standing yes is not a yes to one verdict.
+The verdict does not change: it stays `safe once you accept losing: …`, and the note quotes each
+covering yes on a line of its own (Step 3, "The note follows Step 4", case 1).
 
 Safe to delete is about data. Whether a given removal command can do it is separate: see the
 initialized-submodule case in Step 5.
@@ -538,10 +565,11 @@ at risk, but the work is not finished. Say so first, and suggest `/handoff` if i
 
 Run this right after Step 2, before Step 3 writes the note, and only when Step 2 said safe to
 delete, or said safe once I accept losing the listed build-output lines and reflog-only commits
-and I have said yes to that in this session (my answer to Step 5's question, which a standing yes
-does not replace; with a Head, my yes verified as "With a Head" says, "The losses"), with Step
-5's recheck matching the lines I accepted word for word. A changed
-"safe once you accept losing" verdict waits on a new yes. It moves this session's handoff out of
+and my answer for them is given: my yes in this session (my answer to Step 5's question; with a
+Head, my yes verified as "With a Head" says, "The losses"), with Step 5's recheck matching the
+lines I accepted word for word, or a standing yes of mine that covers every one of them in this
+run's Step 2 ("A standing yes for the losses"). A changed "safe once you accept losing" verdict
+waits on a new yes, unless a standing yes covers every loss it lists. It moves this session's handoff out of
 the shared store into `handoffs/_done/`, the way `/pickup` does for a branch whose PR merged, so
 `/pickup` in other worktrees stops listing a closed session. It also covers a detached worktree,
 which `/pickup` never archives: the handoff is found by the worktree path it records, and archived
@@ -710,8 +738,8 @@ store is not as they left it. Only the git common directory is resolved (`pwd -P
 and `/pickup` resolve it, so the store is the same real directory they use. Step 1's recheck, not
 this block, decides the verdict; the block's own `git status` only guards the archive. Then offer and name no removal: the session would stay listed by `/pickup`, and a
 handoff copy that exists only in the worktree would go with it. The `HANDOFF.md` in the worktree is left in place; it goes with the worktree. When Step 2 did not
-say safe (or I have not yet accepted the listed losses), skip this step and say the handoff was
-left where it is. Either way, Step 3 comes next and writes this result into the note (Step 3,
+say safe (or the listed losses still wait on my yes: I have not accepted them, and no standing
+yes covers every one, Step 2), skip this step and say the handoff was left where it is. Either way, Step 3 comes next and writes this result into the note (Step 3,
 "The note follows Step 4").
 
 ### Step 3 — Write the parent note and copy it
@@ -719,12 +747,15 @@ left where it is. Either way, Step 3 comes next and writes this result into the 
 Run this after Step 4, in the same turn, or right after Step 2 when Step 4 is skipped. Write the
 note as plain text, no markdown, for a reader who was not in this session. Include only what the
 parent needs to act on or to avoid redoing. Every state in it comes from Steps 1, 2 and 4 as run
-in this turn. Use these headings in this order, and write "none" under one with nothing to say:
+in this turn. Use these headings in this order, and write "none" under one with nothing to say.
+The `Standing yes for` lines appear only as case 1 below says, one per loss; otherwise leave
+them out:
 
 ```
 CLOSEOUT NOTE from <branch or "detached"> at <worktree path>, <date and time with zone>
 Worktree: <safe to delete | safe once you accept losing: <each build-output line as name, entry count, directory count and fingerprint; reflog-only commits with count and list id> | NOT safe to delete: what would be lost, each nested git repo by path | not confirmed safe: what is unverified>, by these checks
 Not checked: <the fixed list from Step 2>
+Standing yes for <the loss as the Worktree line names it>: "<my words that name it and state its conditions, quoted>" (<source file>, <the date the words give for the yes, or else the file's modified date, saying which>); conditions: <each, with what in this run showed it>; still to be met at removal: <that this session has ended, or none>
 
 WHAT SHIPPED
 <ticket id, title and state now; each PR with number, merge state and link; releases and tags>
@@ -747,18 +778,22 @@ REPLY NEEDED: <no | yes: the question; with a Head, its Qk>
 **The note follows Step 4.** The Worktree line and CLEANUP say what Step 4 printed in this
 turn. Only the first case names a removal command:
 
-1. Step 2 said safe to delete, or said safe once you accept losing and I have said yes to those
-   losses (the recheck matching, Step 5), and Step 4's last line in this turn is one of its two
-   success lines: the Worktree line is Step 2's verdict word for word, with nothing added to it
-   (the Director's recheck compares it word for word; say who accepted which losses elsewhere in
-   the note), and CLEANUP names the removal command Step 5 gives (with an initialized submodule,
-   the guarded procedure Step 5 names instead of a command).
+1. Step 2 said safe to delete, or said safe once you accept losing and my answer for those
+   losses is given (my yes, the recheck matching, Step 5; or a standing yes that covers every
+   one, Step 2, "A standing yes for the losses"), and Step 4's last line in this turn is one of
+   its two success lines: the Worktree line is Step 2's verdict word for word, with nothing added
+   to it (the Director's recheck compares it word for word; say who accepted which losses
+   elsewhere in the note: for a standing yes, one `Standing yes for` line per loss, under the Not
+   checked line), and CLEANUP names the removal command Step 5 gives (with an initialized
+   submodule, the guarded procedure Step 5 names instead of a command), after the condition
+   still to be met, when a standing yes has one (Step 2).
 2. Step 2 said either of those, but in this turn Step 4 printed anything else (`ARCHIVE
    INCOMPLETE`, `uncommitted changes`, the main-checkout line, or nothing) or did not run: the
    Worktree line is `not confirmed safe: handoff archive not confirmed (Step 4 printed "<its last
    line>", or "Step 4 has not run in this turn"), by these checks`.
-3. Step 2 said safe once you accept losing and I have not said yes to those losses: Step 4 has
-   not run, since it waits on that yes. The Worktree line is `not confirmed safe: losing <each
+3. Step 2 said safe once you accept losing and my answer for those losses is not given (I have
+   not said yes to them, and no standing yes covers every one, Step 2): Step 4 has not run,
+   since it waits on that yes. The Worktree line is `not confirmed safe: losing <each
    build-output line and the reflog-only commits, as Step 2's verdict lists them> waits on <the
    user's name>'s yes, and the handoff archive (Step 4) has not run, by these checks`, and
    CLEANUP says there is no removal command until those losses are accepted and Step 4 confirms
@@ -849,19 +884,23 @@ Do not run it.
 - While the note waits for the probe answers ("Deliver the note", below), say that removing the
   worktree ends this session, and the note is then not sent.
 - **Removal cleared.** Name a removal command, in the reply or the note, only when Step 2 said
-  safe to delete, or it said safe once I accept losing and I accepted those build-output lines and
-  reflog-only commits (the recheck below still matching), and Step 4's latest run confirmed the
-  archive (its two success lines, Step 4), before Step 3 wrote the latest note (Step 3, "The note
-  follows Step 4"). Otherwise, whether or not the note went to the session the probe picked, name
+  safe to delete, or it said safe once I accept losing and my answer for those losses is given (I
+  accepted those build-output lines and reflog-only commits, the recheck below still matching, or
+  a standing yes of mine covers every one, Step 2, "A standing yes for the losses"), and Step 4's
+  latest run confirmed the archive (its two success lines, Step 4), before Step 3 wrote the latest
+  note (Step 3, "The note follows Step 4"). When that standing yes has a condition still to be
+  met (Step 2: that this session has ended), say with the command, in the reply and in CLEANUP,
+  that it is only for a removal after this session has ended. Otherwise, whether or not the note went to the session the probe picked, name
   no command and don't leave the removal to a Director: say why removal is blocked (what would be
   lost, the check that did not run, or the archive not confirmed or not yet run), and for losses
-  not yet accepted ask the question in the paragraph below.
+  not yet accepted, and not covered by a standing yes (Step 2), ask the question in the paragraph
+  below.
 - **The probe's peer has the note.** This bullet applies when the removal is cleared, the note
   has been sent to the session the probe picked ("Deliver the note", steps 4 and 5) with Step 4's
   archive confirmed in that send's turn (so the note sent says safe: Step 3, "The note follows
-  Step 4", case 1), and either Step 2 said safe to delete or a standing yes of mine (in the global
-  instructions, this project's instructions or memory) covers every accepted loss and my
-  acceptance came before the note that was sent. Closeout then knows only that the session the
+  Step 4", case 1), and either Step 2 said safe to delete or a standing yes of mine covers every
+  listed loss (Step 2, "A standing yes for the losses"), as the sent note's `Standing yes for`
+  lines quote it. Closeout then knows only that the session the
   probe picked answered it with the main checkout's path: the answer is that session's own
   claim, not proof that it runs `dv:director-mode` ("Deliver the note", step 4, known limit). "Offer the
   removal", below, asks no removal question, because a Director Mode session in the main checkout
@@ -871,7 +910,8 @@ Do not run it.
   probe from the main checkout; that no removal question is asked; and that if no Director removes
   the worktree after this session ends, I can run the removal command, which the reply always
   names (with an initialized submodule, the guarded procedure the bullet "Initialized
-  submodules" names instead). Losses I accepted only in this session fail the Director's check on the note
+  submodules" names instead). Losses I accepted only in this session, with no standing yes
+  covering every one, fail the Director's check on the note
   (`dv:director-mode`, "End a finished worktree session", check 1), and an acceptance after the
   note is a message from me after it (check 3), so in either case the removal stays mine and the
   question is asked, as when no note was sent. Those checks hold while a Director ends this
@@ -885,8 +925,11 @@ Do not run it.
   offer `--force` yourself.
 
 When the worktree is not safe, or not confirmed safe, name no removal command and offer none.
-When Step 2 said safe once I accept losing (never while a nested git repo is listed: that is not
-safe) and I have not said yes yet, the note says the losses wait on my yes (Step 3, "The note
+When a standing yes of mine covers every listed loss (Step 2, "A standing yes for the losses"),
+ask no question about them: Step 4's gate lets it run, and a case 1 note quotes it (case 2 when
+the archive is not confirmed; Step 3, "The note follows Step 4"). When Step 2 said safe once I accept losing (never while a nested git repo is
+listed: that is not safe), I have not said yes yet, and no standing yes covers every listed loss,
+the note says the losses wait on my yes (Step 3, "The note
 follows Step 4", case 3). With a Head this question is not asked: it is an open item ("With a
 Head", "The losses"). Otherwise end the reply with one plain question that names what would be lost:
 each build-output line with its name, entry count, directory count and fingerprint (for example
@@ -908,8 +951,9 @@ are not part of it. A fingerprint that reads `unknown` comes with a check that d
 the verdict is not the same. The reflog-only commit count and list id must be the same too, and
 no nested git repo may be listed. If anything changed, act on nothing: report the new verdict,
 write the note again with Step 3 if the saved one no longer holds (a new copy, after Step 4 only
-when the new verdict is safe to delete; a changed "safe once you accept losing" verdict waits on
-a new yes, Step 3's case 3), and ask again.
+when its gate allows it for the new verdict: safe to delete, or a standing yes that covers every
+loss it lists, Step 2; otherwise a changed "safe once you accept losing" verdict waits on a new
+yes, Step 3's case 3), and ask again for any yes still needed.
 
 Reply in this order, short:
 
@@ -924,7 +968,8 @@ Reply in this order, short:
    a Head" leaves there.
 3. The verified facts, one line each: the ticket and its state; each PR and its merge state; what
    the worktree holds beyond the default branch; the main checkout against its remote (behind,
-   ahead, dirty); where the handoff went, or that it was left; where this turn's copy of the note
+   ahead, dirty); where the handoff went, or that it was left; each `Standing yes for` line the
+   note gives, when a standing yes covers the losses (Step 2); where this turn's copy of the note
    was saved (when an earlier turn saved one, that this copy supersedes it) and
    the clipboard attempt status from Step 3 (unconfirmed unless I verified pasting this note);
    what happened with the Director, as one of the outcomes in "Deliver the note" (not sent and why, probe sent and the note waiting for the answers, send
@@ -1046,7 +1091,8 @@ routes as the bullets say.
   5. The note. Send the note once, with SendMessage to the Director's answer's `from` address.
      The answer arrives in a later turn, so first run Steps 1, 2 and 4 again in the run order
      (Step 4 when its own gate allows it: safe to delete, or safe once I accept losing with those
-     very losses accepted and the recheck matching them), then Step 3, which writes the note from this turn's results, saves it once as
+     very losses accepted and the recheck matching them, or with a standing yes covering every
+     one, Step 2), then Step 3, which writes the note from this turn's results, saves it once as
      a new copy and attempts to copy it to the clipboard (Step 3, "The note follows Step 4" and
      "One saved copy per run"). Send that copy; `<note path>` is the `note saved:` path Step 3
      printed in this turn. The receiver sees only the first line until it expands the
@@ -1097,7 +1143,10 @@ tested: a socket file left behind by a session that crashed.
 
 **Offer the removal.** Only when the worktree lives in Orca, the block printed an Orca CLI, and
 the removal is cleared (Step 5's bullet "Removal cleared"), end the reply with one question
-(with a Head, never: "With a Head"). Before running the removal on my yes,
+(with a Head, never: "With a Head"). Never ask it when a standing yes that covers the losses has
+a condition still to be met (Step 2, "A standing yes for the losses": that this session has
+ended): this removal would run inside this session, so name the command below in the reply
+instead, for a removal after this session has ended. Before running the removal on my yes,
 recheck as Step 5 says and run Step 4 again; if the verdict changed, or Step 4 does not print one
 of its two success lines, do not remove: report it and write the note again with Step 3. While the note waits for the
 probe answers, say so before the question: the removal ends this session, and the note is
@@ -1111,8 +1160,8 @@ be asked (above) and Step 5's bullet "The probe's peer has the note" holds: the 
 (Step 4 confirmed the archive), the note has been sent to the session the probe picked ("Deliver
 the note", steps 4 and 5) with a safe verdict, which Step 3 writes only after Step 4 confirmed the
 archive in the send's turn ("The note follows Step 4", case 1), and Step 2 said safe to delete
-or a standing yes of mine covers every accepted loss and my acceptance came before the note that
-was sent. When the removal is not cleared there is no
+or a standing yes of mine covers every listed loss (Step 2, "A standing yes for the losses"), as
+the sent note quotes it. When the removal is not cleared there is no
 question and no command: say why removal is blocked (Step 5). Where it applies, from the turn the
 note is sent, in that turn and every later one, end the reply without this question, whether or
 not that session has replied (the outcomes "note sent with no reply yet" and "note sent and
@@ -1132,11 +1181,12 @@ checks, which do not read the note, so those items do not hold the worktree then
 VIL-1209). In every other case the question stays as above: no note sent to a session the probe
 picked (no note sent, a second note send that failed included; the note waiting for the probe
 answers, the outcome "send failed and probe sent again" included; an answer not verified; a note
-sent only by `terminal send`), losses I accepted only in this session, or an acceptance after the
-note was sent. Skipping
+sent only by `terminal send`), losses I accepted only in this session with no standing yes
+covering every one, or an acceptance after the note was sent. Skipping
 this question never stands in for my consent to losing data that exists nowhere else: while Step 2
-says safe once you accept losing, Step 5's question still asks it, and nothing treats the worktree
-as safe before my yes. A yes I already gave to this question, asked before the note was sent,
+says safe once you accept losing, Step 5's question still asks it unless a standing yes of mine
+covers every listed loss (Step 2), and nothing treats the worktree as safe before my yes or that
+standing yes. A yes I already gave to this question, asked before the note was sent,
 still counts: recheck, run Step 4 again and remove as above, as the session's last action,
 without waiting for a reply to the note.
 
@@ -1168,8 +1218,10 @@ counts as my yes.
 
 - Losing what Step 2 lists under "safe once you accept losing" is not asked of me (Step 5).
   Accepting it is one of the CEO's 1% (deleting my data): an open item that settles only on my
-  own yes, verified ("The losses", below). It is one even when a standing yes of mine covers
-  those losses, since Step 4's gate says a standing yes doesn't replace my answer.
+  own yes, verified ("The losses", below), unless a standing yes of mine covers every listed
+  loss (Step 2, "A standing yes for the losses"). That yes is then my answer: there is no losses
+  item, Step 4's gate lets it run, and a case 1 note quotes it (case 2 when the archive is not
+  confirmed; Step 3, "The note follows Step 4").
 - What the reply's **Needs you:** would hold (decisions waiting on me, and anything still owed
   on the ticket) goes under WAITING ON as open items instead, a ticket-state mismatch included
   (Step 1, "The ticket beside its PRs"). Needs you keeps only what no message can grant (a
@@ -1324,7 +1376,10 @@ answer" there): take its option only for a decision this session's own rules alr
 (`dv:manager-mode`, "'Ask David' becomes this"). Every other item stays open on its way forward,
 and an item under "What no default decides" settles only as that bullet says.
 
-**The losses.** The item reads `Accept losing <each build-output line with its name, entry
+**The losses.** When a standing yes of mine covers every listed loss (Step 2, "A standing yes
+for the losses"), there is no losses item: that yes is my answer, Step 4's gate lets it run, and a
+case 1 note quotes it (Step 3). A losses item already open for those losses closes once Step 4 printed one of its two
+success lines. Otherwise the item reads `Accept losing <each build-output line with its name, entry
 count, directory count and fingerprint, and the reflog-only commits with their count and list
 id>?`, with the options `1. Accept losing them` and `2. Keep them`, this session's
 recommendation, `Reversible: no`, `CEO's 1%: yes` and a request for an `Approved by:` field. Its

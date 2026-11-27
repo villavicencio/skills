@@ -40,8 +40,8 @@ in the skills told the Head to arm a wake when an item goes to Waiting; he had a
     and its deadline; a wait record comment adds the owner's and the waiting session's Orca
     session ids, the ticket, the question's original key (or the PR and its head, or the handoff),
     the original message id, the wake target, the deadline, the full automation id and the
-    item's prior note, which the new note replaces. This write is the only one that sets Waiting,
-    and a reread of the item confirms it.
+    item's prior note, which the new note replaces. This write is the only one that sets Waiting, so
+    an item is set to Waiting only after its wake is verified; a reread of the item confirms it.
   - **Unarmed:** a failed or unclear flag check, create, verify or record keeps the item In
     progress (actionable) with `Wake: UNARMED` on its record, then disables any wake it made, and
     is said in that turn's first line, so the wait never reads as covered by a timer. Nothing
@@ -55,7 +55,9 @@ in the skills told the Head to arm a wake when an item goes to Waiting; he had a
     disposition is left alone, apart from one `Repeat trigger` line that keeps any later evidence.
     A done, canceled or snoozed item whose latest wait is open gets a `no follow-up` disposition
     and is never reopened. A wake that finds its wait open on a Waiting item first moves the item
-    to In progress with a `Wake run` line, since nothing armed covers the wait once its wake runs.
+    to In progress with a `Wake run` line, since nothing armed covers the wait once its wake runs; a
+    run cut off before that line can still leave a Waiting item with no wake covering it, which the
+    restart list catches.
     A current check (this wait is the item's latest and has no disposition) runs again before each
     send and disposition; a re-send another run adds meanwhile stops this run, while one already
     there when it started leads to `not settled`. Then the first case that fits: settled (the
@@ -113,8 +115,8 @@ is seen again only on the event's notice, when the Head looks at the item, or in
 list.
 
 The live test ran on the text before review. These were changed after it and not live-tested:
-the reread that confirms a wait record; an unarmed wait posted before its wake is disabled; no
-second create after a create error; how the wait key is counted; the one line for a wake that
+the reread that confirms a wait record; disposition before disable; an unarmed wait posted
+before its wake is disabled; no second create after a create error; how the wait key is counted; the one line for a wake that
 finds no record; the `Wake run` move to In progress; the order of the trigger's cases, with the
 `moved` and `not settled` dispositions, a snooze on the ticket, and a notice that leaves the
 check to a wake still ahead; one re-send per wait, only before the event has happened, and the

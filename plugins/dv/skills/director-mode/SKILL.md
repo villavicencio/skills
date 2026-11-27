@@ -522,7 +522,8 @@ blocker, and in the first line of that turn's reply, and what comes next is his 
   armed only on `ARMED`, and once `orca bot item show --id <n>` lists `automation:<id>` as `on`. If
   `create` errors or prints nothing readable, look for the wake by name in
   `orca automations list --json`; the wait is unarmed either way, with no second create.
-- **Record the wait** once it is armed, in one write, the only one that sets Waiting:
+- **Record the wait** once it is armed, in one write, the only one that sets Waiting, so an item
+  is set to Waiting only after its wake is verified:
   `orca bot item set <n> --status waiting --note "W<k>: <the event> from <owner>; wake <first 8 of the id> by <deadline, PT>" --comment-file <file>`,
   the note one line of at most 200 characters (Orca's limit), the comment being:
 
@@ -556,7 +557,8 @@ blocker, and in the first line of that turn's reply, and what comes next is his 
        In progress (nothing armed covers W<k> once its wake runs):
        `orca bot item set <n> --status in-progress --comment "Wake run, item <n> W<k>: started <time>."`
        (a failure goes in the first line). A start after the deadline is a missed deadline,
-       recorded as one even when the recovery then works.
+       recorded as one even when the recovery then works. A run cut off before this move can still
+       leave a Waiting item with no wake covering it; the restart list catches it.
   2. Reread the ticket (its comments, with every record for the original key, `list_comments`) or
      the PR at the recorded head in the repository the record names
      (`gh pr view <n> --repo <owner/repo> --json state,headRefOid,mergedAt`), and the owner's Orca
@@ -643,8 +645,8 @@ blocker, and in the first line of that turn's reply, and what comes next is his 
   leaves the wait open with no wake (on a Waiting item if cut off before its `Wake run` line),
   seen again only on the event's notice, when he looks at the item, or in the restart list.
 - **Changed after the live test, not live-tested** (it ran on the text before review): the
-  record's reread; unarmed posted before the disable; no second create; how k is counted; the
-  no-record line; the `Wake run` move; step 3's cases (`moved`, `not settled`, a ticket snooze, a
+  record's reread; disposition before disable; unarmed posted before the disable; no second
+  create; how k is counted; the no-record line; the `Wake run` move; step 3's cases (`moved`, `not settled`, a ticket snooze, a
   notice leaving the check to a wake still ahead); one re-send per wait, only before the event,
   and the Director's re-send of an answer already given; close, then arm, a next wait only when
   `Next:` names one (the live unavailable-owner case armed W2 before W1's disposition); Waiting

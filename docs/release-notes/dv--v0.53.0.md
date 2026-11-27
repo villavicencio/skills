@@ -20,15 +20,16 @@ session still loaded 0.48.0. The Head of Skills set the rule as his item 78, fro
   `python3 -I "<base directory>/../../scripts/dv_latest_check.py" "<base directory>"`. It reads:
   - the loaded version, from the `…/plugins/cache/<marketplace>/dv/<version>/skills/<name>` path
     (Claude Code's "Base directory for this skill"; Codex reports the same versioned cache path,
-    `~/.codex/plugins/cache/villavicencio-skills/dv/<version>/skills`), even when an update has
+    `~/.codex/plugins/cache/villavicencio-skills/dv/<version>/skills/<name>`), even when an update has
     since removed that directory (Codex replaces it on update). A path outside a plugin
     cache (a `--plugin-dir` development copy) falls back to `metadata.version` in its `SKILL.md`;
   - the latest release: the highest `dv--v<version>` tag among the repository's stable releases
-    (`gh release list --exclude-drafts --exclude-pre-releases`; drafts, pre-releases and other
-    plugins' tags are ignored);
+    (`gh release list --exclude-drafts --exclude-pre-releases --limit 100`; drafts, pre-releases
+    and other plugins' tags are ignored);
   - the installed version: Claude Code's `<home>/plugins/installed_plugins.json` entry
-    `dv@<marketplace>`, or for Codex the highest version directory in
-    `<home>/plugins/cache/<marketplace>/dv/`.
+    `dv@<marketplace>` (the user-scope entry when there is one), or, in a home with no such file
+    (Codex), the highest version directory in `<home>/plugins/cache/<marketplace>/dv/`. A
+    development copy has no installed version (`installed unknown`).
 
   Its first line is one of `current` (exit 0), `stale` (exit 1; names the loaded, latest and
   installed versions and says either that a fresh session picks up the update or that the install

@@ -11,10 +11,13 @@ it read). It reads three versions:
              when an update has since removed that directory. A path outside a plugin cache (a
              development copy loaded with --plugin-dir) falls back to metadata.version in its
              SKILL.md.
-  latest     the highest dv--v<version> tag among the stable releases of villavicencio/skills
-             (drafts and pre-releases excluded, other plugins' tags ignored), read with `gh`.
-  installed  Claude Code: <home>/plugins/installed_plugins.json, entry dv@<marketplace>.
-             Codex: the highest version directory in <home>/plugins/cache/<marketplace>/dv/.
+  latest     the highest dv--v<version> tag among the newest 100 stable releases of
+             villavicencio/skills (drafts and pre-releases excluded, other plugins' tags
+             ignored), read with `gh`.
+  installed  Claude Code: <home>/plugins/installed_plugins.json, entry dv@<marketplace> (the
+             user-scope entry when there is one). A home with no such file (Codex): the highest
+             version directory in <home>/plugins/cache/<marketplace>/dv/. A development copy:
+             unknown.
 
 The first printed line starts with the outcome, and the exit code matches it:
 

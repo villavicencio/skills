@@ -1181,13 +1181,16 @@ terminal by `orca terminal send`, by clipboard paste, or as a file under
   closed the session), first read the worktree's latest closeout note (below). When its Worktree
   line passes check 1's verdict rule under "End a finished worktree session" (it starts
   `Worktree: safe to delete,`, or `Worktree: safe once you accept losing:` with every listed loss
-  covered by a standing yes of mine), remove the worktree and its branch by the global removal
-  procedure named there, run from the main checkout; that procedure's checks then decide what is
-  removed. Otherwise (`NOT safe to delete`, `not confirmed safe`, a loss no standing yes covers,
-  or no note you can read), keep the worktree and its branch, remove nothing, and tell me as a
+  covered by a standing yes of mine), run "The closeout recheck" there against that note, since
+  the worktree may have changed after the note was saved. When that passes too, remove the
+  worktree and its branch by the global removal procedure named there, run from the main
+  checkout; that procedure's checks then decide what is removed. Otherwise (`NOT safe to delete`,
+  `not confirmed safe`, a loss no standing yes covers, no note you can read, or a recheck that
+  differs or can't run), keep the worktree and its branch, remove nothing, and tell me as a
   highlight: the worktree folder, the note's path and its Worktree line word for word (the
-  verdict and its reason), or that there is no note. The note can keep a worktree; it never
-  permits a removal. You never signal or stop a session's process.
+  verdict and its reason), or that there is no note, and what the recheck found when it failed.
+  The note can keep a worktree; it never permits a removal. You never signal or stop a session's
+  process.
   The worktree's latest closeout note is the newest copy saved for its branch under
   `<git-common-dir>/closeouts/`, named exactly `<branch slug>.<YYYYMMDDTHHMMSSZ>.txt`, or
   `<branch slug>.<YYYYMMDDTHHMMSSZ>-<n>.txt` on a clash. Compare the timestamp, then `<n>` as a
@@ -1195,7 +1198,7 @@ terminal by `orca terminal send`, by clipboard paste, or as a file under
   which puts `-1` before the copy without one. `<branch slug>` is the branch name as closeout's
   Step 3 block writes it, `%` as `%25` and `/` as `%2F` (`detached-<full HEAD sha>` for a detached
   HEAD). If that copy's header (its first line) names another worktree path, there is no note for
-  this worktree.
+  this worktree; a first line that is not a `CLOSEOUT NOTE` header makes it a note you can't read.
 - A session you started supervised (step 2a of "Open a worktree on request") you don't ask me to
   close: "End a finished worktree session" releases its chat through Orca once the checks there
   pass, and falls back to me when one fails or the release's outcome can't be confirmed. A
@@ -1227,9 +1230,10 @@ arrives, or at once if the reply can't be sent because the session has gone, fir
 `ps` check under "After I close it" with the `claude` pid (the one the note's `from` address
 names; a note with no `from` address ends nothing) in place of both pids. If it prints
 `GONE`, the session has already ended: skip the ask and this rule's checks, except that you apply
-check 1's verdict rule to the worktree's latest closeout note, as "Take closeout notes" says for a
-session that has ended. When that note fails the rule, or there is no note you can read, keep the
-worktree and tell me why, as that bullet says; when it passes, remove the worktree by the global
+check 1's verdict rule to the worktree's latest closeout note and then run the closeout recheck
+(below) against that note, as "Take closeout notes" says for a session that has ended. When the
+note fails the rule, there is no note you can read, or the recheck differs or can't run, keep the
+worktree and tell me why, as "Take closeout notes" says; when both pass, remove the worktree by the global
 procedure with check 4 in its removal form. If it doesn't print `GONE`, run checks 1, 3 and 4,
 then "Before asking me to close it", then "Asking me to close it".
 
@@ -1422,7 +1426,9 @@ in a later turn (my "closed" can arrive before Orca finishes ending the process)
 `GONE` and a pass still shows, remove nothing and tell me what is still running. Before removing, run check 3 again
 (the closeout recheck and the transcript test), since I may have taken a while to reply; if it
 fails, remove nothing and tell me. The global procedure's own step 2 checks run again at removal. Otherwise remove the worktree and its branch as
-above, and report it as a highlight.
+"Take closeout notes" says for a session that has ended, reading the worktree's latest closeout
+note again (the session may have saved a newer copy than the one checks 1 to 3 read), and report
+it as a highlight.
 
 #### Release a supervised Manager chat
 
@@ -1940,7 +1946,17 @@ session never does.
     SendMessage to the `from` address its handoff came from. Its kickoff prompt has it run
     `dv:closeout` then, and the branch and worktree are cleaned up when its note arrives ("Take
     closeout notes").
-  - **No session is live:** clean up the merged PR's branch and worktree now. For a stale-PR
+  - **No session is live:** clean up the merged PR's branch and worktree now. A session that
+    ended before the merge may have saved a closeout note that never reached you, so before any
+    step of that cleanup (`cleanup_merged_branch` included, since it removes a clean worktree
+    itself), read the latest closeout note ("Take closeout notes") of the worktree that has the
+    PR's branch checked out. When it has one, remove that worktree only as "Take closeout notes"
+    says for a session that has ended (check 1's verdict rule, then the closeout recheck); when
+    the note fails the rule, or the recheck differs or can't run, keep the worktree and its
+    branch and tell me as "Take closeout notes" says. When it has none (no copy saved for its
+    branch, or the latest copy's header names another worktree), go on as below; when its latest
+    copy can't be read, or `<git-common-dir>/closeouts/` exists and can't be listed, keep the
+    worktree and tell me. For a stale-PR
     repair, also consider only the exact temporary path and full HEAD the engineer handed back.
     Read the merged PR's state, `commits` and `headRefOid` with `gh pr view`, and the main
     checkout's `git worktree list --porcelain`. The PR must be merged, the handed-back HEAD
@@ -1963,7 +1979,9 @@ session never does.
 - Clean up by the global procedure for removing branches and worktrees (the Git bullets "After a
   PR merges…", "A leftover local branch…" and "Remove a finished Orca worktree yourself…"), run
   from the main checkout. Any other worktree or branch removal, merged PR or not, follows the
-  same bullets, the stale-PR engineer's temporary worktree included. The procedure keeps what
+  same bullets, the stale-PR engineer's temporary worktree included; before such a removal of a
+  worktree, read that worktree's latest closeout note and go on or keep it as "No session is live"
+  after the merge says. The procedure keeps what
   fails a check or cannot be checked; tell me what it kept and why. For its "no other session
   still in it", which names no command, run check 4 under "End a finished worktree session"
   in its removal form: ListAgents lists no live session for the worktree (the test above), and
@@ -1973,8 +1991,8 @@ session never does.
   me (including when you asked under "End a finished worktree session") or released by you
   ("Release a supervised Manager chat"); the global procedure's own checks, including
   that no other session is still in it, decide removal, and a `dv:closeout` note is context, not
-  permission to delete, though once a session whose closeout note reached you has ended, that
-  worktree's latest note can keep it ("Take closeout notes").
+  permission to delete, though once its session has ended, that worktree's latest closeout note
+  can keep it ("Take closeout notes", and "No session is live" after the merge, above).
 - Re-check every ticket id the PR named. Reopen one only if it moved to Done and its work is not
   finished; leave the others' states to the rules below.
 - If you cannot read `code-review.md` or the global instructions, say so and ask me; do not

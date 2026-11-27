@@ -54,5 +54,22 @@ warning was never read and the file could be lost with the worktree (VIL-1209).
   clean up": neither has a worktree session's closeout note, and their removal is unchanged.
 - The "losses I accepted before the note" wording in the "Take closeout notes" bullet before this
   one (VIL-1263 owns it).
-- A live run of the `GONE` path: the lab run (skills PR for VIL-1209) covers the "closed by me"
-  path; the `GONE` path is checked by reading only.
+- A live run of the `GONE` path. The lab run below covers the "closed by me" path only.
+
+## Checked
+
+In a disposable lab clone (its own bare origin, no GitHub remote, push disabled, read-only `gh`
+and `orca` stand-ins), headless Opus sessions at high effort ran real `dv:closeout` closeouts in
+plain git worktrees, and then a headless Director was told "I closed the session for <worktree>
+in Orca":
+
+- Latest note `not confirmed safe` (Step 4 printed `ARCHIVE INCOMPLETE`; an earlier copy for the
+  same branch read `safe to delete`): kept, twice; the Director named the newer copy.
+- Latest note `not confirmed safe` (a reflog-only commit waiting on David's yes): kept.
+- Only note `safe to delete` (Step 4 archive confirmed): removed, and its branch deleted with
+  `delete_leftover_branch`.
+
+With 0.51.0's text, the same Director kept both `not confirmed safe` worktrees it was given, by
+its own caution (it read a worktree-only file and a reflog-only commit as blocking, though no
+written check says so), so the lab did not reproduce the loss; this release makes the keep a rule
+instead of a judgment.

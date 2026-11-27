@@ -144,9 +144,12 @@ class FakeOrca:
             st["items"][str(n)]["links"].append({"kind": "file", "ref": ref})
             return self.event(st, n, "linked", {"links": ["file:" + ref]}, actor_bot, at=at)
 
-    def fixture_comment(self, n: int, text: str) -> str:
+    def fixture_comment(self, n: int, text: str, person: bool = False) -> str:
         with self.locked() as st:
-            return self.event(st, n, "commented", {"text": text})
+            eid = self.event(st, n, "commented", {"text": text})
+            if person:  # the item's owner, a person, writing in the app
+                st["events"][-1]["actor"] = {"kind": "owner"}
+            return eid
 
     def fixture_status(self, n: int, status: str) -> None:
         with self.locked() as st:
@@ -1771,11 +1774,17 @@ def test_fix_round1() -> None:
             ("an Unsnoozed line after it lets the send go",
              ["Snoozed until 23:00 PT Nov 26: waiting on David", "Unsnoozed: David answered"], 1),
             ("a later expired dated line ends it",
-             ["Snoozed until tonight", "Snoozed until 2000-01-01T00:00:00Z: over"], 1)):
+             ["Snoozed until tonight", "Snoozed until 2000-01-01T00:00:00Z: over"], 1),
+            ("a line with a past date and no time zone still holds",
+             ["Snoozed until 2020-01-01T00:00: no zone"], 0),
+            ("a person's line counts", ["person:Snoozed until Monday: away"], 0),
+            ("a person's Unsnoozed line ends the Head's line",
+             ["Snoozed until Monday: away", "person:Unsnoozed: back"], 1)):
         c = Case({7: {}})
         try:
             for line in lines:
-                c.fake.fixture_comment(7, line)
+                person = line.startswith("person:")
+                c.fake.fixture_comment(7, line[len("person:"):] if person else line, person)
             c.arm(7, 1)
             code, out, _ = c.run(*resent(c, 7, 1))
             msgs = len(c.fake.load()["messages"])
@@ -1938,7 +1947,7 @@ def test_fix_round1() -> None:
     try:
         with c.inproc() as hw:
             saved = hw.RUN_BUDGET_S
-            hw.RUN_BUDGET_S = 0
+            hw.RUN_BUDGET_S = 59  # less than one call's 60 s
             n_log = len(c.fake.log())
             try:
                 code, out = in_main(hw, ["check", "--item", "7", "--wait", "W1"])
@@ -2048,6 +2057,39 @@ def test_fix_round1() -> None:
         code, out, _ = c.run("rewake", "--item", "7", "--wait", "W1")
         check("rewake: no W1 marker -> NO WAIT, nothing made", code == 3
               and out.startswith("NO WAIT item 7 W1") and not c.fake.load()["automations"], out)
+        c.run("reserve", "--item", "7", "--wait", "W1")
+        code, out, _ = c.run("rewake", "--item", "7", "--wait", "W1")
+        check("rewake: a wait reserved with no record -> REFUSED to close-unarmed, nothing made",
+              code == 3 and out.startswith("REFUSED item 7 W1: reserved with no record")
+              and "close-unarmed" in out and not c.fake.load()["automations"], out)
+    finally:
+        c.close()
+    c = armed_case()
+    try:
+        c.fake.fixture_status(7, "done")
+        code, out, _ = c.run("rewake", "--item", "7", "--wait", "W1")
+        check("rewake: a done item -> CLOSED, nothing made", code == 3
+              and out.startswith("CLOSED item 7 W1: the item is done")
+              and len(c.fake.load()["automations"]) == 1, out)
+    finally:
+        c.close()
+    c = Case({7: {"links": 47}})
+    try:
+        c.arm(7, 1)
+        c.fake.fixture_link(7, "/tmp/late-1")
+        c.fake.fixture_link(7, "/tmp/late-2")
+        c.run(*c.close_wait(7, 1, "settled", "notice"))
+        code, out, _ = c.run("rewake", "--item", "7", "--wait", "W1")
+        check("rewake: a wait blocked at the cap -> BLOCKED, nothing made", code == 3
+              and out.startswith("BLOCKED item 7 W1") and len(c.fake.load()["automations"]) == 1,
+              out)
+    finally:
+        c.close()
+    c = armed_case()
+    try:
+        code, out, _ = c.run("check", "--item", "7")
+        check("check: an item with an open wait, no --wait -> OPEN, exit 0", code == 0
+              and out.startswith("OPEN item 7 W1: record"), out)
     finally:
         c.close()
 

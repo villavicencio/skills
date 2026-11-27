@@ -20,17 +20,19 @@ Commands (the first printed line starts with the outcome word):
                                             UNREADABLE
   close      --item --wait --trigger wake|notice|look --case no-follow-up|settled|re-sent|
              not-settled --text-file [--body-file]
-             CLAIMED (closing record posted) | NOT SENT | SEND UNCLEAR (a planned re-send that
-             didn't go out, closing record posted) | RETIRE UNVERIFIED (closing record posted,
-             the wake not confirmed disabled) | NOT CLAIMED | STOPPED | CLOSED | FULL | REFUSED |
-             UNREADABLE | UNCLEAR
+             CLAIMED (closing record posted) | NOT SENT (a planned re-send the fresh check
+             stopped; closing record posted) | SEND UNCLEAR (the send answered with an error or
+             unreadably, so it may have gone; closing record posted) | RETIRE UNVERIFIED (closing
+             record posted, the wake not confirmed disabled) | NOT CLAIMED | STOPPED | CLOSED |
+             FULL | REFUSED | UNREADABLE | UNCLEAR
   retire     --item --wait --id                RETIRED | GONE | UNVERIFIED
   reconcile  --item --wait --text-file [--final <case>]
              NOTED | RECONCILED | DUPLICATE | UNCHECKED | REFUSED | UNREADABLE | UNCLEAR
   rewake     --item --wait                     REWOKEN | COVERED | UNCOVERED | UNRECORDED |
-                                               CLOSED | BLOCKED | NO WAIT
+                                               CLOSED | BLOCKED | NO WAIT | REFUSED
   restart    --bot                             read-only: RESTART <count> (INCOMPLETE RESTART when
-                                               an item can't be read), then one line each
+                                               an item can't be read), then one line each;
+                                               UNREADABLE when the item list can't be read
   --version
 
 Step commands, the same code `arm` and `close` run, for the live tests and reconciliation:
@@ -48,7 +50,9 @@ Rules the code keeps:
     `--note-file`, `--comment-file` or `--body-file`. The Head's files must be named
     item-<n>-W<k>-<part>.txt; the script writes its own header and the file's bytes to a new
     file and passes that.
-  - Only the run whose claim returned an event id acts on a wait. The exceptions never send:
+  - Only the run whose claim returned an event id sends for a wait, posts its closing record
+    or retires its wake as part of closing it. Other lines close nothing (`Reconcile note`,
+    `Retire unverified`, `Carried`, `Rewake`, `Wait blocked`). The exceptions never send:
     FULL (the item is at Orca's 50-link cap, so the claim can't be linked) posts a `Wait blocked`
     line unless one is there and retires the wake; `reconcile --final` posts the closing record
     of a wait whose winner stopped (two at once can each post; the first counts, and the later
@@ -57,16 +61,16 @@ Rules the code keeps:
   - A send happens only inside the `close` run whose claim returned an event id, after a fresh
     read of the item and of both sessions, and after a `Re-send` line posted. One send attempt
     per wait, never repeated, never from another command. No send under a key while an earlier
-    wait under that key (on the item or along its Carried from chain) has a `Re-send` line and
-    no `Sent: msg_` receipt.
+    wait under that key (on the item or along its Carried from chain, up to 5 items) has a
+    `Re-send` line and no `Sent: msg_` receipt.
   - A run that won a claim starts no write or send once 5 minutes have passed since it claimed,
     so `reconcile --final` (the only other closing record) is refused until 15 minutes after the
     claim.
   - A successor wait arms only after every earlier wait has its closed marker and a closing
     record (a `Wake disposition` or `UNARMED` line) after it.
   - No command writes an item's status except `arm`'s Waiting write, and none closes an item.
-  - Each orca call stops after 60 s, and no call starts once the command has run 540 s, so a
-    command ends within 10 minutes. A command's first read of the item is tried up to 3 times
+  - Each orca call stops after 60 s and starts only when those 60 s fit inside the command's
+    first 540 s, so a command ends within 10 minutes. A command's first read of the item is tried up to 3 times
     (15 s, then 45 s apart) on an error that can pass; a read that shows a marker link without
     its event is read again at once.
 
@@ -96,7 +100,7 @@ from pathlib import Path
 VERSION = "0.49.0"
 ORCA = "orca"
 CALL_TIMEOUT_S = 60       # one orca call
-RUN_BUDGET_S = 540        # no orca call starts after this, so a command ends within 10 minutes
+RUN_BUDGET_S = 540        # every orca call starts and ends inside this, so 10 minutes covers a run
 READ_TRIES = 3            # a command's first read of the item, on an error that can pass
 READ_PAUSES_S = (15, 45)  # the waits before the second and third tries
 RE_READ_PAUSE_S = 2       # close-unarmed's wait before its second read
@@ -328,10 +332,8 @@ def run_orca(args: list, timeout: int = CALL_TIMEOUT_S) -> Result:
     argv = [ORCA] + list(args)
     if not all(isinstance(a, str) for a in argv):
         raise TypeError("orca arguments must be strings")
-    left = budget_left()
-    if left < 1:
+    if budget_left() < timeout:  # a call starts only when its whole timeout fits
         return Result("notrun", detail=f"not run: the command's {RUN_BUDGET_S} s are spent")
-    timeout = max(1, int(min(timeout, left)))
     try:
         code, stdout = _exec(argv, timeout)
     except FileNotFoundError:
@@ -1048,7 +1050,8 @@ def cmd_check(a: argparse.Namespace) -> tuple:
     seen = markers_on(item)
     opened = [j for j, (o, c) in seen.items() if o and not c]
     if opened:
-        return EXIT_OTHER, describe_wait(item, Wait(item, opened[0]))
+        line = describe_wait(item, Wait(item, opened[0]))
+        return (EXIT_OK if line.startswith("OPEN") else EXIT_OTHER), line
     return EXIT_OTHER, f"BLOCKED item {n}: {why}"
 
 
@@ -1069,12 +1072,16 @@ def require_sections(text: str, case: str, what: str) -> None:
 
 
 def snooze_line(item: Item, now_ms: float) -> dict | None:
-    """The latest `Snoozed until` line on the item, when no `Unsnoozed` line follows it and its
-    time is ahead or can't be read; else None. Any age counts: an old undated line holds until
-    an `Unsnoozed` line or a later `Snoozed until` line ends it."""
+    """The latest `Snoozed until` comment on the item, by anyone, when no `Unsnoozed` comment
+    follows it and its time is ahead, has no time zone, or can't be read; else None. Any age
+    counts: an old undated line holds until an `Unsnoozed` line or a later `Snoozed until` line
+    ends it."""
     latest = None
-    for e in item.own_comments():
-        text = e["data"]["text"]
+    for e in item.events:
+        data = e.get("data") if isinstance(e.get("data"), dict) else {}
+        text = data.get("text")
+        if e.get("kind") != "commented" or not isinstance(text, str):
+            continue
         if SNOOZE_LINE.match(text):
             latest = e
         elif UNSNOOZE_LINE.match(text):
@@ -1402,6 +1409,10 @@ def cmd_rewake(a: argparse.Namespace) -> tuple:
     if w.blocked is not None:
         return EXIT_OTHER, f"BLOCKED item {n} W{k}: at Orca's link cap ({w.blocked['id']}); " \
                            "carry the work to a fresh item; no wake made"
+    if w.record is None:
+        return EXIT_OTHER, f"REFUSED item {n} W{k}: reserved with no record, so a wake can't " \
+                           "close it; once the reserving chat ended its turn, close it with " \
+                           "close-unarmed --step reservation-without-record; no wake made"
     cur = w.current_wake()
     if cur is not None and ms(cur[2]) > now_s() * 1000:
         state = wake_state(cur[1])

@@ -1,8 +1,8 @@
 # dv — v0.49.0
 
 Minor release. `dv:director-mode` gains "Head's wake for a waiting item": when a department Head
-puts one of his Orca items in Waiting on an event another session owes him, the wait gets one
-independent one-time wake, and every Orca call that arms, checks, closes, retires, reconciles
+puts one of his Orca items in Waiting on an event another session owes him, the wait gets an
+independent one-time wake (a `rewake` replaces one that is lost), and every Orca call that arms, checks, closes, retires, reconciles
 or rewakes it goes through a new script, `plugins/dv/skills/director-mode/scripts/head_wait.py`,
 with offline tests in `tooling/evals/test_head_wait.py`. The section also tells the Director how
 to answer a `Re-sent by the Head` question. Only `dv:director-mode` changes (with the README's entry for it);
@@ -18,8 +18,8 @@ overwrite a later wait or a Needs you, and run text from a wait.
 
 Each line is one claim the section, the script and its tests establish.
 
-- Each wait W<k> on one of the Head's items gets one one-time wake (`orca automations create
-  --once --by <time>`, no event trigger, no `--item`) and two marker links on the item:
+- Each wait W<k> on one of the Head's items gets a one-time wake (`orca automations create
+  --once --by <time>`, no event trigger, no `--item`; `rewake` adds another only when it is lost) and two marker links on the item:
   `head-wait/item-<n>/W<k>` when the wait is armed and `head-wait/item-<n>/W<k>-closed` when it is
   closed.
 - Orca adds a link only when the item lacks it, in one transaction, and answers `unchanged` to
@@ -46,16 +46,17 @@ Each line is one claim the section, the script and its tests establish.
   refuses the arm's Waiting write on a Needs you or closed item.
 - A wake whose item is done or canceled stops at its first check, with nothing written. On a
   snoozed item or one that reads Needs you, the wake records `no follow-up`, and the script
-  itself refuses to re-send. Snoozed means Orca's snooze, or the item's latest `Snoozed until`
-  line, of any age, while its time is ahead or can't be read and no `Unsnoozed` line follows it.
+  itself refuses to re-send. Snoozed means Orca's snooze, or the latest `Snoozed until` comment
+  on the item, by anyone and of any age, while its time is ahead, has no time zone or can't be
+  read, and no `Unsnoozed` comment follows it.
 - `settled` needs the owner's acknowledgement under the original key and the waiting session's
   own turn after it. Every other disposition names its blocker and next check; the script refuses
   a disposition file without those lines.
 - The one re-send happens only inside the `close` run that won the claim, after a fresh read of
   the item and of both sessions and after a `Re-send` line is posted. No other command sends.
-- No re-send goes out under a key while an earlier wait under that key, on the item or on the
-  item it was carried from, has a `Re-send` line and no `Sent: msg_` receipt in its closing
-  record.
+- No re-send goes out under a key while an earlier wait under that key, on the item or along
+  its `Carried from` chain (up to 5 items), has a `Re-send` line and no `Sent: msg_` receipt in
+  its closing record.
 - A re-send whose answer is an error or can't be read is not sent again: the first line starts
   `SEND UNCLEAR`, and the disposition records `not settled`, blocker `re-send unclear`, and, when
   Orca printed one, its request id with the outcome of one read-only `orca orchestration
@@ -75,11 +76,12 @@ Each line is one claim the section, the script and its tests establish.
   only read `CLOSED` or get `NOT CLAIMED`, so it doesn't hold up the next wait.
 - `rewake` gives a wait with no closing record and no wake still due one new one-time wake 16
   minutes out, checked as an arm checks its wake, and posts a `Rewake` line naming it; it links
-  nothing, and a wait gets at most 8. The wake's run uses it when its first check can't read the
+  nothing, and a wait gets at most 8. A wait reserved with no record is refused and goes to
+  `close-unarmed`. The wake's run uses it when its first check can't read the
   item, and the Head uses it after any `UNREADABLE` or `UNCLEAR` first line. When it can't make
   or record one, its first line starts `UNCOVERED` or `UNRECORDED`.
-- An Orca call stops after 60 s, and no call starts once a command has run 9 minutes, so a
-  10-minute tool timeout covers every command. A command's first read of the item is tried up to
+- An Orca call stops after 60 s and starts only while those 60 s fit in the command's first 9
+  minutes, so a 10-minute tool timeout covers every command. A command's first read of the item is tried up to
   3 times, 15 s and then 45 s apart, when Orca's error can pass, and a read that shows a marker
   link without its `linked` event (Orca's show reads the events before the item) is read again.
 - At Orca's 50-link cap a claim answers `FULL`: the script posts a `Wait blocked` line for the
@@ -100,27 +102,26 @@ Each line is one claim the section, the script and its tests establish.
 
 ## Tests
 
-`tooling/evals/test_head_wait.py`, stdlib only and run by CI's harness-test step, runs the
-script against a fake `orca` (Orca's JSON envelopes, a link added only when missing under a
-lock, events paged 50 at a time, faults that fail a call, answer something that isn't Orca's
-JSON, land and then error, time out, hide a link's event from one read, or pause until
-released). It checks the outcome words for each Orca answer to a reservation and a claim; arm's
-`ARMED`, `TAKEN`, `BLOCKED`, `UNREADABLE`, `UNCHECKED`, `SPENT` and `OVERTAKEN` cases and two
-concurrent arms; the values refused before any call, the deadline gap and the owner's session
-among them; each create mismatch closing unarmed with the claim before the `UNARMED` line; the
-Waiting write refused, after a change, or too close to its target; two overlapping closes with
-one send; each reason the fresh check stops a send (both snooze kinds, an old undated snooze
-line, `Unsnoozed`, Needs you, a closed and reopened item, either session closed, a `Re-send` line
-already there or not posting, an earlier wait's unclear send under the same key here or on the
-item it was carried from, a failed read); `NOT SENT`, `SEND UNCLEAR`, `RETIRE UNVERIFIED` and
-`STOPPED`; the winner's time window; the successor gate with a winner paused before its
-disposition; a stale notice with W2 armed or Needs you set in between; `close-unarmed` and its
-second read; `reconcile` (note, the 15-minute rule, `--final unarmed`, two at once, a failed read
-after); every retire and rewake outcome; the first read's three tries and the spent budget;
-items with more than 50 events; FULL, its one line, and carrying to a fresh item, checked and
-refused; restart reading only and each finding; a cleanup failure after a send; and free text
-with `$(...)`, backticks, both quotes, a backslash, newlines and non-ASCII reaching Orca byte for
-byte with nothing run.
+`tooling/evals/test_head_wait.py`, stdlib only and run by CI's harness-test step, runs the script
+against a fake `orca` (Orca's JSON envelopes, a link added only when missing under a lock, events
+paged 50 at a time, faults that fail a call, answer something that isn't Orca's JSON, land and then
+error, time out, hide a link's event from one read, or pause until released). It checks the outcome
+words for each Orca answer to a reservation and a claim; arm's `ARMED`, `TAKEN`, `BLOCKED`,
+`UNREADABLE`, `UNCHECKED`, `SPENT` and `OVERTAKEN` cases and two concurrent arms; the values refused
+before any call, the deadline gap and the owner's session among them; each create mismatch closing
+unarmed with the claim before the `UNARMED` line; the Waiting write refused, after a change, or too
+close to its target; two overlapping closes with one send; each reason the fresh check stops a send
+(both snooze kinds, an old undated snooze line, a person's snooze line, `Unsnoozed`, Needs you, a
+closed and reopened item, either session closed, a `Re-send` line already there or not posting, an
+earlier wait's unclear send under the same key here or on the item it was carried from, a failed
+read); `NOT SENT`, `SEND UNCLEAR`, `RETIRE UNVERIFIED` and `STOPPED`; the winner's time window; the
+successor gate with a winner paused before its disposition; a stale notice with W2 armed or Needs
+you set in between; `close-unarmed` and its second read; `reconcile` (note, the 15-minute rule,
+`--final unarmed`, two at once, a failed read after); every retire and rewake outcome; the first
+read's three tries and the spent budget; items with more than 50 events; FULL, its one line, and
+carrying to a fresh item, checked and refused; restart reading only and each finding; a cleanup
+failure after a send; and free text with `$(...)`, backticks, both quotes, a backslash, newlines and
+non-ASCII reaching Orca byte for byte with nothing run.
 
 ## Not guaranteed
 
@@ -130,6 +131,10 @@ byte with nothing run.
 - A wake for every wait: a run killed before it can rewake, or Orca's items unreadable for longer
   than a command's three tries and then the rewake's, leaves a wait with no wake; the restart
   list shows it.
+- One closing record per wait: two `reconcile --final` runs at once can each post one; the
+  later prints `DUPLICATE`, and the first counts.
+- The per-key check beyond the item's `Carried from` chain: the same key armed again on an
+  unrelated item isn't checked.
 - A check made apart from the send: the fresh read before a re-send and the send are separate
   calls, so a snooze, a Needs you or a session closing between them isn't seen.
 - That an open session reads its mail: open means Orca on this host lists a place for it. A

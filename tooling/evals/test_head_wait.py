@@ -1141,12 +1141,15 @@ def test_successor_gate() -> None:
         c.fake.fault(["automations", "edit"], "error", code="runtime_error",
                      message="connection reset")
         code, out, _ = c.run(*c.close_wait(7, 1, "settled", "notice"))
+        code_close = code
         code2, out2, _ = c.arm(7, 2)
+        code = code_close
         lines = [e["data"]["text"] for e in c.fake.comments(7)
                  if e["data"]["text"].startswith("Retire unverified, item 7 W1:")]
-        check("retire: UNVERIFIED posts a Retire unverified line and W2 still arms",
-              "UNVERIFIED" in out and lines and out2.startswith("ARMED item 7 W2"),
-              out + " | " + out2)
+        check("retire: a notice's retire that fails starts the line RETIRE UNVERIFIED (exit 1), "
+              "posts a Retire unverified line, and W2 still arms",
+              out.startswith("RETIRE UNVERIFIED item 7 W1") and code == 1 and lines
+              and out2.startswith("ARMED item 7 W2"), out + " | " + out2)
     finally:
         c.close()
 
@@ -1584,13 +1587,90 @@ def test_more() -> None:
         c.close()
 
 
+def test_recheck() -> None:
+    """Paths the second review found untested."""
+    c = Case({7: {}})
+    try:
+        c.run("reserve", "--item", "7", "--wait", "W1")
+        args = c.arm_args(7, 1)
+        args[0] = "record"
+        c.run(*args)
+        code, out, _ = c.run("close-unarmed", "--item", "7", "--wait", "W1", "--step", "manual")
+        texts = [e["data"]["text"] for e in c.fake.comments(7)]
+        check("close-unarmed: a recorded wait with no Armed line closes with --step manual",
+              out.startswith("UNARMED item 7 W1: manual")
+              and any(t.startswith("UNARMED, item 7 W1: manual; wake none.") for t in texts)
+              and "head-wait/item-7/W1-closed" in c.fake.refs(7), out)
+    finally:
+        c.close()
+
+    c = Case({7: {"links": 49}, 8: {}})
+    try:
+        c.fake.set_fields(7, owner={"botId": "another-bot", "name": BOT_NAME})
+        code, out, _ = c.arm(8, 1, **{"carried-from": "7/W1"})
+        check("carry: refused from another bot's item", out.startswith("BLOCKED item 8 W1")
+              and "belongs to another bot" in out and not c.fake.refs(8), out)
+    finally:
+        c.close()
+
+    c = armed_case()
+    try:
+        st = c.fake.load()
+        for e in st["events"]:
+            if e["kind"] == "commented" and e["data"]["text"].startswith("Wait record"):
+                e["data"]["text"] = e["data"]["text"].replace("Deadline: 20", "Deadline: 29", 1)
+                head = e["data"]["text"].split("\n", 1)[0]
+                import re as _re
+                e["data"]["text"] = _re.sub(r"Deadline: \d{4}-\d{2}", "Deadline: 2026-13", head) + \
+                    "\n" + e["data"]["text"].split("\n", 1)[1]
+        c.fake.save(st)
+        code, out, _ = c.run("check", "--item", "7", "--wait", "W1")
+        code2, out2, _ = c.run(*c.close_wait(7, 1, "settled", "look"))
+        check("record: a record line whose time isn't a real date counts as no record",
+              out.startswith("OPEN item 7 W1: reserved with no record")
+              and out2.startswith("REFUSED"), out + " | " + out2)
+    finally:
+        c.close()
+
+    c = Case({7: {}})
+    try:
+        with c.inproc() as hw:
+            saved = hw.read_item
+            hw.read_item = lambda n: (_ for _ in ()).throw(ValueError("bad stamp"))
+            buf = io.StringIO()
+            try:
+                with contextlib.redirect_stdout(buf):
+                    rc = hw.main(["check", "--item", "7"])
+            except Exception as e:  # the catch-all missing: a crash, not an outcome line
+                rc = f"crashed: {type(e).__name__}"
+            finally:
+                hw.read_item = saved
+        check("main: an unexpected error prints an UNCLEAR outcome line, exit 1",
+              rc == 1 and buf.getvalue().startswith("UNCLEAR: check stopped on ValueError"),
+              buf.getvalue())
+    finally:
+        c.close()
+
+    c = Case({7: {}, 8: {}})
+    try:
+        c.fake.fault(["bot", "item", "show"], "error", code="items_unavailable", ref="8",
+                     times=10)
+        code, out, _ = c.run("restart", "--bot", BOT_NAME)
+        check("restart: an unreadable item makes the first line INCOMPLETE RESTART, exit 1",
+              code == 1 and out.startswith("INCOMPLETE RESTART") and "ITEM 8: unreadable" in out,
+              out)
+    finally:
+        c.close()
+
+
 def main() -> int:
     global SCRIPT, HW
     if len(sys.argv) > 1:
         SCRIPT = Path(sys.argv[1]).resolve()
     HW = load_module()
     for test in (test_static, test_outcomes, test_arm, test_close, test_successor_gate,
-                 test_retire, test_full, test_restart, test_text_and_values, test_more):
+                 test_retire, test_full, test_restart, test_text_and_values, test_more,
+                 test_recheck):
         test()
     print()
     if failures:

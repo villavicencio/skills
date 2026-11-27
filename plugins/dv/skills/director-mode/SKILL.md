@@ -513,13 +513,14 @@ nothing in Orca.
   `item-<n>-W<k>-<part>.txt`; with no file tool the step fails, and there is no fallback. The
   first printed line starts with the outcome: copy anything but the command's normal outcome
   (`ARMED`, `IDLE`, `OPEN`, `CLAIMED`, `RETIRED`, `GONE`, `NOTED`, `RECONCILED`, `RESTART`) into
-  your reply's first line.
+  your reply's first line; `INCOMPLETE RESTART` and `RETIRE UNVERIFIED` are not normal.
 - **Markers.** Each wait W<k> on item n has two links on the item: `head-wait/item-<n>/W<k>`,
   its reservation, and `head-wait/item-<n>/W<k>-closed`, its claim. Orca adds a link only when the
   item lacks it, checked in one transaction, answers `unchanged` to every later caller, and never
   removes a link, so exactly one run ever gets each marker. Only the run whose claim returned an
   event id acts on W<k>: it alone sends for it, posts its closing record (a `Wake disposition` or
-  `UNARMED` line) and retires its wake. The one exception is `FULL` (below), which sends nothing.
+  `UNARMED` line) and retires its wake. The exceptions, below, never send: `FULL`, and a
+  reconciliation's closing record for a wait whose winner stopped.
   The open wait is the one with W<k> and no W<k>-closed; the Waiting note only shows it.
 - **Arm** when you set the item Waiting on an event you expect. `check --item <n>` names the next
   key (`IDLE … the next is W<k>`). Write the record file (what the wait is for, the question as
@@ -574,7 +575,8 @@ nothing in Orca.
   arm it in the same run, after the disposition.
 - **A notice** is any turn that brings evidence for the open wait: mail, an Orca event
   (`--trigger notice`), or your own look (`--trigger look`). Run `check`, then the reads. Close
-  only as `settled`, which retires the wake after the disposition, or as `not-settled`, blocker
+  only as `settled`, which retires the wake after the disposition (a retire it can't confirm
+  starts the first line `RETIRE UNVERIFIED`), or as `not-settled`, blocker
   "wake gone", when the wake named in the `Armed` line reads disabled or gone (the script refuses
   it otherwise). A notice never sends; with anything else, leave the wait to its wake.
 - **The status after a disposition.** No wake or notice writes the item's status, so a Needs you
@@ -585,12 +587,13 @@ nothing in Orca.
 - **Retire**: `retire --item <n> --wait W<k> --id <the wake's full id>`. `RETIRED` only when
   Orca's answer shows the wake disabled; `GONE` only on exactly `Automation not found.` (Orca
   deletes a one-time wake after its run); anything else is `UNVERIFIED`: it posts a
-  `Retire unverified` line, and you say it in your first line (inside a run past its 5-minute
-  window the retire isn't tried, and the line says so). It holds up no later wait: once W<k> has
+  `Retire unverified` line, and you say it in your first line (a run past its 5-minute window
+  posts no such line, and its printed line says so). It holds up no later wait: once W<k> has
   its closing record, its old wake can only read `CLOSED` or get `NOT CLAIMED`.
 - **FULL**, Orca's permanent cap of 50 links on an item, is a blocker you show, never a reason to
   complete or cancel anything. When a claim answers `FULL`, the script posts a `Wait blocked`
-  line (one per wait), retires the wake and sends nothing; that wait can't close on that item. An
+  line (none when one is already there), retires the wake and sends nothing; that wait can't
+  close on that item. An
   arm BLOCKED for want of two free links is the same blocker. Carry the work to a fresh item: add
   one, then `arm` W1 on it with `--carried-from <n>/W<k>`, the same owner, sessions, ticket and
   key, and the next check as its target. The script refuses the carry unless the old wait has its

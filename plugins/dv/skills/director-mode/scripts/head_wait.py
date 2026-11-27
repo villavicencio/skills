@@ -21,12 +21,14 @@ Commands (the first printed line starts with the outcome word):
   close      --item --wait --trigger wake|notice|look --case no-follow-up|settled|re-sent|
              not-settled --text-file [--body-file]
              CLAIMED (closing record posted) | NOT SENT | SEND UNCLEAR (a planned re-send that
-             didn't go out, closing record posted) | NOT CLAIMED | CLOSED | FULL | REFUSED |
-             UNCLEAR | STOPPED
+             didn't go out, closing record posted) | RETIRE UNVERIFIED (closing record posted,
+             the wake not confirmed disabled) | NOT CLAIMED | CLOSED | FULL | REFUSED | UNCLEAR |
+             STOPPED
   retire     --item --wait --id                RETIRED | GONE | UNVERIFIED
   reconcile  --item --wait --text-file [--final <case>]
              NOTED | RECONCILED | REFUSED | UNCLEAR
-  restart    --bot                             read-only: RESTART <count>, then one line each
+  restart    --bot                             read-only: RESTART <count> (INCOMPLETE RESTART when
+                                               an item can't be read), then one line each
   --version
 
 Step commands, the same code `arm` and `close` run, for step-driven live tests only: reserve,
@@ -39,9 +41,10 @@ Rules the code keeps:
     `--note-file`, `--comment-file` or `--body-file`. The Head's files must be named
     item-<n>-W<k>-<part>.txt; the script writes its own header and the file's bytes to a new
     file and passes that.
-  - Only the run whose claim returned an event id acts on a wait. The one exception is FULL (the
-    item is at Orca's 50-link cap, so the claim can't be linked): that run posts one `Wait
-    blocked` line and retires the wake, and never sends.
+  - Only the run whose claim returned an event id acts on a wait. The exceptions never send:
+    FULL (the item is at Orca's 50-link cap, so the claim can't be linked) posts a `Wait blocked`
+    line unless one is there and retires the wake; `reconcile --final` posts the closing record
+    of a wait whose winner stopped; an arm whose item turned out closed retires the wake it made.
   - A send happens only inside the `close` run whose claim returned an event id, after a fresh
     read of the item and of both sessions, and after a `Re-send` line posted. One send attempt
     per wait, never repeated, never from another command.
@@ -52,7 +55,8 @@ Rules the code keeps:
     record (a `Wake disposition` or `UNARMED` line) after it.
   - No command writes an item's status except `arm`'s Waiting write, and none closes an item.
 
-Exit codes: 0 the command's normal outcome; 1 UNCLEAR, UNVERIFIED or a read that failed;
+Exit codes: 0 the command's normal outcome; 1 UNCLEAR, UNVERIFIED, SEND UNCLEAR, RETIRE
+UNVERIFIED, INCOMPLETE RESTART or another read that failed;
 2 a value or file refused before any Orca call; 3 any other outcome.
 
 Stdlib only, Python 3.9 or later. Offline tests: tooling/evals/test_head_wait.py.
@@ -1181,6 +1185,9 @@ def close_claimed(n: int, k: int, a: argparse.Namespace, w: Wait, text: str, bod
         return (EXIT_UNCLEAR if word == "SEND UNCLEAR" else EXIT_OTHER), \
             f"{word} item {n} W{k}: claimed; {CASES[case]}, disposition {note}; " + \
             " ".join(extra) + tail
+    if "UNVERIFIED item" in tail:
+        return EXIT_UNCLEAR, f"RETIRE UNVERIFIED item {n} W{k}: claimed; {CASES[case]}, " \
+                             f"disposition {note}" + tail
     return EXIT_OK, f"CLAIMED item {n} W{k}: {CASES[case]}, disposition {note}" + (
         "; " + " ".join(extra) if extra else "") + tail
 
@@ -1367,7 +1374,9 @@ def cmd_restart(a: argparse.Namespace) -> tuple:
             continue
         lines += findings_for(item)
     lines += unreadable
-    first = f"RESTART {len(lines)} finding(s) on {len(numbers)} open item(s)"
+    first = (f"INCOMPLETE RESTART {len(lines)} finding(s) on {len(numbers)} open item(s), "
+             f"{len(unreadable)} unreadable" if unreadable else
+             f"RESTART {len(lines)} finding(s) on {len(numbers)} open item(s)")
     return (EXIT_UNCLEAR if unreadable else EXIT_OK), "\n".join([first] + lines)
 
 

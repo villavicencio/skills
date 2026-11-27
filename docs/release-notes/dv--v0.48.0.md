@@ -34,8 +34,8 @@ Each line is one claim the section, the script and its tests establish.
   says so in the first line. When the wake already holds W<k>, it writes nothing more.
 - Only the run whose `W<k>-closed` link returns an event id acts on W<k>. Every other run whose
   claim Orca answers `unchanged`, a late, repeated or manually started wake included, gets
-  `NOT CLAIMED` and writes and sends nothing. The one exception is `FULL`, below, which sends
-  nothing.
+  `NOT CLAIMED` and writes and sends nothing. The exceptions never send: `FULL`, below, and a
+  reconciliation's closing record for a wait whose winner stopped.
 - A next wait arms only after every earlier wait has its closed marker and a closing record (a
   `Wake disposition` or `UNARMED` line) after it, so a winner that stopped after its claim blocks
   the next wait until its record lands or the Head reconciles it.
@@ -58,14 +58,16 @@ Each line is one claim the section, the script and its tests establish.
   `reconcile --final` (the only other closing record) is refused until 15 minutes after the
   claim, so a reconciliation writes no second disposition while the winner can still post. A
   reconcile note before then records evidence only and unblocks nothing.
-- A notice never sends, and closes a wait only as `settled` (then retires its wake), or as
-  `not settled` while the wake its `Armed` line names reads disabled or gone.
+- A notice never sends, and closes a wait only as `settled` (then retires its wake; a retire it
+  can't confirm starts the first line `RETIRE UNVERIFIED`), or as `not settled` while the wake
+  its `Armed` line names reads disabled or gone.
 - `retire` reports `RETIRED` only when Orca's answer shows the wake disabled and `GONE` only on
   exactly `Automation not found.`. Any other answer is `UNVERIFIED`, posts a `Retire unverified`
   line and is said in the first line. Once the wait has its closing record, that old wake can
   only read `CLOSED` or get `NOT CLAIMED`, so it doesn't hold up the next wait.
-- At Orca's 50-link cap a claim answers `FULL`: the script posts one `Wait blocked` line for the
-  wait, retires the wake, sends nothing, and completes or cancels nothing. `arm --carried-from
+- At Orca's 50-link cap a claim answers `FULL`: the script posts a `Wait blocked` line for the
+  wait unless it finds one there, retires the wake, sends nothing, and completes or cancels
+  nothing. `arm --carried-from
   <n>/W<k>` arms the work on a fresh item only when the old wait has that line (or is the next
   wait of an item at the cap) and the owner, sessions, ticket and key match its record; the new
   record names the old wait, and the old item gets a `Carried` line only after that arm is
@@ -92,12 +94,12 @@ create mismatch closing unarmed with the claim before the `UNARMED` line; the Wa
 refused, overtaken, after a change, or too close to its target; two overlapping closes with one
 send; the reasons the fresh check stops a send (both snooze kinds, Needs you, a closed and
 reopened item, either session closed, a `Re-send` line already there or not posting, a failed
-read); `NOT SENT`, `SEND UNCLEAR` and `STOPPED`; the winner's time window; the successor gate with
+read); `NOT SENT`, `SEND UNCLEAR`, `RETIRE UNVERIFIED` and `STOPPED`; the winner's time window; the successor gate with
 a winner paused before its disposition; a stale notice with W2 armed or Needs you set in between;
 `close-unarmed`, `reconcile` (note, the 15-minute rule, `--final unarmed`); every retire outcome;
 FULL, its one line, and carrying to a fresh item, checked and refused; restart reading only and
 each finding; and free text with `$(...)`, backticks, both quotes, a backslash, newlines and
-non-ASCII reaching Orca byte for byte with nothing run. Twelve copies of the script, each with one
+non-ASCII reaching Orca byte for byte with nothing run. Fifteen copies of the script, each with one
 guard removed, each fail the tests.
 
 ## Not guaranteed
@@ -116,6 +118,8 @@ guard removed, each fail the tests.
 - A wake due while Orca is down should run when Orca returns (the one-time deadline path has no
   missed-run cutoff in Orca's source); not tested.
 - Markers surviving a restore of Orca's items database from a snapshot.
+- One `Wait blocked` line per wait: two runs that hit FULL at the same moment can each post one,
+  since the check for an existing line and the post are separate calls.
 - A marker another bot links: the script won't arm past one and the restart list names it, but a
   foreign `W<k>-closed` linked first takes the claim, and that wait then acts on nothing.
 - Live behaviour. These lines rest on Orca's source, read-only Orca runs and the offline tests;

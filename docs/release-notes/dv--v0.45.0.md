@@ -1,4 +1,4 @@
-# dv — v0.47.0
+# dv — v0.45.0
 
 Minor release. When a project names a department Head, `dv:closeout` asks David nothing. It sends
 its note only to a Director its probe verified, waits up to 10 minutes for that Director's
@@ -6,7 +6,7 @@ acknowledgement, keeps each open item open, logged on the ticket where it can be
 calls for is done and verified, and mails the Head each item no acknowledgement took. An item is
 the closing session's until that acknowledgement or the session's own mail reads back; no ticket
 record counts as delivery. With no Head, closeout behaves as at dv
-0.42.1 and 0.43.0. `dv:closeout` and `dv:director-mode` change, and `dv:manager-mode`'s `worker_done` rule; the other thirteen skills have no behaviour changes, and their version moves to `0.47.0` only because the suite is released as one plugin.
+0.42.1 and 0.43.0. `dv:closeout` and `dv:director-mode` change, and `dv:manager-mode`'s `worker_done` rule; the other thirteen skills have no behaviour changes, and their version moves to `0.45.0` only because the suite is released as one plugin.
 
 Why: with a Head, closeout's own reply still asked David its questions (accepting losses, the
 removal question), and its terminal send reached any agent terminal on the main checkout, with
@@ -54,8 +54,9 @@ moved this work out of VIL-1178).
   - **The acknowledgement** is a message from the Director's `from-name` whose first line is
     `Closeout note received, <ticket>: <the saved copy's path>` (for a supervised session, the
     outcome "note sent and replied"), with one line per Qk:
-    `Answer, VIL-N, Qk: …` (taken when it counts as `dv:manager-mode`'s "What counts as the
-    answer" says) or `Forwarded to the Head, VIL-N, Qk: …` (which the Director sends only once its
+    `Answer, VIL-N, Qk: …` (taken when it passes `dv:manager-mode`'s "What counts as the
+    answer" checks other than the reply starting with `Answer`, the sender check covering the whole
+    acknowledgement) or `Forwarded to the Head, VIL-N, Qk: …` (which the Director sends only once its
     own mail of the item read back; not in a note with no ticket). A line whose Qk fits two listed
     items takes neither. A late acknowledgement still takes its items. The wait is closeout's existing
     10 minutes, with the probe's background timer.
@@ -112,7 +113,7 @@ moved this work out of VIL-1178).
   for handed-over items, and with a Head it waits for the reply to the newest copy of the note.
   Its question protocol is unchanged.
 - **`AGENTS.md`'s Head line and the README** (the `dv:manager-mode`, `dv:director-mode` and
-  `dv:closeout` entries, and the plugin table, now `0.47.0`) describe the new behaviour in place
+  `dv:closeout` entries, and the plugin table, now `0.45.0`) describe the new behaviour in place
   of the interim "until VIL-1191" pointers. The dv 0.39.0 release note keeps them, as history.
 
 ## Known limits

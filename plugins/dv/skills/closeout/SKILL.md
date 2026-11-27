@@ -4,7 +4,7 @@ description: "Close out a finished worktree session and brief the parent session
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.47.0"
+  version: "0.45.0"
 ---
 
 # /closeout — close out a finished worktree session
@@ -1248,11 +1248,14 @@ verified, and a send that fails is handled as step 5 says.
 and wait up to 10 minutes from the send. The acknowledgement is a message whose `from-name` is
 the Director's, as step 3 checks the probe's answer, and whose first line is `Closeout note
 received, <ticket id, or the branch>: <the path on the sent message's Saved at: line>`, compared
-as text. Any other reply is not one, and the wait goes on. It takes an item when its line for
-that Qk is one of these:
+as text. Any other reply is not one, and the wait goes on. The sender check (the `from-name` and
+the address are the verified Director's) applies to the whole acknowledgement. It takes an item
+when its line for that Qk is one of these:
 
-- `Answer, VIL-N, Qk: <option>`, when that line counts as `dv:manager-mode`'s "What counts as the
-  answer" says for a reply that starts with it (with no ticket, the branch in place of `VIL-N`).
+- `Answer, VIL-N, Qk: <option>`, when that line passes `dv:manager-mode`'s "What counts as the
+  answer" checks other than the one that the reply starts with `Answer`: it names one of that
+  item's options, and the decision is one the Director may make, with the same carve-outs (with no
+  ticket, the branch in place of `VIL-N`).
   Carry out what it calls for when that is this session's to do; the item stays open until that is
   verified.
 - `Forwarded to the Head, VIL-N, Qk: <the way forward>`, except in a note with no ticket. The

@@ -4,7 +4,7 @@ description: "Switch this session into Director Mode, the mode for the home sess
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.45.0"
+  version: "0.46.0"
 ---
 
 # /director-mode — the home session directs; worktree managers hire
@@ -493,6 +493,140 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
   An `Unanswered` counts as a re-sent question under "A record on the ticket for each Qk": it is
   never mailed again, and step 1 reuses its record or step 4 holds it for pickup. Never `Ask David` here. A later
   answer from the Head changes nothing already done.
+
+### Head's wake for a waiting item
+
+When the Head puts one of his Orca items in Waiting on an event another session owes him (an
+answer under a question's key, a handoff, a merge at a recorded head), the wait gets one
+independent wake: a one-time Orca automation that runs at a time he sets, needing no person and no
+notice. This section is his procedure, which he follows without turning Director Mode on; your
+own part is the last bullet. It gives no decision, merge or CEO's-1% authority, and changes
+nothing in Orca.
+
+- **The script.** Every Orca call that arms, checks, closes, retires or reconciles a wait goes
+  through `scripts/head_wait.py` in this skill's directory:
+  `python3 -I "<this skill's directory>/scripts/head_wait.py" <command> …` (`--version` names
+  the dv release). It runs `orca` from an argument list, never through a shell, and checks every
+  value against a pattern before its first call; a value that fails prints `REFUSED` and nothing
+  is sent. Free text (what the wait is for, the question as asked, evidence, a blocker) goes only
+  in files you write with your file tool, never on a command line, each at an absolute path named
+  `item-<n>-W<k>-<part>.txt`; with no file tool the step fails, and there is no fallback. The
+  first printed line starts with the outcome: copy anything but the command's normal outcome
+  (`ARMED`, `IDLE`, `OPEN`, `CLAIMED`, `RETIRED`, `GONE`, `NOTED`, `RECONCILED`) into your reply's
+  first line.
+- **Markers.** Each wait W<k> on item n has two links on the item: `head-wait/item-<n>/W<k>`,
+  its reservation, and `head-wait/item-<n>/W<k>-closed`, its claim. Orca adds a link only when the
+  item lacks it, checked in one transaction, answers `unchanged` to every later caller, and never
+  removes a link, so exactly one run ever gets each marker. Only the run whose claim returned an
+  event id acts on W<k>: it alone sends for it, posts its closing record (a `Wake disposition` or
+  `UNARMED` line) and retires its wake. The open wait is the one with W<k> and no W<k>-closed;
+  the Waiting note only shows it.
+- **Arm** when you set the item Waiting on an event you expect. `check --item <n>` names the next
+  key (`IDLE … the next is W<k>`). Write the record file (what the wait is for, the question as
+  asked, the first send's id), then run `arm --item <n> --wait W<k> --target <T> --deadline <D>
+  --owner <the owner's Orca address> --owner-session <its session id> --waiting-session <the
+  waiting session's id> --ticket <VIL-N> --key <key> --record-file <file>`. The key is the
+  question's original key (`VIL-N/<session>/Qk`), a PR as `owner/repo#N@<head sha>`, or a
+  message id. T is when the wake runs and D the deadline, both `YYYY-MM-DDTHH:MM:00±HH:MM` and
+  yours to set for each wait, T at least 2 minutes ahead and D no earlier than T. It arms only on
+  a planned, in-progress or Waiting item with two free links, and only once every earlier wait on
+  it has its closed marker and a closing record after it; otherwise `BLOCKED`, with nothing
+  written. It reserves W<k> (`TAKEN` means another run is arming it: stop, and try no other key),
+  posts the record, creates the wake (`orca automations create --once --by <T>`, no event
+  trigger, no `--item`), checks the create's output (enabled, at T, as your bot), reads the item
+  again, and only then sets Waiting with an `Armed` line that names the wake's full id, T and D.
+  A failure after the reservation closes the wait unarmed: it claims W<k>-closed, posts an
+  `UNARMED` line naming the step and Orca's error, retires the wake and writes no status. A
+  Waiting write whose answer can't be read is read back first; one that landed unseen leaves the
+  item Waiting on a closed wait, which the restart list shows. `OVERTAKEN` means the wake already
+  ran and closed W<k>, and nothing more is written. Arm from the item's own chat when you can: the
+  wake runs in the chat that made it.
+- **The wake** runs at T. Its first command is `check --item <n> --wait W<k>`; anything but
+  `OPEN` ends the run with that line and nothing written. Then read the W<k> record, the item's
+  later lines, the ticket's comments or the PR at its recorded head (`gh pr view <N> --repo
+  <owner/repo>`), and both sessions (`orca agent read <id> --limit 100`, at most 100 entries). A
+  session you can't read, or whose 100 entries all come after the first send without what a case
+  needs, is an evidence gap, never evidence. Take the first case that fits and write the
+  disposition file, with an `Evidence:` line and, for any case but `settled`, `Blocker:` and
+  `Next check:` lines (W<k+1> and its target, or the person who decides):
+  - `no-follow-up`: the item was closed after the record, is snoozed (Orca's snooze, or a
+    `Snoozed until` line whose time is ahead or can't be read), reads Needs you, or the next step
+    is a person's decision. Nothing is sent.
+  - `settled`: the reads show the owner's acknowledgement under the record's key (the answer, the
+    handoff's acknowledgement, the merge at that head) and the waiting session's own turn on it
+    after that. A send receipt or an evidence gap never counts.
+  - `re-sent`: the event hasn't happened, shown with no evidence gap; the owner and the key are
+    unchanged; both sessions are open. Also write the body file: the question as first asked,
+    with its original key and the asking session's id.
+  - `not-settled`: anything else.
+
+  Then run `close --item <n> --wait W<k> --trigger wake --case <case> --text-file <file>`, with
+  `--body-file <file>` for `re-sent`. It claims W<k>-closed and goes on only on `CLAIMED`. For
+  `re-sent`, the send happens only inside that run: it reads the item and both sessions again,
+  and if the item reads Needs you, snoozed or closed, or a session is not open in Orca, it sends
+  nothing and records `no follow-up` or `not settled` with the reason; otherwise it posts a
+  `Re-send` line, then sends once, to the record's owner address, with the subject
+  `Re-sent by the Head: item <n> W<k>`. An error or an unreadable answer from that send makes the
+  case `not settled` with blocker `re-send unclear`, Orca's request id when it printed one, and
+  one read-only `request-show`. A wait gets at most one send. Last it posts the disposition. If the
+  disposition names W<k+1>, arm it in the same run, after the disposition.
+- **A notice** is any turn that brings evidence for the open wait: mail, an Orca event
+  (`--trigger notice`), or your own look (`--trigger look`). Run `check`, then the reads. Close
+  only as `settled`, with `--retire` to retire the wake after the disposition, or as
+  `not-settled`, blocker "wake gone", when the wake reads disabled or gone (the script refuses it
+  while the wake is enabled). A notice never sends; with anything else, leave the wait to its wake.
+- **The status after a disposition.** No wake or notice writes the item's status, so a Needs you
+  or any other status set meanwhile stays. Arm's Waiting write is the only status write, and Orca
+  refuses it on a Needs you or closed item. If your next step is another wait, its arm rewrites
+  the note. If it needs another status, set it as ordinary work after a fresh read that still
+  shows the item Waiting with this wait's note; if the read shows anything else, leave it.
+- **Retire**: `retire --item <n> --wait W<k> --id <the wake's full id>`. `RETIRED` only when
+  Orca's answer shows the wake disabled; `GONE` only on exactly `Automation not found.` (Orca
+  deletes a one-time wake after its run); anything else is `UNVERIFIED`: it posts a
+  `Retire unverified` line, and you say it in your first line. It holds up no later wait: once
+  W<k> has its closing record, its old wake can only read `CLOSED` or get `NOT CLAIMED`.
+- **FULL**, Orca's permanent cap of 50 links on an item, is a blocker you show, never a reason to
+  complete or cancel anything. When a claim answers `FULL`, the script posts a `Wait blocked`
+  line, retires the wake and sends nothing; that wait can't close on that item. Carry the work to
+  a fresh item: add one, then `arm` W1 on it with `--carried-from <n>/W<k>`, the same owner and
+  key, and the next check as its target. Its record names the old wait, and the old item gets a
+  `Carried` line naming the new item and wake only after the new arm is `ARMED`. Keep the
+  unresolved work and any owner decision visible on both items, and leave the old item's status
+  as it is.
+- **Restart list**: `restart --bot "<your name>"`, read-only, after a restart and whenever a first
+  line says to reconcile. It names open waits with no record, past their deadline, or whose wake
+  is disabled or gone; closed waits with no closing record; waits blocked at the cap, carried or
+  not; a Waiting note that names a spent or superseded wait; markers another bot linked; and items
+  within two links of the cap. It repairs nothing.
+- **Reconcile** an uncertain outcome from your reads, never by a send:
+  - An open wait whose wake is disabled or gone: close it as a notice, `not-settled`, blocker
+    "wake gone".
+  - A reserved wait with no record (an unclear reservation, or an arm cut off after reserving):
+    once the chat that reserved it (the `W<k>` link event names it) has ended that turn,
+    `close-unarmed --item <n> --wait W<k> --step reservation-without-record`.
+  - A closed wait with no closing record (an unclear claim, or a winner that stopped): the next
+    wait stays blocked. Post the evidence with `reconcile --item <n> --wait W<k> --text-file
+    <file>`; that note closes nothing. The run that claimed can still post until 5 minutes after
+    its claim (the script stops a winner's writes then), so `reconcile … --final <case>` is refused
+    until 15 minutes after the claim; then it posts the wait's one closing record from your reads,
+    marked `(reconciled)`, or, with `--final unarmed`, an `UNARMED` line for a wait never armed.
+    It never sends: a `Re-send` line on the wait means a send may have happened, and uncertain
+    delivery never allows another.
+- **Limits.** The fresh check before a send and the send are separate calls, so a snooze, a Needs
+  you or a session closing between them isn't seen. A re-send can cross a late answer, so a
+  Manager can get a repeat. A run stopped inside one Orca call (a stopped process, a sleeping
+  machine) can land that call after its window. Arm's Waiting write can overwrite a status set in
+  the instant after its last read; it starts only while T is at least a minute away, and the
+  restart list flags a note left on a spent wait. A wake due while Orca is down should run when
+  Orca returns (read in Orca's source, not tested). Markers don't survive restoring Orca's items
+  database from a snapshot. The step commands (`reserve`, `record`, `create`, `waiting`, `claim`,
+  and `close-unarmed` with another step) are for the live tests; `claim` alone leaves a winner
+  that stopped, which only reconciliation closes.
+- **Your part, the Director's.** A message with the subject `Re-sent by the Head` is a question
+  already asked. Answer it as that question, under its original key, to the asking session it
+  names. If you already answered that key, send the same answer again, unchanged. If it isn't
+  yours to decide, tell the Head it stays his, with the way forward. Mint no new key and post no
+  record.
 
 ### Every ask that reaches me stands on its own
 

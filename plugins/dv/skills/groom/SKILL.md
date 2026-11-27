@@ -411,7 +411,11 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
        (for a part at the top level, the same command with no `--` and no path). If the last part
        of an entry there matches the missing part when case is ignored, the line is "not run: path
        differs only in case", since it can pass on a disk that ignores case. Otherwise the path is
-       not in the tracked files at the commit, and the check treats it as missing.
+       not in the tracked files at the commit, and the check treats it as missing. When the path is
+       found (a regular file or a directory), list the parent of each of its parts the same way,
+       from the top: an entry there other than that part whose last part matches it when case is
+       ignored is also "not run: path differs only in case", since a checkout on a disk that
+       ignores case can put that other entry at the path.
     2. A search, when read 1 found a regular file. First, whether a checkout would change the
        file's bytes, so that `grep` in a checkout would see other text than the commit holds:
        `git --no-replace-objects --no-lazy-fetch -C "<top level>" check-attr --source <commit> filter working-tree-encoding ident crlf eol -- '<path>'`,
@@ -433,9 +437,9 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
        prints none of its lines, and `--no-color` keeps `color.grep` out of that name. Judge by what it prints, not by the exit alone, since Claude
        Code's Bash tool reports a search's exit 1 as a success with no output: exactly one line,
        `<commit>:<path>`, is a match, and no output with no error is no match. On a match, run it
-       again with `-I` added after `--no-color`: no output there means git takes the file for binary, and
-       the line is "not run: binary file", since `grep` prints a notice for a binary file, not its
-       lines, and the `grep` in Claude Code's shell skips binary files.
+       again with `-I` added after `--no-color`: no output there means git takes the file for
+       binary, and the line is "not run: binary file", since `grep` prints a notice for a binary
+       file, not its lines, and the `grep` in Claude Code's shell skips binary files.
 
     Any other exit or output from a read is "not run: read failed". The reads see only the files
     tracked at the commit: this check does not see untracked or generated files, so a path that a
@@ -448,12 +452,13 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
     the line states, taking the first rule that applies:
     1. Nothing beyond the command, or exactly "exits 0", "succeeds" or "passes": the line passes on
        exit 0.
-    2. A search of a regular file, with no `!` and no `-q`: a statement that it prints or finds
-       nothing, in any wording ("prints nothing", "no output", "finds no line", "no longer
-       finds"), passes on no match; "prints" or "finds" with a description of the lines passes on a
-       match, since a command that already prints cannot fail first, whatever it prints.
-    3. Anything else, a guard note, an expected failure, a count, a line number or two statements
-       that disagree included: "not run: stated result unclear".
+    2. A search of a regular file, with no `!` and no `-q`, whose stated result is that it prints
+       or finds lines ("prints" or "finds" with a description of them): the line passes on exit 0,
+       a match, since a command that already prints cannot fail first, whatever it prints.
+    3. Anything else, a guard note, an expected failure, a statement that a search prints or finds
+       nothing, a count, a line number or two statements that disagree included: "not run: stated
+       result unclear". A search that finds nothing exits 1, so an absence check passes only when
+       it is written with `!`, such as `! grep -q "<pattern>" <path>`, which rule 1 reads.
   - **Results.** Each Done means line gets one of these results. They go, with the commit's short
     id (or "commit not verified"), in step 6's findings and step 8's report, the lines not run
     listed apart from the lines that fail:

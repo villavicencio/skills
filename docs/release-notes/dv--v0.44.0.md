@@ -68,6 +68,11 @@ already read (VIL-1203).
   match the search runs again with `-I`, and a file git takes for binary is "not run: binary
   file", since `grep` prints a notice there, not the lines, and the `grep` in Claude Code's shell
   skips binary files.
+- **A path found with a case-variant sibling.** When `ls-tree` finds the path, the check now
+  also lists the parent of each of its parts; another entry there that matches the part when case
+  is ignored makes the line "not run: path differs only in case", as a missing path with such an
+  entry already did, since a checkout on a disk that ignores case can put the other entry at the
+  path. This applies to file tests and searches alike.
 - **Every read of the repo's objects in the check now passes `--no-replace-objects`** (with
   `--no-lazy-fetch`, as before), the file test's included, so a local `refs/replace/` object cannot stand in for the
   verified commit's tree or file. Under the boundary this matters: a replaced file would be local
@@ -75,10 +80,12 @@ already read (VIL-1203).
 - **Judge.** A success statement (nothing beyond the command, "exits 0", "succeeds", "passes")
   passes on exit 0, as before; a search exits 0 on a match, 1 on no match and 2 when the path is
   missing or a directory, and `!` turns 0 into 1 and anything else into 0. For a search of a
-  regular file with no `!` and no `-q`, a statement that it prints or finds nothing passes on no
-  match, and "prints" or "finds" with a description of the lines passes on a match, since a command
-  that already prints cannot fail first. Anything else, a guard note or an expected failure
-  included, stays "not run: stated result unclear". Matched lines and file contents are never
+  regular file with no `!` and no `-q`, "prints" or "finds" with a description of the lines passes
+  on exit 0, a match, since a command that already prints cannot fail first. Anything else, a
+  guard note, an expected failure or a statement that a search prints or finds nothing included,
+  stays "not run: stated result unclear": a search that finds nothing exits 1, so an absence check
+  passes only when written with `!` (`! grep -q "<pattern>" <path>`), which the success rule
+  reads. Matched lines and file contents are never
   printed in a reply, report or Linear: a line gets a result, not output.
 - **`dv:groom`, step 3, "How" and "Conditional steps".** A fact stated as a command, and a
   conditional step's check, can now be a search too, checked by the same rules and boundary; "repo
@@ -110,8 +117,6 @@ already read (VIL-1203).
   Claude Code's shell runs as `grep`) can still match differently on non-ASCII text in the file for
   `-i`, `-w`, `.` or a bracket expression, or take for binary a file git takes for text (such as a
   file with invalid UTF-8 and no NUL byte).
-- The search reads the file at its exact path. When the commit also tracks a path that differs only
-  in case, a checkout on a disk that ignores case may hold the other file.
 - A repo whose origin is not on `github.com`, or is named through an SSH host alias, is treated as
   not public, whatever its real visibility.
 

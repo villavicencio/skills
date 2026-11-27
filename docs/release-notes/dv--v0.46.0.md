@@ -23,23 +23,29 @@ secret-named file and get back what it found.
 - **`dv:groom`, step 3, "Paths in your own reads"** (new, right after "How"). Before any read of a
   path that a read of the session's own takes from the ticket's text, its comments, or a ticket,
   PR, file or page they point to, the session checks the path. A file the text names only in words
-  counts, as the path the session would read. The path is taken as "The path and the pattern"
+  counts, as the path the session would read, worked out from the words alone or from a listing
+  with every secret-named entry filtered out. The path is taken as "The path and the pattern"
   takes a file test's `<path>` (without its quotes, a leading `./` dropped, relative to the top
   level of the repo the fact is about), and the first rule that refuses it gives the reason:
   - a path that starts with `/` or `~`: "not checked: path outside the repo", so whoever reads the
     report knows to check it by hand;
   - otherwise that section's rules, in its order: "not checked: unsafe path", "not checked: git
-    metadata" or "not checked: secret-named path" (each part lowercased first, as before).
+    metadata" or "not checked: secret-named path" (the `.git` and secret-name tests ignore case,
+    as before).
 
-  A refused path is not read in any way, not even to see whether it exists, and nothing about it
-  goes in the reply, the report or Linear beyond its reason. A search of the session's own across
-  more than one file in a repo, for a word the text gives (step 5's search for every spelling of a
-  value included), is made with `git grep`, which reads only tracked files, with each tracked path
-  that `git ls-files` shows to be secret-named left out by a `':(exclude,literal)<path>'` pathspec.
-  When such a path cannot be left out that way (its name holds `'`), the search is not made:
-  "not checked: search would open a secret-named path". The step says plainly that these reads
-  have no disclosure boundary (that stays with the check's search), so in a private repo a fact
-  stated in words about a file whose path passes the rules is still read and reported.
+  A refused path is not read in any way, not even to see whether it exists, and nothing about it,
+  or about a secret-named entry any read shows, goes in the reply, the report or Linear beyond the
+  reason. A search of the session's own across more than one file in a repo, for a word the text
+  gives (step 5's search for every spelling of a value included), opens no secret-named file: it
+  is `git grep -F -e '<word>' <commit> -- .` at the commit step 1 recorded, which reads only that
+  commit's tracked files, with the word only when it passes the Rules' test for a value taken from
+  ticket text, and with a `':(exclude,literal)<path>'` pathspec for each secret-named path that
+  `git ls-tree -r -z --name-only <commit>` lists. When such a path holds `'` or a character outside
+  printable ASCII, it cannot be left out that way, and the search is not made: "not checked:
+  search would open a secret-named path". The paragraph does not apply to the check's own reads,
+  which keep the check's rules and results. It says plainly that these reads are not held to the
+  disclosure boundary (only the check's search is), so in a private repo a fact stated in words
+  about a file whose path passes the rules is still read and reported.
 - **`dv:groom`, step 5 ("Scout") and Rules.** Scouting's evidence points to the new paragraph as
   well as "How", and the Rules bullet on values taken from ticket text says a path taken from that
   text goes through "Paths in your own reads" before any read of it, in every step, and so does a
@@ -48,11 +54,13 @@ secret-named file and get back what it found.
   anything it points to, goes through `dv:groom`'s "Paths in your own reads", with the same order
   and reasons. A refused path is not read in any way; the fact is marked `[assumed]` and listed in
   the Agent notes under what was not checked, with the reason ("path outside the repo", "unsafe
-  path", "git metadata", "secret-named path", or "search would open a secret-named path"). If
-  `../groom/SKILL.md` cannot be read, every fact whose check would read a path taken from the
-  request is `[assumed]` ("dv:groom's path rules could not be read"). The step says plainly that
-  in a private repo a fact stated in words about a file whose path passes the rules is still read,
-  and the draft says what was found. Its Rules bullet gains the same sentence as `dv:groom`'s.
+  path", "git metadata", "secret-named path", or "search would open a secret-named path"). The
+  search runs at the default branch's commit the step already takes from the local clone for a
+  fact stated as a command. If `../groom/SKILL.md` cannot be read, every fact whose check would
+  read a path taken from the request, or search more than one file for a word it gives, is
+  `[assumed]` ("dv:groom's path rules could not be read"). The step says plainly that in a private
+  repo a fact stated in words about a file whose path passes the rules is still read, and the draft
+  says what was found. Its Rules bullet gains the matching sentence, pointing to File step 5.
 - **Unchanged:** the "Done means lines that already pass" check itself, its forms, path and
   pattern rules, disclosure boundary, reads and results, and so the check of a fact stated as a
   command.
@@ -68,4 +76,5 @@ secret-named file and get back what it found.
   link wherever it leads.
 - **A path outside the repo is not checked.** A path that starts with `/` or `~` is never read;
   the report says "not checked: path outside the repo" (in `dv:ticket`, `[assumed]` with that
-  reason), and such a fact has to be checked by hand.
+  reason), and such a fact has to be checked by hand. A path that climbs out with `..` is refused
+  too, as "unsafe path".

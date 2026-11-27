@@ -185,19 +185,22 @@ evidence, is checked with reads of your own, and that command is not run.
 Each path those reads take from the request, or from a ticket, PR, file or page it points to, is
 checked first, before any read of it, under `dv:groom` step 3's "Paths in your own reads" (in
 `../groom/SKILL.md`; read that part there), which applies its "The path and the pattern": a file
-the request names only in words counts, the first rule that refuses the path gives the reason, and
-a search across more than one file for a word the request gives opens no secret-named file. A
-refused path is not read in any way, not even to see whether it exists: mark the fact `[assumed]`
-and list it in the Agent notes under what was not checked, with the reason: "path outside the
-repo" for a path that starts with `/` or `~`, so whoever reads the ticket knows to check it by
-hand, or otherwise "unsafe path", "git metadata" or "secret-named path". A fact whose search that
-part does not let you make is `[assumed]` the same way ("search would open a secret-named path").
-If `../groom/SKILL.md` cannot be read, every fact whose check would read a path taken from the
-request is `[assumed]` ("dv:groom's path rules could not be read"). These reads have no disclosure
-boundary, which only `dv:groom`'s check for a search has, and the rules judge a path by its name
-alone. So in a private repo a fact the request states in words about a file whose path passes
-them is still read, and the draft says what was found; in any repo so is one about a file the repo
-does not track, or about a path that is a link or sits under one, wherever the link leads.
+the request names only in words counts, worked out as that part says, the first rule that refuses
+the path gives the reason, and a search across more than one file for a word the request gives
+opens no secret-named file. That search's commit is the default branch's commit this step takes
+from the local clone for a fact stated as a command. A refused path is not read in any way, not
+even to see whether it exists, and nothing about it beyond its reason goes in the draft or the
+ticket: mark the fact `[assumed]` and list it in the Agent notes under what was not checked, with
+the reason: "path outside the repo" for a path that starts with `/` or `~`, so whoever reads the
+ticket knows to check it by hand, or otherwise "unsafe path", "git metadata" or "secret-named
+path". A fact whose search that part does not let you make is `[assumed]` the same way ("search
+would open a secret-named path"). If `../groom/SKILL.md` cannot be read, every fact whose check
+would read a path taken from the request, or search more than one file for a word it gives, is
+`[assumed]` ("dv:groom's path rules could not be read"). These reads are not held to the
+disclosure boundary; only the search in `dv:groom`'s check is. The rules judge a path by its name
+alone, so in a private repo a fact the request states in words about a file whose path passes them
+is still read, and the draft says what was found; in any repo so is one about a file the repo does
+not track, or about a path that is a link or sits under one, wherever the link leads.
 
 The format's run of each Done means command on the default branch ("A Done means command fails
 first") runs nothing either, whether the command came from the request or you wrote it: check each

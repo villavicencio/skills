@@ -11,7 +11,8 @@ real `gh` on PATH, the run checks the "gh missing" path.
 Checked (each name below is printed with ok or FAIL):
   current (Claude Code and Codex homes, a SKILL.md path given instead of its directory, a
   development copy read by metadata.version, one ahead of the release); an installed copy ahead
-  of every stable release is not verified; which Claude Code entry applies (a project-scope
+  of every stable release is not verified, whether it is the loaded copy or only the installed
+  version (with the loaded copy at or below the release); which Claude Code entry applies (a project-scope
   entry for the working directory or a parent, one for another directory, one with no
   projectPath); stale with the install
   current (a fresh session is enough) and with the install itself behind, on both clients, and
@@ -178,6 +179,17 @@ def main() -> int:
          lambda sb: str(sb.skill(sb.claude_home("0.53.0"), "0.53.0")),
          2, "not verified", ("loaded dv 0.53.0 is ahead of the latest stable release 0.51.0",
                              "installed 0.53.0"))
+
+    case("not verified: loaded the latest release, but the install is ahead of every release",
+         lambda sb: str(sb.skill(sb.claude_home("0.52.0", "0.52.0"), "0.51.0")),
+         2, "not verified", ("installed dv 0.52.0 is ahead of the latest stable release 0.51.0",
+                             "loaded dv 0.51.0"))
+    case("not verified: loaded below the release, install ahead of every release (no fresh-session advice)",
+         lambda sb: str(sb.skill(sb.codex_home("0.49.0", "0.52.0"), "0.49.0")),
+         2, "not verified", ("installed dv 0.52.0 is ahead", "loaded dv 0.49.0"),
+         ("fresh session",))
+    case("current: a development copy at the release ignores the installed version",
+         lambda sb: str(make_dev(sb, "0.51.0")), 0, "current", ("installed unknown",))
 
     # --- which Claude Code install applies ------------------------------------------------------
     case("installed: a project-scope entry for this directory wins over the user entry",

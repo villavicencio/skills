@@ -28,8 +28,9 @@ The first printed line starts with the outcome, and the exit code matches it:
                                               and installed, and whether a fresh session is
                                               enough or the install itself is behind)
   dv-latest-check: not verified ...   exit 2  hold dv-dependent actions until a rerun says
-                                              current (release or base path unreadable, or an
-                                              installed copy ahead of every stable release)
+                                              current (release or base path unreadable, or the
+                                              loaded or installed version of an installed
+                                              plugin ahead of every stable release)
 
 DV_LATEST_CHECK_GH, when set, names the gh binary to run instead of the one on PATH: a stand-in for
 tests and live checks (a Codex shell rebuilds PATH from the login profile, so PATH alone can't).
@@ -267,6 +268,15 @@ def check(arg: str, repo: str = REPO):
         return EXIT_NOT_VERIFIED, [
             f"{PREFIX} not verified: loaded dv {loaded_v} is ahead of the latest stable release "
             f"{latest_v} (installed {installed_text}), so it is not a released version. Hold "
+            "every dv-dependent action until a rerun of this check says current (once its "
+            "release is published); work that doesn't depend on dv can continue.",
+            where]
+    if loaded["home"] is not None and installed is not None and installed > latest:
+        # The install a fresh session would load is not a released version, so neither "current"
+        # nor "a fresh session picks up the update" can be said.
+        return EXIT_NOT_VERIFIED, [
+            f"{PREFIX} not verified: installed dv {installed_text} is ahead of the latest stable "
+            f"release {latest_v}, so it is not a released version (loaded dv {loaded_v}). Hold "
             "every dv-dependent action until a rerun of this check says current (once its "
             "release is published); work that doesn't depend on dv can continue.",
             where]

@@ -360,8 +360,8 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
 
   "Reply to" names one address, the hop's sender: yours for a question you forwarded, the
   session's for one it sent straight to him. Only on a fallback status (step 3: `unclear`,
-  `failed`, or an earlier run's `sent` with no reply), a `held` record or a pickup note does the
-  first line start with `@Orca <his Linear handle> `; a record at `sending` or `sent` otherwise
+  `failed`, or an earlier run's `sent` with no reply), a `held` record, a closeout item's record
+  (below) or a pickup note does the first line start with `@Orca <his Linear handle> `; a record at `sending` or `sent` otherwise
   carries no mention. On a fallback or a hold the Head replies under that comment, so his advice
   doesn't depend on a live reply address: the next session responsible for the question (the
   session while it runs, otherwise you) reads every record for the original (`list_comments`)
@@ -380,15 +380,18 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
   question can wake him more than once; his answers are advice, so a second one changes nothing
   already done.
 
-  **A closeout item** (`dv:closeout`, "With a Head") gets a record from the session that closes
-  out, at `Status: in closeout note`, before any probe or send: the item is in a closeout note,
-  and nothing was mailed under its key. That record is the session's hand-over to the Director
-  that takes the note. In step 1 it is not a record for the original, and the item reaches that
-  Director first-hand unless the note marks it `Re-sent: yes`. Its owner moves it to `sending`,
-  as its claim, only when no Director took the item (`dv:closeout`, "With a Head"). For that
-  claim, step 1's rule for a record under your own hop key doesn't apply (nothing was mailed
-  under it), moving it to `sending` stands for posting your record at `sending`, the note it was
-  in doesn't count as a send to a Director, and step 1's other conditions hold as written. Such
+    **A closeout item** (`dv:closeout`, "With a Head") gets a record from the session that closes
+  out, at `Status: in closeout note`, with the mention at its start, before any probe or send:
+  the item is in a closeout note, nothing was mailed under its key, and the mention is his
+  pickup, so the item reaches him even if that session ends before any delivery. For the
+  Director that takes the note, it is a record for the original that carries the mention: mail
+  nothing for that item and post no second mention (step 4), and reply `Forwarded to the Head`
+  for it unless you decide it. Its owner moves it to `sending`, as its claim, only when no
+  Director took the item (`dv:closeout`, "With a Head"). For that claim, step 1's rule for a
+  record under your own hop key doesn't apply (nothing was mailed under it), moving it to
+  `sending` stands for posting your record at `sending`, the note it was in doesn't count as a
+  send to a Director, the record keeps its mention, and step 1's other conditions hold as
+  written. Such
   an item stays open until a reply under one of its records closes it: `Closed, VIL-N, Qk: <what
   was done>. Verified: <the check and its result>.`, or `Closed, VIL-N, Qk: superseded by Qm:
   <why>.` While the closeout session runs, it posts that reply, once the action has been carried
@@ -889,9 +892,10 @@ terminal by `orca terminal send`, by clipboard paste, or as a file under
   its note only by SendMessage, once its probe has verified you ("With a Head" there). Its
   WAITING ON lists each open item with its key, the REPLY NEEDED question included. Take each as
   a question from that session ("Answer a worktree session's question"): decide it when it is
-  yours, such as a ticket state that "Keep ticket states true" fixes at this seam, and otherwise
-  forward it to him, the CEO's 1% marked as such, as "A record on the ticket for each Qk" says
-  (the session's record at `in closeout note` is its hand-over to you: "A closeout item" there).
+    yours, such as a ticket state that "Keep ticket states true" fixes at this seam, and otherwise
+  leave it with him, the CEO's 1% marked as such: an item the session recorded at `in closeout
+  note` already carries his pickup mention, so you mail nothing for it ("A closeout item" there),
+  and any other item you forward as "A record on the ticket for each Qk" says.
   An item stays open until its action is done and verified, so a later note from the session
   lists the items still open. Once that session has ended, its open items are yours to resume:
   act on an answer as "His answer" says, and post the `Closed` reply for each item whose action

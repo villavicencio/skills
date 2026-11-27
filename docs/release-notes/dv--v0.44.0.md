@@ -31,7 +31,8 @@ moved this work out of VIL-1178).
     new item takes the session's next unused Qk, and every later copy of the note keeps it.
   - **The record.** Before any probe or send, closeout posts each new item's record on the
     ticket, in `dv:director-mode`'s record form, at a new status, `in closeout note` (nothing
-    mailed under its key). An item stays open until a `Closed` reply under one of its records,
+    mailed under its key), with the Head's pickup mention at its start, so the item reaches him
+    through Linear even if the session ends before any delivery. An item stays open until a `Closed` reply under one of its records,
     posted only after the action it calls for has been carried out and its result verified in
     the system it changed: by the closeout session while it runs, and after it has ended by the
     Director, which resumes its open items. A send, an acknowledgement or an answer closes
@@ -39,7 +40,7 @@ moved this work out of VIL-1178).
     and sends that copy. With no ticket, or comments that can't be read or written, an item has
     no record: it stays in every copy of the note (with a ticket, closeout tries again to post
     the record in each later turn), and when delivery fails it is mailed with `Record: none`,
-    once, and once more after a send error. With no record there is no Linear fallback mention,
+    once, and once more after a send error or an unreadable result. With no record there is no Linear fallback mention,
     so the reply says when its delivery is not confirmed. Such an item closes once its action is
     verified; the reply says so and the next copy leaves it out.
   - **Delivery** takes only the chat path in "Deliver the note", as a supervised session already
@@ -49,7 +50,8 @@ moved this work out of VIL-1178).
     outcome "note sent and replied"), with one line per Qk:
     `Answer, VIL-N, Qk: …` (taken when it counts as `dv:manager-mode`'s "What counts as the
     answer" says) or `Forwarded to the Head, VIL-N, Qk: …` (taken only when the ticket shows a
-    record for that original at `sent` or carrying the mention). The wait is closeout's existing
+    record for that original at `sent` or carrying the mention, as the session's own record
+    does). The wait is closeout's existing
     10 minutes, with the probe's background timer.
   - **Mail to the Head when delivery fails**: no Director verified, the note not sent, or an item
     no acknowledgement took within the 10 minutes. Closeout mails him each such item, one
@@ -65,13 +67,14 @@ moved this work out of VIL-1178).
     closeout does.
 - **`dv:director-mode`.**
   - "A record on the ticket for each Qk": the status `in closeout note`, and a new paragraph, "A
-    closeout item": that record is the session's hand-over to the Director that takes the note,
-    not a record for the original in step 1; its owner moves it to `sending` only when no
-    Director took the item, and for that claim step 1's own-hop-key rule doesn't apply; and the
-    `Closed, VIL-N, Qk: …` reply that closes it.
+    closeout item": that record carries the Head's pickup mention, and for the Director that
+    takes the note it is a record for the original that carries it, so the Director mails nothing
+    for that item and posts no second mention; its owner moves it to `sending` only when no Director took the item,
+    and for that claim step 1's own-hop-key rule doesn't apply; and the `Closed, VIL-N, Qk: …`
+    reply that closes it.
   - "Take closeout notes": with a Head, take each item as a question from the session (decide it
-    when it is yours, otherwise forward it), and reply with the acknowledgement form, after the
-    forwards. Once the session has ended, the Director resumes its open items and closes those
+    when it is yours; otherwise leave it with the Head, whose pickup the session's record already
+    carries), and reply with the acknowledgement form. Once the session has ended, the Director resumes its open items and closes those
     whose action it carried out and verified. With a Head, closeout asks no removal question.
   - "His answer": advice on a closeout item goes on the ticket as a reply under its record.
   - "With a Head, nothing else is asked of me": closeout now follows it.
@@ -81,13 +84,13 @@ moved this work out of VIL-1178).
 
 ## Known limits
 
-- If the closeout session ends during the acknowledgement wait, its records stay at `in closeout
-  note`: the items are on the ticket, but no one has confirmed taking them, and nothing mails
-  them.
+- If the closeout session ends during the acknowledgement wait, no fallback mail goes out; each
+  record's mention has already given the Head the item as a Linear pickup. On the fallback path
+  he can get both the pickup and the mail for one item (advice twice).
 - The Director's check on the note still accepts only a standing yes for losses, so after a yes
   verified through the Head, the removal stays David's: the reply names the command.
-- An item with no record whose mail didn't go through is kept only in the note's saved copies
-  and in the reply.
+- An item with no record whose two sends showed no clean result is kept only in the note's
+  saved copies and in the reply.
 
 ## Not tested
 

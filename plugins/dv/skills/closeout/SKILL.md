@@ -4,7 +4,7 @@ description: "Close out a finished worktree session and brief the parent session
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.51.0"
+  version: "0.53.0"
 ---
 
 # /closeout — close out a finished worktree session
@@ -807,9 +807,9 @@ and why removal is blocked (what would be lost, the check that did not run, the 
 confirmed, or the losses waiting on my yes), and, when Step 4 did not run, that the handoff was
 left where it is. The Director's check on the note (`dv:director-mode`, "End a finished worktree
 session", check 1) refuses `NOT safe to delete` and `not confirmed safe`, so it leaves the
-worktree and tells me instead of asking me to close the session or releasing it. Known limit
-(VIL-1209): if the session ends anyway, director-mode's later removal runs the global removal
-procedure's checks, which do not read the note.
+worktree and tells me instead of asking me to close the session or releasing it. If the session
+ends anyway, the Director reads the worktree's latest saved note before any removal and keeps the
+worktree on those verdicts too (`dv:director-mode`, "Take closeout notes").
 
 **One saved copy per run.** Each run of this step writes the note once and saves it once, with the
 block below, which never overwrites a saved copy. Writing the note again later (after my yes,
@@ -915,8 +915,9 @@ Do not run it.
   (`dv:director-mode`, "End a finished worktree session", check 1), and an acceptance after the
   note is a message from me after it (check 3), so in either case the removal stays mine and the
   question is asked, as when no note was sent. Those checks hold while a Director ends this
-  session itself; if the session ends another way, its later removal does not read the note
-  (known limit, VIL-1209).
+  session itself; if the session ends another way, the Director reads the worktree's latest saved
+  note before any removal and keeps the worktree on any verdict check 1 refuses (`dv:director-mode`,
+  "Take closeout notes").
 - **Initialized submodules.** When the removal is cleared and Step 1 printed "initialized
   submodules" above 0, `wt done`, `git worktree remove` and a plain `orca worktree rm` all refuse
   this worktree. Say so, and point to the guarded procedure instead of a plain command:

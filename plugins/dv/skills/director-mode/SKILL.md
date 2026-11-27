@@ -4,7 +4,7 @@ description: "Switch this session into Director Mode, the mode for the home sess
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.51.0"
+  version: "0.53.0"
 ---
 
 # /director-mode — the home session directs; worktree managers hire
@@ -1177,9 +1177,24 @@ terminal by `orca terminal send`, by clipboard paste, or as a file under
   When a check there fails or can't run, tell me, as a highlight, which check failed and why, and
   that the session is still open in Orca for me to close. After the session has ended (closed by me, or
   rechecked with the ListAgents test under "Merge and clean up" at each seam and whenever I say I
-  closed the session), remove the worktree and its branch by the global removal procedure
-  named there, run from the main checkout. That procedure's checks decide what is removed; the
-  note is context, not permission. You never signal or stop a session's process.
+  closed the session), first read the worktree's latest closeout note (below). When its Worktree
+  line passes check 1's verdict rule under "End a finished worktree session" (it starts
+  `Worktree: safe to delete,`, or `Worktree: safe once you accept losing:` with every listed loss
+  covered by a standing yes of mine), remove the worktree and its branch by the global removal
+  procedure named there, run from the main checkout; that procedure's checks then decide what is
+  removed. Otherwise (`NOT safe to delete`, `not confirmed safe`, a loss no standing yes covers,
+  or no note you can read), keep the worktree and its branch, remove nothing, and tell me as a
+  highlight: the worktree folder, the note's path and its Worktree line word for word (the
+  verdict and its reason), or that there is no note. The note can keep a worktree; it never
+  permits a removal. You never signal or stop a session's process.
+  The worktree's latest closeout note is the newest copy saved for its branch under
+  `<git-common-dir>/closeouts/`, named exactly `<branch slug>.<YYYYMMDDTHHMMSSZ>.txt`, or
+  `<branch slug>.<YYYYMMDDTHHMMSSZ>-<n>.txt` on a clash. Compare the timestamp, then `<n>` as a
+  number (a copy without one counts as 0, since it came first); don't go by `ls` or `sort` order,
+  which puts `-1` before the copy without one. `<branch slug>` is the branch name as closeout's
+  Step 3 block writes it, `%` as `%25` and `/` as `%2F` (`detached-<full HEAD sha>` for a detached
+  HEAD). If that copy's header (its first line) names another worktree path, there is no note for
+  this worktree.
 - A session you started supervised (step 2a of "Open a worktree on request") you don't ask me to
   close: "End a finished worktree session" releases its chat through Orca once the checks there
   pass, and falls back to me when one fails or the release's outcome can't be confirmed. A
@@ -1210,10 +1225,12 @@ the notice; don't poll ListAgents or ask the session whether it is done. When th
 arrives, or at once if the reply can't be sent because the session has gone, first run the
 `ps` check under "After I close it" with the `claude` pid (the one the note's `from` address
 names; a note with no `from` address ends nothing) in place of both pids. If it prints
-`GONE`, the session has already ended: skip this rule's checks and the ask, and remove the
-worktree as "Take closeout notes" says, by the global procedure with check 4 in its removal
-form. Otherwise run checks 1, 3 and 4, then "Before asking me to close it", then "Asking me to
-close it".
+`GONE`, the session has already ended: skip the ask and this rule's checks, except that you apply
+check 1's verdict rule to the worktree's latest closeout note, as "Take closeout notes" says for a
+session that has ended. When that note fails the rule, or there is no note you can read, keep the
+worktree and tell me why, as that bullet says; when it passes, remove the worktree by the global
+procedure with check 4 in its removal form. If it doesn't print `GONE`, run checks 1, 3 and 4,
+then "Before asking me to close it", then "Asking me to close it".
 
 **A supervised session** (one you started with step 2a of "Open a worktree on request", so its
 kickoff record exists) is released, not asked about. Its last act is `worker_done`, sent after it
@@ -1955,7 +1972,8 @@ session never does.
   me (including when you asked under "End a finished worktree session") or released by you
   ("Release a supervised Manager chat"); the global procedure's own checks, including
   that no other session is still in it, decide removal, and a `dv:closeout` note is context, not
-  permission to delete.
+  permission to delete, though once a session whose closeout note reached you has ended, that
+  worktree's latest note can keep it ("Take closeout notes").
 - Re-check every ticket id the PR named. Reopen one only if it moved to Done and its work is not
   finished; leave the others' states to the rules below.
 - If you cannot read `code-review.md` or the global instructions, say so and ask me; do not

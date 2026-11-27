@@ -7,9 +7,10 @@ Every dv skill runs this as its first step, passing the directory the client gav
 the skill (Claude Code: "Base directory for this skill: ..."; Codex: the directory of the SKILL.md
 it read). It reads three versions:
 
-  loaded     from that path: <home>/plugins/cache/<marketplace>/dv/<version>/skills/<name>. A path
-             outside a plugin cache (a development copy loaded with --plugin-dir) falls back to
-             metadata.version in its SKILL.md.
+  loaded     from that path: <home>/plugins/cache/<marketplace>/dv/<version>/skills/<name>, even
+             when an update has since removed that directory. A path outside a plugin cache (a
+             development copy loaded with --plugin-dir) falls back to metadata.version in its
+             SKILL.md.
   latest     the highest dv--v<version> tag among the stable releases of villavicencio/skills
              (drafts and pre-releases excluded, other plugins' tags ignored), read with `gh`.
   installed  Claude Code: <home>/plugins/installed_plugins.json, entry dv@<marketplace>.
@@ -23,6 +24,9 @@ The first printed line starts with the outcome, and the exit code matches it:
                                               enough or the install itself is behind)
   dv-latest-check: not verified ...   exit 2  hold dv-dependent actions until a rerun says
                                               current (release or base path unreadable)
+
+DV_LATEST_CHECK_GH, when set, names the gh binary to run instead of the one on PATH: a stand-in for
+tests and live checks (a Codex shell rebuilds PATH from the login profile, so PATH alone can't).
 
 Stdlib only; runs on Python 3.9 or later. Tests: tooling/evals/test_dv_latest_check.py.
 """
@@ -102,17 +106,21 @@ def read_loaded(arg: str) -> dict:
     if not path.is_absolute():
         raise CheckError(f"base path {arg!r} is not absolute")
     path = Path(os.path.normpath(str(path)))
-    if not (path / "SKILL.md").is_file():
-        raise CheckError(f"base path {path} has no readable SKILL.md")
     m = CACHE_RE.match(str(path))
     if m:
+        # The version is in the path the client reported. An update can remove that copy while
+        # a session still runs on it (Codex replaces the cache directory), so a missing
+        # directory doesn't make the loaded version unknown.
+        gone = not (path / "SKILL.md").is_file()
         return {
             "version": parse_version(m.group("version")),
             "home": Path(m.group("home")),
             "marketplace": m.group("marketplace"),
-            "source": "plugin cache",
+            "source": "plugin cache, no longer on disk" if gone else "plugin cache",
             "path": path,
         }
+    if not (path / "SKILL.md").is_file():
+        raise CheckError(f"base path {path} has no readable SKILL.md")
     try:
         version = skill_md_version(path)
     except (OSError, UnicodeDecodeError) as exc:
@@ -123,12 +131,13 @@ def read_loaded(arg: str) -> dict:
 
 def read_latest(repo: str = REPO) -> tuple:
     """The highest dv--v<version> tag among stable releases, via gh."""
-    cmd = ["gh", "release", "list", "-R", repo, "--exclude-drafts", "--exclude-pre-releases",
+    gh = os.environ.get("DV_LATEST_CHECK_GH") or "gh"
+    cmd = [gh, "release", "list", "-R", repo, "--exclude-drafts", "--exclude-pre-releases",
            "--limit", "100", "--json", "tagName,isDraft,isPrerelease"]
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=GH_TIMEOUT_SECONDS)
     except FileNotFoundError:
-        raise CheckError("gh is not installed or not on PATH")
+        raise CheckError(f"{gh} is not installed or not on PATH")
     except subprocess.TimeoutExpired:
         raise CheckError(f"gh release list did not answer within {GH_TIMEOUT_SECONDS} s")
     except OSError as exc:

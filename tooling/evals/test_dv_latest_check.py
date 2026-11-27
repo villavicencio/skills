@@ -15,8 +15,10 @@ Checked (each name below is printed with ok or FAIL):
   with the installed version unreadable; the latest release ignoring drafts, pre-releases, other
   plugins' tags and malformed dv tags, and gh asked to exclude drafts and pre-releases; release
   unreadable (gh exits non-zero, prints non-JSON, lists no dv release, is missing, times out);
-  base path unreadable or malformed (missing, relative, empty, no SKILL.md, a development copy with
-  no metadata.version); and every dv SKILL.md runs the same first step before its first section.
+  DV_LATEST_CHECK_GH naming the gh to run;
+  a loaded copy that an update removed (the version still read from its path); base path
+  unreadable or malformed (missing, relative, empty, an unfilled placeholder, a development copy
+  with no metadata.version); and every dv SKILL.md runs the same first step before its first section.
 
 Stdlib only, no network.
 
@@ -40,14 +42,16 @@ SCRIPT = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else (
 
 FAILURES: list = []
 
+# Absolute paths only: the "gh missing" cases run with a PATH that has nothing on it (a CI runner
+# has a real gh in /usr/bin).
 FAKE_GH = r"""#!/bin/sh
 printf '%s\n' "$@" > "$FAKE_GH_DIR/argv"
 case "$FAKE_GH_MODE" in
   fail) echo "error connecting to api.github.com" >&2; exit 1 ;;
   garbage) echo "not json"; exit 0 ;;
-  sleep) sleep 5; exit 0 ;;
+  sleep) /bin/sleep 5; exit 0 ;;
 esac
-cat "$FAKE_GH_DIR/releases.json"
+/bin/cat "$FAKE_GH_DIR/releases.json"
 """
 
 
@@ -95,9 +99,11 @@ class Sandbox:
             self.skill(home, v)
         return home
 
-    def run(self, arg: str, mode: str = "", gh: bool = True):
+    def run(self, arg: str, mode: str = "", gh: bool = True, extra: dict | None = None):
         env = {"PATH": f"{self.bin}:/usr/bin:/bin" if gh else str(self.root / "empty"),
                "FAKE_GH_DIR": str(self.bin), "FAKE_GH_MODE": mode, "HOME": str(self.root)}
+        for k, v in (extra or {}).items():
+            env[k] = v.replace("{bin}", str(self.bin))
         proc = subprocess.run([sys.executable, "-I", str(SCRIPT), arg], capture_output=True,
                               text=True, env=env, timeout=60)
         return proc.returncode, proc.stdout, proc.stderr
@@ -120,12 +126,13 @@ def expect(name: str, cond: bool, detail: str = ""):
         FAILURES.append(name)
 
 
-def case(name, arg_fn, code, first_word, contains=(), absent=(), mode="", gh=True, setup=None):
+def case(name, arg_fn, code, first_word, contains=(), absent=(), mode="", gh=True, setup=None,
+         env=None):
     sb = Sandbox()
     try:
         if setup:
             setup(sb)
-        rc, out, err = sb.run(arg_fn(sb), mode=mode, gh=gh)
+        rc, out, err = sb.run(arg_fn(sb), mode=mode, gh=gh, extra=env)
         first = out.splitlines()[0] if out else ""
         ok = (rc == code and first.startswith(f"dv-latest-check: {first_word}")
               and all(c in first for c in contains) and not any(a in first for a in absent))
@@ -190,6 +197,13 @@ def main() -> int:
     case("stale: installed version unreadable is named unknown",
          lambda sb: str(make_bad_manifest(sb)),
          1, "stale", ("loaded dv 0.50.0", "installed unknown"))
+    case("stale: loaded copy removed by an update still names the loaded version (Codex)",
+         lambda sb: str(sb.codex_home("0.53.0") / "plugins/cache/villavicencio-skills/dv/0.52.0/skills/pickup"),
+         1, "stale", ("loaded dv 0.52.0", "latest release 0.54.0", "installed 0.53.0",
+                      "install itself is behind"),
+         setup=lambda sb: sb.set_releases(releases("dv--v0.54.0", "dv--v0.53.0")))
+    case("current: cache-shaped path with no SKILL.md is read from the path",
+         lambda sb: str(make_cache_dir_only(sb)), 0, "current", ("loaded dv 0.51.0",))
     case("stale: development copy below the release",
          lambda sb: str(make_dev(sb, "0.50.0")),
          1, "stale", ("loaded dv 0.50.0", "latest release 0.51.0"))
@@ -209,6 +223,10 @@ def main() -> int:
          lambda sb: str(sb.skill(sb.claude_home("0.51.0"), "0.51.0")),
          2, "not verified", ("gh is not installed",), gh=False)
     check_timeout()
+    case("DV_LATEST_CHECK_GH names the gh to run when gh is not on PATH",
+         lambda sb: str(sb.skill(sb.claude_home("0.51.0"), "0.51.0")),
+         0, "current", ("latest release 0.51.0",), gh=False,
+         env={"DV_LATEST_CHECK_GH": "{bin}/gh"})
 
     # --- base path unreadable or malformed ----------------------------------------------------------
     for label, fn, text in (
@@ -217,8 +235,6 @@ def main() -> int:
             ("relative path", lambda sb: "plugins/dv/skills/pickup", "not absolute"),
             ("empty argument", lambda sb: "", "no skill base directory"),
             ("unfilled placeholder", lambda sb: "<base directory>", "not absolute"),
-            ("cache-shaped path with no SKILL.md", lambda sb: str(make_cache_dir_only(sb)),
-             "no readable SKILL.md"),
             ("development copy with no metadata.version", lambda sb: str(make_dev(sb, None)),
              "no metadata.version")):
         case(f"not verified: base path {label}", fn, 2, "not verified",

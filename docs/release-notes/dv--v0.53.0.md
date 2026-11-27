@@ -20,7 +20,8 @@ session still loaded 0.48.0. The Head of Skills set the rule as his item 78, fro
   `python3 -I "<base directory>/../../scripts/dv_latest_check.py" "<base directory>"`. It reads:
   - the loaded version, from the `…/plugins/cache/<marketplace>/dv/<version>/skills/<name>` path
     (Claude Code's "Base directory for this skill"; Codex reports the same versioned cache path,
-    `~/.codex/plugins/cache/villavicencio-skills/dv/<version>/skills`). A path outside a plugin
+    `~/.codex/plugins/cache/villavicencio-skills/dv/<version>/skills`), even when an update has
+    since removed that directory (Codex replaces it on update). A path outside a plugin
     cache (a `--plugin-dir` development copy) falls back to `metadata.version` in its `SKILL.md`;
   - the latest release: the highest `dv--v<version>` tag among the repository's stable releases
     (`gh release list --exclude-drafts --exclude-pre-releases`; drafts, pre-releases and other
@@ -33,9 +34,12 @@ session still loaded 0.48.0. The Head of Skills set the rule as his item 78, fro
   installed versions and says either that a fresh session picks up the update or that the install
   itself is behind) or `not verified` (exit 2; the release or the base path can't be read).
 - **Every dv skill's first section, "First step: dv-latest-check"** (identical in all sixteen):
-  run the check with the base directory given at load time, never a newer path on disk; quote its
-  first line; on `stale` or `not verified`, hold every dv-dependent action and say why, while work
-  that doesn't depend on dv continues and turning a mode `off` is never held.
+  run the check with the base directory given at load time, never a newer path on disk; give it
+  network access (a Codex sandbox blocks it, and the check then says `not verified`); if an update
+  removed the loaded copy, run the newest copy of the script in the same plugin cache with the
+  same base directory; quote its first line (none counts as `not verified`); on `stale` or
+  `not verified`, hold every dv-dependent action and say why, while work that doesn't depend on
+  dv continues and turning a mode `off` is never held.
 - **`dv:director-mode` ("What you do") and `dv:manager-mode` ("Running the team")** rerun the check
   before each later dv-dependent action: a merge, a closeout, ending a session, a hire, a brief, a
   Linear write.
@@ -49,7 +53,6 @@ session still loaded 0.48.0. The Head of Skills set the rule as his item 78, fro
   step, the version, and the layout (`plugins/<plugin>/scripts/`).
 - **AGENTS.md:** the live-check recipe notes that a `--plugin-dir` copy is checked by its
   `metadata.version`, and how to see the stale outcomes with a stand-in cache path.
-
 - **`dv:director-mode` `scripts/head_wait.py`:** `VERSION` moves to `0.53.0` with the plugin, as
   its test requires.
 

@@ -570,8 +570,9 @@ authority, and changes nothing in Orca.
   (below) once 15 minutes have passed since its claim, and otherwise run `rewake`. On `OPEN …
   reserved with no record`, reconcile it (below) instead of closing it. Anything else but `OPEN`
   ends the run with that line and nothing written. Then read the W<k> record, the
-  item's later lines, the ticket's comments or the PR at its recorded head (`gh pr view <N> --repo
-  <owner/repo>`), and both sessions (`orca agent read <id> --limit 100`, at most 100 entries). A
+  item's later lines, the ticket's comments or, for a PR key, the PR (`gh pr view <N> --repo
+  <owner/repo> --json headRefOid,state`: it counts only when `headRefOid` equals the key's commit
+  exactly), and both sessions (`orca agent read <id> --limit 100`, at most 100 entries). A
   session you can't read, or whose 100 entries all come after the first send without what a case
   needs, is an evidence gap, never evidence. Take the first case that fits and write the
   disposition file, with an `Evidence:` line and, for any case but `settled`, `Blocker:` and
@@ -582,8 +583,8 @@ authority, and changes nothing in Orca.
     can't be read, and no `Unsnoozed` comment from you or the item's owner follows it. Nothing is
     sent.
   - `settled`: the reads show the owner's acknowledgement under the record's key (the answer, the
-    handoff's acknowledgement, the merge at that head) and the waiting session's own turn on it
-    after that. A send receipt or an evidence gap never counts.
+    handoff's acknowledgement, the PR merged with `headRefOid` equal to the key's commit) and the
+    waiting session's own turn on it after that. A send receipt or an evidence gap never counts.
   - `re-sent`: the event hasn't happened, shown with no evidence gap; the owner and the key are
     unchanged; both sessions are open in Orca. Also write the body file: the question as first
     asked, with its original key and the asking session's id.

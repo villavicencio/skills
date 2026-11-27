@@ -24,8 +24,8 @@ Each line is one claim the section, the script and its tests establish.
 
 - Each wait W<k> on one of the Head's items gets a one-time wake (`orca automations create --once
   --by <time>`, no event trigger, no `--item`; `rewake` adds another only when it is lost) and two
-  marker links on the item: `head-wait/item-<n>/W<k>` when the wait is armed and
-  `head-wait/item-<n>/W<k>-closed` when it is closed.
+  marker links on the item: `head-wait/item-<n>/W<k>`, linked first, as the reservation, before
+  the record and the wake, and `head-wait/item-<n>/W<k>-closed` when it is closed.
 - Orca adds a link only when the item lacks it, in one transaction, and answers `unchanged` to
   every later caller, so two runs can't both arm W<k>: the second gets `TAKEN`, writes nothing
   more and tries no other key.

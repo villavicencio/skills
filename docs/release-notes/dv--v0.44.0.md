@@ -79,13 +79,16 @@ already read (VIL-1203).
   content, not what origin serves.
 - **Judge.** A success statement (nothing beyond the command, "exits 0", "succeeds", "passes")
   passes on exit 0, as before; a search exits 0 on a match, 1 on no match and 2 when the path is
-  missing or a directory, and `!` turns 0 into 1 and anything else into 0. For a search of a
-  regular file with no `!` and no `-q`, "prints" or "finds" with a description of the lines passes
-  on exit 0, a match, since a command that already prints cannot fail first. Anything else, a
-  guard note, an expected failure or a statement that a search prints or finds nothing included,
-  stays "not run: stated result unclear": a search that finds nothing exits 1, so an absence check
-  passes only when written with `!` (`! grep -q "<pattern>" <path>`), which the success rule
-  reads. Matched lines and file contents are never
+  missing or a directory, and `!` turns 0 into 1 and anything else into 0. Only a success
+  statement can give "already passes". A search of a regular file with no `!` and no `-q` stated
+  to print or find one or more lines, described or counted ("prints the release rule", "prints one
+  line"), fails on no match, since it then prints nothing; on a match it is "not run: output not
+  checked", since the reads cannot show whether the lines it prints are the ones described.
+  Anything else, a guard note, an expected failure or a statement that a search prints or finds
+  nothing included, stays "not run: stated result unclear": a search that finds nothing exits 1,
+  so an absence check passes only when written with `!` (`! grep -q "<pattern>" <path>`), which the
+  success rule reads. So a fact stated as a search is current only by exit status, and a
+  conditional step closes on a search only on that or on a search that finds nothing. Matched lines and file contents are never
   printed in a reply, report or Linear: a line gets a result, not output.
 - **`dv:groom`, step 3, "How" and "Conditional steps".** A fact stated as a command, and a
   conditional step's check, can now be a search too, checked by the same rules and boundary; "repo

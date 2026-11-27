@@ -452,13 +452,16 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
     the line states, taking the first rule that applies:
     1. Nothing beyond the command, or exactly "exits 0", "succeeds" or "passes": the line passes on
        exit 0.
-    2. A search of a regular file, with no `!` and no `-q`, whose stated result is that it prints
-       or finds lines ("prints" or "finds" with a description of them): the line passes on exit 0,
-       a match, since a command that already prints cannot fail first, whatever it prints.
+    2. A search of a regular file, with no `!` and no `-q`, stated to print or find one or more
+       lines, described or counted (such as "prints the release rule" or "prints one line"): on no
+       match the search prints nothing, so the stated result does not hold: the line fails in the
+       tracked files at the commit. On a match the reads cannot show whether the lines it prints
+       are the ones the line describes, so the line is "not run: output not checked".
     3. Anything else, a guard note, an expected failure, a statement that a search prints or finds
-       nothing, a count, a line number or two statements that disagree included: "not run: stated
-       result unclear". A search that finds nothing exits 1, so an absence check passes only when
-       it is written with `!`, such as `! grep -q "<pattern>" <path>`, which rule 1 reads.
+       nothing or two statements that disagree included: "not run: stated result unclear". A search that finds nothing exits 1, so an absence check passes only when it is
+       written with `!`, such as `! grep -q "<pattern>" <path>`, which rule 1 reads.
+
+    So only rule 1 can give "already passes", and only by exit status.
   - **Results.** Each Done means line gets one of these results. They go, with the commit's short
     id (or "commit not verified"), in step 6's findings and step 8's report, the lines not run
     listed apart from the lines that fail:

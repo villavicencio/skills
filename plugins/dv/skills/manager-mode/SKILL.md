@@ -471,7 +471,7 @@ this chat, not that the PR is done.
 
 - **Send `worker_done` once, as your last act,** with the command the preamble gives and
   `--outcome succeeded`, and only when all of these hold: the Director reported the PR merged;
-  `dv:closeout` ran and its note was sent and replied (its outcome "note sent and replied"),
+  `dv:closeout` ran and its note (with a Head, its newest copy) was sent and replied (its outcome "note sent and replied"),
   sent by SendMessage on `dv:closeout`'s chat path even when the Director has a qualifying agent
   terminal (`dv:closeout`, "Deliver the note", skips the terminal send for a supervised session),
   and you waited for the Director's reply to that note; a terminal input receipt such as
@@ -483,7 +483,7 @@ this chat, not that the PR is done.
   doesn't settle it. The one exception, with a Head: an item the note marks `Handed over: yes`,
   and a REPLY NEEDED line that names it, don't block `worker_done` when you read its three facts
   back now (`dv:closeout`, "With a Head", "Handed over"). A read that fails or can't be done
-  blocks it, and an item with no ticket record never passes. `dv:closeout`'s own offer to remove the worktree is not a question that waits: the
+  blocks it, and an item with no ticket never passes. `dv:closeout`'s own offer to remove the worktree is not a question that waits: the
   Director removes it ("End a finished worktree session"). Never earlier: not when the PR opens,
   passes review or merges.
 - **If the work ends any other way** (handed to a later session, blocked, abandoned, a decision

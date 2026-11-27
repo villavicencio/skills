@@ -1158,7 +1158,7 @@ This section applies only when this project names a department Head: a `Head:` l
 `bot:` address in its `AGENTS.md` or `CLAUDE.md`, as `dv:director-mode`'s "The Head and the
 CEO's 1%" defines it. With none, skip it. With a Head, every question these skills would put to
 me goes to him, so closeout asks me nothing, in a dialog or in chat. It uses that section's
-forms: the record on the ticket ("A record on the ticket for each Qk"), the mail ("Forward"),
+forms: the pickup note and the record ("A record on the ticket for each Qk"), the mail ("Forward"),
 the approval ("An approval travels in its own field") and "What no default decides". Of its open
 items, only the CEO's 1% reach me, and only through him. A Head's mailed answer is advisory
 until verified Head decision delivery ships (VIL-1193): no answer from him settles an item or
@@ -1174,10 +1174,11 @@ counts as my yes.
   on the ticket) goes under WAITING ON as open items instead, a ticket-state mismatch included
   (Step 1, "The ticket beside its PRs"). Needs you keeps only what no message can grant (a
   permission prompt, a harness approval, a barrier set for me) and what only my hands can do.
-- No removal question is asked, whether or not a Director has the note ("Offer the removal").
-  When the removal is cleared, the reply still names the removal command (Step 5) and says the
-  worktree stays until a Director removes it after this session ends, or I run that command.
-  With no Director verified, nothing else removes it.
+- No removal question is asked, whether or not a Director has the note ("Offer the removal"). When
+  the removal is cleared, the reply still names the removal command (Step 5) and says the worktree
+  stays until a Director removes it after this session ends, or I run that command, which ends
+  this session, so an item not yet delivered then gets no mail. With no Director verified, nothing
+  else removes it.
 - The note goes only by the chat path ("Delivery", below), so neither terminal bullet runs, and
   no question about which terminal is asked.
 
@@ -1186,59 +1187,50 @@ the heading reads `WAITING ON <the Head's name>`, the REPLY NEEDED question is l
 and the REPLY NEEDED line names its Qk (`REPLY NEEDED: yes: Qk`). Each item is one entry in the
 fields of `dv:manager-mode`'s question message: `Qk: <the item>. Key: <its original key>.
 Re-sent: <yes or no>. Handed over: <yes or no> ("Handed over"). PR: <its link, or none>. Options: <numbered>. Recommended: <the option>,
-because <why>. Reversible: <yes or no, and how>.`, with `CEO's 1%: yes` on one of the five, and `Mail: <each result>` once a mail's result has to be kept there ("No record", "Mail to him"). The
+because <why>. Reversible: <yes or no, and how>.`, with `CEO's 1%: yes` on one of the five, and `Mail: <each send's hop key and result>` once this session has mailed it ("Mail to him"). The
 message's `Sent:`, guard and reply lines are left out: the note's time is in its saved copy's
 name, and its message's last line ("Delivery") asks for the reply. With no ticket, every key and
-line form in this section that names `VIL-N` takes the branch in its place ("No record").
+line form in this section that names `VIL-N` takes the branch in its place.
 
 - An item that already has a key keeps it: a question asked earlier on this ticket that is
-  still open (`dv:manager-mode`, "With a Head"), by this session or by one before it. It may
-  have no record yet: a question that went only to a Director has none ("The record" covers it).
-- A new item takes the next Qk this session has not used: above every Qk in its written state
-  and in the ticket's records under its session ID. Its original key is `VIL-N/<session ID>/Qk`
-  (`dv:director-mode`, "A record on the ticket for each Qk"), and every later copy of the note
-  keeps it.
+  still open (`dv:manager-mode`, "With a Head"), by this session or by one before it.
+- A new item takes the next Qk this session has not used: above every Qk in its written state, in
+  the ticket's records under its session ID and in the note. Its original key is `VIL-N/<session
+  ID>/Qk` (`dv:director-mode`, "A record on the ticket for each Qk"), and every later copy of the
+  note keeps it.
 - `Re-sent:` is yes for an item already sent, as a question or in a copy of the note, to a
   Director (a send that failed included) or to him, as `dv:manager-mode` marks a question.
 
-**The record.** Before any probe or send, every open item is to be with him on the ticket. After
-Step 3 saves each copy of the note, before any probe or send of it, read the records for the
-original of each item it lists, an earlier key included (`list_comments`). Only a Head record or
-a pickup note counts; a comment that only writes the item on the ticket as an open decision
-(`dv:manager-mode`) does not. Your own record left at `sending` by an earlier claim or send, or at `sent` with no reply from an earlier run of this session, first takes step 3's mention, as step 1 of "A record on the ticket for each Qk" says; a record left at `sending` whose item has a `Mail:` result in the newest saved copy takes the status that result gives instead (`sent` with the message id, or `failed` or `unclear` with the mention), and is never mailed again. Then the item is with him when one of its records carries the mention or has his reply under it, or is at `sent` and is this session's own. If
-none is: with no record for its original and a key with this session's ID, post the item's own record (below; for an item already mailed with no record, at the status "No record" gives); otherwise (a key with another session's ID, or another session's record that is
-not with him, at `sent` with no reply included) post one pickup note for it, in the form step 4
-there gives, which carries the mention. The item's own record takes the form "A record on the
-ticket for each Qk" gives: its original key as both keys, `Status: in closeout note`, `Send
-result: none`, the mention at its start (`@Orca <his Linear handle> `), and `Resumes:` (no
-Director is verified yet when it is posted) naming this session while it runs, then the Director
-that takes the note. The status means the item is in a closeout note and nothing was mailed
-under its key. The mention is his pickup: it wakes him through Orca's Linear trigger, so the
-item reaches him even if this session ends before any delivery ("A closeout item" there). Read the comments back (`list_comments`) to see that what you posted or edited is there. If the post of the item's own new record fails or doesn't read back, and the ticket then shows no record for its original, "No record" applies to that item. A pickup note or an edit of a record that is already there that fails or doesn't read back mails nothing: try it again in a later turn, and until it lands the reply says the item is not yet with him. The note still goes meanwhile. An item stays open until a `Closed` reply
-under one of its records (an item with no record closes as "No record" says): a send, an
-acknowledgement or an answer closes nothing. While this session runs, it closes its items: only
-after the action an item calls for has been carried out, by it or by the Director, and it has
-verified the result in the system that action changed, such as the ticket's state read back with
-`get_issue`, or for the losses Step 4's success line. Before each later copy, check again any action an answer called for. Until it closes, every copy of the note lists it; a `Closed` reply that can't be posted or doesn't read back is posted in a later turn, and until then the item stays open. Once this session has ended, its open items are the Director's
-to resume (`dv:director-mode`, "Take closeout notes"). When an item closes, write the note again
-(Step 3) and send that copy as "Delivery" says, so the Director's check on the note reads the
-new WAITING ON.
+**Delivered.** Each item is this session's until one of two things delivers it, each read back:
+the verified Director's acknowledgement takes it ("The acknowledgement"), or this session's own
+mail to him ("Mail to him"), under a hop key of its own, returns a message id with no error.
+Nothing else delivers an item: no record or pickup note on the ticket, no mention, and no mail
+another session sent. A delivered item stays open until it closes ("The ticket log").
 
-**No record.** With no ticket, or when its comments can't be read or written, an item has no
-record. Say so in the reply, and keep the item in every later copy of the note, with the branch
-in place of `VIL-N` in its key when there is no ticket. With a ticket, try again to post its
-record in each later turn while this session runs; once it is posted, the item is an ordinary
-one from then on. Until then, when delivery fails, mail it to him as "Mail to him" says, with
-`Record: none, <why>.` after the body's first line, and mark it `Re-sent: yes` from then on. When the comments can be read, an item with any record for its original gets no such mail. An item whose key has another session's ID is mailed under a hop key of this session's own, `<ticket id, or the branch>/<session ID>/Hk` (k counting this session's hops), as a Director forwards a question ("A record on the ticket for each Qk"), since no session mails under another's key. Each send's result (its
-message id, its error, or that it can't be read) goes on the item's entry in the next saved copy
-of the note, as `Mail: <each result>`: with no record, the newest saved copy is where it is kept,
-and a later turn decides on the one more send from it. Once the comments can be written, post the item's record with that result (or update your own record, if the earlier post has since appeared): at `sent` with the message id when a send showed a result with no error, otherwise at `failed` or `unclear` with the mention, and never at `in closeout note`. A mail
-that returns an error, or a result that can't be read, gets one more send, in a later turn:
-without a record there is no pickup mention to fall back on, and a second copy of advice changes
-nothing. When neither send shows a result with no error, the reply says the item's delivery is
-not confirmed, and every later copy of the note keeps it. Such an item closes as any item does,
-once its action has been carried out and verified, but with no record to reply under: the reply
-says it closed, with what was done and the check, and the next copy of the note leaves it out.
+**The ticket log.** The ticket's comments are a log, kept for people and for his pickup: no
+delivery waits on one, and none stops a send. After Step 3 saves each copy of the note, before any
+probe or send of it, read the ticket's comments (`list_comments`). For each item the copy lists
+that has no pickup note posted by this session, post one (its form is in "A record on the ticket
+for each Qk"), with the reason `it is a closeout item; any mail of it has its own record` and
+`Resumes: this session while it runs, then the Director that takes the note`, and read the
+comments back to see it there. Its mention wakes him through Orca's Linear trigger, so he can pick
+the item up if this session ends before anything delivers it. A read or a post that fails or
+doesn't read back is tried again in a later turn; the note still goes meanwhile, and until the
+pickup note reads back, the reply says so and the item is not handed over. With no ticket there is
+no log.
+
+An item stays open until a `Closed` reply under its pickup note closes it (`dv:director-mode`, "A
+closeout item"): a send, an acknowledgement, an answer or advice closes nothing. While this
+session runs, it closes its items: only after the action an item calls for has been carried out,
+by it or by the Director, and it has verified the result in the system that action changed, such
+as the ticket's state read back with `get_issue`, or for the losses Step 4's success line. Before
+each later copy, check again any action an answer called for. Until it closes, every copy of the
+note lists it; a `Closed` reply that can't be posted or doesn't read back is posted in a later
+turn, and until then the item stays open. An item with no pickup note closes by a `Closed` comment
+on the ticket, or, when none can be posted, in the reply, with what was done and the check. Once
+this session has ended, its open items are the Director's to resume (`dv:director-mode`, "Take
+closeout notes"). When an item closes, write the note again (Step 3) and send that copy as
+"Delivery" says, so the Director's check on the note reads the new WAITING ON.
 
 **Delivery.** The note goes only to a Director its probe verified: the chat path in "Deliver the
 note" (the "None" case, steps 1 to 5), as for a supervised session, even with exactly one
@@ -1258,47 +1250,66 @@ received, <ticket id, or the branch>: <the path on the sent message's Saved at: 
 as text. Any other reply is not one, and the wait goes on. It takes an item when its line for
 that Qk is one of these:
 
-- `Answer, VIL-N, Qk: <option>`, when that line counts as `dv:manager-mode`'s "What counts as
-  the answer" says for a reply that starts with it (with no ticket, the branch in place of
-  `VIL-N`). An item with no record is never taken by a `Forwarded` line, which needs one. Carry out what it calls for when that is
-  this session's to do; the item stays open until that is verified.
-- `Forwarded to the Head, VIL-N, Qk: <the way forward>`, when the ticket also shows a record for
-  that original key at `sent` or carrying the mention (your own record at `in closeout note`
-  carries it). Take the way forward.
+- `Answer, VIL-N, Qk: <option>`, when that line counts as `dv:manager-mode`'s "What counts as the
+  answer" says for a reply that starts with it (with no ticket, the branch in place of `VIL-N`).
+  Carry out what it calls for when that is this session's to do; the item stays open until that is
+  verified.
+- `Forwarded to the Head, VIL-N, Qk: <the way forward>`, except in a note with no ticket. The
+  Director sends it only once its own mail of the item has read back (`dv:director-mode`, "A
+  closeout item"). Take the way forward.
 
-When the acknowledgement arrives, stop the timer and report "note sent and acknowledged",
-quoting it; with a Head, that is the outcome "note sent and replied". Each item it doesn't take
-goes to him by mail (next paragraph) at once, and every item does when the timer ends with no
-acknowledgement. An item an earlier acknowledgement took stays taken, so the wait for a later
-copy covers only items not yet taken or mailed. A later acknowledgement takes back no item
-already mailed; an `Answer` line in it still counts as that section says.
+A line whose Qk fits more than one item the copy lists takes none of them.
+
+When the acknowledgement arrives, stop the timer and report "note sent and acknowledged", quoting
+it; that is the outcome "note sent and replied". Each item not yet delivered that it doesn't take
+goes to him by mail ("Mail to him") at once, and every such item does when the timer ends with no
+acknowledgement, so the wait for a later copy covers only items not yet delivered. An
+acknowledgement that comes after its timer ended still takes its items, and no mail already sent
+is undone.
 
 **Handed over.** An item's entry reads `Handed over: yes` only when all three of these read back
 as the copy is written: an acknowledgement from the Director took it with `Forwarded to the
-Head` (an `Answer` leaves an action to carry out, so it doesn't count); `list_comments` on its
-ticket shows a record for its original at `sent` or carrying the mention; and nothing more is owed by this session (it is not the losses item, which needs Step 4; the way forward its `Forwarded` line names asks nothing of this session that is still undone; and no answer that counts, and no reply from him under its records or by mail, calls for an action of this session's still undone). Every other entry reads `Handed over: no`,
-and so does every item with no record ("No record"); a read that fails or can't be done gives
+Head` (an `Answer` leaves an action to carry out, and this session's own mail gives the item to
+no Director, so neither counts); `list_comments` on its ticket shows its pickup note; and nothing more is owed by this session (it is not the losses item, which needs Step 4; the way forward its `Forwarded` line names asks nothing of this session that is still undone; and no answer that counts, and no reply from him under its records or by mail, calls for an action of this session's still undone). Every other entry reads `Handed over: no`,
+and so does every item with no ticket; a read that fails or can't be done gives
 no. A handed-over item stays open, and every copy still lists it, but it no longer holds this
 session: the Director's check on the note, and `dv:manager-mode`'s `worker_done`, let it pass
 once they read the same three facts back themselves (`dv:director-mode`, "End a finished
-worktree session", check 1); any other item still holds it. Every copy works each value out afresh. When an acknowledgement, an answer, his reply or a record read changes an item's `Handed over:` value, write the note again (Step 3) and send that copy ("Delivery"); a later acknowledgement that changes no value needs no new copy.
+worktree session", check 1); any other item still holds it. Every copy works each value out afresh. When an acknowledgement, an answer, his reply or a read of its pickup note changes an item's `Handed over:` value, write the note again (Step 3) and send that copy ("Delivery"); a later acknowledgement that changes no value needs no new copy.
 
-**Mail to him when delivery fails.** Delivery fails for every item when the note can't reach a
-verified Director (the outcomes "not sent" and "answered but not verified" in "Deliver the
-note", the probe's timer ending with none verified, a second note send that failed, or Codex,
-where the chat path can't run). It fails for one item when no acknowledgement takes it within
-the 10 minutes. Then send him each item not taken, by agent mail, one message per item, as
-`dv:manager-mode`'s "With no Director that can be verified" does for a question:
-`orca orchestration send --to "<his bot: address>" --chat new --type question --subject "<VIL-N Qk: the item, in one line>" --body-file "<a file outside the repo>" --json`.
+**Mail to him.** Delivery fails for every item when the note can't reach a verified Director (the
+outcomes "not sent" and "answered but not verified" in "Deliver the note", the probe's timer
+ending with none verified, a second note send that failed, or Codex, where the chat path can't
+run). It fails for one item when no acknowledgement takes it within the 10 minutes. Then send him
+each item not yet delivered, by agent mail, one message per item, with the command
+`dv:manager-mode`'s "With no Director that can be verified" uses, run with the CLI path the block
+in "Optional: Orca delivery and removal" printed in place of `<orca CLI>` (if it printed none, the
+send can't run and counts as one that returned an error):
+`"<orca CLI>" orchestration send --to "<his bot: address>" --chat new --type question --subject "<VIL-N Qk: the item, in one line>" --body-file "<a file outside the repo>" --json`.
 The body is the item as "Forward" gives it, its keys on the first line, the CEO's 1% marked, an
-`Approved by:` field asked for where an approval is needed, quotes in excerpts. Keep its record
-as "A record on the ticket for each Qk" says, with the original key as the hop key, reading
-step 1 as "A closeout item" there says: after step 1's first read, moving your own record from
-`in closeout note` to `sending` is your claim, and the second read then decides. Mail only when that read shows your record at `sending` and no other record for the original. If the edit fails or doesn't read back, mail nothing: the record keeps its mention, so the item stays with him through it (not set to `held`), one left at `sending` takes step 3 in a later turn (`unclear`, with no mail), and the reply says the claim failed. Steps 1 to 4
-mail the item, or hold it for pickup when another session's record for the original is there. An item with no record is mailed as
-"No record" says. Of the items with a record, only one whose own record is at `in closeout note` is claimed, and it is mailed unless steps 1 to 4 hold it. An item held by a pickup note ("The record") gets no mail: that pickup is its delivery, and step 4 mails nothing for it. Nor does an item whose record for the original, other than your own at `in closeout note`, is at `sent` or carries the mention. On this path he can
-get both the pickup and the mail for one item; his answers are advice, so the second changes
-nothing ("The limit" there). No question card opens, and I click nothing. Then write the note again (Step 3), so the newest copy marks those items `Re-sent: yes`. A mail's result that can't be written on its record (an edit that fails or doesn't read back) also goes on the item's entry in that copy, as `Mail: <result>`, until the record can be updated from it: to `sent` with the message id, or to `failed` or `unclear` with the mention. On an item with a record, a `Mail:` line never allows a second send (step 3). Report "items mailed to the Head", with each item's message id, or its record's fallback or hold, or that its claim failed and it stays with him through its mention.
+`Approved by:` field asked for where an approval is needed, quotes in excerpts, and it asks him to
+reply `Answer from the Head, VIL-N, Qk: <option>`. Each send takes a hop key of this session's own
+that no send has used: `VIL-N/<session ID>/Hk`, with k above every k this session has sent under
+(the `Mail:` lines of its saved copies, and this turn's sends), even for an item whose key is this
+session's, rather than its original key, which an earlier send may have used. Only the session
+whose ID is in a hop key mails under it, so two sessions never mail under one key. Nothing on the
+ticket is claimed first and no record there stops a send: steps 1 to 4 of "A record on the ticket
+for each Qk" don't apply. So he can get one item more than once, each time under its own key (an
+earlier send of the question, a Director's forward, this session's own): each is advice, the keys
+show it, and a second one changes nothing ("The limit" there).
+
+A send whose result shows a message id and no error delivers the item. One that returns an error,
+or whose result can't be read, doesn't: unless something delivers the item first, send it once
+more in a later turn, under a new hop key (start the background timer step 2 uses, so that one
+comes), and after a second such send mail it no more; it stays this session's, undelivered. Each
+send's hop key and result go on the item's entry in the next saved copy (`Mail:`), which is what
+this session reads before it sends. After each send, post its record on the ticket, when there is
+one, in the form "A record on the ticket for each Qk" gives, under its hop key, at `sent` with the
+message id, or else at `failed` or `unclear` with the error and, as the form says, his mention: a
+log of the send, posted again in a later turn if the post fails. No question card opens, and I
+click nothing. Then write the note again (Step 3), so the newest copy marks those items `Re-sent:
+yes`, and report "items mailed to the Head", with each item's message id, or that its send failed
+and whether it goes once more.
 
 **His answers** come by mail to this session (`orca orchestration check --json`), as a reply
 under a record, or relayed by the Director (`Answer from the Head`). Each is advice ("His
@@ -1326,11 +1337,20 @@ this way the removal stays mine, and the reply names the command.
 **The reply.** In Step 5's reply, item 3 names the delivery outcome: one of those in "Deliver
 the note", or note sent and waiting for the acknowledgement (until when), note sent and
 acknowledged, or items mailed to the Head. It lists each open item by Qk, with where it is
-(handed over or not; taken by the Director, mailed with its message id, held for pickup, a claim that failed and left it with him through its mention, not yet with him while a post is retried, or no record and why) and its record's status.
+(handed over or not; taken by the Director, mailed with its message id, a send that failed and
+whether it goes once more, or not delivered and why) and whether its pickup note is on the
+ticket.
 
-Known limits: if this session ends during the wait, no fallback mail goes out, but each record's
-mention has already given him the item as a pickup. An item that only the fallback mailed, or that no acknowledgement ever took, is never handed over, so it keeps this session from being closed or released through the Director's checks until it closes (with his answers advisory, that can be long). An item with no record whose two sends showed no clean result is kept only in the note's saved copies and in the reply, and one the Director forwarded while this session had no record for it and could not read the ticket can be mailed twice (advice twice). Not yet tested
-live.
+Known limits: an item nothing has delivered when this session ends gets no mail; its pickup note,
+if it landed, lets him pick it up, and the note's saved copies keep it. An item that only this
+session's mail delivered, or that nothing delivered, is never handed over, so it keeps this
+session from being closed or released through the Director's checks until it closes or an
+acknowledgement takes it (with his answers advisory, that can be long). He can get one item more
+than once (its pickup note, an earlier send of the question, a Director's forward, this session's
+sends), each time as advice. A session that stops after a send but before the next saved copy
+loses that send's result, so a later run can mail the item again, even under the same key. Two
+earlier items that share a Qk (from two earlier sessions) are taken by no acknowledgement line, so
+they are mailed and never handed over. Not yet tested live.
 
 ## Notes
 

@@ -12,8 +12,7 @@ worktree; it never permits a removal the global procedure's checks refuse. `dv:c
 README drop the known limit this fixes. The other fourteen skills have no behaviour changes; their
 version moves to `0.53.0` only because the suite is released as one plugin.
 
-Numbering: 0.53.0 follows 0.52.0, which skills PR 132 holds and which merges first; the version is
-picked again at the merge if that changes.
+Numbering: 0.53.0 follows 0.52.0 (skills PR 132), which merged first.
 
 Why: when a worktree session's closeout note read `not confirmed safe` (for example, its handoff
 archive failed and left a `HANDOFF.md` that exists only in the gitignored worktree), check 1 kept

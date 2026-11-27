@@ -4,7 +4,7 @@ description: "Close out a finished worktree session and brief the parent session
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.52.0"
+  version: "0.53.0"
 ---
 
 # /closeout — close out a finished worktree session
@@ -807,9 +807,14 @@ and why removal is blocked (what would be lost, the check that did not run, the 
 confirmed, or the losses waiting on my yes), and, when Step 4 did not run, that the handoff was
 left where it is. The Director's check on the note (`dv:director-mode`, "End a finished worktree
 session", check 1) refuses `NOT safe to delete` and `not confirmed safe`, so it leaves the
-worktree and tells me instead of asking me to close the session or releasing it. Known limit
-(VIL-1209): if the session ends anyway, director-mode's later removal runs the global removal
-procedure's checks, which do not read the note.
+worktree and tells me instead of asking me to close the session or releasing it. If the session
+ends anyway, the Director reads the worktree's latest saved note before it removes the worktree,
+a note that never reached it included, and keeps the worktree on those verdicts too, and when it
+finds no note (one saved before a branch rename or a detached HEAD, or hidden by a newer copy
+for another worktree, counts as none). Its recheck before a removal also needs the worktree's
+`HANDOFF.md`, if there is one, to match an archived copy in `handoffs/_done/`, byte for byte
+(`dv:director-mode`, "Take closeout notes", "Merge and clean up" and "End a finished worktree
+session", "The closeout recheck").
 
 **One saved copy per run.** Each run of this step writes the note once and saves it once, with the
 block below, which never overwrites a saved copy. Writing the note again later (after my yes,
@@ -915,8 +920,10 @@ Do not run it.
   (`dv:director-mode`, "End a finished worktree session", check 1), and an acceptance after the
   note is a message from me after it (check 3), so in either case the removal stays mine and the
   question is asked, as when no note was sent. Those checks hold while a Director ends this
-  session itself; if the session ends another way, its later removal does not read the note
-  (known limit, VIL-1209).
+  session itself; if the session ends another way, the Director reads the worktree's latest saved
+  note before any removal and keeps the worktree on any verdict check 1 refuses, when it finds no
+  note, or when the closeout recheck fails (`dv:director-mode`, "Take closeout notes" and "Merge
+  and clean up").
 - **Initialized submodules.** When the removal is cleared and Step 1 printed "initialized
   submodules" above 0, `wt done`, `git worktree remove` and a plain `orca worktree rm` all refuse
   this worktree. Say so, and point to the guarded procedure instead of a plain command:
@@ -1176,9 +1183,10 @@ can run the command above from the main checkout (with an initialized submodule,
 procedure Step 5 names instead), which the reply names. When a Director ends this
 session itself, it keeps the worktree and tells me which check failed when, for example, the note
 has anything under WAITING ON or a REPLY NEEDED question (with a Head, an item not handed over:
-"With a Head", "Handed over"), or I message this session after the note. If the session ends another way, its later removal runs the global removal procedure's
-checks, which do not read the note, so those items do not hold the worktree then (known limit,
-VIL-1209). In every other case the question stays as above: no note sent to a session the probe
+"With a Head", "Handed over"), or I message this session after the note. If the session ends another way, the Director's later removal goes by the Worktree line of the
+worktree's latest saved note and a rerun of Steps 1 and 2 compared with it (`dv:director-mode`,
+"Take closeout notes"), not by the note's other sections, so those items, and a message from me
+after the note, do not hold the worktree then (known limit). In every other case the question stays as above: no note sent to a session the probe
 picked (no note sent, a second note send that failed included; the note waiting for the probe
 answers, the outcome "send failed and probe sent again" included; an answer not verified; a note
 sent only by `terminal send`), losses I accepted only in this session with no standing yes

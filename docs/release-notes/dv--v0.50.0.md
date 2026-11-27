@@ -80,10 +80,35 @@ that every condition they state matches.
   accepted before the note"; closeout now skips it when a standing yes covers every listed loss,
   with no acceptance in the session. That file is being changed under another open ticket, so
   this release leaves it alone.
-
 - **Whether words name a loss, and whether a condition is shown, is the session's judgment.** The
   note quotes the words, their source and date, and how each condition was shown, so the
-  Director's check 1 and David can check it; nothing else does.
-- **David's standing yes in memory names the losses under its own older wording** (closeout
-  called them "NOT safe to delete" when it was written). A session may read that wording as a
-  condition the current verdict does not meet, and then the losses wait on his yes as before.
+  Director's check 1 and David can check it; nothing else does. Whether a memory file's words
+  were written or changed by the closing session can't be told from the file alone.
+- **David's standing yes in memory was written for the older verdict wording** ("NOT safe to
+  delete"). In one lab run a byte-for-byte copy of it was judged to cover `.venv/` and a
+  pre-amend reflog commit; a session could still read that wording as a condition the current
+  verdict does not meet, and then the losses wait on his yes as before.
+
+## Tested
+
+In a throwaway lab (local clones of this repo with no GitHub remote and push URLs disabled, the
+`Head:` line removed, a stand-in `gh` that answers only read-only calls, no Orca CLI, delivery
+skipped), each closeout run headless with this branch's plugin, on Opus:
+
+- **Covered:** a finished worktree holding only `.venv/` and one pre-amend reflog-only commit,
+  with a standing yes in the clone's memory naming both, closed out with Step 4's
+  `archive complete: …`, the Worktree line `safe once you accept losing: …` word for word, one
+  `Standing yes for` line per loss (each with "still to be met at removal: that this session has
+  ended"), WAITING ON `none` and `REPLY NEEDED: no`. A stand-in Director applying
+  `dv:director-mode`'s check 1 to the note passed it, and its rerun of Step 1 and Step 2 gave the
+  same verdict line word for word.
+- **One loss not covered:** the same, plus a file under `node_modules/` that the standing yes does
+  not name: `not confirmed safe: losing … waits on David's yes`, no archive, the loss question
+  asked.
+- **Only a different loss covered:** a standing yes naming only `__pycache__/`, the worktree
+  holding `.venv/` and the reflog-only commit: `not confirmed safe`, no archive.
+- **Claude Code 2.1.332 refuses Step 4's block in a headless run** ("can't rule out a dangerous
+  removal", even with permissions bypassed). Where it did, closeout fell back to case 2 (`not
+  confirmed safe: handoff archive not confirmed`), as written; the archive ran as written only
+  once a lab permission tool approved that one block. Step 4's block is unchanged in this
+  release.

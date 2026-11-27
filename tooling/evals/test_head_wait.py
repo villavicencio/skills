@@ -711,6 +711,10 @@ def test_arm() -> None:
             ("a deadline before the target", {"target_s": 1800, "deadline_s": 600}, "REFUSED"),
             ("a deadline one minute after the target", {"target": at(0), "deadline": at(1)},
              "REFUSED"),
+            ("a deadline four minutes after the target", {"target": at(0), "deadline": at(4)},
+             "REFUSED: --deadline must be at least 5 minutes after --target"),
+            ("a deadline 4:59 after the target (the time pattern takes whole minutes)",
+             {"target": at(0), "deadline": at(4)[:17] + "59+00:00"}, "REFUSED"),
             ("an --owner naming another session than --owner-session",
              {"owner": "orca_session_id:" + WAIT_S}, "REFUSED")):
         c = Case({7: {}})
@@ -722,8 +726,9 @@ def test_arm() -> None:
             c.close()
     c = Case({7: {}})
     try:
-        code, out, _ = c.arm(7, 1, target=at(0), deadline=at(2))
-        check("arm: a deadline two minutes after the target arms", out.startswith("ARMED"), out)
+        code, out, _ = c.arm(7, 1, target=at(0), deadline=at(5))
+        check("arm: a deadline exactly five minutes after the target arms",
+              out.startswith("ARMED"), out)
     finally:
         c.close()
 

@@ -26,7 +26,7 @@ Each line is one claim the section, the script and its tests establish.
 - Orca adds a link only when the item lacks it, in one transaction, and answers `unchanged` to
   every later caller, so two runs can't both arm W<k>: the second gets `TAKEN`, writes nothing
   more and tries no other key.
-- An arm needs the wake's time at least 2 minutes ahead and the deadline at least 2 minutes after
+- An arm needs the wake's time at least 2 minutes ahead and the deadline at least 5 minutes after
   it. An owner address `orca_session_id:<id>` must name the `--owner-session`.
 - The item goes to Waiting only after the create's own output shows the wake enabled, at the
   recorded time, as the Head's bot and with no event trigger, after a fresh read finds the item's

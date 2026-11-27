@@ -534,7 +534,7 @@ authority, and changes nothing in Orca.
   waiting session's id> --ticket <VIL-N> --key <key> --record-file <file>`. The key is the
   question's original key (`VIL-N/<session>/Qk`), a PR as `owner/repo#N@<head sha>`, or a
   message id. T is when the wake runs and D the deadline, both `YYYY-MM-DDTHH:MM:00±HH:MM` and
-  yours to set for each wait, T at least 2 minutes ahead and D at least 2 minutes after T. An
+  yours to set for each wait, T at least 2 minutes ahead and D at least 5 minutes after T. An
   owner address `orca_session_id:<id>` must name the `--owner-session`; the script can't check
   another kind of address against the session. It arms only on a planned, in-progress or Waiting
   item with two free links, and only once every earlier wait on it has its closed marker and a

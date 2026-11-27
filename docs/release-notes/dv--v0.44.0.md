@@ -45,7 +45,7 @@ moved this work out of VIL-1178).
     and sends that copy. With no ticket, or comments that can't be read or written, an item has
     no record: it stays in every copy of the note (with a ticket, closeout tries again to post
     the record in each later turn), and when delivery fails it is mailed with `Record: none`,
-    once, and once more after a send error or an unreadable result. With no record there is no Linear fallback mention,
+    once, and once more after a send error or an unreadable result. Each send's result is kept on the item's entry in the note's saved copies (`Mail:`) and posted on the ticket only once comments can be written. A mail's result that can't be written on an existing record is kept the same way, and never allows a second send. A no-record item keyed to another session is mailed under a hop key of the closing session's own, as a Director forwards. With no record there is no Linear fallback mention,
     so the reply says when its delivery is not confirmed. Such an item closes once its action is
     verified; the reply says so and the next copy leaves it out.
   - **Delivery** takes only the chat path in "Deliver the note", as a supervised session already
@@ -61,8 +61,7 @@ moved this work out of VIL-1178).
   - **Mail to the Head when delivery fails**: no Director verified, the note not sent, or an item
     no acknowledgement took within the 10 minutes. Closeout mails him each such item, one
     message per item, as `dv:manager-mode`'s "With no Director that can be verified" does, and
-    keeps its record by the record rules, moving its own record from `in closeout note` to
-    `sending` as its claim after step 1's first read, then writes the note again so the newest copy marks them
+    keeps its record by the record rules, moving its own record from `in closeout note` to `sending` as its claim after step 1's first read and mailing only once that edit reads back, then writes the note again so the newest copy marks them
     `Re-sent: yes`. An item an earlier acknowledgement took stays taken. No question card opens.
   - **His answers are advice** (VIL-1193). The losses settle only on David's own yes to the exact
     list, which the session verifies itself as "An approval travels in its own field" says; then
@@ -77,7 +76,7 @@ moved this work out of VIL-1178).
     for that item and posts no second mention; its owner moves it to `sending` only when no Director took the item,
     and for that claim step 1's own-hop-key rule doesn't apply, the owner's own record is not a
     record for the original in either read, and any other session's record still stops the mail;
-    and the `Closed, VIL-N, Qk: …` reply that closes it. An item with no ticket has no record,
+    and the `Closed, VIL-N, Qk: …` reply that closes it. A post for a closeout item that fails is tried again later, and the item stays open until it lands. Step 1's second read now also needs the sender's own record shown at `sending` before any mail; this applies to every sender, `dv:manager-mode`'s straight-to-the-Head mail included, since that follows step 1. A step 4 post or edit, or advice written on the ticket, that fails is tried again later, with no mail meanwhile. An item with no ticket has no record,
     so the Director decides it or leaves it for the session to mail.
   - "Take closeout notes": with a Head, take each item as a question from the session (decide it
     when it is yours; otherwise leave it with the Head, whose pickup the session's record or pickup note already carries), and reply with the acknowledgement form. Once the session has ended, the Director resumes its open items and closes those

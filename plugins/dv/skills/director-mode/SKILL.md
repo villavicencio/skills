@@ -325,8 +325,7 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
      post nothing. Otherwise mail only when all of these hold: the question reached you
      first-hand (for a Director, a session's question not marked `Re-sent: yes`; for the asking
      session, a key with your own session ID, never sent before to a Director or to him); no
-     record for the original is there; you then post your record at `sending`; and a second
-     `list_comments` right after shows no record for the original but yours. When any of these
+     record for the original is there; you then post your record at `sending`; and a second `list_comments` right after shows your record at `sending` and no record for the original but yours. When any of these
      fails, mail nothing and go to step 4.
   2. **A mail whose result has no error:** update your record to `sent` with the message id. It is
      bookkeeping and carries no mention.
@@ -339,8 +338,7 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
      `sent` with no reply (other than the asking session's own delivery in step 1), or two
      records for one original. Mail nothing, and set your own record, if you posted one, to `held`.
      Put the mention on the ticket once, in a comment you own: at the start of that record, or
-     else in one pickup note. Skip the mention when another record for the original already
-     carries it or has his reply under it. Never edit another session's record.
+     else in one pickup note. Skip the mention when another record for the original already carries it or has his reply under it. Never edit another session's record. An edit or a post here that fails or doesn't read back is tried again in a later turn, and nothing is mailed meanwhile.
 
   ```text
   Head record, VIL-N, Qk. Key: <the hop key>. Original key: <the original key>. Owner: <the Head's name>. Reply to: <the sender's Orca address>. Status: <in closeout note, sending, sent, unclear, failed or held>. Send result: <the message id, the error, or none>.
@@ -381,10 +379,7 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
   already done.
 
   **A closeout item** (`dv:closeout`, "With a Head"), an earlier key included, is made to be with
-  him by the session that closes out, before any probe or send ("The record" there): its own
-  record left at `sending` by an earlier claim or send, or at `sent` with no reply from an earlier
-  run, first takes step 3's
-  mention (step 1); an item with no record carrying the mention, and none at `sent` that is the
+  him by the session that closes out, before any probe or send ("The record" there): its own record left at `sending` by an earlier claim or send, or at `sent` with no reply from an earlier run, first takes step 3's mention (step 1), except that a record left at `sending` whose item carries a `Mail:` result in the note takes the status that result gives; an item with no record carrying the mention, and none at `sent` that is the
   session's own or has his reply, then gets the session's own record at `Status: in closeout
   note`, with the mention at its start, when the key has that session's ID and no record for the
   original is there, and otherwise a pickup note (step 4). A comment that only writes the item on
@@ -402,14 +397,12 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
   read, stands for posting your record at `sending`; the item counts as first-hand and not
   re-sent for this claim (the note it was in, and an earlier send of the question to a Director,
   don't count as a send to a Director, though the note marks it `Re-sent: yes`, and the record's
-  mention is not a send to him); and any other
-  session's record for the original still stops the mail (step 4). The record keeps its mention. Such an item stays open until a reply under one of
+  mention is not a send to him); the second read must show that record at `sending`, or nothing is mailed: the record keeps its mention, so the item stays with him through it, step 4's `held` doesn't apply to it, and one left at `sending` takes step 3 in a later turn (`unclear`, with no mail); and any other session's record for the original still stops the mail (step 4). The record keeps its mention. Such an item stays open until a reply under one of
   its records closes it: `Closed, VIL-N, Qk: <what was done>. Verified: <the check and its
   result>.`, or `Closed, VIL-N, Qk: superseded by Qm: <why>.` While the closeout session runs, it
   posts that reply, once the action has been carried out (by it or by you) and it has verified
   the result in the system the action changed; once it has ended, you do, for an action you
-  carried out and verified ("Take closeout notes"). A send, an acknowledgement, an answer or
-  advice closes nothing. For a closeout with no ticket, its items' keys and lines name its branch
+  carried out and verified ("Take closeout notes"). A send, an acknowledgement, an answer or advice closes nothing. A post for a closeout item that fails or doesn't read back (a `Closed` reply, his advice, a record or a pickup note) is tried again in a later turn until it lands; it mails nothing meanwhile, and only a `Closed` reply that lands closes the item. For a closeout with no ticket, its items' keys and lines name its branch
   in place of `VIL-N` (it has no record then: `dv:closeout`, "No record").
 - **An approval travels in its own field,** with a Head, on both hops, from the Head to you and
   from you to the session: `Approved by: <person>, <the exact choice, as the full current
@@ -482,8 +475,7 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
     travels in its own field").
   - A Head-only choice, and anything else under "What no default decides", stays pending.
 
-  If the session has ended, write his advice, with its `Approved by:` field, on the ticket as a
-  comment instead. For an item from a closeout note's `WAITING ON`, also write it on the ticket,
+  If the session has ended, write his advice, with its `Approved by:` field, on the ticket as a comment instead; if that post fails or there is no ticket, say so in your highlight and post it in a later turn once it can land. For an item from a closeout note's `WAITING ON`, also write it on the ticket,
   as a reply under your own record for that item, or under any record for its original when you
   have none.
 - **Unanswered at the end.** When the session's other work is done, it sends you each question

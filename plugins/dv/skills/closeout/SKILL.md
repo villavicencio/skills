@@ -1126,8 +1126,8 @@ no removal question is asked; and if no Director removes the worktree after this
 can run the command above from the main checkout (with an initialized submodule, the guarded
 procedure Step 5 names instead), which the reply names. When a Director ends this
 session itself, it keeps the worktree and tells me which check failed when, for example, the note
-has anything under WAITING ON or a REPLY NEEDED question, or I message this session after the
-note. If the session ends another way, its later removal runs the global removal procedure's
+has anything under WAITING ON or a REPLY NEEDED question (with a Head, an item not handed over:
+"With a Head", "Handed over"), or I message this session after the note. If the session ends another way, its later removal runs the global removal procedure's
 checks, which do not read the note, so those items do not hold the worktree then (known limit,
 VIL-1209). In every other case the question stays as above: no note sent to a session the probe
 picked (no note sent, a second note send that failed included; the note waiting for the probe
@@ -1185,7 +1185,7 @@ counts as my yes.
 the heading reads `WAITING ON <the Head's name>`, the REPLY NEEDED question is listed there too,
 and the REPLY NEEDED line names its Qk (`REPLY NEEDED: yes: Qk`). Each item is one entry in the
 fields of `dv:manager-mode`'s question message: `Qk: <the item>. Key: <its original key>.
-Re-sent: <yes or no>. PR: <its link, or none>. Options: <numbered>. Recommended: <the option>,
+Re-sent: <yes or no>. Handed over: <yes or no> ("Handed over"). PR: <its link, or none>. Options: <numbered>. Recommended: <the option>,
 because <why>. Reversible: <yes or no, and how>.`, with `CEO's 1%: yes` on one of the five, and `Mail: <each result>` once a mail's result has to be kept there ("No record", "Mail to him"). The
 message's `Sent:`, guard and reply lines are left out: the note's time is in its saved copy's
 name, and its message's last line ("Delivery") asks for the reply. With no ticket, every key and
@@ -1273,6 +1273,16 @@ acknowledgement. An item an earlier acknowledgement took stays taken, so the wai
 copy covers only items not yet taken or mailed. A later acknowledgement takes back no item
 already mailed; an `Answer` line in it still counts as that section says.
 
+**Handed over.** An item's entry reads `Handed over: yes` only when all three of these read back
+as the copy is written: an acknowledgement from the Director took it with `Forwarded to the
+Head` (an `Answer` leaves an action to carry out, so it doesn't count); `list_comments` on its
+ticket shows a record for its original at `sent` or carrying the mention; and nothing more is owed by this session (it is not the losses item, which needs Step 4; the way forward its `Forwarded` line names asks nothing of this session that is still undone; and no answer that counts, and no reply from him under its records or by mail, calls for an action of this session's still undone). Every other entry reads `Handed over: no`,
+and so does every item with no record ("No record"); a read that fails or can't be done gives
+no. A handed-over item stays open, and every copy still lists it, but it no longer holds this
+session: the Director's check on the note, and `dv:manager-mode`'s `worker_done`, let it pass
+once they read the same three facts back themselves (`dv:director-mode`, "End a finished
+worktree session", check 1); any other item still holds it. Every copy works each value out afresh. When an acknowledgement, an answer, his reply or a record read changes an item's `Handed over:` value, write the note again (Step 3) and send that copy ("Delivery"); a later acknowledgement that changes no value needs no new copy.
+
 **Mail to him when delivery fails.** Delivery fails for every item when the note can't reach a
 verified Director (the outcomes "not sent" and "answered but not verified" in "Deliver the
 note", the probe's timer ending with none verified, a second note send that failed, or Codex,
@@ -1316,10 +1326,10 @@ this way the removal stays mine, and the reply names the command.
 **The reply.** In Step 5's reply, item 3 names the delivery outcome: one of those in "Deliver
 the note", or note sent and waiting for the acknowledgement (until when), note sent and
 acknowledged, or items mailed to the Head. It lists each open item by Qk, with where it is
-(taken by the Director, mailed with its message id, held for pickup, a claim that failed and left it with him through its mention, not yet with him while a post is retried, or no record and why) and its record's status.
+(handed over or not; taken by the Director, mailed with its message id, held for pickup, a claim that failed and left it with him through its mention, not yet with him while a post is retried, or no record and why) and its record's status.
 
 Known limits: if this session ends during the wait, no fallback mail goes out, but each record's
-mention has already given him the item as a pickup. An item with no record whose two sends showed no clean result is kept only in the note's saved copies and in the reply, and one the Director forwarded while this session had no record for it and could not read the ticket can be mailed twice (advice twice). Not yet tested
+mention has already given him the item as a pickup. An item that only the fallback mailed, or that no acknowledgement ever took, is never handed over, so it keeps this session from being closed or released through the Director's checks until it closes (with his answers advisory, that can be long). An item with no record whose two sends showed no clean result is kept only in the note's saved copies and in the reply, and one the Director forwarded while this session had no record for it and could not read the ticket can be mailed twice (advice twice). Not yet tested
 live.
 
 ## Notes

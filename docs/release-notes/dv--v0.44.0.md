@@ -4,8 +4,7 @@ Minor release. When a project names a department Head, `dv:closeout` asks David 
 its note only to a Director its probe verified, waits up to 10 minutes for that Director's
 acknowledgement, keeps each open item on the ticket until what it calls for is done and verified,
 and mails the Head each item no acknowledgement took. With no Head, closeout behaves as at dv
-0.42.1 and 0.43.0. `dv:closeout` and `dv:director-mode` change; the other fourteen skills have no behaviour
-changes, and their version moves to `0.44.0` only because the suite is released as one plugin.
+0.42.1 and 0.43.0. `dv:closeout` and `dv:director-mode` change, and `dv:manager-mode`'s `worker_done` rule; the other thirteen skills have no behaviour changes, and their version moves to `0.44.0` only because the suite is released as one plugin.
 
 Why: with a Head, closeout's own reply still asked David its questions (accepting losses, the
 removal question), and its terminal send reached any agent terminal on the main checkout, with
@@ -63,6 +62,10 @@ moved this work out of VIL-1178).
     message per item, as `dv:manager-mode`'s "With no Director that can be verified" does, and
     keeps its record by the record rules, moving its own record from `in closeout note` to `sending` as its claim after step 1's first read and mailing only once that edit reads back, then writes the note again so the newest copy marks them
     `Re-sent: yes`. An item an earlier acknowledgement took stays taken. No question card opens.
+  - **Handed over.** An item's entry reads `Handed over: yes` only when three facts read back:
+    the Director's acknowledgement took it with `Forwarded to the Head`, its ticket record shows
+    it mailed or carrying his mention, and the session owes nothing more on it (not the losses item, no undone action its way forward, an answer or his reply calls for). Such an item stays open but no longer holds the
+    session. A read that fails, or an item with no ticket record, gives `no`.
   - **His answers are advice** (VIL-1193). The losses settle only on David's own yes to the exact
     list, which the session verifies itself as "An approval travels in its own field" says; then
     the recheck, Step 4 and a new note follow as before. A recheck that differs voids that yes.
@@ -82,7 +85,13 @@ moved this work out of VIL-1178).
     when it is yours; otherwise leave it with the Head, whose pickup the session's record or pickup note already carries), and reply with the acknowledgement form. Once the session has ended, the Director resumes its open items and closes those
     whose action it carried out and verified. With a Head, closeout asks no removal question.
   - "His answer": advice on a closeout item goes on the ticket as a reply under its record.
+  - "End a finished worktree session", check 1, and the supervised release: with a Head, an item
+    marked `Handed over: yes` (and a REPLY NEEDED line naming it) passes only when the Director
+    reads the three facts back itself at check time; a failed or unreadable read fails the check,
+    and an item with no ticket record never passes.
   - "With a Head, nothing else is asked of me": closeout now follows it.
+- **`dv:manager-mode`, "A supervised session"**: `worker_done` gets the same fail-closed exception
+  for handed-over items. Its question protocol is unchanged.
 - **`AGENTS.md`'s Head line and the README** (the `dv:manager-mode`, `dv:director-mode` and
   `dv:closeout` entries, and the plugin table, now `0.44.0`) describe the new behaviour in place
   of the interim "until VIL-1191" pointers. The dv 0.39.0 release note keeps them, as history.
@@ -94,8 +103,8 @@ moved this work out of VIL-1178).
   he can get both the pickup and the mail for one item (advice twice).
 - The Director's check on the note still accepts only a standing yes for losses, so after a yes
   verified through the Head, the removal stays David's: the reply names the command.
-- An item with no record whose two sends showed no clean result is kept only in the note's
-  saved copies and in the reply.
+- An item that only the fallback mailed, or that no acknowledgement took, is never handed over, so it keeps the session from being closed or released through the Director's checks until it closes.
+- An item with no record whose two sends showed no clean result is kept only in the note's saved copies and in the reply.
 
 ## Not tested
 

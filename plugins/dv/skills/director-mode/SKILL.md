@@ -994,8 +994,9 @@ besides the chat is the terminals Orca closes with it, and the release block ref
 terminal it could close is still open (its step 5). Check 4 and the global procedure's checks still run in their removal form,
 on their own, before anything is removed ("After I close it"). When check 1, 2 or 3 fails or can't run, release nothing and do what the rule above
 says for any session: ask nothing, remove nothing, and tell me which check failed. A decision
-still with the Head fails check 1 as one waiting on me does, and such a session sends no
-`worker_done` (`dv:manager-mode`, "A supervised session"). If it later sends a new closeout note,
+still with the Head fails check 1 as one waiting on me does, unless it is handed over (read
+back by the session before its `worker_done` and by you in check 1 after); otherwise such a
+session sends no `worker_done` (`dv:manager-mode`, "A supervised session"). If it later sends a new closeout note,
 that note replaces the earlier one for every check here and for the release's `<note timestamp>`.
 When the release block prints `RESULT:
 refused` or `RESULT: not released`, go on from check 4 as for an ordinary session, and put the
@@ -1023,6 +1024,17 @@ carries no session id or more than one, ends nothing.
    section under its `WAITING ON` heading is `none`, and its `REPLY NEEDED` line reads
    `REPLY NEEDED: no`. A decision waiting on me or the Head, or a question waiting for a reply, fails the
    check: the session may still be waiting for the answer, so do not ask me to close it, and tell me.
+   With a Head, one exception: an item whose entry reads `Handed over: yes` (`dv:closeout`, "With
+   a Head", "Handed over"), and a REPLY NEEDED line that names its Qk, don't fail the check when
+   you read all three of these back now: your own acknowledgement of a copy from this session
+   took it with `Forwarded to the Head`; `list_comments` on its ticket shows a record for its
+   original at `sent` or carrying the mention; and nothing more is owed by the session (it is
+   not the losses item; the way forward in your `Forwarded` line asks nothing of the session; and
+   no `Answer` of yours, no advice you relayed, and no reply from him under its records calls for
+   an action of the session's). An item with no ticket record never passes this way, and a read
+   that fails or can't be done fails the check. An item a copy marks `Handed over: no` that your
+   own acknowledgement of that same copy forwarded is not reported as failed yet: the session
+   writes a new copy for it, so wait up to 10 minutes for that copy and check it instead.
 2. **Idle after the note.** Your reply to the note went with `notify_when_idle: true`, so the
    session takes a turn to read it and the notice comes when that turn ends. The check holds
    when a `[Cross-session idle notice]` for that session arrives after the note's timestamp. A

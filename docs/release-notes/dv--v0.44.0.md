@@ -1,126 +1,157 @@
 # dv — v0.44.0
 
-Minor release. With a department Head, every wait on one of his Orca items gets one independent,
-one-time Orca wake, so a wait whose notice never comes is still looked at again, provided the
-wake and its record were both saved. A wait missing either is unarmed: it is posted UNARMED with
-any wake disabled, the item stays actionable, and the Head says so at once (or, for an arm cut
-off part way, when its wake runs). Only `dv:director-mode` changes. The other fifteen skills have no behaviour changes; their version moves to `0.44.0` only
-because the suite is released as one plugin.
+Minor release. `dv:groom`'s "Done means lines that already pass" check, which dv 0.41.0 limited
+to file tests, checks a search of one file again (`grep` with a quoted pattern), but only inside a
+disclosure boundary. For each search line, before any other read for it, the check reads again
+everything the boundary relies on: origin's GitHub repo, that repo's default branch and its tip as
+GitHub reports them, which must be the verified commit, and its visibility, which must be
+`PUBLIC`. It reads the visibility once more as the last read before the search. So a match
+discloses only what anyone can already read. In any other case, a failed or unreadable read or a
+default branch that moved included, the line is "not run: repo not public". Since `dv:groom` step
+3 ("How") and `dv:ticket` File step 5 check a fact stated as a command with this same check, such
+a fact can now be a search too, under the same boundary. Only `dv:groom` and `dv:ticket` change,
+with one sentence in the rules file they share. The other fourteen skills have no behaviour
+changes; their version moves to `0.44.0` only because the suite is released as one plugin.
 
-Numbering: 0.44.0 follows 0.43.0 (skills PRs 121, 122 and 123 carry 0.42.0, 0.42.1 and 0.43.0 and
-merge first). It adds a new procedure, not a fix to an existing one, so it is a minor release.
+Why: most Done means commands are searches, and since dv 0.41.0 every one of them was listed as
+not run, so a search line that already passes could reach the queue unflagged. The search form was
+cut from dv 0.41.0 (skills PR 118) because a result about a file's contents, on a pattern the
+ticket supplies, lets ticket text probe a tracked file one substring at a time (MergeWren's
+critical finding `70d9c96#1`). In a public repo, at a commit GitHub serves, every match tells the
+reader only what anyone can already read (VIL-1203).
 
-Why: on 2026-11-26 a Director decision (VIL-932 Q5) sat for 5 h 39 min. The Head's item waited on
-progress from a chain that had gone quiet, and nothing woke him until David checked in. Nothing
-in the skills told the Head to arm a wake when an item goes to Waiting; he had armed them by hand
-(VIL-1218).
+## Changed
 
-## Added
+- **`dv:groom`, step 3, "Done means lines that already pass": forms.** A line is checked when its
+  command is a file test, as before, or a search of one file: `grep <flags> <pattern> <path>`, with
+  at most one `!` before it, `<flags>` none or more of `-n`, `-i`, `-q`, `-w`, `-F` and `-E` (alone
+  or joined, never `-F` with `-E`), `<pattern>` in single or double quotes and `<path>` one path.
+  A bare line (no backticks) that starts with exactly such a search is checked the same way as a
+  bare file test. Any other command, a search with another flag, a second pattern or path, or
+  anything outside the pattern's quotes that the shell reads, is "not run: unsupported form".
+- **The pattern.** Inside its quotes the pattern must not be empty, start with `-`, hold anything
+  outside printable ASCII (space to `~`), hold `'`, `"`, `$`, a backtick, `\` or `!`, or, under
+  `-E`, hold `{`; otherwise the line is "not run: unsafe pattern". A leading `-` would be an option
+  to `grep`; the quote and shell characters read differently inside double quotes than inside
+  single ones (`\` also between `grep` and `git grep`, and `!` in an interactive shell); an
+  interval (`{`) can make a pattern costly to compile; outside ASCII `grep` and `git grep` can
+  match differently. The pattern reaches the check's own read only inside single quotes, after
+  `-e`, so it cannot become an option, and the matcher is always named (`-G`, `-F` or `-E`), so git
+  config cannot change the pattern syntax. Both skills' Rules sections name the pattern as the one
+  exception to the plain-characters rule for values taken from ticket or request text.
+- **The disclosure boundary.** Nothing it relies on is taken from earlier in the run, and no
+  boundary read is reused for another line or run. For each search line, before any other read for
+  it, the check makes four reads:
+  - **Remote:** `git -C "<top level>" remote get-url --all origin` must print one `github.com`
+    URL (`https://github.com/<owner>/<repo>`, `git@github.com:<owner>/<repo>` or
+    `ssh://git@github.com/<owner>/<repo>`, with or without `.git`, plain owner and repo names).
+  - **Branch:**
+    `gh repo view 'github.com/<owner>/<repo>' --json defaultBranchRef --jq .defaultBranchRef.name`
+    must print exactly the name of the default branch step 1 recorded (step 1 now records its
+    name).
+  - **Tip:** `gh api --hostname github.com 'repos/<owner>/<repo>/commits/<branch>' --jq .sha` must
+    print exactly the verified commit's id. This ties the searched commit to the repo whose
+    visibility is read: git names a commit by its contents, so the local commit with that id is
+    the one GitHub serves.
+  - **Visibility:** `gh repo view 'github.com/<owner>/<repo>' --json visibility --jq .visibility`
+    must print exactly `PUBLIC`.
 
-- **`dv:director-mode`, new "Head's wake for a waiting item"**, right after "The Head and the
-  CEO's 1%". One rule runs through it: visible, not self-healing. A wait is closed (its
-  disposition written, then its wake retired) before another is armed, every wait is armed the
-  same way, and no step repairs another: a failure is posted on the item, as UNARMED or as the
-  blocker, and in the first line of that turn's reply, and the Head decides what comes next.
-  - **Arm:** when the Head puts an item in Waiting on an event someone else owes (an answer, a
-    handoff acknowledgement, a merge), he arms exactly one wake with `orca automations create`,
-    using `--once`, `--by <wake target>` and `--item <n>` and no `--on`, so it is independent of
-    the notice he expects (the full command, with its name and prompt, is in the skill). An item
-    has one open wait at a time. Before the create, in that turn, a preflight runs
-    `orca automations trigger-options --bot "<his name>" --json` (does the event have an Orca
-    event of its own, or reach him only as mail; recorded as the wait's event source) and
-    `orca automations create --help` (the flags, which alone gate the arm). He sets two times
-    for each wait: the deadline, the latest a wake may start and still count, and an earlier wake
-    target that leaves room for dispatch. The text sets no default for either. A wake that starts
-    after the deadline is recorded as a missed deadline.
-  - **Verify in the same turn:** a one-time wake shows `nextRunAt: null`, so the check reads
-    `enabled: true` and `once.by` equal to the wake target (epoch milliseconds), and the item's
-    link reads `on`.
-  - **Record:** the item's Waiting note names the wait key `W<k>`, the event, the owner, the wake
-    and its deadline; a wait record comment adds the owner's and the waiting session's Orca
-    session ids, the ticket, the question's original key (or the PR and its head, or the handoff),
-    the original message id, the wake target, the deadline, the full automation id and the
-    item's prior note, which the new note replaces. This write is the only one that sets Waiting, so
-    an item is set to Waiting only after its wake is verified; a reread of the item confirms it.
-  - **Unarmed:** a failed or unclear flag check, create, verify or record keeps the item In
-    progress (actionable) with `Wake: UNARMED` on its record, then disables any wake it made, and
-    is said in that turn's first line, so the wait never reads as covered by a timer. Nothing
-    creates a second wake for it. What comes next is the Head's call; arming again means closing
-    this wait first and arming the next the same way.
-  - **On either trigger:** reread the item, the ticket or the PR (in the repository the record
-    names) and the owner's session. A notice that finds no record of its wait changes nothing; a
-    wake that finds none sends nothing and adds one line: `UNARMED`, also said in the first line,
-    on an open item, or `Late wake` on a done, canceled or snoozed one. With no recorded wait
-    there is nothing to close, so that item gets no disposition. A wait that already has a
-    disposition is left alone, apart from one `Repeat trigger` line that keeps any later evidence.
-    A done, canceled or snoozed item whose latest wait is open gets a `no follow-up` disposition
-    and is never reopened. A wake that finds its wait open on a Waiting item first moves the item
-    to In progress with a `Wake run` line, since nothing armed covers the wait once its wake runs; a
-    run cut off before that line can still leave a Waiting item with no wake covering it, which the
-    restart list catches.
-    A current check (this wait is the item's latest and has no disposition) runs again before each
-    send and disposition; a re-send another run adds meanwhile stops this run, while one already
-    there when it started leads to `not settled`. Then the first case that fits: settled (the
-    event happened and the waiting work acknowledged it and resumed, shown by that session's own
-    reply or a harness notice; a send receipt is not enough) closes as `settled`; a changed owner
-    or PR head closes as `moved`; a snooze on the ticket, a wait on a decision reserved for a
-    person, or an armed wait whose item left Waiting for another reason closes as `no follow-up`,
-    said in the first line; an unarmed wait is said in the first line and left to the Head; a
-    notice that comes while the wait's wake hasn't started, still verifies and has its deadline
-    ahead changes nothing. If the event hasn't happened and the owner and the waiting session are
-    live, the run re-sends once under the original key to the same owner and session (noted on the
-    item first; the Head never relays the Director's answer himself), and the wait closes as
-    `recovered` if that settles it. Anything else closes as `not settled`, naming the exact
-    blocker.
-  - **Close, then arm:** the disposition comes first and names the blocker and the Head's next
-    step (`Next:`); on a Waiting item it also moves the item to In progress, so Waiting always
-    means an open, armed wait. Then a wake still enabled is disabled
-    (`orca automations edit --id <id> --disabled --json`), never removed:
-    `orca automations remove` deletes the run history too. A failed disposition or disable arms
-    nothing and is said in the first line. A next wait, only when the Head names one, is armed
-    like the first once the disposition is on the item.
-  - **Restart:** one disposition per wait, as a rule each run follows, not a guarantee. After a
-    restart the Head lists, in the first line, his Waiting and In progress items whose latest wait
-    is open or whose `Next:` names a wait with no record, and Waiting items with no open wait. The
-    list repairs nothing.
-  - **The Director's part:** a question the Head re-sends (`Re-sent by the Head`) under its
-    original key is answered as that question, to the session that asked it; one that isn't the
-    Director's to decide stays with the Head, with its way forward, and one the Director already
-    answered is sent again unchanged under the same key, unless the asking session's chat shows it
-    got it.
-  - It grants no decision, merge or CEO's 1% authority.
+  Then the line's `ls-tree` and checkout reads run, then the Visibility read again, as the last
+  read before the search, and the search, with its `-I` run on a match, right after it. The
+  `github.com/` and `--hostname github.com` keep `GH_HOST` from sending a read to another host.
+  Anything else (another host or URL form, another branch name, another id, which includes a
+  default branch that moved since step 1, `PRIVATE`, `INTERNAL`, a read that fails or prints
+  something else) is "not run: repo not public" (never "read failed"), and nothing more is read
+  for that line. The URL is never quoted in a reply, report or Linear, since it can hold a
+  credential. The path rules (unsafe path, `.git` part, secret-named
+  path in any case) and the pattern rules come first, before any read, and the ls-tree, checkout
+  and binary rules still apply in a public repo.
+- **The search's reads.** After the four boundary reads, the same `ls-tree` reads as a file test.
+  A search goes on only for a regular file: a path that differs only in case is "not run: path
+  differs only in case", and anything else (missing, a directory, a link or a submodule) is "not
+  run: search path is not a regular file", since `grep` would only report an error there. For a
+  regular file the check then asks whether a checkout would change the file's bytes:
+  `git --no-replace-objects --no-lazy-fetch -C "<top level>" check-attr --source <commit> filter working-tree-encoding ident crlf eol -- '<path>'`,
+  then `git -C "<top level>" config --get core.autocrlf` and
+  `git -C "<top level>" config --get core.eol`. A `filter` (Git LFS included),
+  `working-tree-encoding`, `ident` or `crlf` value, an `eol` set to anything but `lf`, a
+  `core.autocrlf` other than `input` or false, a `core.eol` other than `lf` or `native`, or any
+  search on Windows makes the line "not run: a checkout changes the file". The `text` attribute is
+  not read, and the step says why: on checkout git only adds a CR before an LF, and only in the
+  cases above; it never removes one, so a file committed with CRLF line endings checks out with
+  the same bytes. Then the Visibility read again, and the search,
+  `git --no-replace-objects --no-lazy-fetch -C "<top level>" grep -l --no-color <matcher> -e '<pattern>' <commit> -- '<path>'`,
+  with the line's matcher (`-G`, `-F` or `-E`) and its `-i` and `-w`, which names the file on a
+  match and prints none of its lines (the line's `-n` and `-q` are not passed on). The check
+  judges by that output, not by the exit alone: Claude Code's Bash tool reports a search's exit 1
+  as a success with no output, so a `git grep -q` that found nothing looked like a match in this
+  release's first live check. One
+  line naming the commit and path is a match, no output and no error is no match, and anything
+  else, an error or an exit other than 0 or 1 included, is "not run: read failed", never a result.
+  On a match the search runs again with `-I`, and a file git takes for binary is "not run: binary
+  file", since `grep` prints a notice there, not the lines, and the `grep` in Claude Code's shell
+  skips binary files.
+- **A path found with a case-variant sibling.** When `ls-tree` finds the path, the check now also
+  lists the parent of each of its parts; another entry there that matches the part when case is
+  ignored makes the line "not run: path differs only in case", as a missing path with such an
+  entry already did, since a checkout on a disk that ignores case can put the other entry at the
+  path. This applies to file tests and searches alike.
+- **Every read of the repo's objects in the check now passes `--no-replace-objects`** (with
+  `--no-lazy-fetch`, as before), the file test's included, so a local `refs/replace/` object
+  cannot stand in for the verified commit's tree or file. Under the boundary this matters: a
+  replaced file would be local content, not what GitHub serves.
+- **Judge.** A success statement (nothing beyond the command, "exits 0", "succeeds", "passes")
+  passes on exit 0, as before. A search is judged only on a regular file: it exits 0 on a match and
+  1 on no match, and `!` turns 0 into 1 and 1 into 0. Only a success statement can give "already
+  passes". A search with no `!` and no `-q` stated to print or find one or more lines, described or
+  counted ("prints the release rule", "prints one line"), fails on no match, since it then prints
+  nothing; on a match it is "not run: output not checked", since the reads cannot show whether the
+  lines it prints are the ones described. Anything else, a guard note, an expected failure or a
+  statement that a search prints or finds nothing included, stays "not run: stated result
+  unclear": a search that finds nothing exits 1, so an absence check passes only when written with
+  `!` (`! grep -q "<pattern>" <path>`), which the success rule reads. So a fact stated as a search
+  is current only by exit status, and a conditional step closes on a search only on that or on a
+  described search of a regular file that finds nothing; an error never settles either. Matched
+  lines and file contents are never printed in a reply, report or Linear: a line gets a result,
+  not output.
+- **`dv:groom`, step 1, "Repos".** It records the default branch's name as well as its commit
+  (from `git ls-remote --symref origin HEAD`), for the boundary's Branch read.
+- **`dv:groom`, step 3, "How" and "Conditional steps".** A fact stated as a command, and a
+  conditional step's check, can now be a search too, checked by the same rules and boundary; "repo
+  not public" is one of the reasons such a fact stays not checked.
+- **`dv:ticket`, File step 5.** It points at `dv:groom`'s check as before, so a fact the request
+  states as a search is checked under the same boundary, and is `[assumed]` with "repo not public"
+  outside it.
+- **Shared rules, "What a session runs"** (`plugins/dv/skills/ticket/references/ticket-format.md`).
+  Its sentence on the check now says it looks a file test up, or searches one tracked file in a
+  public repo whose default-branch tip GitHub reports as the verified commit (read again for each
+  search), with fixed reads of its own, and runs no command from the text. Nothing else in the
+  file changes.
+- **README.** The version, and the `dv:groom` and `dv:ticket` entries.
 
-## Live test
+## Answers to the search form's earlier review findings (skills PR 118)
 
-The Head ran it on disposable Orca items, with scratch Manager chats, in Orca 1.4.277 (evidence
-on VIL-1218). Seen:
+- **The oracle (`70d9c96#1`, critical).** The public-repo boundary: a search runs only on a
+  commit GitHub reports as a public repo's default-branch tip, with every boundary fact read again
+  for each search line and failing closed.
+- **Checkout line endings (`754ba37#1`).** The attribute and config reads above, and Windows; a
+  pattern cannot hold `$`, so it cannot anchor on a line end.
+- **Case-sensitive secret names (`6eaf39a#1`).** The secret-name rule lowercases each path part
+  first (since dv 0.41.0), and it applies to a search as to a file test.
+- **Binary files (`3436f8f#1`).** The `-I` re-run on every match.
+- **Git's `text` attribute (`70d9c96#2`).** Not read, with the reason now in the step itself.
+- **Replacement refs (`20fdd3e#2`).** `--no-replace-objects` on every read of the repo's objects.
 
-- A disabled one-time wake whose deadline passed was still disabled with no runs.
-- After a one-time wake ran and Orca retired it, the lookup of its runs returned `Automation not
-  found`, so that lookup can't confirm the run afterward; the item's records have to.
-- A malformed `--by` was rejected with `invalid_argument` and made no automation and no link. A
-  wake that failed the verify was disabled and read back disabled. Both items stayed In progress
-  with UNARMED records, said in the first line of that turn.
-- One event and wake on one wait, about 20 s apart, ended with one disposition, no re-send and no
-  next wake. Whether the two runs overlapped could not be seen; no duplicate came that time, which
-  is not atomicity.
+## Known limits
 
-## Not verified
+- The search reads the commit's copy with `git grep`. Another `grep` (GNU, BSD, or the ugrep that
+  Claude Code's shell runs as `grep`) can still match differently on non-ASCII text in the file for
+  `-i`, `-w`, `.` or a bracket expression, or take for binary a file git takes for text (such as a
+  file with invalid UTF-8 and no NUL byte).
+- A repo whose origin is not on `github.com`, or is named through an SSH host alias, is treated as
+  not public, whatever its real visibility.
 
-That two runs in one chat never overlap, a `--by` in the past, and a real runtime restart (the
-restart check was only rehearsed read-only on disposable items, and found no overdue armed wait
-to catch). Nothing makes a disposition atomic. A longer outage, or a wake's run cut off part way,
-leaves the wait open with no wake (on a Waiting item if cut off before its `Wake run` line); it
-is seen again only on the event's notice, when the Head looks at the item, or in the restart
-list.
+## Not in this release
 
-The live test ran on the text before review. These were changed after it and not live-tested:
-the reread that confirms a wait record; disposition before disable; an unarmed wait posted
-before its wake is disabled; no second create after a create error; how the wait key is counted; the one line for a wake that
-finds no record; the `Wake run` move to In progress; the order of the trigger's cases, with the
-`moved` and `not settled` dispositions, a snooze on the ticket, and a notice that leaves the
-check to a wake still ahead; one re-send per wait, only before the event has happened, and the
-Director's re-send of an answer already given; close, then arm, with a next wait only when the
-Head names one (the live test's unavailable-owner case armed W2 before W1's disposition); a
-disposition moving a Waiting item to In progress; the `Stopped`, `Retire failed` and
-evidence-keeping `Repeat trigger` lines; and a restart check that only lists.
+- Limits on the session's own reads for a fact stated in words (VIL-1224). Those reads still take
+  paths from the ticket without the check's path rules, as before this release.

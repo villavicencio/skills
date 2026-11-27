@@ -607,14 +607,23 @@ no one.
   give the Head the receipt. If it is not yours to decide, don't forward it back: tell the Head
   it stays his, with the way forward ("The way forward"). Mint no new key, and treat it as no new
   question.
-- **Not verified in Orca 1.4.277:** that two runs in one chat never overlap, and what a disabled
-  one-time wake does once its deadline passes. Nothing makes a disposition atomic: the current
-  check, the reread before the disposition and the reconcile before a re-send make a duplicate
-  less likely, and that is all. A test run that ends with one disposition shows that duplicates
-  were suppressed that time; it never shows that dispositions are atomic or that runs never
-  overlap. A wake missed while Orca is down runs once within the automation's missed-run grace
-  (`missedRunGraceMinutes` in `orca automations show`), which is a missed deadline if it starts
-  after it; a longer outage is caught by the restart check.
+- **Seen in a live test on Orca 1.4.277** (VIL-1218, disposable items): a disabled one-time
+  wake whose deadline passed was still disabled with no runs. After a one-time wake ran and Orca
+  retired it, the lookup of its runs returned `Automation not found`, so that lookup can't
+  confirm the run afterward; the item's records have to. A malformed `--by` was rejected with
+  `invalid_argument` and made no automation and no link; a wake that failed the verify was
+  disabled and read back disabled; both items stayed In progress with UNARMED records, said in
+  the first line of that turn. One event and wake on one wait, about 20 s apart, ended with one
+  disposition, no re-send and no next wake; whether the two runs overlapped could not be seen.
+- **Not verified:** that two runs in one chat never overlap, a `--by` in the past, and a real
+  runtime restart (the restart check was only rehearsed read-only on disposable items, and found
+  no overdue armed wait to catch). Nothing makes a disposition atomic: the current check, the
+  reread before the disposition and the reconcile before a re-send make a duplicate less likely,
+  and that is all. The one close pair shows only that no duplicate came that time; it never shows
+  that dispositions are atomic or that runs never overlap. A wake missed while Orca is down runs once
+  within the automation's missed-run grace (`missedRunGraceMinutes` in `orca automations show`),
+  which is a missed deadline if it starts after it; a longer outage is caught by the restart
+  check.
 
 ### Every ask that reaches me stands on its own
 

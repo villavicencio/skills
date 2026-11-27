@@ -56,9 +56,23 @@ in the skills told the Head to arm a wake when an item goes to Waiting; he had a
     Director's to decide stays with the Head, with its way forward.
   - It grants no decision, merge or CEO's 1% authority.
 
+## Live test
+
+The Head ran it on disposable Orca items, with scratch Manager chats, in Orca 1.4.277 (evidence
+on VIL-1218). Seen:
+
+- A disabled one-time wake whose deadline passed was still disabled with no runs.
+- After a one-time wake ran and Orca retired it, the lookup of its runs returned `Automation not
+  found`, so that lookup can't confirm the run afterward; the item's records have to.
+- A malformed `--by` was rejected with `invalid_argument` and made no automation and no link. A
+  wake that failed the verify was disabled and read back disabled. Both items stayed In progress
+  with UNARMED records, said in the first line of that turn.
+- One event and wake on one wait, about 20 s apart, ended with one disposition, no re-send and no
+  next wake. Whether the two runs overlapped could not be seen; no duplicate came that time, which
+  is not atomicity.
+
 ## Not verified
 
-In Orca 1.4.277: that two runs in one chat never overlap, and what a disabled one-time wake does
-once its deadline passes. Nothing makes a disposition atomic. A live test run that ends with one
-disposition shows that duplicates were suppressed that time, never that dispositions are atomic
-or that runs never overlap.
+That two runs in one chat never overlap, a `--by` in the past, and a real runtime restart (the
+restart check was only rehearsed read-only on disposable items, and found no overdue armed wait
+to catch). Nothing makes a disposition atomic.

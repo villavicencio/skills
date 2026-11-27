@@ -1430,8 +1430,10 @@ def cmd_rewake(a: argparse.Namespace) -> tuple:
     item again. Orca writes each comment in its own BEGIN IMMEDIATE transaction with an
     AUTOINCREMENT event id, so ids follow commit order, and a read that starts after this run's
     claim landed sees every claim with a lower id. Only a claim with fewer than REWAKE_MAX claims
-    before it creates a wake. A claim counts whether or not its create succeeds, and a run whose
-    claim's place is unknown creates nothing. It adds no link."""
+    before it creates a wake, and only when that read shows no hold either (a hold seen there
+    spends the claim). A claim counts whether or not its create succeeds, and a run whose
+    claim's place is unknown creates nothing. A hold that arrives after that read can still race
+    the create. It adds no link."""
     n, k = int(need(RE_ITEM, a.item, "--item")), wait_number(a.wait)
     item, why = read_item(n, READ_TRIES)
     if item is None:
@@ -1491,6 +1493,11 @@ def cmd_rewake(a: argparse.Namespace) -> tuple:
         if len(ahead) >= REWAKE_MAX:
             return EXIT_OTHER, f"NOT CLAIMED item {n} W{k}: claim {mine} came after the " \
                                f"{REWAKE_MAX}th ({ahead[REWAKE_MAX - 1]['id']}); no wake made"
+        held = item_hold(again, Wait(again, k), now_s() * 1000, reopened=False)
+        if held:  # a hold that arrived between the first read and this one
+            return EXIT_OTHER, f"HELD item {n} W{k}: {held}, seen after claim {mine}; the claim " \
+                               "is spent and counts against the limit; no wake made. Rewake once " \
+                               "that ends"
         target = rewake_time()
         wake, err, unknown = step_create(n, k, item, target,
                                          f"Item {n} W{k} rewake {len(ahead) + 1}")

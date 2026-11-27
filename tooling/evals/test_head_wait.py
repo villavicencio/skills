@@ -2180,6 +2180,31 @@ def test_fix_round2() -> None:
         finally:
             c.close()
 
+    for label, setup, why in (
+            ("a snooze line", lambda c: c.fake.fixture_comment(
+                7, "Snoozed until 23:00 PT Nov 28 / 07:00 UTC Nov 29: away"),
+             "a Snoozed until line e"),
+            ("Needs you", lambda c: c.fake.fixture_status(7, "needs_you"),
+             "the item reads Needs you")):
+        c = spent_case()
+        try:  # the first read is clear; the hold lands while the claim is being posted
+            flag = c.root / "go"
+            c.fake.fault(["bot", "item", "comment"], "pause", text_prefix="Rewake claim",
+                         flag=str(flag))
+            x = c.popen("rewake", "--item", "7", "--wait", "W1")
+            paused = wait_for_waiters(flag, 1)
+            setup(c)
+            flag.write_text("")
+            out, _ = x.communicate(timeout=60)
+            lines = [e for e in c.fake.comments(7)
+                     if e["data"]["text"].startswith("Rewake claim, item 7 W1:")]
+            check(f"rewake held after its claim: {label} -> HELD, the claim posted and spent, no "
+                  "automations create call", paused and x.returncode == 3 and len(lines) == 1
+                  and out.startswith(f"HELD item 7 W1: {why}") and "claim is spent" in out
+                  and not calls(c.fake.log(), "automations", "create"), out)
+        finally:
+            c.close()
+
     c = spent_case()
     try:  # two callers each read seven claims; exactly one creates
         claims(c, 7)

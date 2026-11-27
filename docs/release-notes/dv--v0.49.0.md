@@ -88,11 +88,12 @@ Each line is one claim the section, the script and its tests establish.
   which never ends and which the wake itself closes as `no follow-up`.
 - A wait gets at most 8 rewakes, even when runs overlap or a create's answer is uncertain. Each run
   posts a `Rewake claim` line before it creates anything and creates only when fewer than 8 claims
-  came before it in Orca's event order; the loser prints `NOT CLAIMED`, and a claim counts whether
-  or not its create succeeded. Orca writes each comment in its own serialized transaction with an
-  increasing event id, so a run that reads the item after its own claim lands sees every earlier
-  claim. Claims are comments, not links, so the 50-link budget and the waits an item holds are
-  unchanged.
+  came before it in Orca's event order, and only when its read of the item after the claim shows no
+  hold (a hold seen there prints `HELD` and spends the claim); the loser prints `NOT CLAIMED`, and a
+  claim counts whether or not its create succeeded. Orca writes each comment in its own serialized
+  transaction with an increasing event id, so a run that reads the item after its own claim lands
+  sees every earlier claim. Claims are comments, not links, so the 50-link budget and the waits an
+  item holds are unchanged.
 - An Orca call stops after 60 s and starts only while those 60 s fit in the command's first 9
   minutes, so a 10-minute tool timeout covers every command. A command's first read of the item is
   tried up to 3 times, 15 s and then 45 s apart, when Orca's error can pass, and a read that shows a
@@ -132,11 +133,12 @@ read); `NOT SENT`, `SEND UNCLEAR`, `RETIRE UNVERIFIED` and `STOPPED`; the winner
 successor gate with a winner paused before its disposition; a stale notice with W2 armed or Needs
 you set in between; `close-unarmed` and its second read; `reconcile` (note, the 15-minute rule,
 `--final unarmed`, two at once, a failed read after); every retire and rewake outcome, each rewake
-hold with no create call, and two rewakes that each read seven claims, of which exactly one creates;
-the first read's three tries and the spent budget; items with more than 50 events; FULL, its one
-line, and carrying to a fresh item, checked and refused; restart reading only and each finding; a
-cleanup failure after a send; and free text with `$(...)`, backticks, both quotes, a backslash,
-newlines and non-ASCII reaching Orca byte for byte with nothing run.
+hold with no create call, a hold that lands while the claim posts (a snooze line, Needs you)
+spending the claim with no create call, and two rewakes that each read seven claims, of which
+exactly one creates; the first read's three tries and the spent budget; items with more than 50
+events; FULL, its one line, and carrying to a fresh item, checked and refused; restart reading only
+and each finding; a cleanup failure after a send; and free text with `$(...)`, backticks, both
+quotes, a backslash, newlines and non-ASCII reaching Orca byte for byte with nothing run.
 
 ## Not guaranteed
 
@@ -147,6 +149,8 @@ newlines and non-ASCII reaching Orca byte for byte with nothing run.
   than a command's three tries and then the rewake's, leaves a wait with no wake; the restart list
   shows it. A rewake that a hold stopped (`HELD`) leaves the wait with no wake until the Head
   rewakes it after the hold ends.
+- No wake made after a hold: a snooze or Needs you that arrives after rewake's read after its claim
+  can still race the create.
 - One closing record per wait: two `reconcile --final` runs at once can each post one; the
   later prints `DUPLICATE`, and the first counts.
 - The per-key check beyond the item's `Carried from` chain: the same key armed again on an

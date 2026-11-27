@@ -5,15 +5,12 @@ the session's own reads now hold every path they take from that text to the path
 `dv:groom`'s "Done means lines that already pass" check ("The path and the pattern"), with one
 rule before them: a path that starts with `/` or `~` is outside the repo and is not read. A
 refused path is never read, not even to see whether it exists, and the fact is not checked
-(`dv:groom`) or `[assumed]` (`dv:ticket`), with the reason. A search of the session's own across
-more than one file, for a word the text gives, leaves out every tracked file whose path those rules
-refuse, secret-named ones included, and it fails closed: it runs only after a complete, successful
-list of the commit's files. This
-closes the limit that the dv 0.43.0 and 0.44.0 release notes listed under "Not in this release":
-those reads took paths from the ticket without the check's path rules, secret-named paths
-included (VIL-1224). Only `dv:groom` and `dv:ticket` change. The other fourteen skills have no
-behaviour changes; their version moves to `0.46.0` only because the suite is released as one
-plugin.
+(`dv:groom`) or `[assumed]` (`dv:ticket`), with the reason. A search across files for a word the
+text gives is not made at all, since it would open files no path rule has judged. This closes the
+limit that the dv 0.43.0 and 0.44.0 release notes listed under "Not in this release": those reads
+took paths from the ticket without the check's path rules, secret-named paths included
+(VIL-1224). Only `dv:groom` and `dv:ticket` change. The other fourteen skills have no behaviour
+changes; their version moves to `0.46.0` only because the suite is released as one plugin.
 
 Why: since dv 0.43.0 a fact stated as a command is checked only by the already-passing check,
 under its path rules, but a fact stated in words was still checked with reads that took any path
@@ -38,47 +35,26 @@ secret-named file and get back what it found.
 
   A refused path is not read in any way, not even to see whether it exists, and nothing about it,
   or about a secret-named entry any read shows, goes in the reply, the report or Linear beyond the
-  reason. A search of the session's own across more than one file in a repo, for a word the text
-  gives (step 5's search for every spelling of a value included), opens no file whose path those
-  rules refuse, and it fails closed. It runs at the commit step 1 recorded, every read of the
-  repo's objects with `--no-replace-objects` and `--no-lazy-fetch` as the check's reads have, in
-  four steps:
-  1. When that commit is not in the local clone (`cat-file -e` fails), the search is not made, and
-     the working tree is not searched instead: "not checked: commit not in the clone".
-  2. `git -c core.quotePath=true ls-tree -r --name-only <commit>` must exit 0 and be read in full
-     (nothing cut by `head`, a filter or the tool's output limit); otherwise "not checked: file
-     list incomplete". Each name is judged with all three path rules (unsafe path, git metadata,
-     secret-named path), inside git's quotes for a name git quotes, and each name a rule refuses is
-     left out. A refused name that git quotes, or that holds `'`, cannot be left out by a pathspec,
-     so the search is not made: "not checked: search would open a refused path". So a repo that
-     tracks such a name is not searched across files at all.
-  3. `git grep -F -e '<word>' <commit> -- .`, the word only when it passes the Rules' test for a
-     value taken from ticket text, with a `':(exclude,literal)<path>'` pathspec for each name left
-     out, judged by its output and exit: output whose every line starts with `<commit>:`, with
-     exit 0, holds matches; no output and no error, with exit 0 or 1, is no match; anything else,
-     an error or an exit other than 0 or 1 included, is "not checked: read failed".
-  4. No match covers only the files searched: when a file was left out, a fact that the word
-     appears nowhere is "not checked: refused files not searched".
-
-  The paragraph does not apply to the check's own reads, which keep the check's rules and results.
-  It says plainly that these reads are not held to the disclosure boundary (only the check's search
-  is), so in a private repo a fact stated in words about a file whose path passes the rules is
-  still read and reported.
+  reason. A search across files (of a directory or of the whole repo) for a word the text gives,
+  such as one that would check "no file mentions X", is not made in any step: what depended on it
+  is "not checked: search across files". A search of one file, at a path the rules let through, is
+  a read of that path. The paragraph does not apply to the check's own reads, which keep the
+  check's rules and results. It says plainly that these reads are not held to the disclosure
+  boundary (only the check's search is), so in a private repo a fact stated in words about a file
+  whose path passes the rules is still read and reported.
 - **`dv:groom`, step 5 ("Scout") and Rules.** Scouting's evidence points to the new paragraph as
-  well as "How", and the Rules bullet on values taken from ticket text says a path taken from that
-  text goes through "Paths in your own reads" before any read of it, in every step, and so does a
-  search across more than one file for a word that text gives.
+  well as "How". Its in-ticket improvements no longer search the repo for every spelling of a value
+  the ticket changes: a copy the change misses is reported only from a file the session reads, and
+  the skipped search is listed under what was not checked. The Rules bullet on values taken from
+  ticket text says a path taken from that text goes through "Paths in your own reads" before any
+  read of it, in every step, and that a search across files for a word from that text is not made.
 - **`dv:ticket`, File step 5.** Each path the session's own reads take from the request, or from
   anything it points to, goes through `dv:groom`'s "Paths in your own reads", with the same order
   and reasons. A refused path is not read in any way; the fact is marked `[assumed]` and listed in
   the Agent notes under what was not checked, with the reason ("path outside the repo", "unsafe
-  path", "git metadata" or "secret-named path"). A multi-file search follows `dv:groom`'s four
-  steps at the default branch's commit, taken from the local clone and compared with origin's as
-  `dv:groom` step 1 does, the same commit a fact stated as a command uses, and a fact it does not
-  settle is `[assumed]` with that step's reason ("commit not in the clone", "file list
-  incomplete", "search would open a refused path", "read failed" or "refused files not
-  searched"). If `../groom/SKILL.md` cannot be read, every fact whose check would read a path
-  taken from the request, or search more than one file for a word it gives, is `[assumed]`
+  path", "git metadata" or "secret-named path"). A search across files for a word the request
+  gives is not made, and the fact is `[assumed]` ("search across files"). If `../groom/SKILL.md`
+  cannot be read, every fact whose check would read a path taken from the request is `[assumed]`
   ("dv:groom's path rules could not be read"). The step says plainly that in a private repo a fact
   stated in words about a file whose path passes the rules is still read, and the draft says what
   was found. Its Rules bullet gains the matching sentence, pointing to File step 5.
@@ -99,3 +75,8 @@ secret-named file and get back what it found.
   the report says "not checked: path outside the repo" (in `dv:ticket`, `[assumed]` with that
   reason), and such a fact has to be checked by hand. A path that climbs out with `..` is refused
   too, as "unsafe path".
+- **A search across files is not run.** A fact that only a search of a directory or of the whole
+  repo for a word from the ticket or request could settle, such as "no file mentions X", is not
+  checked: the report says "not checked: search across files" (in `dv:ticket`, `[assumed]` with
+  that reason). For the same reason `dv:groom`'s scouting no longer searches the repo for every
+  spelling of a value the ticket changes.

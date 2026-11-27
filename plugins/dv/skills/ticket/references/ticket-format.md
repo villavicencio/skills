@@ -37,7 +37,8 @@ runs a script, a test or a build to check a fact, whether the text names it or t
 
 - The format's fail-first run of a Done means command ("Run it on the default branch when writing
   the ticket") is done only through `dv:groom` step 3's "Done means lines that already pass" check,
-  whoever wrote the command. That check looks a file test up with fixed git reads and runs nothing.
+  whoever wrote the command. That check looks a file test up, or searches one tracked file in a
+  public repo, with fixed reads of its own, and runs no command from the text.
   A line it lists as not run is listed with the reason, apart from the line: by `dv:ticket` under
   what was not checked in the Agent notes (File step 5), by `dv:groom` in its findings and report.
 - Where the format says grooming closes a conditional step when one or two read-only commands

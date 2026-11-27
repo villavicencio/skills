@@ -593,7 +593,7 @@ a no or no answer stops the command.
 **2. Create.** Start the session as a supervised Orca worker (2a) only when Orca shows, before
 anything is created, that `worker-start` can be asked for a chat: its chat is then yours to release
 once it has closed out ("Release a supervised Manager chat"), and I no longer close it. Otherwise
-use the ordinary start (2b), whose chat I close. `worker-start` starts its agent as a chat or a
+use the ordinary start (2b), which asks for a chat and whose session I close (or report, if Orca opens a terminal). `worker-start` starts its agent as a chat or a
 terminal by my setting for new agent tabs, and a terminal session can be neither released nor
 closed through your checks (VIL-1043). So run this probe first, from the main checkout; it creates
 nothing:

@@ -2,7 +2,7 @@
 
 Patch release. `dv:director-mode`'s "Open a worktree on request" starts a ticket's worktree session
 as a supervised Orca worker only when Orca shows, before anything is created, that `worker-start`
-can be asked for a chat; everywhere else it opens an ordinary chat, which David closes. Only
+can be asked for a chat; everywhere else it takes the ordinary start (2b), which asks for a chat and which David closes; the Director reports a terminal if Orca opens one (Orca's documented fallback). Only
 `dv:director-mode` changes. The other fifteen skills have no behaviour changes; their version moves
 to `0.42.1` only because the suite is released as one plugin.
 
@@ -37,7 +37,7 @@ Director's checks. No supported Orca command reads that setting (Orca 1.4.277).
 - **"Release a supervised Manager chat"**, the "Not tested" note: records the VIL-1043 and VIL-1206
   results and that a host whose `worker-start` takes `--surface` is not yet tested.
 - **README**: the plugin table reads `0.42.1`, and the `dv:director-mode` entry and "Supervised
-  worktree sessions" describe the probe, the ordinary-chat default, and that a terminal start is
+  worktree sessions" describe the probe, the ordinary start (2b) default, and that a terminal start is
   reported and left for David.
 
 ## Tried and not used

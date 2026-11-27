@@ -472,24 +472,29 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
 With a Head, this is how he makes sure a wait on someone else ends, even when the notice he
 expects never comes. On 2026-11-26 a Director decision (VIL-932 Q5) sat for 5 h 39 min: his item
 waited on progress from a chain that had gone quiet, and nothing woke him (VIL-1218). He follows
-these steps on his own Orca items; the Director's one part is the last bullet. Nothing here gives
-him a decision, a merge or any of the CEO's 1%: a wake only rereads, re-sends under the original
-key and records. Arming and disabling a wake on his own item spends nothing and reaches no one.
+these steps on his own Orca items; the Director's one part is the last bullet but one. Nothing
+here gives him a decision, a merge or any of the CEO's 1%: a wake only rereads, re-sends under the
+original key and records. Arming and disabling a wake on his own item spends nothing and reaches
+no one.
 
 - **When it applies.** He puts an item in Waiting on an event someone else owes: an answer to a
   question, the acknowledgement of a handoff, a merge. Each such wait gets exactly one wake. Work
   one of his own workers is doing is In progress, and a wait on David is Needs you (Orca's own
   rules, `orca bot item set --help`); neither gets a wake.
-- **The deadline** is his to set for each wait, from when the owner should have acted. This text
-  sets no default and no number. Write it as an ISO time on a whole minute with a numeric offset,
-  such as `2026-11-26T21:15:00-08:00`, in the future.
-- **Arm** the wake from the item's chat, with no `--on` (so it is a one-time reminder, independent
-  of the notice he expects) and `--item`, which links it to the item:
-  `orca automations create --bot "<his name>" --name "Item <n> W<k>: <the event>" --once --by <deadline> --item <n> --prompt "Wake for item <n> W<k>, deadline <deadline>. Follow the section Head's wake for a waiting item in the dv director-mode skill's text, without turning Director Mode on; item <n>'s W<k> record is the source, not this prompt." --json`.
+- **Two times, both his to set for each wait.** The **deadline** is the latest time the wake may
+  start and still count as on time. The **wake target** (the `--by` time) is earlier, by enough to
+  cover Orca's dispatch, so the run starts by the deadline. This text sets no default and no
+  number for either. Write each as an ISO time on a whole minute with a numeric offset, such as
+  `2026-11-26T21:15:00-08:00`, in the future.
+- **Arm** the wake from the item's chat. First, in that turn, read `orca automations create
+  --help` and check that it still offers `--once`, `--by` and `--item` for bots; if it doesn't,
+  the wait is unarmed (below). Use no `--on` (so it is a one-time reminder, independent of the
+  notice he expects) and `--item`, which links it to the item:
+  `orca automations create --bot "<his name>" --name "Item <n> W<k>: <the event>" --once --by <wake target> --item <n> --prompt "Wake for item <n> W<k>, deadline <deadline>. Follow the section Head's wake for a waiting item in the dv director-mode skill's text, without turning Director Mode on; item <n>'s W<k> record is the source, not this prompt." --json`.
   `W<k>` is the wait's key: k counts the waits on that item. With no `--runs-in`, the wake runs and
   reports in the chat that made it.
 - **Verify it in the same turn,** before the item says it is covered. `nextRunAt` stays `null` for
-  a one-time wake, so read `enabled` and `once.by` (epoch milliseconds):
+  a one-time wake, so read `enabled` and `once.by` (epoch milliseconds) against the wake target:
 
   ```bash
   orca automations show --id "<automation id>" --json | python3 -c '
@@ -497,13 +502,14 @@ key and records. Arming and disabling a wake on his own item spends nothing and 
   a = (json.load(sys.stdin).get("result") or {}).get("automation") or {}
   want = int(datetime.datetime.fromisoformat(sys.argv[1]).timestamp() * 1000)
   by = (a.get("once") or {}).get("by")
-  ok = a.get("enabled") is True and by == want
-  print("ARMED" if ok else "NOT ARMED", "enabled=%s by=%s want=%s bot=%s" % (a.get("enabled"), by, want, (a.get("bot") or {}).get("botId")))
-  ' "<deadline>"
+  bot = (a.get("bot") or {}).get("botId")
+  ok = a.get("enabled") is True and by == want and bot == sys.argv[2]
+  print("ARMED" if ok else "NOT ARMED", "enabled=%s by=%s want=%s bot=%s" % (a.get("enabled"), by, want, bot))
+  ' "<wake target>" "<his bot id>"
   ```
 
-  It is armed only on `ARMED` with his own bot id (the `id address` that `orca bot list` prints for
-  him), and once `orca bot item show --id <n>` lists `automation:<id>` as `on`. If `create` errors
+  His bot id is the id after `bot:` in the `id address` that `orca bot list` prints for him. It is
+  armed only on `ARMED`, and once `orca bot item show --id <n>` lists `automation:<id>` as `on`. If `create` errors
   or prints nothing readable, look for it by name in `orca automations list --json` before trying
   once more, so one wait never gets two wakes. A wake that exists but fails the check is disabled
   (`orca automations edit --id <id> --disabled --json`) before any retry.
@@ -512,56 +518,77 @@ key and records. Arming and disabling a wake on his own item spends nothing and 
   the note one line of at most 200 characters (Orca's limit), the comment being:
 
   ```text
-  Wait record, item <n> W<k>. Waits on: <the event>. Owner: <who owes it, by name and Orca session id>. Ticket: <VIL-N>. Key: <the question's original key, or the PR as owner/repo#n at head <sha>>. Deadline: <deadline> (<PT>). Wake: automation <id>, verified armed at <time>.
+  Wait record, item <n> W<k>. Waits on: <the event>. Owner: <who owes the event, by name and Orca session id>. Waiting work: <the session whose work waits on it, such as the asking session, by name and Orca session id>. Ticket: <VIL-N>. Key: <the question's original key, the PR as owner/repo#n at head <sha>, or the handoff's message id>. Message: <the id of the question or handoff as first sent, or none>. Wake target: <wake target>. Deadline: <deadline> (<PT>). Wake: automation <id>, verified armed at <time>.
   ```
 
-- **If arming or the check fails,** the wait is unarmed and the item must say so: the note starts
-  `W<k> UNARMED:`, and the record's `Wake:` gives the error or the check's output. Say it in that
-  same turn's reply, in its first line, while he can still act: check the event now, or arm again
-  once the cause is fixed. An unarmed wait never reads as covered by a timer.
+- **If the check of the help, the create or the verify fails,** the wait is unarmed. The item
+  is In progress (moved back if it was Waiting), so it stays actionable, and goes to Waiting only
+  once a wake verifies. Post
+  the wait record with `Wake: UNARMED, <the error or the check's output>`
+  (`orca bot item set <n> --status in-progress --comment-file <file>`), and say so in that same
+  turn's reply, in its first line, while he can still act: check the event now, or arm again once
+  the cause is fixed. An unarmed wait never reads as covered by a timer.
 - **When either trigger comes** (the event's notice or the wake):
   1. Reread the item (`orca bot item show --id <n>`): the W<k> record and every event after it. If
      the item is done or canceled, W<k> already has a disposition, or the item is snoozed, stop
-     there ("No follow-up", below).
-  2. Reread the ticket (its comments, with every record for the original key, `list_comments`) or
+     there ("No follow-up", below). For a wake, note when this run started: a start after the
+     deadline is a missed deadline, recorded as one even when the recovery then works.
+  2. **Current check.** The item is still Waiting, its latest wait record is W<k> (no W<k+1> after
+     it), and the owner and key (the question key, the PR and head, or the handoff) are still the
+     ones W<k> names. A superseded wait (W1 once W2 exists, or one whose owner or head has
+     changed) gets no send, no disable and no rearm, only the line under "One disposition per
+     wait". Run this check again just before each send, disable or arm in steps 5 to 7, and just before
+     the disposition in step 7 reread the item for one already written: if there is one, write
+     none.
+  3. Reread the ticket (its comments, with every record for the original key, `list_comments`) or
      the PR at the recorded head (`gh pr view <N> --json state,headRefOid,mergedAt`), and the
      current owner: the Orca session the record names (`orca agent list`,
      `orca agent read <session id> --limit 20`).
-  3. **Settled** means the owner acknowledged in its own words (its reply; a send receipt or a
-     `recipient_delivery_held` warning is not one) and the work that waited resumed (its report of
-     the next action, a new push, an answer recorded under the original key).
-  4. **Not settled, owner live:** re-send under the original key, to the same owner and the same
+  4. **Settled** means the event happened (the owner's answer, the handoff's acknowledgement, the
+     merge), and the waiting work acknowledged it and resumed. Each is shown only by that
+     session's own reply or a harness notice (such as Orca's report that its worker or run went
+     on); a send receipt or a `recipient_delivery_held` warning shows neither.
+  5. **Not settled, owner live:** re-send under the original key, to the same owner and the same
      session. Never a new key, a new question or a new session. A decision that waits on the
      Director goes to the Director as first asked, with its original key and the asking
      session's Orca id, and a first line `Re-sent by the Head, wake for item <n> W<k>.`; if the
-     answer cannot reach that session's old address, he relays it unchanged to that same session
-     in Orca. For a PR wait, he asks the same owner about that PR at the recorded head. A re-send
-     posts no new ticket record: the original key's records stay as they are. Then check step 3
-     again.
-  5. **Still not settled** (the owner is gone, no acknowledgement, or no resumed work seen): record
+     answer cannot reach that session's old address, he asks the Director to send it again to
+     that same session in Orca, and never relays the answer himself (a session counts only its
+     Director's own reply). For a PR wait, he asks the same owner about that PR at the recorded
+     head. Just before each re-send he adds one line to the item,
+     `Re-send, item <n> W<k>: to <who>, at <time>.`, and after it the message id or error. A
+     re-send posts no new ticket record: the original key's records stay as they are. When
+     overlapping runs or a restart leave it unclear whether a send already went (a result he
+     can't read, or a `Re-send` line with no message id), first find the original message and
+     any re-send by their ids and read the waiting session's chat for an acknowledgement; send
+     again only when none shows it delivered and acknowledged. Then check step 4 again.
+  6. **Still not settled** (the owner or the waiting session is gone, no acknowledgement, or no
+     resumed work seen): record
      the exact blocker (what failed, with the error or the read that showed it), the owner and the
      next check, and arm the next wake by these same rules as W<k+1>. Whether to wait again is his
      call: when the same blocker comes back, he takes it to whoever can clear it (the Director for
      a session, David only for one of the CEO's 1%) instead of only waiting again.
-  6. Write one disposition on the item:
+  7. Write one disposition on the item:
 
      ```text
-     Wake disposition, item <n> W<k>: <settled, recovered, next wake W<k+1>, or no follow-up>. Trigger: <the event or the wake>, <time>. Owner: <name and session id>. Evidence: <each send, answer, acknowledgement and resumed action, with its message id or link and its time>. Blocker: <exact, or none>. Next check: <W<k+1> and its deadline, or none>.
+     Wake disposition, item <n> W<k>: <settled, recovered, next wake W<k+1>, or no follow-up>. Trigger: <the event or the wake>, started <time>. Deadline: <deadline>; missed: <yes or no>. Owner: <name and session id>. Evidence: <each send, answer, acknowledgement and resumed action, with its message id or link and its time>. Blocker: <exact, or none>. Next check: <W<k+1>, its wake target and deadline, or none>.
      ```
 
 - **One disposition per wait.** A late wake after the event settled it, a repeated notice, and a
   run after a restart all start at step 1 and are judged against the same W<k> record. The first
-  trigger that finds no disposition writes it. A later one sends nothing, resumes no one and arms
-  nothing; it may add one line, `Repeat trigger, item <n> W<k>: matched <event id>; nothing done.`,
-  which is not a disposition. On his first run after a restart he lists his Waiting items
-  (`orca bot item list --status waiting`) and takes as a trigger each W<k> whose deadline has
-  passed with no disposition, and each unarmed wait.
-- **Retire the wake** when the wait settles before its deadline:
+  trigger that finds no disposition and passes the current check writes it. A later one, and any
+  trigger for a superseded wait, sends nothing, resumes no one, disables nothing and arms nothing;
+  it may add one line, `Repeat trigger, item <n> W<k>: matched <event id>; nothing done.` or
+  `Superseded trigger, item <n> W<k>: W<k+1> is current; nothing done.`, neither a disposition.
+  On his first run after a restart he lists his Waiting and In progress items
+  (`orca bot item list --status waiting,in-progress`) and takes as a trigger each current W<k>
+  whose deadline has passed with no disposition, and each unarmed wait.
+- **Retire the wake** when the wait settles before its wake target, after the current check:
   `orca automations edit --id <id> --disabled --json`, then `orca automations show` reads
   `enabled: false`; note it in the disposition. Never `orca automations remove`: it deletes the
   automation and its run history, a delete beyond the standing approvals. A wake that has run
-  needs nothing: Orca deletes a one-time automation after its run, and the item's link then reads
-  `gone or off`. If disabling fails, say so in the disposition; the late wake then stops at step 1.
+  needs nothing: Orca deletes a one-time automation after its run (`orca automations create
+  --help`), and the item's link then reads `gone or off`. If disabling fails, say so in the disposition; the late wake then stops at step 1.
 - **No follow-up** for a completed or canceled item, a snoozed one (a snooze he or David recorded
   on the item or the ticket; Orca 1.4.277 items have no snooze status), or a wait whose next step
   is a decision reserved for a person (the CEO's 1%, or a choice under "What no default decides"
@@ -573,11 +600,13 @@ key and records. Arming and disabling a wake on his own item spends nothing and 
   give the Head the receipt. If it is not yours to decide, don't forward it back: tell the Head
   it stays his, with the way forward ("The way forward"). Mint no new key, and treat it as no new
   question.
-- **Not verified in Orca 1.4.277:** that two runs in one chat never overlap (so two triggers can't
-  both find no disposition), and what a disabled one-time wake does once its deadline passes. A
-  wake missed while Orca is down runs once within the automation's missed-run grace
-  (`missedRunGraceMinutes` in `orca automations show`); a longer outage is caught by the restart
-  check.
+- **Not verified in Orca 1.4.277:** that two runs in one chat never overlap, and what a disabled
+  one-time wake does once its deadline passes. A test can show that one pair of near-simultaneous
+  triggers produced one disposition; it cannot prove that runs never overlap. The current check,
+  the one disposition and the reconcile before a re-send are what keep an overlap from sending
+  twice. A wake missed while Orca is down runs once within the automation's missed-run grace
+  (`missedRunGraceMinutes` in `orca automations show`), which is a missed deadline if it starts
+  after it; a longer outage is caught by the restart check.
 
 ### Every ask that reaches me stands on its own
 

@@ -486,10 +486,16 @@ no one.
   cover Orca's dispatch, so the run starts by the deadline. This text sets no default and no
   number for either. Write each as an ISO time on a whole minute with a numeric offset, such as
   `2026-11-26T21:15:00-08:00`, in the future.
-- **Arm** the wake from the item's chat. First, in that turn, read `orca automations create
-  --help` and check that it still offers `--once`, `--by` and `--item` for bots; if it doesn't,
-  the wait is unarmed (below). Use no `--on` (so it is a one-time reminder, independent of the
-  notice he expects) and `--item`, which links it to the item:
+- **Trigger-options preflight,** in the arming turn, before the create:
+  `orca automations trigger-options --bot "<his name>" --json` lists the events an automation of
+  his can start on, so he knows whether the expected event has an Orca event of its own (such as
+  `github.pr_merged`) or reaches him only as mail (a Director's or a Manager's reply is mail).
+  Then `orca automations create --help` must still offer `--once`, `--by` and `--item` for bots.
+  The wake stays deadline-only either way, so only the flag check gates it: if `create --help`
+  fails or lacks a flag, the wait is unarmed (below); if `trigger-options` fails, he arms anyway
+  and records the event source as unknown.
+- **Arm** the wake from the item's chat. Use no `--on` (so it is a one-time reminder, independent
+  of the notice he expects) and `--item`, which links it to the item:
   `orca automations create --bot "<his name>" --name "Item <n> W<k>: <the event>" --once --by <wake target> --item <n> --prompt "Wake for item <n> W<k>, deadline <deadline>. Follow the section Head's wake for a waiting item in the dv director-mode skill's text, without turning Director Mode on; item <n>'s W<k> record is the source, not this prompt." --json`.
   `W<k>` is the wait's key: k counts the waits on that item. With no `--runs-in`, the wake runs and
   reports in the chat that made it.
@@ -518,10 +524,10 @@ no one.
   the note one line of at most 200 characters (Orca's limit), the comment being:
 
   ```text
-  Wait record, item <n> W<k>. Waits on: <the event>. Owner: <who owes the event, by name and Orca session id>. Waiting work: <the session whose work waits on it, such as the asking session, by name and Orca session id>. Ticket: <VIL-N>. Key: <the question's original key, the PR as owner/repo#n at head <sha>, or the handoff's message id>. Message: <the id of the question or handoff as first sent, or none>. Wake target: <wake target>. Deadline: <deadline> (<PT>). Wake: automation <id>, verified armed at <time>.
+  Wait record, item <n> W<k>. Waits on: <the event>. Owner: <who owes the event, by name and Orca session id>. Waiting work: <the session whose work waits on it, such as the asking session, by name and Orca session id>. Ticket: <VIL-N>. Key: <the question's original key, the PR as owner/repo#n at head <sha>, or the handoff's message id>. Event source: <the trigger-options event that also reports it, mail only, or unknown>. Message: <the id of the question or handoff as first sent, or none>. Wake target: <wake target>. Deadline: <deadline> (<PT>). Wake: automation <id>, verified armed at <time>.
   ```
 
-- **If the check of the help, the create or the verify fails,** the wait is unarmed. The item
+- **If the `create --help` flag check, the create or the verify fails,** the wait is unarmed. The item
   is In progress (moved back if it was Waiting), so it stays actionable, and goes to Waiting only
   once a wake verifies. Post
   the wait record with `Wake: UNARMED, <the error or the check's output>`
@@ -574,7 +580,8 @@ no one.
      Wake disposition, item <n> W<k>: <settled, recovered, next wake W<k+1>, or no follow-up>. Trigger: <the event or the wake>, started <time>. Deadline: <deadline>; missed: <yes or no>. Owner: <name and session id>. Evidence: <each send, answer, acknowledgement and resumed action, with its message id or link and its time>. Blocker: <exact, or none>. Next check: <W<k+1>, its wake target and deadline, or none>.
      ```
 
-- **One disposition per wait.** A late wake after the event settled it, a repeated notice, and a
+- **One disposition per wait,** as a rule each run follows, not a guarantee (see "Not
+  verified"). A late wake after the event settled it, a repeated notice, and a
   run after a restart all start at step 1 and are judged against the same W<k> record. The first
   trigger that finds no disposition and passes the current check writes it. A later one, and any
   trigger for a superseded wait, sends nothing, resumes no one, disables nothing and arms nothing;
@@ -601,10 +608,11 @@ no one.
   it stays his, with the way forward ("The way forward"). Mint no new key, and treat it as no new
   question.
 - **Not verified in Orca 1.4.277:** that two runs in one chat never overlap, and what a disabled
-  one-time wake does once its deadline passes. A test can show that one pair of near-simultaneous
-  triggers produced one disposition; it cannot prove that runs never overlap. The current check,
-  the one disposition and the reconcile before a re-send are what keep an overlap from sending
-  twice. A wake missed while Orca is down runs once within the automation's missed-run grace
+  one-time wake does once its deadline passes. Nothing makes a disposition atomic: the current
+  check, the reread before the disposition and the reconcile before a re-send make a duplicate
+  less likely, and that is all. A test run that ends with one disposition shows that duplicates
+  were suppressed that time; it never shows that dispositions are atomic or that runs never
+  overlap. A wake missed while Orca is down runs once within the automation's missed-run grace
   (`missedRunGraceMinutes` in `orca automations show`), which is a missed deadline if it starts
   after it; a longer outage is caught by the restart check.
 

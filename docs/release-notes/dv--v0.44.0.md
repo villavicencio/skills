@@ -18,22 +18,23 @@ in the skills told the Head to arm a wake when an item goes to Waiting; he had a
 - **`dv:director-mode`, new "Head's wake for a waiting item"**, right after "The Head and the
   CEO's 1%".
   - **Arm:** when the Head puts an item in Waiting on an event someone else owes (an answer, a
-    handoff acknowledgement, a merge), he arms exactly one wake with
-    `orca automations create --bot <his name> --once --by <wake target> --item <n>`, with no
-    `--on`, so it is independent of the notice he expects, after reading `create --help` in that
-    turn to check the flags. He sets two times for each wait: the deadline, the latest a wake may
-    start and still count, and an earlier wake target that leaves room for dispatch. The text
-    sets no default for either. A wake that starts after the deadline is recorded as a missed
-    deadline.
+    handoff acknowledgement, a merge), he arms exactly one wake with `orca automations create
+    --bot <his name> --once --by <wake target> --item <n>`, with no `--on`, so it is independent
+    of the notice he expects, after a trigger-options preflight in that turn: `orca automations
+    trigger-options --bot <his name>` (does the event have an Orca event of its own, or reach him
+    only as mail; recorded as the wait's event source) and `create --help` (the flags, which alone
+    gate the arm). He sets two times for each wait: the deadline, the latest a wake may start and
+    still count, and an earlier wake target that leaves room for dispatch. The text sets no
+    default for either. A wake that starts after the deadline is recorded as a missed deadline.
   - **Verify in the same turn:** a one-time wake shows `nextRunAt: null`, so the check reads
     `enabled: true` and `once.by` equal to the wake target (epoch milliseconds), and the item's
     link reads `on`.
   - **Record:** the item's Waiting note names the wait key `W<k>`, the event, the owner, the wake
-    and its deadline; a wait record comment adds the owner's and the waiting session's Orca session ids, the ticket, the
-    question's original key (or the PR and its head, or the handoff), the original message id,
-    the wake target, the deadline and the full automation id. A failed or unclear arm keeps the
-    item In progress (actionable) with `Wake: UNARMED` on its record, and is said in that turn's
-    first line, so the wait never reads as covered by a timer.
+    and its deadline; a wait record comment adds the owner's and the waiting session's Orca
+    session ids, the ticket, the question's original key (or the PR and its head, or the handoff),
+    the original message id, the wake target, the deadline and the full automation id. A failed or
+    unclear arm keeps the item In progress (actionable) with `Wake: UNARMED` on its record, and is
+    said in that turn's first line, so the wait never reads as covered by a timer.
   - **On either trigger:** reread the item, the ticket or PR and the current owner. Before any
     send, disable or rearm, a current check confirms the item still waits on this W key, owner and
     question or PR head; a superseded wait (W1 once W2 exists) is skipped. Settled means the owner
@@ -43,9 +44,10 @@ in the skills told the Head to arm a wake when an item goes to Waiting; he had a
     himself), after reconciling the original message and any acknowledgement when overlap or a
     restart leaves delivery unclear, or record the exact blocker, owner and next check and arm the
     next wake by the same rules.
-  - **Reconcile:** one disposition per wait. A late wake, a repeated notice or a run after a
-    restart is judged against the same record and does nothing once a disposition exists. After a
-    restart he takes overdue and unarmed waits as triggers.
+  - **Reconcile:** one disposition per wait, as a rule each run follows, not a guarantee. A late
+    wake, a repeated notice or a run after a restart is judged against the same record and does
+    nothing once a disposition exists. After a restart he takes overdue and unarmed waits as
+    triggers.
   - **Retire:** a wake whose wait settled first is disabled (`orca automations edit --disabled`),
     never removed: `orca automations remove` deletes the run history too. Completed, canceled or
     snoozed items, and waits on a decision reserved for a person, get no follow-up.
@@ -57,5 +59,6 @@ in the skills told the Head to arm a wake when an item goes to Waiting; he had a
 ## Not verified
 
 In Orca 1.4.277: that two runs in one chat never overlap, and what a disabled one-time wake does
-once its deadline passes. The live test on disposable items (VIL-1218) can show that one pair of
-near-simultaneous triggers gave one disposition; it cannot prove runs never overlap.
+once its deadline passes. Nothing makes a disposition atomic. A live test run that ends with one
+disposition shows that duplicates were suppressed that time, never that dispositions are atomic
+or that runs never overlap.

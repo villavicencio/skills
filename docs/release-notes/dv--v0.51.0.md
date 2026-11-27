@@ -34,17 +34,23 @@ Each line is one claim the section, the script and its tests establish.
 - The item goes to Waiting only after the create's own output shows the wake enabled, at the
   recorded time, as the Head's bot and with no event trigger, after a fresh read finds the item's
   status and wait unchanged since the arm's first read and W<k> still open, and while the wake's
-  time is at least a minute away. A read after the Waiting write that fails starts the first
-  line `UNCHECKED`; one that finds `W<k>-closed` already linked starts it `SPENT`.
-- An arm step that fails after the reservation claims `W<k>-closed` and, once it wins that claim,
-  posts an `UNARMED` line naming the step and Orca's error, retires the wake when its id is known,
-  writes no status, and says so in the first line. A claim it doesn't win posts no `UNARMED` line:
-  `NOT CLAIMED` (the wake or another run holds W<k>) writes nothing more; `FULL` posts the `Wait
-  blocked` line and `CLOSED` (the item closed meanwhile) nothing, and each then retires a wake
-  whose id it knows (one it can't confirm gets a `Retire unverified` line); any other answer says
-  to reconcile. A won claim whose `UNARMED` line
-  doesn't post, or whose run is past its 5-minute window before that line, starts the first line
-  `UNCLEAR`.
+  time is at least a minute away. A Waiting write whose answer can't be read is read back; when that
+  read fails too, the first line starts `ARM UNCLEAR`, the script posts an `Arm unclear` line naming
+  the wake (the first line says so if it doesn't post) and writes nothing more: no claim, no
+  `UNARMED` line, no retire (with `--carried-from`, the old item still gets its `Carried` line).
+  Check, rewake, restart, retire and a notice's close count that line's wake as the wait's wake, as
+  they do an `Armed` line's. The wake stays armed, and its own run's `check` and `close` handle the
+  wait whether or not the item went Waiting. After a Waiting write that landed, a read that fails
+  starts the first line `UNCHECKED`; one that finds `W<k>-closed` already linked starts it `SPENT`.
+- Any other arm step that fails after the reservation, a Waiting write that a read-back shows didn't
+  land included, claims `W<k>-closed` and, once it wins that claim, posts an `UNARMED` line naming
+  the step and Orca's error, retires the wake when its id is known, writes no status, and says so in
+  the first line. A claim it doesn't win posts no `UNARMED` line: `NOT CLAIMED` (the wake or another
+  run holds W<k>) writes nothing more; `FULL` posts the `Wait blocked` line and `CLOSED` (the item
+  closed meanwhile) nothing, and each then retires a wake whose id it knows (one it can't confirm
+  gets a `Retire unverified` line); any other answer says to reconcile. A won claim whose `UNARMED`
+  line doesn't post, or whose run is past its 5-minute window before that line, starts the first
+  line `UNCLEAR`.
 - Only the run whose `W<k>-closed` link returns an event id sends for W<k> or posts its closing
   record. Every other run whose claim Orca answers `unchanged`, a late, repeated or manually started
   wake included, gets `NOT CLAIMED` and writes and sends nothing. The exceptions never send: `FULL`,
@@ -80,12 +86,13 @@ Each line is one claim the section, the script and its tests establish.
   retire it can't confirm starts the first line `RETIRE UNVERIFIED`), or as `not settled` while
   the wait's latest wake reads disabled or gone, and never send. The Head passes `--trigger wake`
   only in the wake's own run; the script can't tell the two turns apart.
-- `retire` edits only a wake that one of the wait's own lines names (`Armed`, `Rewake`, `UNARMED`
-  or `Retire unverified`); any other id is `REFUSED`, and an item it can't read `UNREADABLE`, with
-  nothing edited. It reports `RETIRED` only when Orca's answer shows the wake disabled and `GONE`
-  only on exactly `Automation not found.`. Any other answer is `UNVERIFIED`, posts a `Retire
-  unverified` line and is said in the first line. Once the wait has its closing record, that old
-  wake can only read `CLOSED` or get `NOT CLAIMED`, so it doesn't hold up the next wait.
+- `retire` edits only a wake that one of the wait's own lines names (`Armed`, `Arm unclear`,
+  `Rewake`, `UNARMED` or `Retire unverified`); any other id is `REFUSED`, and an item it can't read
+  `UNREADABLE`, with nothing edited. It reports `RETIRED` only when Orca's answer shows the wake
+  disabled and `GONE` only on exactly `Automation not found.`. Any other answer is `UNVERIFIED`,
+  posts a `Retire unverified` line and is said in the first line. Once the wait has its closing
+  record, that old wake can only read `CLOSED` or get `NOT CLAIMED`, so it doesn't hold up the next
+  wait.
 - `rewake` gives a wait with no closing record and no wake still due one new one-time wake 16
   minutes out, checked as an arm checks its wake, and posts a `Rewake` line naming it; it links
   nothing. A wait reserved with no record is refused and goes to `close-unarmed`. The wake's run
@@ -116,7 +123,7 @@ Each line is one claim the section, the script and its tests establish.
   the same bot's, the old wait has that line (or is the next wait of an item at the cap), and, when
   the old wait has a record, the owner, sessions, ticket and key match it; a wait with no record is
   matched against nothing. The new record names the old wait, and the old item gets a `Carried`
-  line once the new item is set Waiting.
+  line once the new item is set Waiting or its arm ends `ARM UNCLEAR`.
 - `restart`, read-only, reads every open item and each done or canceled item whose listed links
   show one of its markers. On an open item it lists waits reserved with no record; open waits past
   their deadline or whose wake isn't enabled (disabled, gone, unreadable or none recorded); closed
@@ -143,14 +150,16 @@ words for each Orca answer to a reservation and a claim; arm's `ARMED`, `TAKEN`,
 `UNREADABLE`, `UNCHECKED`, `SPENT` and `OVERTAKEN` cases and two concurrent arms; the values refused
 before any call, the deadline gap and the owner's session among them; each create mismatch closing
 unarmed with the claim before the `UNARMED` line; the Waiting write refused, after a change, or too
-close to its target; two overlapping closes with one send; each reason the fresh check stops a send
-(both snooze kinds, an old undated snooze line, a person's snooze line, `Unsnoozed`, Needs you, a
-closed and reopened item, either session closed, a `Re-send` line already there or not posting, an
-earlier wait's unclear send under the same key here or on the item it was carried from, a failed
-read); `NOT SENT`, `SEND UNCLEAR`, `RETIRE UNVERIFIED` and `STOPPED`; the winner's time window; the
-successor gate with a winner paused before its disposition; a stale notice with W2 armed or Needs
-you set in between; `close-unarmed` and its second read; `reconcile` (note, the 15-minute rule,
-`--final unarmed`, two at once, a failed read after); every retire and rewake outcome, a retire or
+close to its target, or unclear with a failed read-back (`ARM UNCLEAR`, landed or not, then the
+wake's own check and close, its wake counted as the wait's, and a carry's `Carried` line); two
+overlapping closes with one send; each reason the fresh check stops a send (both snooze kinds, an
+old undated snooze line, a person's snooze line, `Unsnoozed`, Needs you, a closed and reopened item,
+either session closed, a `Re-send` line already there or not posting, an earlier wait's unclear send
+under the same key here or on the item it was carried from, a failed read); `NOT SENT`,
+`SEND UNCLEAR`, `RETIRE UNVERIFIED` and `STOPPED`; the winner's time window; the successor gate with
+a winner paused before its disposition; a stale notice with W2 armed or Needs you set in between;
+`close-unarmed` and its second read; `reconcile` (note, the 15-minute rule, `--final unarmed`, two
+at once, a failed read after); every retire and rewake outcome, a retire or
 `close-unarmed --wake-id` of a wake that isn't the wait's refused with nothing edited, each rewake
 hold with no create call, a hold that lands while the claim posts (a snooze line, Needs you)
 spending the claim with no create call, and two rewakes that each read seven claims, of which
@@ -197,10 +206,12 @@ quotes, a backslash, newlines and non-ASCII reaching Orca byte for byte with not
   since the check for an existing line and the post are separate calls.
 - A marker linked by hand: the script trusts any marker it finds, so a `W<k>-closed` linked
   first by anyone takes the claim.
-- Live behaviour. These lines rest on Orca's source, read-only Orca runs and the offline tests;
-  the live tests on disposable items come next, with the Head, and four of them, which put
-  scratch items in front of David, wait for his answer. Mail with `--type question` to a session
-  address is among the untested.
+- Live overlap. The live cases ran on disposable items at `07e2d0f` and passed, some only in part
+  (skills PR 130 lists each), but no two runs overlapped live: T10, T16(a), T20 and T23 rest on the
+  offline tests, as do T5 and T22's hold landing after the claim, and T12(c), Orca's own snooze, was
+  excluded. What changed after `07e2d0f` other than the 5-minute deadline gap (the own-wake checks
+  on `retire` and `close-unarmed --wake-id`, `restart` on closed items, `ARM UNCLEAR`) is tested
+  offline only.
 
 ## Not in this release
 

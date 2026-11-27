@@ -14,7 +14,8 @@ Commands (the first printed line starts with the outcome word):
 
   arm        --item --wait --target --deadline --owner --owner-session --waiting-session
              --ticket --key --record-file [--carried-from <m>/W<j>]
-             ARMED | UNCHECKED | SPENT | OVERTAKEN | TAKEN | BLOCKED | UNARMED | NOT CLAIMED |
+             ARMED | UNCHECKED | SPENT | OVERTAKEN | TAKEN | BLOCKED | UNARMED | ARM UNCLEAR (the
+             Waiting write unclear and its read-back failed: the wake left armed) | NOT CLAIMED |
              CLOSED | FULL | REFUSED | UNREADABLE | UNCLEAR
   check      --item [--wait]                read-only: OPEN | IDLE | CLOSED | NO WAIT | BLOCKED |
                                             UNREADABLE
@@ -26,8 +27,8 @@ Commands (the first printed line starts with the outcome word):
              record posted, the wake not confirmed disabled) | NOT CLAIMED | STOPPED | CLOSED |
              FULL | REFUSED | UNREADABLE | UNCLEAR
   retire     --item --wait --id                RETIRED | GONE | UNVERIFIED | REFUSED (an id no
-                                               Armed, Rewake, UNARMED or Retire unverified
-                                               line of W<k> names) | UNREADABLE
+                                               Armed, Arm unclear, Rewake, UNARMED or Retire
+                                               unverified line of W<k> names) | UNREADABLE
   reconcile  --item --wait --text-file [--final <case>]
              NOTED | RECONCILED | DUPLICATE | UNCHECKED | REFUSED | UNREADABLE | UNCLEAR
   rewake     --item --wait                     REWOKEN | COVERED | HELD | UNCOVERED |
@@ -59,8 +60,8 @@ Rules the code keeps:
     file and passes that.
   - Only the run whose claim returned an event id sends for a wait, posts its closing record
     or retires its wake as part of closing it. Other lines close nothing (`Reconcile note`,
-    `Retire unverified`, `Carried`, `Rewake claim`, `Rewake`, `Wait blocked`). The exceptions
-    never send:
+    `Retire unverified`, `Carried`, `Rewake claim`, `Rewake`, `Wait blocked`, `Arm unclear`).
+    The exceptions never send:
     FULL (the item is at Orca's 50-link cap, so the claim can't be linked) posts a `Wait blocked`
     line unless one is there and retires the wake; `reconcile --final` posts the closing record
     of a wait whose winner stopped (two at once can each post; the first counts, and the later
@@ -91,8 +92,9 @@ Rules the code keeps:
 
 Exit codes: 0 the command's normal outcome (ARMED, OPEN, IDLE, CLAIMED, RETIRED, GONE, NOTED,
 RECONCILED, REWOKEN, COVERED, RESTART; RESERVED for reserve); 1 UNCLEAR, UNREADABLE, UNCHECKED,
-UNVERIFIED, SEND UNCLEAR, RETIRE UNVERIFIED, UNCOVERED, UNRECORDED or INCOMPLETE RESTART; 2 a
-value or file refused before any Orca call; 3 any other outcome, a REFUSED after a read included.
+UNVERIFIED, SEND UNCLEAR, RETIRE UNVERIFIED, ARM UNCLEAR, UNCOVERED, UNRECORDED or INCOMPLETE
+RESTART; 2 a value or file refused before any Orca call; 3 any other outcome, a REFUSED after a
+read included.
 
 Stdlib only, Python 3.9 or later. Offline tests: tooling/evals/test_head_wait.py.
 """
@@ -518,6 +520,8 @@ ARMED_LINE = re.compile(r"Armed, item (\d+) W(\d+): wake (" + UUID + r"), target
 REWAKE_CLAIM_LINE = re.compile(r"Rewake claim, item (\d+) W(\d+): (" + UUID + r")\.")
 REWAKE_LINE = re.compile(r"Rewake, item (\d+) W(\d+): wake (" + UUID + r"), target (" + TIME
                          + r")\.")
+ARM_UNCLEAR_LINE = re.compile(r"Arm unclear, item (\d+) W(\d+): Waiting write unclear and "
+                              r"read-back failed; wake (" + UUID + r") left armed\.")
 WAKE_NAMED_LINE = re.compile(r"(?:UNARMED, item (\d+) W(\d+): [a-z-]+; wake|Retire unverified, "
                              r"item (\d+) W(\d+): wake) (" + UUID + r")\.")
 SNOOZE_LINE = re.compile(r"Snoozed until (\S+)")
@@ -539,6 +543,7 @@ class Wait:
         self.resend = self.blocked = self.carried = None
         self.notes: list = []
         self.rewakes: list = []
+        self.unclear_wakes: list = []  # (line, wake, the record's target) from Arm unclear lines
         self.rewake_claims: list = []
         start = eid(self.reserved_ev)
         tag = f", item {n} W{k}"
@@ -572,6 +577,10 @@ class Wait:
                 m = REWAKE_CLAIM_LINE.fullmatch(first)
                 if m and int(m.group(1)) == n and int(m.group(2)) == k:
                     self.rewake_claims.append(e)
+            elif self.record is not None and first.startswith(f"Arm unclear{tag}: "):
+                m = ARM_UNCLEAR_LINE.fullmatch(first)
+                if m and int(m.group(1)) == n and int(m.group(2)) == k:
+                    self.unclear_wakes.append((e, m.group(3), self.field("target")))
             elif eid(e) > start >= 0 and first.startswith(f"Rewake{tag}: "):
                 m = REWAKE_LINE.fullmatch(first)
                 if m and int(m.group(1)) == n and int(m.group(2)) == k and real_times(m.group(4)):
@@ -584,8 +593,9 @@ class Wait:
         return self.record_fields.group(names.index(name) + 1)
 
     def current_wake(self) -> tuple | None:
-        """(line event, wake id, target) of the latest Armed or Rewake line, or None."""
-        wakes = ([self.armed[:3]] if self.armed else []) + self.rewakes
+        """(line event, wake id, target) of the latest Armed, Arm unclear or Rewake line, or
+        None. An Arm unclear line's wake runs at the record's target."""
+        wakes = ([self.armed[:3]] if self.armed else []) + self.unclear_wakes + self.rewakes
         return max(wakes, key=lambda w: eid(w[0])) if wakes else None
 
     def wake_id(self) -> str | None:
@@ -594,10 +604,10 @@ class Wait:
 
 
 def recorded_wakes(item: Item, w: Wait) -> set:
-    """The wake ids the item's own lines name for W<k> after its reservation: its Armed and
-    Rewake lines, and the UNARMED and Retire unverified lines the script posts for a wake it made
-    or retired."""
-    ids = {x[1] for x in ([w.armed] if w.armed else []) + w.rewakes}
+    """The wake ids the item's own lines name for W<k> after its reservation: its Armed, Arm
+    unclear and Rewake lines, and the UNARMED and Retire unverified lines the script posts for a
+    wake it made or retired."""
+    ids = {x[1] for x in ([w.armed] if w.armed else []) + w.unclear_wakes + w.rewakes}
     start = eid(w.reserved_ev)
     for e in item.own_comments() if start >= 0 else ():
         m = WAKE_NAMED_LINE.fullmatch(e["data"]["text"].split("\n", 1)[0])
@@ -882,9 +892,20 @@ def step_waiting(n: int, k: int, wake: str, scratch: Scratch) -> tuple:
                     scratch.file("armed.txt", armed), "--json"])
     landed = posted(res) is not None
     if not landed and may_have_landed(res):
-        again, _ = read_item(n)
-        landed = bool(again and again.status == "waiting" and isinstance(again.wait_text, str)
-                      and again.wait_text.startswith(f"W{k} "))
+        again, why = read_item(n)
+        if again is None:  # the write may have landed: leave the wait and its wake to the wake
+            line = (f"Arm unclear, item {n} W{k}: Waiting write unclear and read-back failed; "
+                    f"wake {wake} left armed.\nOrca: {clip(res.describe())}\nRead: {clip(why)}")
+            res2 = post(n, line, scratch, "arm-unclear.txt")
+            note = posted(res2)
+            tail = f"Arm unclear line {note}" if note else \
+                f"the Arm unclear line did not post ({res2.describe()})"
+            return EXIT_UNCLEAR, f"ARM UNCLEAR item {n} W{k}: the Waiting write's answer was " \
+                                 f"unclear ({res.describe()}) and the read after it failed " \
+                                 f"({why}); wake {wake}, target {target}, left armed for its run " \
+                                 f"to check and close; {tail}", False
+        landed = (again.status == "waiting" and isinstance(again.wait_text, str)
+                  and again.wait_text.startswith(f"W{k} "))
     if not landed:
         return close_unarmed(n, k, "waiting", f"bot item set: {res.describe()}", wake,
                              scratch) + (False,)
@@ -992,7 +1013,7 @@ def cmd_arm(a: argparse.Namespace) -> tuple:
             return close_unarmed(n, k, "verify" if wake or err.startswith("verify") else "create",
                                  err, wake, scratch, wake_unknown=unknown)
         code, line, written = step_waiting(n, k, wake, scratch)
-        if written and a.carried_from:
+        if (written or line.startswith("ARM UNCLEAR")) and a.carried_from:  # the wait is live
             m, j = a.carried_from
             res = post(m, f"Carried, item {m} W{j}: to item {n} W{k}, wake {wake}.", scratch,
                        "carried.txt")
@@ -1040,6 +1061,9 @@ def cmd_close_unarmed(a: argparse.Namespace) -> tuple:
     if w.armed is not None:
         return EXIT_OTHER, f"REFUSED item {n} W{k}: it has an Armed line {w.armed[0]['id']}; " \
                            "an armed wait is closed by close, not unarmed"
+    if w.unclear_wakes:
+        return EXIT_OTHER, f"REFUSED item {n} W{k}: it has an Arm unclear line " \
+                           f"{w.unclear_wakes[0][0]['id']}; that wait stays with its wake"
     if a.step == "reservation-without-record" and w.record is not None:
         return EXIT_OTHER, f"REFUSED item {n} W{k}: it has a record {w.record['id']}"
     if wake is not None:
@@ -1256,8 +1280,9 @@ def cmd_close(a: argparse.Namespace) -> tuple:
     if a.trigger != "wake" and a.case == "not-settled":
         wake = w.wake_id()
         if wake is None:
-            return EXIT_OTHER, f"REFUSED item {n} W{k}: no Armed or Rewake line, so no wake to " \
-                               "read; an arm cut off before Waiting is closed with close-unarmed"
+            return EXIT_OTHER, f"REFUSED item {n} W{k}: no Armed, Arm unclear or Rewake line, so " \
+                               "no wake to read; an arm cut off before Waiting is closed with " \
+                               "close-unarmed"
         state = wake_state(wake)
         if state not in ("disabled", "gone"):
             return EXIT_OTHER, f"REFUSED item {n} W{k}: a {a.trigger} closes as not settled " \
@@ -1371,8 +1396,8 @@ def cmd_retire(a: argparse.Namespace) -> tuple:
     if item is None:
         return EXIT_UNCLEAR, f"UNREADABLE item {n} W{k}: {why}; nothing edited"
     if wake not in recorded_wakes(item, Wait(item, k)):
-        return EXIT_OTHER, f"REFUSED item {n} W{k}: no Armed, Rewake, UNARMED or Retire " \
-                           f"unverified line of W{k} names wake {wake}; nothing edited"
+        return EXIT_OTHER, f"REFUSED item {n} W{k}: no Armed, Arm unclear, Rewake, UNARMED or " \
+                           f"Retire unverified line of W{k} names wake {wake}; nothing edited"
     scratch = Scratch()
     try:
         line = retire(n, k, wake, scratch)
@@ -1400,6 +1425,10 @@ def cmd_reconcile(a: argparse.Namespace) -> tuple:
     if w.closing is not None:
         return EXIT_OTHER, f"REFUSED item {n} W{k}: it already has its closing record " \
                            f"{w.closing['id']}"
+    if final == "unarmed" and w.unclear_wakes:
+        return EXIT_OTHER, f"REFUSED item {n} W{k}: it has an Arm unclear line " \
+                           f"{w.unclear_wakes[0][0]['id']}, so its wake may have armed it; " \
+                           "reconcile it with a disposition"
     if final == "unarmed" and w.armed is not None:
         return EXIT_OTHER, f"REFUSED item {n} W{k}: it has an Armed line {w.armed[0]['id']}, so " \
                            "it was armed; reconcile it with a disposition"
@@ -1460,7 +1489,8 @@ def rewake_time() -> str:
 
 def cmd_rewake(a: argparse.Namespace) -> tuple:
     """A fresh one-time wake for a wait that has no closing record and no wake still due (its
-    latest Armed or Rewake wake's time is ahead and Orca shows it enabled; a wake whose state
+    latest Armed, Arm unclear or Rewake wake's time is ahead and Orca shows it enabled; a wake whose
+    state
     can't be read counts as not due, so a spare can result, and a spare only runs check).
 
     Nothing is made while the item holds the wait (item_hold without the reopened rule: Needs

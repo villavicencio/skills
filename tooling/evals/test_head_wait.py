@@ -23,9 +23,11 @@ Checked (each name below is printed with ok or FAIL):
   refused before any call (the deadline gap and the owner's session among them), create
   verification mismatches closing unarmed with the claim before the UNARMED line, the Waiting
   write refused or overtaken or after a change or too close, an unreadable Waiting result read
-  back, UNCHECKED, SPENT and UNREADABLE; the successor gate (a closed marker alone never lets
-  W<k+1> arm; a paused winner blocks it until its closing record lands); close: one claim winner
-  among concurrent closes, one send, the send only inside the winning run after its Re-send line
+  back, and one whose read-back fails too (ARM UNCLEAR, landed or not, with the wake's own check
+  and close after it, its wake counted as the wait's, and a carry's Carried line), UNCHECKED,
+  SPENT and UNREADABLE; the successor gate (a closed marker alone never lets W<k+1> arm; a
+  paused winner blocks it until its closing record lands); close: one claim winner among
+  concurrent closes, one send, the send only inside the winning run after its Re-send line
   and a fresh read, every reason the fresh check stops a send (the snooze rule, an earlier unclear
   send under the same key here or along the carry), an unclear send recorded with request-show run
   once, the winner's time window; notice rules; retire RETIRED, GONE, UNVERIFIED, and REFUSED
@@ -1584,7 +1586,8 @@ def test_more() -> None:
         code, out, _ = c.run(*c.close_wait(7, 1, "not-settled", "notice",
                                            "Evidence: e\nBlocker: wake gone\nNext check: n\n"))
         check("notice: not settled refused when the wait has no Armed line",
-              paused and out.startswith("REFUSED") and "no Armed or Rewake line" in out, out)
+              paused and out.startswith("REFUSED")
+              and "no Armed, Arm unclear or Rewake line" in out, out)
     finally:
         c.close()
     c = armed_case()
@@ -2557,6 +2560,116 @@ def test_review_round1() -> None:
         c.close()
 
 
+def test_review_round2() -> None:
+    """MergeWren round 2 on PR 130: an unclear Waiting write whose read-back fails leaves the wake
+    armed (ARM UNCLEAR) and closes nothing; the wake's own run handles the wait either way."""
+    for label, mode, status in (("landed", "after-error", "waiting"),
+                                ("did not land", "error", "in_progress")):
+        c = Case({7: {}})
+        try:
+            c.fake.fault(["bot", "item", "set"], mode, code="items_unavailable")
+            # shows: the arm's first read, step 4's fresh read, then the read-back, which fails
+            c.fake.fault(["bot", "item", "show"], "error", code="items_unavailable", skip=2)
+            code, out, _ = c.arm(7, 1)
+            st = c.fake.load()
+            wake = list(st["automations"])[0]
+            texts = [e["data"]["text"] for e in c.fake.comments(7)]
+            armed = [t for t in texts if t.startswith("Armed, item 7 W1:")]
+            check(f"arm unclear ({label}): ARM UNCLEAR, exit 1, an Arm unclear line naming the "
+                  "wake, the wake left enabled, no claim, no UNARMED line, no automations edit",
+                  code == 1 and out.startswith("ARM UNCLEAR item 7 W1") and f"wake {wake}" in out
+                  and [t for t in texts if t.startswith(
+                      f"Arm unclear, item 7 W1: Waiting write unclear and read-back failed; wake "
+                      f"{wake} left armed.")]
+                  and st["automations"][wake]["enabled"] is True
+                  and "head-wait/item-7/W1-closed" not in c.fake.refs(7)
+                  and not [t for t in texts if t.startswith("UNARMED")]
+                  and not calls(c.fake.log(), "automations", "edit")
+                  and st["items"]["7"]["status"] == status
+                  and bool(armed) == (status == "waiting"), out)
+            code, out, _ = c.run("check", "--item", "7", "--wait", "W1")
+            check(f"arm unclear ({label}): the wake's check reads the wait OPEN with its record "
+                  "and that wake", code == 0 and out.startswith("OPEN item 7 W1: record")
+                  and f"wake {wake} at" in out, out)
+            code, out, _ = c.run("rewake", "--item", "7", "--wait", "W1")
+            code2, out2, _ = c.run("restart", "--bot", BOT_NAME)
+            check(f"arm unclear ({label}): rewake reads that wake COVERED and restart doesn't "
+                  "flag it", code == 0 and out.startswith("COVERED item 7 W1")
+                  and "ITEM 7 W1: open, and its wake" not in out2, f"{out} | {out2}")
+            code, out, _ = c.run(*c.close_wait(7, 1, "settled", "wake"))
+            disp = [t for t in (e["data"]["text"] for e in c.fake.comments(7))
+                    if t.startswith("Wake disposition, item 7 W1:")]
+            check(f"arm unclear ({label}): the wake's close claims W1 and posts its disposition",
+                  code == 0 and out.startswith("CLAIMED item 7 W1: settled") and len(disp) == 1
+                  and "head-wait/item-7/W1-closed" in c.fake.refs(7), out)
+        finally:
+            c.close()
+    c = Case({7: {}})
+    try:  # not landed: a notice's settled close retires the Arm unclear wake; retire accepts it
+        c.fake.fault(["bot", "item", "set"], "error", code="items_unavailable")
+        c.fake.fault(["bot", "item", "show"], "error", code="items_unavailable", skip=2)
+        c.arm(7, 1)
+        wake = list(c.fake.load()["automations"])[0]
+        code, out, _ = c.run(*c.close_wait(7, 1, "settled", "look"))
+        check("arm unclear (did not land): a look's settled close retires the Arm unclear wake",
+              code == 0 and out.startswith("CLAIMED item 7 W1: settled") and "RETIRED" in out
+              and c.fake.load()["automations"][wake]["enabled"] is False, out)
+        code, out, _ = c.run("retire", "--item", "7", "--wait", "W1", "--id", wake)
+        check("arm unclear (did not land): retire takes the wake the Arm unclear line names",
+              code == 0 and out.startswith("RETIRED item 7 W1"), out)
+    finally:
+        c.close()
+    c = Case({7: {}})
+    try:  # not landed: close-unarmed and reconcile --final unarmed leave it to its wake
+        c.fake.fault(["bot", "item", "set"], "error", code="items_unavailable")
+        c.fake.fault(["bot", "item", "show"], "error", code="items_unavailable", skip=2)
+        c.arm(7, 1)
+        n_log = len(c.fake.log())
+        code, out, _ = c.run("close-unarmed", "--item", "7", "--wait", "W1", "--step", "manual")
+        check("arm unclear (did not land): close-unarmed refuses it, nothing linked or posted",
+              code == 3 and out.startswith("REFUSED item 7 W1: it has an Arm unclear line")
+              and not calls(c.fake.log()[n_log:], "bot", "item", "link")
+              and not calls(c.fake.log()[n_log:], "bot", "item", "comment"), out)
+        c.run("claim", "--item", "7", "--wait", "W1")  # a winner that stopped
+        code, out, _ = c.run("reconcile", "--item", "7", "--wait", "W1", "--text-file", c.write(
+            7, 1, "final", "Evidence: e\nBlocker: none\nNext check: none\n"), "--final", "unarmed")
+        check("arm unclear (did not land): reconcile --final unarmed refuses it",
+              code == 3 and out.startswith("REFUSED item 7 W1: it has an Arm unclear line"), out)
+    finally:
+        c.close()
+    c = Case({7: {"links": 47}, 8: {}})
+    try:  # a carry whose arm ends ARM UNCLEAR still gets its Carried line: the new wait is live
+        c.arm(7, 1)
+        c.fake.fixture_link(7, "/tmp/late-1")
+        c.fake.fixture_link(7, "/tmp/late-2")
+        c.run(*c.close_wait(7, 1, "re-sent", body="Q.\n",
+                            text="Evidence: e\nBlocker: b\nNext check: n\n"))
+        c.fake.fault(["bot", "item", "set"], "error", code="items_unavailable")
+        c.fake.fault(["bot", "item", "show"], "error", code="items_unavailable", skip=2, ref="8")
+        code, out, _ = c.arm(8, 1, **{"carried-from": "7/W1"})
+        carried = [e["data"]["text"] for e in c.fake.comments(7)
+                   if e["data"]["text"].startswith("Carried, item 7 W1: to item 8 W1")]
+        check("arm unclear: with --carried-from, the old item gets its Carried line",
+              code == 1 and out.startswith("ARM UNCLEAR item 8 W1") and len(carried) == 1
+              and "Carried line on item 7: e" in out, out)
+    finally:
+        c.close()
+    c = Case({7: {}})
+    try:
+        c.fake.fault(["bot", "item", "set"], "error", code="items_unavailable")
+        c.fake.fault(["bot", "item", "show"], "error", code="items_unavailable", skip=2)
+        c.fake.fault(["bot", "item", "comment"], "error", code="items_unavailable",
+                     text_prefix="Arm unclear")
+        code, out, _ = c.arm(7, 1)
+        check("arm unclear: an Arm unclear line that doesn't post is said in the first line, and "
+              "nothing else is written", code == 1 and out.startswith("ARM UNCLEAR item 7 W1")
+              and "the Arm unclear line did not post" in out.split("\n")[0]
+              and "head-wait/item-7/W1-closed" not in c.fake.refs(7)
+              and list(c.fake.load()["automations"].values())[0]["enabled"] is True, out)
+    finally:
+        c.close()
+
+
 def main() -> int:
     global SCRIPT, HW
     if len(sys.argv) > 1:
@@ -2564,7 +2677,7 @@ def main() -> int:
     HW = load_module()
     for test in (test_static, test_outcomes, test_arm, test_close, test_successor_gate,
                  test_retire, test_full, test_restart, test_text_and_values, test_more,
-                 test_recheck, test_fix_round1, test_review_round1):
+                 test_recheck, test_fix_round1, test_review_round1, test_review_round2):
         test()
     print()
     if failures:

@@ -32,8 +32,10 @@ Each line is one claim the section, the script and its tests establish.
 - An arm step that fails after the reservation claims `W<k>-closed`, posts an `UNARMED` line
   naming the step and Orca's error, retires the wake when its id is known, writes no status, and
   says so in the first line. When the wake already holds W<k>, it writes nothing more.
-- Only the run whose `W<k>-closed` link returns an event id acts on W<k>. Every other run, a late,
-  repeated or manually started wake included, gets `NOT CLAIMED` and writes and sends nothing.
+- Only the run whose `W<k>-closed` link returns an event id acts on W<k>. Every other run whose
+  claim Orca answers `unchanged`, a late, repeated or manually started wake included, gets
+  `NOT CLAIMED` and writes and sends nothing. The one exception is `FULL`, below, which sends
+  nothing.
 - A next wait arms only after every earlier wait has its closed marker and a closing record (a
   `Wake disposition` or `UNARMED` line) after it, so a winner that stopped after its claim blocks
   the next wait until its record lands or the Head reconciles it.
@@ -48,23 +50,26 @@ Each line is one claim the section, the script and its tests establish.
   a disposition file without those lines.
 - The one re-send happens only inside the `close` run that won the claim, after a fresh read of
   the item and of both sessions and after a `Re-send` line is posted. No other command sends.
-- A re-send whose answer is an error or can't be read is not sent again: the disposition records
-  `not settled`, blocker `re-send unclear`, and, when Orca printed one, its request id with the
-  outcome of one read-only `orca orchestration request-show`.
-- A claim winner starts no write or send once 5 minutes have passed since it claimed, and
+- A re-send whose answer is an error or can't be read is not sent again: the first line starts
+  `SEND UNCLEAR`, and the disposition records `not settled`, blocker `re-send unclear`, and, when
+  Orca printed one, its request id with the outcome of one read-only `orca orchestration
+  request-show`. A planned re-send that the fresh check stopped starts the first line `NOT SENT`.
+- A claim winner starts no write, send or retire once 5 minutes have passed since it claimed, and
   `reconcile --final` (the only other closing record) is refused until 15 minutes after the
   claim, so a reconciliation writes no second disposition while the winner can still post. A
   reconcile note before then records evidence only and unblocks nothing.
-- A notice never sends, and closes a wait only as `settled`, or as `not settled` while the wake
-  reads disabled or gone.
+- A notice never sends, and closes a wait only as `settled` (then retires its wake), or as
+  `not settled` while the wake its `Armed` line names reads disabled or gone.
 - `retire` reports `RETIRED` only when Orca's answer shows the wake disabled and `GONE` only on
   exactly `Automation not found.`. Any other answer is `UNVERIFIED`, posts a `Retire unverified`
   line and is said in the first line. Once the wait has its closing record, that old wake can
   only read `CLOSED` or get `NOT CLAIMED`, so it doesn't hold up the next wait.
-- At Orca's 50-link cap a claim answers `FULL`: the script posts a `Wait blocked` line, retires
-  the wake, sends nothing, and completes or cancels nothing. `arm --carried-from <n>/W<k>` arms
-  the work on a fresh item with the old wait named in its record, and posts a `Carried` line on
-  the old item only after that arm is `ARMED`.
+- At Orca's 50-link cap a claim answers `FULL`: the script posts one `Wait blocked` line for the
+  wait, retires the wake, sends nothing, and completes or cancels nothing. `arm --carried-from
+  <n>/W<k>` arms the work on a fresh item only when the old wait has that line (or is the next
+  wait of an item at the cap) and the owner, sessions, ticket and key match its record; the new
+  record names the old wait, and the old item gets a `Carried` line only after that arm is
+  `ARMED`.
 - `restart`, read-only, lists open waits with no record, past their deadline or whose wake is
   disabled or gone; closed waits with no closing record; waits blocked at the cap, carried or
   not; a Waiting note naming a spent or superseded wait; markers another bot linked; and items
@@ -84,12 +89,16 @@ lock, faults that fail a call, answer something that isn't Orca's JSON, land and
 time out, or pause until released). It checks the outcome words for each Orca answer to a
 reservation and a claim; arm's `ARMED`, `TAKEN` and `BLOCKED` cases, two concurrent arms; each
 create mismatch closing unarmed with the claim before the `UNARMED` line; the Waiting write
-refused, overtaken, or after a change; two overlapping closes with one send; each reason the
-fresh check stops a send; an unclear send; the winner's time window; the successor gate with a
-winner paused before its disposition; a stale notice with W2 armed or Needs you set in between;
-every retire outcome; FULL and carrying to a fresh item; restart reading only; and free text with
-`$(...)`, backticks, both quotes, a backslash, newlines and non-ASCII reaching Orca byte for byte
-with nothing run.
+refused, overtaken, after a change, or too close to its target; two overlapping closes with one
+send; the reasons the fresh check stops a send (both snooze kinds, Needs you, a closed and
+reopened item, either session closed, a `Re-send` line already there or not posting, a failed
+read); `NOT SENT`, `SEND UNCLEAR` and `STOPPED`; the winner's time window; the successor gate with
+a winner paused before its disposition; a stale notice with W2 armed or Needs you set in between;
+`close-unarmed`, `reconcile` (note, the 15-minute rule, `--final unarmed`); every retire outcome;
+FULL, its one line, and carrying to a fresh item, checked and refused; restart reading only and
+each finding; and free text with `$(...)`, backticks, both quotes, a backslash, newlines and
+non-ASCII reaching Orca byte for byte with nothing run. Twelve copies of the script, each with one
+guard removed, each fail the tests.
 
 ## Not guaranteed
 

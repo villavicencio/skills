@@ -219,6 +219,9 @@ class FakeOrca:
                     continue
                 if f.get("ref") and f["ref"] not in argv:
                     continue
+                if f.get("skip", 0) > 0:
+                    f["skip"] -= 1
+                    continue
                 if f.get("text_prefix"):
                     path = argv[argv.index("--text-file") + 1] if "--text-file" in argv else None
                     if not path or not Path(path).read_text().startswith(f["text_prefix"]):
@@ -920,8 +923,8 @@ def test_close() -> None:
                                                text="Evidence: e\nBlocker: b\nNext check: n\n"))
             disp = [e["data"]["text"] for e in c.fake.comments(7)
                     if e["data"]["text"].startswith("Wake disposition")]
-            check(f"close: {label} stops the re-send; recorded as {want}",
-                  not c.fake.load()["messages"] and disp
+            check(f"close: {label} stops the re-send; first word NOT SENT; recorded as {want}",
+                  out.startswith("NOT SENT item 7 W1") and not c.fake.load()["messages"] and disp
                   and disp[0].startswith(f"Wake disposition, item 7 W1: {want}.")
                   and "Planned: re-sent" in disp[0], out)
         finally:
@@ -948,11 +951,13 @@ def test_close() -> None:
         log = c.fake.log()
         disp = [e["data"]["text"] for e in c.fake.comments(7)
                 if e["data"]["text"].startswith("Wake disposition")]
-        check("close: an unclear send runs request-show once, records the request id, and the "
-              "case is not settled", len(calls(log, "orchestration", "send")) == 1
+        check("close: an unclear send prints SEND UNCLEAR, runs request-show once, records the "
+              "request id, and the case is not settled with blocker re-send unclear",
+              out.startswith("SEND UNCLEAR item 7 W1") and code == 1
+              and len(calls(log, "orchestration", "send")) == 1
               and len(calls(log, "orchestration", "request-show")) == 1
-              and disp and "not settled" in disp[0] and req in disp[0]
-              and "re-send unclear" in disp[0], out)
+              and disp and disp[0].startswith("Wake disposition, item 7 W1: not settled.")
+              and req in disp[0] and "Blocker: re-send unclear." in disp[0], out)
         code, out, _ = c.run(*c.close_wait(7, 1, "re-sent", body="Q.\n",
                                            text="Evidence: e\nBlocker: b\nNext check: n\n"))
         check("close: no second send for that wait", out.startswith("NOT CLAIMED")
@@ -1021,9 +1026,9 @@ def test_close() -> None:
         check("notice: not settled is refused while the wake is enabled",
               out.startswith("REFUSED") and "enabled" in out
               and not calls(c.fake.log()[n_before:], "bot", "item", "link"), out)
-        code, out, _ = c.run(*c.close_wait(7, 1, "settled", "notice"), "--retire")
+        code, out, _ = c.run(*c.close_wait(7, 1, "settled", "notice"))
         wake = list(c.fake.load()["automations"].values())[0]
-        check("notice: settled with --retire -> CLAIMED, disposition, RETIRED, no send",
+        check("notice: settled -> CLAIMED, disposition, then the wake RETIRED, no send",
               out.startswith("CLAIMED item 7 W1: settled") and "RETIRED" in out
               and wake["enabled"] is False and not c.fake.load()["messages"], out)
     finally:
@@ -1119,7 +1124,7 @@ def test_successor_gate() -> None:
             else:
                 c.fake.fixture_status(7, "needs_you")
             before = c.fake.load()
-            code, out, _ = c.run(*c.close_wait(7, 1, "settled", "notice"), "--retire")
+            code, out, _ = c.run(*c.close_wait(7, 1, "settled", "notice"))
             after = c.fake.load()
             item = after["items"]["7"]
             check(f"stale notice ({label} in between): NOT CLAIMED, and the item, its links and "
@@ -1135,7 +1140,7 @@ def test_successor_gate() -> None:
     try:
         c.fake.fault(["automations", "edit"], "error", code="runtime_error",
                      message="connection reset")
-        code, out, _ = c.run(*c.close_wait(7, 1, "settled", "notice"), "--retire")
+        code, out, _ = c.run(*c.close_wait(7, 1, "settled", "notice"))
         code2, out2, _ = c.arm(7, 2)
         lines = [e["data"]["text"] for e in c.fake.comments(7)
                  if e["data"]["text"].startswith("Retire unverified, item 7 W1:")]
@@ -1266,9 +1271,9 @@ def test_restart() -> None:
         st["items"]["7"]["wait"]["text"] = "W1 wake 0000abcd by later; record e1"
         c.fake.save(st)
         code, out, _ = c.run("restart", "--bot", BOT_NAME)
-        check("restart: flags a Waiting note naming a superseded wake",
-              "ITEM 7: Waiting names W1, which is closed" in out
-              or "superseded by W2" in out, out)
+        check("restart: flags a Waiting note naming a spent and superseded wait",
+              "ITEM 7: Waiting names W1, which is closed (a spent wake), superseded by W2" in out,
+              out)
     finally:
         c.close()
 
@@ -1342,13 +1347,250 @@ def test_text_and_values() -> None:
           f"head_wait.py dv {HW.VERSION}", code.stdout)
 
 
+def test_more() -> None:
+    """Paths the first review found untested."""
+    # more reasons the fresh check stops a send
+    for label, setup in (
+            ("the item closed and reopened after the record",
+             lambda c: (c.fake.fixture_status(7, "done"), c.fake.fixture_status(7, "in_progress"))),
+            ("a Re-send line already there", lambda c: c.fake.fixture_comment(
+                7, "Re-send, item 7 W1: to x at 2026-01-01T00:00:00Z.")),
+            ("the fresh read failing", lambda c: c.fake.fault(
+                ["bot", "item", "show"], "error", code="items_unavailable", skip=1, times=5))):
+        c = armed_case()
+        try:
+            setup(c)
+            code, out, _ = c.run(*c.close_wait(7, 1, "re-sent", body="Q.\n",
+                                               text="Evidence: e\nBlocker: b\nNext check: n\n"))
+            check(f"close: {label} stops the re-send (NOT SENT, no message)",
+                  out.startswith("NOT SENT item 7 W1") and not c.fake.load()["messages"], out)
+        finally:
+            c.close()
+
+    # STOPPED: a closing record lands between the claim and the fresh read
+    c = armed_case()
+    try:
+        flag = c.root / "go"
+        c.fake.fault(["bot", "item", "show"], "pause", skip=1, flag=str(flag))
+        x = c.popen(*c.close_wait(7, 1, "settled", "wake"))
+        paused = wait_for_waiters(flag, 1)
+        c.fake.fixture_comment(7, "Wake disposition, item 7 W1: settled (reconciled). x")
+        flag.write_text("")
+        out, _ = x.communicate(timeout=60)
+        disp = [e for e in c.fake.comments(7) if e["data"]["text"].startswith("Wake disposition")]
+        check("close: a closing record already there after the claim -> STOPPED, nothing posted",
+              paused and out.startswith("STOPPED item 7 W1") and len(disp) == 1, out)
+    finally:
+        c.close()
+
+    # target too close at the Waiting write
+    c = Case({7: {}})
+    try:
+        c.run("reserve", "--item", "7", "--wait", "W1")
+        args = c.arm_args(7, 1, target_s=0, deadline_s=600)
+        args[0] = "record"
+        c.run(*args)
+        wake = c.run("create", "--item", "7", "--wait", "W1")[1].split("wake ")[-1]
+        with c.inproc() as hw:
+            real = hw.now_s
+            hw.now_s = lambda: real() + 90
+            buf = io.StringIO()
+            try:
+                with contextlib.redirect_stdout(buf):
+                    hw.main(["waiting", "--item", "7", "--wait", "W1", "--wake-id", wake])
+            finally:
+                hw.now_s = real
+        check("waiting: a target under a minute away closes unarmed (target-too-close), no "
+              "Waiting write", buf.getvalue().startswith("UNARMED item 7 W1: target-too-close")
+              and not calls(c.fake.log(), "bot", "item", "set"), buf.getvalue())
+    finally:
+        c.close()
+
+    # close-unarmed and reconcile --final unarmed
+    c = Case({7: {}})
+    try:
+        c.run("reserve", "--item", "7", "--wait", "W1")
+        code, out, _ = c.run("close-unarmed", "--item", "7", "--wait", "W1", "--step",
+                             "reservation-without-record")
+        texts = [e["data"]["text"] for e in c.fake.comments(7)]
+        code2, out2, _ = c.run("check", "--item", "7")
+        check("close-unarmed: a reservation with no record -> UNARMED line; the item is idle again",
+              out.startswith("UNARMED item 7 W1: reservation-without-record")
+              and any(t.startswith("UNARMED, item 7 W1: reservation-without-record; wake none.")
+                      for t in texts) and out2.startswith("IDLE item 7: no open wait; the next is "
+                                                          "W2"), out + " | " + out2)
+    finally:
+        c.close()
+    c = armed_case()
+    try:
+        code, out, _ = c.run("close-unarmed", "--item", "7", "--wait", "W1", "--step", "manual")
+        check("close-unarmed: refused on an armed wait (it has an Armed line)",
+              out.startswith("REFUSED") and "Armed line" in out
+              and "head-wait/item-7/W1-closed" not in c.fake.refs(7), out)
+    finally:
+        c.close()
+    c = Case({7: {}})
+    try:
+        c.run("reserve", "--item", "7", "--wait", "W1")
+        c.run("claim", "--item", "7", "--wait", "W1")
+        st = c.fake.load()
+        for e in st["events"]:
+            if e["kind"] == "linked" and e["data"]["links"] == ["file:head-wait/item-7/W1-closed"]:
+                e["at"] -= 16 * 60 * 1000
+        c.fake.save(st)
+        f = c.write(7, 1, "final", "Evidence: the reserving chat ended with no record.\n")
+        code, out, _ = c.run("reconcile", "--item", "7", "--wait", "W1", "--text-file", f,
+                             "--final", "settled")
+        code2, out2, _ = c.run("reconcile", "--item", "7", "--wait", "W1", "--text-file", f,
+                               "--final", "unarmed")
+        code3, out3, _ = c.run(*c.arm_args(7, 2))
+        check("reconcile: no disposition without a record; --final unarmed closes it; W2 arms",
+              out.startswith("REFUSED") and out2.startswith("RECONCILED item 7 W1: unarmed")
+              and out3.startswith("ARMED item 7 W2"), f"{out} | {out2} | {out3}")
+    finally:
+        c.close()
+
+    # notice rules: no Armed line, or a wake whose enabled can't be read
+    c = Case({7: {}})
+    try:
+        c.run("reserve", "--item", "7", "--wait", "W1")
+        args = c.arm_args(7, 1)
+        args[0] = "record"
+        c.run(*args)
+        code, out, _ = c.run(*c.close_wait(7, 1, "not-settled", "notice",
+                                           "Evidence: e\nBlocker: wake gone\nNext check: n\n"))
+        check("notice: not settled refused when the wait has no Armed line",
+              out.startswith("REFUSED") and "no Armed line" in out, out)
+    finally:
+        c.close()
+    c = armed_case()
+    try:
+        st = c.fake.load()
+        for a in st["automations"].values():
+            a["enabled"] = "yes"
+        c.fake.save(st)
+        code, out, _ = c.run(*c.close_wait(7, 1, "not-settled", "notice",
+                                           "Evidence: e\nBlocker: wake gone\nNext check: n\n"))
+        check("notice: not settled refused when the wake's enabled can't be read",
+              out.startswith("REFUSED") and "unreadable" in out, out)
+    finally:
+        c.close()
+
+    # retire past a winner's window isn't tried
+    c = armed_case()
+    try:
+        with c.inproc() as hw:
+            clock = hw.Clock()
+            clock.wall -= 400
+            sc = hw.Scratch()
+            try:
+                line = hw.retire(7, 1, list(c.fake.load()["automations"])[0], sc, clock)
+            finally:
+                sc.close()
+        check("retire: inside a run past its window it isn't tried, and says so",
+              line.startswith("UNVERIFIED") and "not tried" in line
+              and not calls(c.fake.log(), "automations", "edit"), line)
+    finally:
+        c.close()
+
+    # FULL twice posts one Wait blocked line
+    c = Case({7: {"links": 47}})
+    try:
+        c.arm(7, 1)
+        c.fake.fixture_link(7, "/tmp/late-1")
+        c.fake.fixture_link(7, "/tmp/late-2")
+        args = c.close_wait(7, 1, "settled", "notice")
+        c.run(*args)
+        code, out, _ = c.run(*args)
+        blocked = [e for e in c.fake.comments(7) if e["data"]["text"].startswith("Wait blocked")]
+        check("full: a second FULL run posts no second Wait blocked line", len(blocked) == 1
+              and "already there" in out, out)
+    finally:
+        c.close()
+
+    # carried-from is checked against the old wait
+    for label, over, setup, want in (
+            ("an old wait that isn't blocked", {}, "open", "has no Wait blocked line"),
+            ("another key than the old record", {"key": f"VIL-1218/{WAIT_S}/Q9"}, "full",
+             "key differs"),
+            ("another owner than the old record", {"owner": "orca_session_id:" + OWNER_S[:-1]
+                                                   + "2"}, "full", "owner differs")):
+        c = Case({7: {"links": 47}, 8: {}})
+        try:
+            c.arm(7, 1)
+            if setup == "full":
+                c.fake.fixture_link(7, "/tmp/late-1")
+                c.fake.fixture_link(7, "/tmp/late-2")
+                c.run(*c.close_wait(7, 1, "settled", "notice"))
+            over = dict(over, **{"carried-from": "7/W1"})
+            code, out, _ = c.arm(8, 1, **over)
+            check(f"carry: refused from {label}", out.startswith("BLOCKED item 8 W1")
+                  and want in out and not c.fake.refs(8), out)
+        finally:
+            c.close()
+    c = Case({7: {"links": 49}, 8: {}})
+    try:
+        code, out, _ = c.arm(7, 1)
+        code2, out2, _ = c.arm(8, 1, **{"carried-from": "7/W1"})
+        carried = [e for e in c.fake.comments(7) if e["data"]["text"].startswith("Carried")]
+        check("carry: allowed from the next wait of an item at the cap (arm there BLOCKED)",
+              out.startswith("BLOCKED") and out2.startswith("ARMED item 8 W1") and carried,
+              out + " | " + out2)
+    finally:
+        c.close()
+
+    # restart: more findings
+    c = Case({7: {"links": 46}})
+    try:
+        c.arm(7, 1)
+        st = c.fake.load()
+        for e in st["events"]:
+            if e["kind"] == "commented" and e["data"]["text"].startswith("Wait record"):
+                head, rest = e["data"]["text"].split("\n", 1)
+                import re as _re
+                head = _re.sub(r"Deadline: \S+ ", "Deadline: 2020-01-01T00:00:00+00:00 ", head)
+                e["data"]["text"] = head + "\n" + rest
+        c.fake.save(st)
+        c.fake.fixture_link(7, "head-wait/item-99/W1")
+        c.fake.fixture_link(7, "head-wait/item-7/W5-closed")
+        code, out, _ = c.run("restart", "--bot", BOT_NAME)
+        for want in ("ITEM 7 W1: open past its deadline 2020-01-01T00:00:00+00:00",
+                     "ITEM 7: a marker names another item: head-wait/item-99/W1",
+                     "ITEM 7 W5: W5-closed is linked with no W5 (a stray marker)",
+                     "ITEM 7: 1 free link slot(s) of Orca's 50"):
+            check(f"restart: lists {want!r}", want in out, out)
+    finally:
+        c.close()
+    c = armed_case()
+    try:
+        st = c.fake.load()
+        st["items"]["7"]["wait"]["text"] = "W1 wake 0000abcd by later; record e1"
+        c.fake.save(st)
+        code, out, _ = c.run("restart", "--bot", BOT_NAME)
+        check("restart: a Waiting note naming another wake than W1's Armed wake is flagged",
+              "ITEM 7: Waiting names wake 0000abcd, not W1's wake" in out, out)
+    finally:
+        c.close()
+
+    # outcome lines instead of crashes
+    c = Case({7: {}})
+    try:
+        d = c.files / "item-7-W1-dir.txt"
+        d.mkdir()
+        code, out, _ = c.arm(7, 1, **{"record-file": str(d)})
+        check("values: a record path that is a directory is REFUSED, not a crash", code == 2
+              and out.startswith("REFUSED") and not c.fake.log(), out)
+    finally:
+        c.close()
+
+
 def main() -> int:
     global SCRIPT, HW
     if len(sys.argv) > 1:
         SCRIPT = Path(sys.argv[1]).resolve()
     HW = load_module()
     for test in (test_static, test_outcomes, test_arm, test_close, test_successor_gate,
-                 test_retire, test_full, test_restart, test_text_and_values):
+                 test_retire, test_full, test_restart, test_text_and_values, test_more):
         test()
     print()
     if failures:

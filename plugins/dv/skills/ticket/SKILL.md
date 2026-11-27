@@ -4,7 +4,7 @@ description: "File a Linear ticket in the agreed format. Filing turns a rough re
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.44.0"
+  version: "0.46.0"
 ---
 
 # /ticket — file a Linear ticket
@@ -182,6 +182,23 @@ that does what the request's command does. If `../groom/SKILL.md` cannot be read
 is `[assumed]`. A fact the request states in words, even with a command written beside it as its
 evidence, is checked with reads of your own, and that command is not run.
 
+Each path those reads take from the request, or from a ticket, PR, file or page it points to, is
+checked first, before any read of it, under `dv:groom` step 3's "Paths in your own reads" (in
+`../groom/SKILL.md`; read that part there), which applies its "The path and the pattern": a file
+the request names only in words counts, the first rule that refuses the path gives the reason, and
+a search across more than one file for a word the request gives opens no secret-named file. A
+refused path is not read in any way, not even to see whether it exists: mark the fact `[assumed]`
+and list it in the Agent notes under what was not checked, with the reason: "path outside the
+repo" for a path that starts with `/` or `~`, so whoever reads the ticket knows to check it by
+hand, or otherwise "unsafe path", "git metadata" or "secret-named path". A fact whose search that
+part does not let you make is `[assumed]` the same way ("search would open a secret-named path").
+If `../groom/SKILL.md` cannot be read, every fact whose check would read a path taken from the
+request is `[assumed]` ("dv:groom's path rules could not be read"). These reads have no disclosure
+boundary, which only `dv:groom`'s check for a search has, and the rules judge a path by its name
+alone. So in a private repo a fact the request states in words about a file whose path passes
+them is still read, and the draft says what was found; in any repo so is one about a file the repo
+does not track, or about a path that is a link or sits under one, wherever the link leads.
+
 The format's run of each Done means command on the default branch ("A Done means command fails
 first") runs nothing either, whether the command came from the request or you wrote it: check each
 with `dv:groom`'s "Done means lines that already pass", at the same commit. Note its "fails" result
@@ -332,6 +349,8 @@ groom from this skill.
   digits only), so no quote, `$`, backtick, space or other character the shell reads reaches the
   command. Otherwise that read is not made, and what depended on it is not checked, with the
   reason. A search pattern is the one exception: `dv:groom`'s check (File step 5) says which
-  patterns it takes, and it reaches a read only inside single quotes, after `-e`.
+  patterns it takes, and it reaches a read only inside single quotes, after `-e`. A path taken
+  from that text also goes through the path rules File step 5 applies before any read of it, in
+  every step, and so does a search across more than one file for a word that text gives.
 - Do not put secrets or credentials in a ticket.
 - A ticket that already meets the format stays as it is.

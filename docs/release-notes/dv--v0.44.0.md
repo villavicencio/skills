@@ -42,17 +42,19 @@ reader only what anyone can already read (VIL-1203).
 - **The disclosure boundary.** Nothing it relies on is taken from earlier in the run, and no
   boundary read is reused for another line or run. For each search line, before any other read for
   it, the check makes four reads:
-  - **Remote:** `git remote get-url --all origin` must print one `github.com` URL
-    (`https://github.com/<owner>/<repo>`, `git@github.com:<owner>/<repo>` or
+  - **Remote:** `git -C "<top level>" remote get-url --all origin` must print one `github.com`
+    URL (`https://github.com/<owner>/<repo>`, `git@github.com:<owner>/<repo>` or
     `ssh://git@github.com/<owner>/<repo>`, with or without `.git`, plain owner and repo names).
-  - **Branch:** `gh repo view 'github.com/<owner>/<repo>' --json defaultBranchRef` must name the
-    default branch step 1 recorded (step 1 now records its name).
+  - **Branch:**
+    `gh repo view 'github.com/<owner>/<repo>' --json defaultBranchRef --jq .defaultBranchRef.name`
+    must print exactly the name of the default branch step 1 recorded (step 1 now records its
+    name).
   - **Tip:** `gh api --hostname github.com 'repos/<owner>/<repo>/commits/<branch>' --jq .sha` must
     print exactly the verified commit's id. This ties the searched commit to the repo whose
     visibility is read: git names a commit by its contents, so the local commit with that id is
     the one GitHub serves.
-  - **Visibility:** `gh repo view 'github.com/<owner>/<repo>' --json visibility` must print
-    `PUBLIC`.
+  - **Visibility:** `gh repo view 'github.com/<owner>/<repo>' --json visibility --jq .visibility`
+    must print exactly `PUBLIC`.
 
   Then the line's `ls-tree` and checkout reads run, then the Visibility read again, as the last
   read before the search, and the search, with its `-I` run on a match, right after it. The
@@ -69,18 +71,21 @@ reader only what anyone can already read (VIL-1203).
   differs only in case", and anything else (missing, a directory, a link or a submodule) is "not
   run: search path is not a regular file", since `grep` would only report an error there. For a
   regular file the check then asks whether a checkout would change the file's bytes:
-  `check-attr --source <commit>` for `filter`, `working-tree-encoding`, `ident`, `crlf` and `eol`,
-  plus the clone's `core.autocrlf` and `core.eol`. A `filter` (Git LFS included),
+  `git --no-replace-objects --no-lazy-fetch -C "<top level>" check-attr --source <commit> filter working-tree-encoding ident crlf eol -- '<path>'`,
+  then `git -C "<top level>" config --get core.autocrlf` and
+  `git -C "<top level>" config --get core.eol`. A `filter` (Git LFS included),
   `working-tree-encoding`, `ident` or `crlf` value, an `eol` set to anything but `lf`, a
   `core.autocrlf` other than `input` or false, a `core.eol` other than `lf` or `native`, or any
   search on Windows makes the line "not run: a checkout changes the file". The `text` attribute is
   not read, and the step says why: on checkout git only adds a CR before an LF, and only in the
   cases above; it never removes one, so a file committed with CRLF line endings checks out with
-  the same bytes. Then the Visibility read again, and `git grep -l --no-color` with the line's
-  matcher and `-i`/`-w` on the commit and path, which names the file on a match and prints none of
-  its lines (the line's `-n` and `-q` are not passed on). The check judges by that output, not by
-  the exit alone: Claude Code's Bash tool reports a search's exit 1 as a success with no output,
-  so a `git grep -q` that found nothing looked like a match in this release's first live check. One
+  the same bytes. Then the Visibility read again, and the search,
+  `git --no-replace-objects --no-lazy-fetch -C "<top level>" grep -l --no-color <matcher> -e '<pattern>' <commit> -- '<path>'`,
+  with the line's matcher (`-G`, `-F` or `-E`) and its `-i` and `-w`, which names the file on a
+  match and prints none of its lines (the line's `-n` and `-q` are not passed on). The check
+  judges by that output, not by the exit alone: Claude Code's Bash tool reports a search's exit 1
+  as a success with no output, so a `git grep -q` that found nothing looked like a match in this
+  release's first live check. One
   line naming the commit and path is a match, no output and no error is no match, and anything
   else, an error or an exit other than 0 or 1 included, is "not run: read failed", never a result.
   On a match the search runs again with `-I`, and a file git takes for binary is "not run: binary

@@ -36,8 +36,12 @@ moved this work out of VIL-1178).
     the system it changed: by the closeout session while it runs, and after it has ended by the
     Director, which resumes its open items. A send, an acknowledgement or an answer closes
     nothing, and every copy of the note lists the items still open. When an item closes, closeout writes the note again
-    and sends that copy. With no ticket, or comments that can't be read or written, the items
-    stay in every copy of the note and are mailed once, marked `Record: none`.
+    and sends that copy. With no ticket, or comments that can't be read or written, an item has
+    no record: it stays in every copy of the note (with a ticket, closeout tries again to post
+    the record in each later turn), and when delivery fails it is mailed with `Record: none`,
+    once, and once more after a send error. With no record there is no Linear fallback mention,
+    so the reply says when its delivery is not confirmed. Such an item closes once its action is
+    verified; the reply says so and the next copy leaves it out.
   - **Delivery** takes only the chat path in "Deliver the note", as a supervised session already
     does: never a terminal. The message asks for an acknowledgement in a fixed form.
   - **The acknowledgement** is a message from the Director's `from-name` whose first line is
@@ -82,6 +86,8 @@ moved this work out of VIL-1178).
   them.
 - The Director's check on the note still accepts only a standing yes for losses, so after a yes
   verified through the Head, the removal stays David's: the reply names the command.
+- An item with no record whose mail didn't go through is kept only in the note's saved copies
+  and in the reply.
 
 ## Not tested
 

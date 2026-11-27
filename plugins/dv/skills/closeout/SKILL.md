@@ -1206,8 +1206,8 @@ result: none`, no mention, and `Resumes:` (no Director is verified yet when it i
 naming this session while it runs, then the Director that takes the note. The status means the item is in a closeout note and nothing was mailed
 under its key ("A closeout item" there). Read the comments back (`list_comments`) to see that
 the record is there; if the post or the read-back fails, "No record" applies to that item. An
-item stays open until a `Closed` reply under one of its records: a send, an acknowledgement or
-an answer closes nothing. While this session runs, it closes its items: only after the action an
+item stays open until a `Closed` reply under one of its records (an item with no record closes
+as "No record" says): a send, an acknowledgement or an answer closes nothing. While this session runs, it closes its items: only after the action an
 item calls for has been carried out, by it or by the Director, and it has verified the result in
 the system that action changed, such as the ticket's state read back with `get_issue`, or for
 the losses Step 4's success line. Before each later copy of the note, read each open item's
@@ -1216,11 +1216,19 @@ note lists it. Once this session has ended, its open items are the Director's to
 (`dv:director-mode`, "Take closeout notes"). When an item closes, write the note again (Step 3) and send that copy as
 "Delivery" says, so the Director's check on the note reads the new WAITING ON.
 
-**No record.** With no ticket, or when its comments can't be read or written, no record can be
-kept. Say so in the reply, and keep each item in every later copy of the note, with the branch
-in place of `VIL-N` in its key when there is no ticket. When delivery fails, mail each one to
-him once (below), with `Record: none, <why>.` after the body's first line, and mark it
-`Re-sent: yes` from then on.
+**No record.** With no ticket, or when its comments can't be read or written, an item has no
+record. Say so in the reply, and keep the item in every later copy of the note, with the branch
+in place of `VIL-N` in its key when there is no ticket. With a ticket, try again to post its
+record in each later turn while this session runs; once it is posted, the item is an ordinary
+one from then on. Until then, when delivery fails, mail it to him as "Mail to him" says, with
+`Record: none, <why>.` after the body's first line, and mark it `Re-sent: yes` from then on. A
+mail that returns an error was not delivered: send it once more, in a later turn. A mail whose
+result can't be read may have arrived, so it is not sent again. Without a record there is no
+fallback mention, so when neither mail went through, or a result can't be read, the reply says
+the item's delivery is not confirmed, and every later copy of the note keeps it. Such an item
+closes as any item does, once its action has been carried out and verified, but with no record
+to reply under: the reply says it closed, with what was done and the check, and the next copy of
+the note leaves it out.
 
 **Delivery.** The note goes only to a Director its probe verified: the chat path in "Deliver the
 note" (the "None" case, steps 1 to 5), as for a supervised session, even with exactly one
@@ -1301,9 +1309,10 @@ acknowledged, or items mailed to the Head. It lists each open item by Qk, with w
 (taken by the Director, mailed with its message id, held for pickup, or no record and why) and
 its record's status.
 
-Known limit: if this session ends during the wait, its records stay at `in closeout note`. The
-items are on the ticket, but no one has confirmed taking them, and nothing mails them. Not yet
-tested live.
+Known limits: if this session ends during the wait, its records stay at `in closeout note`. The
+items are on the ticket, but no one has confirmed taking them, and nothing mails them. An item
+with no record whose mail didn't go through is kept only in the note's saved copies and in the
+reply. Not yet tested live.
 
 ## Notes
 

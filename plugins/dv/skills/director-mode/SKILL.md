@@ -543,22 +543,33 @@ no one.
   disposition then says `next wake W<k+1>`. If the disable or this write fails too, the first
   line says that as well. An unarmed wait never reads as covered by a timer.
 - **When either trigger comes** (the event's notice or the wake):
-  1. Reread the item (`orca bot item show --id <n>`): the W<k> record and every event after it. If
-     W<k> already has a disposition, stop there (the line under "One disposition per wait"). If
-     a wake finds no W<k> record on the item, the arm never finished: send nothing, post the wait as unarmed
-     (above, with `Wake: UNARMED, wake <id> ran with no W<k> record`) and stop. If the item is
-     done, canceled or snoozed, go to step 7 with `no follow-up` ("No follow-up", below). For a
-     wake, note when this run started: a start after the deadline is a missed deadline, recorded
-     as one even when the recovery then works.
+  1. Reread the item (`orca bot item show --id <n>`): the W<k> record and every event after it.
+     Take the first case that fits:
+     - W<k> already has a disposition: stop there (the line under "One disposition per wait").
+     - A later wait record (W<k+1> or after) exists: W<k> is superseded (step 2); stop with that
+       line.
+     - The item is done, canceled or snoozed: with a W<k> record, go to step 7 with
+       `no follow-up` ("No follow-up", below); with none, change nothing but one line,
+       `Late wake, item <n> W<k>: no record, item <status>; nothing done.`
+     - A wake finds no W<k> record on an open item: the arm never finished. Send nothing, post the
+       wait as unarmed (above, with `Wake: UNARMED, wake <id> ran with no W<k> record`), and stop.
+
+     For a wake, note when this run started: a start after the deadline is a missed deadline,
+     recorded as one even when the recovery then works.
   2. **Current check.** W<k> is the item's latest wait record (no W<k+1> after it) and has no
      disposition. A superseded wait (W1 once W2 exists) gets no send, no disable and no rearm,
      only the line under "One disposition per wait". A send or a rearm (steps 5 and 6) needs more:
      the item is still Waiting, and the owner and key (the question key, the PR and head, or the
-     handoff) are still the ones W<k> names. When the item has left Waiting, or the owner or head
-     has changed, this wait gets no send and no rearm: the run retires a pending wake and writes
-     the disposition (`settled` if step 4 shows it, otherwise `no follow-up` with what it found).
-     An unarmed W<k> is the one exception: it stays In progress, and its trigger checks the event
-     (steps 3 and 4) and, if that hasn't settled it, arms again as W<k+1>. Run this check again
+     handoff) are still the ones W<k> names. When the item has left Waiting, the wait has ended:
+     no send and no rearm; the run retires a pending wake and writes the disposition (`settled`
+     if step 4 shows it, otherwise `no follow-up` with what it found). When the item is still
+     Waiting but the owner or head has changed, the wait has moved: no send under W<k>; record
+     and arm a new wait, W<k+1>, for the new owner or head by these same rules, then retire W<k>'s
+     wake and write its disposition, `next wake W<k+1>`. If W<k+1> ends up unarmed, the item is
+     In progress under the unarmed rule above, so it stays actionable.
+     An unarmed W<k> is the one exception to the Waiting rule: it stays In progress, and its
+     trigger checks the event (steps 3 and 4) and, if that hasn't settled it, arms again as
+     W<k+1>. Run this check again
      just before each send, disable or arm in steps 5 to 7, and just before the disposition in
      step 7 reread the item for one already written: if there is one, write none.
   3. Reread the ticket (its comments, with every record for the original key, `list_comments`) or

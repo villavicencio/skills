@@ -40,13 +40,15 @@ in the skills told the Head to arm a wake when an item goes to Waiting; he had a
     (actionable) with `Wake: UNARMED` on its record, and is said in that turn's first line, so the
     wait never reads as covered by a timer. Arming again is a new wait, W<k+1>.
   - **On either trigger:** reread the item, the ticket or the PR (in the repository the record
-    names) and the current owner. A wake that finds no record of its wait posts the wait as
-    unarmed. Before any send, disable or rearm, a current check confirms this W key is the item's
-    latest wait and has no disposition; a superseded wait (W1 once W2 exists) is skipped. A send
-    or rearm also needs the item still Waiting on the same owner and question or PR head. An item
-    that has left Waiting, or whose owner or head changed, gets its pending wake retired and a
-    disposition, and no send; an unarmed wait stays In progress and its trigger can arm it again.
-    A done, canceled or snoozed item gets a `no follow-up` disposition. Settled means the owner
+    names) and the current owner. A disposed or superseded wait (W1 once W2 exists) is skipped
+    first; a done, canceled or snoozed item gets a `no follow-up` disposition and is never
+    reopened; only then does a wake that finds no record of its wait on an open item post the wait
+    as unarmed. Before any send, disable or rearm, a current check confirms this W key is the
+    item's latest wait and has no disposition. A send or rearm also needs the item still Waiting
+    on the same owner and question or PR head. An item that has left Waiting gets its pending wake
+    retired and a disposition, and no send. A still-Waiting item whose owner or head changed gets
+    a new wait record and wake for the new owner or head before the old wake is retired. An
+    unarmed wait stays In progress and its trigger can arm it again. Settled means the owner
     acknowledged and the waiting work resumed, shown by the owner's reply or a harness notice (a
     send receipt is not enough). Otherwise re-send under the original key to the same owner and
     session (each re-send noted on the item first; the Head never relays the Director's answer

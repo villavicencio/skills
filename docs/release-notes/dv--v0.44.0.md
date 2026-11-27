@@ -29,6 +29,8 @@ moved this work out of VIL-1178).
     fields of `dv:manager-mode`'s question message, with its original key `VIL-N/<session
     ID>/Qk`. An item that already has a key (a question the session asked earlier) keeps it; a
     new item takes the session's next unused Qk, and every later copy of the note keeps it.
+    With no ticket, the branch takes the place of `VIL-N` in the key, the `Answer` line and the
+    mail's subject.
   - **The record.** Before any probe or send, closeout posts each new item's record on the
     ticket, in `dv:director-mode`'s record form, at a new status, `in closeout note` (nothing
     mailed under its key), with the Head's pickup mention at its start, so the item reaches him
@@ -57,7 +59,7 @@ moved this work out of VIL-1178).
     no acknowledgement took within the 10 minutes. Closeout mails him each such item, one
     message per item, as `dv:manager-mode`'s "With no Director that can be verified" does, and
     keeps its record by the record rules, moving its own record from `in closeout note` to
-    `sending` as its claim, then writes the note again so the newest copy marks them
+    `sending` as its claim after step 1's first read, then writes the note again so the newest copy marks them
     `Re-sent: yes`. An item an earlier acknowledgement took stays taken. No question card opens.
   - **His answers are advice** (VIL-1193). The losses settle only on David's own yes to the exact
     list, which the session verifies itself as "An approval travels in its own field" says; then
@@ -70,8 +72,10 @@ moved this work out of VIL-1178).
     closeout item": that record carries the Head's pickup mention, and for the Director that
     takes the note it is a record for the original that carries it, so the Director mails nothing
     for that item and posts no second mention; its owner moves it to `sending` only when no Director took the item,
-    and for that claim step 1's own-hop-key rule doesn't apply; and the `Closed, VIL-N, Qk: …`
-    reply that closes it.
+    and for that claim step 1's own-hop-key rule doesn't apply, the owner's own record is not a
+    record for the original in either read, and any other session's record still stops the mail;
+    and the `Closed, VIL-N, Qk: …` reply that closes it. An item with no ticket has no record,
+    so the Director decides it or leaves it for the session to mail.
   - "Take closeout notes": with a Head, take each item as a question from the session (decide it
     when it is yours; otherwise leave it with the Head, whose pickup the session's record already
     carries), and reply with the acknowledgement form. Once the session has ended, the Director resumes its open items and closes those

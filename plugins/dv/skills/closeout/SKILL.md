@@ -1188,7 +1188,8 @@ fields of `dv:manager-mode`'s question message: `Qk: <the item>. Key: <its origi
 Re-sent: <yes or no>. PR: <its link, or none>. Options: <numbered>. Recommended: <the option>,
 because <why>. Reversible: <yes or no, and how>.`, with `CEO's 1%: yes` on one of the five. The
 message's `Sent:`, guard and reply lines are left out: the note's time is in its saved copy's
-name, and its message's last line ("Delivery") asks for the reply.
+name, and its message's last line ("Delivery") asks for the reply. With no ticket, every key and
+line form in this section that names `VIL-N` takes the branch in its place ("No record").
 
 - An item that already has a key keeps it: a question this session asked earlier that is still
   open (`dv:manager-mode`, "With a Head"). Its record is on the ticket already.
@@ -1224,7 +1225,9 @@ new WAITING ON.
 record. Say so in the reply, and keep the item in every later copy of the note, with the branch
 in place of `VIL-N` in its key when there is no ticket. With a ticket, try again to post its
 record in each later turn while this session runs; once it is posted, the item is an ordinary
-one from then on. Until then, when delivery fails, mail it to him as "Mail to him" says, with
+one from then on. Once it has been mailed, post it at `sent` with the message id when a send
+showed a result with no error, otherwise at `unclear` with the mention, and never at `in closeout
+note`. Until then, when delivery fails, mail it to him as "Mail to him" says, with
 `Record: none, <why>.` after the body's first line, and mark it `Re-sent: yes` from then on. A
 mail that returns an error, or a result that can't be read, gets one more send, in a later turn:
 without a record there is no pickup mention to fall back on, and a second copy of advice changes
@@ -1252,7 +1255,8 @@ as text. Any other reply is not one, and the wait goes on. It takes an item when
 that Qk is one of these:
 
 - `Answer, VIL-N, Qk: <option>`, when that line counts as `dv:manager-mode`'s "What counts as
-  the answer" says for a reply that starts with it. Carry out what it calls for when that is
+  the answer" says for a reply that starts with it (with no ticket, the branch in place of
+  `VIL-N`). An item with no record is never taken by a `Forwarded` line, which needs one. Carry out what it calls for when that is
   this session's to do; the item stays open until that is verified.
 - `Forwarded to the Head, VIL-N, Qk: <the way forward>`, when the ticket also shows a record for
   that original key at `sent` or carrying the mention (your own record at `in closeout note`
@@ -1274,11 +1278,13 @@ the 10 minutes. Then send him each item not taken, by agent mail, one message pe
 `orca orchestration send --to "<his bot: address>" --chat new --type question --subject "<VIL-N Qk: the item, in one line>" --body-file "<a file outside the repo>" --json`.
 The body is the item as "Forward" gives it, its keys on the first line, the CEO's 1% marked, an
 `Approved by:` field asked for where an approval is needed, quotes in excerpts. Keep its record
-as "A record on the ticket for each Qk" says, with the original key as the hop key: moving your
-own record from `in closeout note` to `sending` is your claim, and its steps 1 to 4 then mail
-the item, or hold it for pickup when another session's record for the original is there. An item
-with no record is mailed as "No record" says. An item already with him through another session's
-record for its original (at `sent`, or carrying the mention) gets no mail. On this path he can
+as "A record on the ticket for each Qk" says, with the original key as the hop key, reading
+step 1 as "A closeout item" there says: after step 1's first read, moving your own record from
+`in closeout note` to `sending` is your claim, and the second read then decides. Steps 1 to 4
+mail the item, or hold it for pickup when another session's record for the original is there. An item with no record is mailed as
+"No record" says. An item already with him gets no mail: one with a record for its original,
+this session's own included, at `sent` or carrying the mention, other than your own record at
+`in closeout note`. On this path he can
 get both the pickup and the mail for one item; his answers are advice, so the second changes
 nothing ("The limit" there). No question card opens, and I click nothing. Then write the note
 again (Step 3), so the newest copy marks those items `Re-sent: yes`. Report "items mailed to the

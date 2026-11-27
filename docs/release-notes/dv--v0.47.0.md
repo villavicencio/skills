@@ -1,14 +1,15 @@
 # dv — v0.47.0
 
-Minor release. When no milestone fits a ticket and the groomer has no concrete milestone to
-propose, `dv:groom` records "No milestone" with a one-line reason, as a routine call in
-`forks-only` mode, instead of asking. Only a concrete proposal (a new milestone's name and one line
-on what done means) is asked, as one question: create it, or "No milestone". Only `dv:groom`
-changes. The other fifteen skills have no behaviour changes; their version moves to `0.47.0` only
+Minor release. When a project has open milestones but none fits a ticket, and the groomer has no
+concrete milestone to propose, `dv:groom` records "No milestone" with a one-line reason, as a
+routine call in `forks-only` mode, instead of asking. Only a concrete proposal (a new milestone's
+name and one line on what done means) is asked, as one question: create it, or "No milestone".
+Only `dv:groom` changes. The other fifteen skills have no behaviour changes; their version moves to `0.47.0` only
 because the suite is released as one plugin.
 
 Numbering: open PRs claim 0.45.0 (skills PR 124) and 0.46.0 (skills PR 127), so this release takes
-0.47.0 for now; the number is picked again when main is merged in before the merge.
+0.47.0 for now; when main is merged in before the merge, it becomes the next minor after main's
+version then.
 
 Why: the "none fits" case was one open decision whose options included creating a milestone, so in
 `forks-only` mode from a worktree session the whole decision went to the Head and stayed pending,
@@ -17,8 +18,10 @@ even when the outcome was only to leave the ticket out of milestones. The VIL-12
 
 ## Changed
 
-- **`dv:groom`, step 3, "Milestone", the case "It has no milestone and none fits".** The field
-  stays empty and the report says so, as before. Then:
+- **`dv:groom`, step 3, "Milestone", the case "It has no milestone and none fits".** The case
+  now names a project that has open milestones but none that fits; a project with no milestones or
+  only finished ones still takes the case before it and records nothing, as before. The field stays
+  empty and the report says so, as before. Then:
   - A concrete proposal is a new milestone's name and one line on what done means, for a goal the
     ticket's work serves that no open milestone states. The groomer makes one only when it would
     recommend creating it, not to have something to ask.
@@ -29,13 +32,12 @@ even when the outcome was only to leave the ticket out of milestones. The VIL-12
   - With one, it is one open decision: create the proposed milestone, or "No milestone". The old
     "leave it with none" option is gone. A "No milestone" answer adds "No milestone: <one-line
     reason>" in that answer's form (yours, the Director's or the Head's). No "No milestone" line
-    is written before the answer, the
-    milestone is created only on your yes, and from a worktree session with a Head the decision
-    goes to the Head and stays pending, as before.
-- **`dv:groom`, "Forks-only mode".** "Routine calls" names recording "No milestone" when none fits
-  and there is no concrete proposal; the Forks list names a new milestone as a concrete proposal;
-  "From a worktree session" names that fork's "No milestone" answer among what only the Head
-  decides (it was "a new milestone's other options").
+    is written before the answer, the milestone is created only on your yes, and from a worktree
+    session with a Head the decision goes to the Head and stays pending, as before.
+- **`dv:groom`, "Forks-only mode".** "Routine calls" names recording "No milestone" when the
+  project has open milestones but none fits and there is no concrete proposal; the Forks list
+  names a new milestone as a concrete proposal; "From a worktree session" names that fork's "No
+  milestone" answer among what only the Head decides (it was "a new milestone's other options").
 - **`dv:groom`, Rules, the no-text-edits bullet.** It lists milestone-field items and says a "No
   milestone" Decisions line is a text edit.
 - **`dv:groom`, step 7, the edit list.** The milestone item names the "No milestone" Decisions

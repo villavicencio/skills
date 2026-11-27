@@ -66,8 +66,8 @@ overrule it.
 phrasing, filing or dropping a spin-off, settling an `[assumed]` marker you verified, adding or
 removing a relation that step 3 maps clearly, closing a conditional step by removing it or making it
 unconditional (step 3), putting a ticket that has no milestone in the existing milestone that fits
-it, recording "No milestone" for a ticket that has none when none fits and you have no concrete
-proposal (both step 3, "Milestone"), rewording or adding a Done means line that proves the
+it, recording "No milestone" for a ticket that has none when the project has open milestones but
+none fits and you have no concrete proposal (both step 3, "Milestone"), rewording or adding a Done means line that proves the
 existing scope, rewriting a Done means line that already passes so it fails first, or marking it as
 a guard of unchanged behavior, where step 3 ("Done means lines that already pass") says each fits.
 Decide each one yourself: take the option you would have marked "(Recommended)" had you asked.
@@ -553,10 +553,11 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
     nothing. The report says so.
   - It is open, has no milestone, and one fits: setting that milestone is an add item (step 7),
     with its one-line reason.
-  - It has no milestone and none fits: leave the field empty, and the report says so. A concrete
-    proposal is a new milestone's name and one line on what done means (the shared rules'
-    "Milestones"), for a goal the ticket's work serves that no open milestone states. Make one
-    only when you would recommend creating it, not to have something to ask.
+  - It has no milestone, and the project has open milestones but none fits (the case above takes a
+    project with none open): leave the field empty, and the report says so. A concrete proposal
+    is a new milestone's name and one line on what done means (the shared rules' "Milestones"),
+    for a goal the ticket's work serves that no open milestone states. Make one only when you
+    would recommend creating it, not to have something to ask.
     - With no concrete proposal, "No milestone" is the call: an add item (step 7), the Decisions
       line "No milestone: <one-line reason none fits>". In default mode it is in the edit list
       like the other add items, and approving it records it as my choice: the line ends "<my
@@ -793,8 +794,8 @@ removes existing text. It covers:
 - the milestone (step 3), set with `save_issue`'s `milestone` field: an add item when the ticket
   has none; a replace item when my answer moves it, or a remove item when it takes it out (which
   also adds the "No milestone" Decisions line); a keep that replaces a "No milestone" line; the
-  "No milestone" Decisions line alone, an add item that leaves the field empty, when none fits and
-  there is no concrete proposal (step 3); and a new milestone I said yes to, created just before
+  "No milestone" Decisions line alone, an add item that leaves the field empty, when the project has
+  open milestones but none fits and there is no concrete proposal (step 3); and a new milestone I said yes to, created just before
   the first save that sets it ("Order of writes");
 - for a split, the children to file and the parent's change (its estimate included), exactly as
   approved;

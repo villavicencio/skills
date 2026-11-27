@@ -380,20 +380,29 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
   question can wake him more than once; his answers are advice, so a second one changes nothing
   already done.
 
-  **A closeout item** (`dv:closeout`, "With a Head") gets a record from the session that closes
-  out, at `Status: in closeout note`, with the mention at its start, before any probe or send:
-  the item is in a closeout note, nothing was mailed under its key, and the mention is his
-  pickup, so the item reaches him even if that session ends before any delivery. For the
-  Director that takes the note, it is a record for the original that carries the mention: mail
+  **A closeout item** (`dv:closeout`, "With a Head"), an earlier key included, is made to be with
+  him by the session that closes out, before any probe or send ("The record" there): its own
+  record left at `sending` by an earlier claim or send, or at `sent` with no reply from an earlier
+  run, first takes step 3's
+  mention (step 1); an item with no record carrying the mention, and none at `sent` that is the
+  session's own or has his reply, then gets the session's own record at `Status: in closeout
+  note`, with the mention at its start, when the key has that session's ID and no record for the
+  original is there, and otherwise a pickup note (step 4). A comment that only writes the item on
+  the ticket as an open decision is not a record. At `in closeout note`, the item is in a closeout
+  note, nothing was mailed under its key, and the mention is his pickup, so the item reaches him
+  even if that session ends before any delivery. For the Director that takes the note, that
+  record or pickup note is a record for the original that carries the mention: mail
   nothing for that item and post no second mention (step 4), and reply `Forwarded to the Head`
-  for it unless you decide it. Its owner moves it to `sending`, as its claim, only when no
-  Director took the item (`dv:closeout`, "With a Head"). For that claim, step 1 reads this way:
+  for it unless you decide it. The owner of the item's own record moves that record to
+  `sending`, as its claim, only when no Director took the item (`dv:closeout`, "With a Head"); an
+  item held by a pickup note gets no claim and no mail. For that claim, step 1 reads this way:
   the rule for a record under your own hop key doesn't apply (nothing was mailed under it); your
   own record, at `in closeout note` or at the `sending` you moved it to for this claim, is not a
   record for the original in the first read or the second, and that move, made after the first
   read, stands for posting your record at `sending`; the item counts as first-hand and not
-  re-sent for this claim (the note it was in doesn't count as a send to a Director, though later
-  copies mark it `Re-sent: yes`, and the record's mention is not a send to him); and any other
+  re-sent for this claim (the note it was in, and an earlier send of the question to a Director,
+  don't count as a send to a Director, though the note marks it `Re-sent: yes`, and the record's
+  mention is not a send to him); and any other
   session's record for the original still stops the mail (step 4). The record keeps its mention. Such an item stays open until a reply under one of
   its records closes it: `Closed, VIL-N, Qk: <what was done>. Verified: <the check and its
   result>.`, or `Closed, VIL-N, Qk: superseded by Qm: <why>.` While the closeout session runs, it
@@ -475,7 +484,8 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
 
   If the session has ended, write his advice, with its `Approved by:` field, on the ticket as a
   comment instead. For an item from a closeout note's `WAITING ON`, also write it on the ticket,
-  as a reply under your own record for that item, or under the session's when you have none.
+  as a reply under your own record for that item, or under any record for its original when you
+  have none.
 - **Unanswered at the end.** When the session's other work is done, it sends you each question
   still without an answer that counts, as `Unanswered, VIL-N, Qk: …` (`dv:manager-mode`, "With a
   Head"). It carries the key, the options, the recommended option and the `Reversible:` line, as
@@ -897,8 +907,8 @@ terminal by `orca terminal send`, by clipboard paste, or as a file under
   WAITING ON lists each open item with its key, the REPLY NEEDED question included. Take each as
   a question from that session ("Answer a worktree session's question"): decide it when it is
   yours, such as a ticket state that "Keep ticket states true" fixes at this seam, and otherwise
-  leave it with him, the CEO's 1% marked as such: an item the session recorded at `in closeout
-  note` already carries his pickup mention, so you mail nothing for it ("A closeout item" there),
+  leave it with him, the CEO's 1% marked as such: an item with any record for the original that
+  carries his pickup mention needs no mail from you ("A closeout item" there),
   and any other item you forward as "A record on the ticket for each Qk" says. An item of a note
   with no ticket has no record: decide it, or leave its line out of your reply, and the session
   mails it to him.

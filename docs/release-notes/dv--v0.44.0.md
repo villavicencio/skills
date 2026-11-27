@@ -27,11 +27,14 @@ moved this work out of VIL-1178).
   - **Open items** are the decisions under WAITING ON, whose heading now names the Head, and the
     REPLY NEEDED question, listed there too (`REPLY NEEDED: yes: Qk`). Each is an entry in the
     fields of `dv:manager-mode`'s question message, with its original key `VIL-N/<session
-    ID>/Qk`. An item that already has a key (a question the session asked earlier) keeps it; a
+    ID>/Qk`. An item that already has a key (a question asked earlier on the ticket, by this session or
+    one before it) keeps it, whether or not it has a record yet; a
     new item takes the session's next unused Qk, and every later copy of the note keeps it.
     With no ticket, the branch takes the place of `VIL-N` in the key, the `Answer` line and the
     mail's subject.
-  - **The record.** Before any probe or send, closeout posts each new item's record on the
+  - **The record.** Before any probe or send, closeout makes every open item, earlier keys
+    included, be with the Head on the ticket. An item whose records don't already show it with
+    him gets his mention: closeout's own leftover record at `sending` (or at `sent` with no reply from an earlier run) takes step 3's mention; with no record and a key of this session's, closeout posts its own record; otherwise (another session's key, or another session's record not with him, `sent` with no reply included) a pickup note in the step 4 form. Closeout's own record goes on the
     ticket, in `dv:director-mode`'s record form, at a new status, `in closeout note` (nothing
     mailed under its key), with the Head's pickup mention at its start, so the item reaches him
     through Linear even if the session ends before any delivery. An item stays open until a `Closed` reply under one of its records,
@@ -69,7 +72,7 @@ moved this work out of VIL-1178).
     closeout does.
 - **`dv:director-mode`.**
   - "A record on the ticket for each Qk": the status `in closeout note`, and a new paragraph, "A
-    closeout item": that record carries the Head's pickup mention, and for the Director that
+    closeout item": that record or pickup note carries the Head's pickup mention, and for the Director that
     takes the note it is a record for the original that carries it, so the Director mails nothing
     for that item and posts no second mention; its owner moves it to `sending` only when no Director took the item,
     and for that claim step 1's own-hop-key rule doesn't apply, the owner's own record is not a
@@ -77,8 +80,7 @@ moved this work out of VIL-1178).
     and the `Closed, VIL-N, Qk: …` reply that closes it. An item with no ticket has no record,
     so the Director decides it or leaves it for the session to mail.
   - "Take closeout notes": with a Head, take each item as a question from the session (decide it
-    when it is yours; otherwise leave it with the Head, whose pickup the session's record already
-    carries), and reply with the acknowledgement form. Once the session has ended, the Director resumes its open items and closes those
+    when it is yours; otherwise leave it with the Head, whose pickup the session's record or pickup note already carries), and reply with the acknowledgement form. Once the session has ended, the Director resumes its open items and closes those
     whose action it carried out and verified. With a Head, closeout asks no removal question.
   - "His answer": advice on a closeout item goes on the ticket as a reply under its record.
   - "With a Head, nothing else is asked of me": closeout now follows it.

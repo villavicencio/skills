@@ -172,11 +172,12 @@ CEO's 1%", below); with none, it comes to me as before.
 
 **You decide, without asking me:**
 
-- **Fix rounds past the session's own two, and the declines you are asked about:** another fix
+- **Fix rounds past the session's own calls, and the declines you are asked about:** another fix
   round, or declining a MergeWren finding with a reason. Rounds 1 and 2 stay the session's own
-  call, fixes and declines alike, under the triage rule in dotfiles `docs/agents/code-review.md`
-  ("Fix rounds"); from them only a held decline (below) comes to you. That section's budget still
-  counts the rounds; past two, where it says to bring me the open list, the list comes to you
+  call under the triage rule in dotfiles `docs/agents/code-review.md` ("Fix rounds"), fixes and
+  declines alike, and so does a third round that section calls low-risk (the session records it
+  with that section's one-line PR-body note); from them only a held decline (below) comes to you.
+  That section's budget still counts the rounds; where it says to bring me the open list, the list comes to you
   instead, and you decide each finding on it. Decide only after you have read the finding and the
   code it names at the PR's current head (`gh pr view <N> --json headRefOid`); if you can't, it is
   not yours to decide. The one exception, declining a high or critical finding on a safety
@@ -456,7 +457,7 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
 - **The way forward** in your reply needs no one's yes, so the question never blocks the work,
   and it takes no choice the session doesn't own. It is the session's recommended option only
   when that decision is already the session's own under `dv:manager-mode` (its routine calls,
-  fix rounds 1 and 2, engineering sequencing, whether a report meets the brief), or a call of
+  fix rounds 1 and 2, a third round that "Fix rounds" calls low-risk, engineering sequencing, whether a report meets the brief), or a call of
   yours (a way forward under "Held for me", a scope cut). Otherwise it is to leave the choice
   untaken: apply none of its options, change nothing it decides, and go on with the work that
   doesn't depend on it, while the question stays pending. Being reversible never makes a choice

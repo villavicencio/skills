@@ -71,7 +71,7 @@ import tempfile
 import time
 from pathlib import Path
 
-VERSION = "0.46.0"
+VERSION = "0.48.0"
 ORCA = "orca"
 CALL_TIMEOUT_S = 60
 WINNER_WINDOW_S = 300

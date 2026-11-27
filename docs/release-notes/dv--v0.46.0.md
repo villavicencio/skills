@@ -1,129 +1,132 @@
 # dv — v0.46.0
 
-Minor release. `dv:director-mode` gains "Head's wake for a waiting item": when a department Head
-puts one of his Orca items in Waiting on an event another session owes him, the wait gets one
-independent one-time wake, and every Orca call that arms, checks, closes, retires or reconciles it
-goes through a new script, `plugins/dv/skills/director-mode/scripts/head_wait.py`, with offline
-tests in `tooling/evals/test_head_wait.py`. The section also tells the Director how to answer a
-`Re-sent by the Head` question. Only `dv:director-mode` changes (with the README's entry for it);
-the other fifteen skills have no behaviour changes, and their version moves to `0.46.0` only
-because the suite is released as one plugin. Checked against Orca 1.4.277.
+Minor release. When `dv:groom` or `dv:ticket` checks a fact the ticket or request states in words,
+the session's own reads now hold every path they take from that text (for `dv:groom`, the ticket's
+comments too), or from anything it points to, to the path rules of `dv:groom`'s "Done means lines
+that already pass" check ("The path and the pattern"), with one rule before them (a path that
+starts with `/` or `~` is outside the repo and is not read) and link tests after them (a path that
+is, or sits under, a symbolic link or a submodule, or is a hard link, is refused, found by its git
+file mode at the commit and by `ls -ld` in the working tree). A path a name rule refuses is never
+read, not even to see whether it exists, one the link tests refuse has no contents read, and the
+fact is not checked (`dv:groom`) or `[assumed]` (`dv:ticket`), with the reason. While a fact stated
+in words is checked, no read opens or names a file whose path has not passed the rules and link
+tests, whoever chose the word or path (a search of a directory or of the whole repo, a recursive
+`grep`, `find`, a glob or a directory listing): such a fact is not checked ("read across files"; in
+`dv:ticket`, `[assumed]`). This closes the limit that the dv 0.43.0 and 0.44.0 release notes listed
+under "Not in this release": those reads took paths from the ticket without the check's path rules,
+secret-named paths included (VIL-1224). Only `dv:groom` and `dv:ticket` change. The other fourteen
+skills have no behaviour changes; their version moves to `0.46.0` only because the suite is
+released as one plugin.
 
-Why: on 2026-11-26 a Head of Skills item sat Waiting for 5 h 39 min with nothing to wake him
-(VIL-1218). The first attempt (skills PR 124, held at `7bb4ad1`) used the item's status as its
-lock and put free text into shell arguments; its review showed a stale handler could act twice,
-overwrite a later wait or a Needs you, and run text from a wait.
+Why: since dv 0.43.0 a fact stated as a command is checked only by the already-passing check,
+under its path rules, but a fact stated in words was still checked with reads that took any path
+from the ticket. So ticket text such as "`.env.example` names the key" could point a session at a
+secret-named file and get back what it found.
 
-## Added
+## Changed
 
-Each line is one claim the section, the script and its tests establish.
+- **`dv:groom`, step 3, "Paths in your own reads"** (new, right after "How"). Before any read of a
+  path that a read of the session's own takes from the ticket's text, its comments, or a ticket,
+  PR, file or page they point to (together, "the text"), the session checks the path. A URL of a
+  file in a repo (a GitHub `blob`, `raw` or `contents` URL, or the like) counts as that file's
+  path, and is opened only with its ref replaced by the tested commit's id. A file the text names
+  only in words counts, as the path the session would read, worked out from the words alone, never
+  from a listing. The path is taken as "The path and the pattern" takes a file test's `<path>`
+  (without its quotes, a leading `./` dropped, relative to the top level of the repo the fact is
+  about), and the first rule that refuses it gives the reason:
+  - a path that starts with `/` or `~`: "not checked: path outside the repo", so whoever reads the
+    report knows to check it by hand;
+  - otherwise that section's rules, in its order: "not checked: unsafe path", "not checked: git
+    metadata" or "not checked: secret-named path" (the `.git` and secret-name tests ignore case, as
+    before);
+  - then the link tests: a path that is a symbolic link, a hard link or a submodule, or that sits
+    under a symbolic link or a submodule, is "not checked: link". A submodule gets the same reason
+    as a link, since both lead to files the rules did not judge.
 
-- Each wait W<k> on one of the Head's items gets one one-time wake (`orca automations create
-  --once --by <time>`, no event trigger, no `--item`) and two marker links on the item:
-  `head-wait/item-<n>/W<k>` when the wait is armed and `head-wait/item-<n>/W<k>-closed` when it is
-  closed.
-- Orca adds a link only when the item lacks it, in one transaction, and answers `unchanged` to
-  every later caller, so two runs can't both arm W<k>: the second gets `TAKEN`, writes nothing
-  more and tries no other key.
-- The item goes to Waiting only after the create's own output shows the wake enabled, at the
-  recorded time, as the Head's bot and with no event trigger, after a fresh read finds the item's
-  status and wait unchanged since the arm's first read and W<k> still open, and while the wake's
-  time is at least a minute away.
-- An arm step that fails after the reservation claims `W<k>-closed`, posts an `UNARMED` line
-  naming the step and Orca's error, retires the wake when its id is known, writes no status, and
-  says so in the first line. When the wake already holds W<k>, it writes nothing more.
-- Only the run whose `W<k>-closed` link returns an event id acts on W<k>. Every other run whose
-  claim Orca answers `unchanged`, a late, repeated or manually started wake included, gets
-  `NOT CLAIMED` and writes and sends nothing. The one exception is `FULL`, below, which sends
-  nothing.
-- A next wait arms only after every earlier wait has its closed marker and a closing record (a
-  `Wake disposition` or `UNARMED` line) after it, so a winner that stopped after its claim blocks
-  the next wait until its record lands or the Head reconciles it.
-- No wake or notice writes the item's status, so a status set while a wait is open stays. Orca
-  refuses the arm's Waiting write on a Needs you or closed item.
-- A wake whose item is done or canceled stops at its first check, with nothing written. On a
-  snoozed item (Orca's snooze, or a `Snoozed until` line whose time is ahead or can't be read) or
-  one that reads Needs you, the wake records `no follow-up`, and the script itself refuses to
-  re-send.
-- `settled` needs the owner's acknowledgement under the original key and the waiting session's
-  own turn after it. Every other disposition names its blocker and next check; the script refuses
-  a disposition file without those lines.
-- The one re-send happens only inside the `close` run that won the claim, after a fresh read of
-  the item and of both sessions and after a `Re-send` line is posted. No other command sends.
-- A re-send whose answer is an error or can't be read is not sent again: the first line starts
-  `SEND UNCLEAR`, and the disposition records `not settled`, blocker `re-send unclear`, and, when
-  Orca printed one, its request id with the outcome of one read-only `orca orchestration
-  request-show`. A planned re-send that the fresh check stopped starts the first line `NOT SENT`.
-- A claim winner starts no write, send or retire once 5 minutes have passed since it claimed, and
-  `reconcile --final` (the only other closing record) is refused until 15 minutes after the
-  claim, so a reconciliation writes no second disposition while the winner can still post. A
-  reconcile note before then records evidence only and unblocks nothing.
-- A notice never sends, and closes a wait only as `settled` (then retires its wake), or as
-  `not settled` while the wake its `Armed` line names reads disabled or gone.
-- `retire` reports `RETIRED` only when Orca's answer shows the wake disabled and `GONE` only on
-  exactly `Automation not found.`. Any other answer is `UNVERIFIED`, posts a `Retire unverified`
-  line and is said in the first line. Once the wait has its closing record, that old wake can
-  only read `CLOSED` or get `NOT CLAIMED`, so it doesn't hold up the next wait.
-- At Orca's 50-link cap a claim answers `FULL`: the script posts one `Wait blocked` line for the
-  wait, retires the wake, sends nothing, and completes or cancels nothing. `arm --carried-from
-  <n>/W<k>` arms the work on a fresh item only when the old wait has that line (or is the next
-  wait of an item at the cap) and the owner, sessions, ticket and key match its record; the new
-  record names the old wait, and the old item gets a `Carried` line only after that arm is
-  `ARMED`.
-- `restart`, read-only, lists open waits with no record, past their deadline or whose wake is
-  disabled or gone; closed waits with no closing record; waits blocked at the cap, carried or
-  not; a Waiting note naming a spent or superseded wait; markers another bot linked; and items
-  within two links of the cap.
-- Free-form text reaches Orca only from files the Head writes, named for their item and wait. The
-  wake's name and prompt, the Waiting note and every header line are built from checked values,
-  and `orca` runs from an argument list, never through a shell. A value that fails its pattern
-  stops the command before any Orca call.
-- The Director answers a `Re-sent by the Head` question as the original, under its original key,
-  to the session that asked it, and mints no new key.
+  The link tests are the only reads of the path before it passes, and read modes, never contents,
+  on each part of the path from the top; a path passes only when every part passes both. At the
+  commit step 1 recorded, one `ls-tree <commit> -- '<part>'` per part, with `--no-replace-objects`
+  and `--no-lazy-fetch`, the read the already-passing check makes: mode `040000` passes the part,
+  `100644` or `100755` passes it and ends the test, `120000` is a symbolic link, `160000` a
+  submodule, and a part that prints nothing passes and ends the test. In the working tree, whether
+  the commit tracks the path or not, one `ls -ld` naming every part, from the first directory to
+  the whole path; for `docs/notes/a.md` that is
+  `ls -ld -- "<top level>"/'docs' "<top level>"/'docs/notes' "<top level>"/'docs/notes/a.md'`.
+  A `d` line passes a part, and so does a `-` line (for the whole path, only with a link count of
+  1); an `l` line is a symbolic link, and a `-` line for the whole path with a link count above 1 a
+  hard link; a missing part passes and ends the test. Any other output, or a test that cannot be
+  made (the commit not in the local clone, or a repo with no local clone), is "not checked: read
+  failed". Only a path that passes both tests is read.
 
-## Tests
+  A path a name rule refuses is not read in any way, not even to see whether it exists, one the
+  link tests refuse has no contents read, and nothing about a refused path, or about a secret-named
+  entry any read shows, goes in the reply, the report or Linear beyond the reason. While the
+  session checks a fact stated in words, and in step 5's search for other spellings of a value the
+  ticket changes, no read opens or names a file whose path has not passed every rule and both link
+  tests, whoever chose the word or path, so no search of a directory or of the whole repo, no
+  recursive `grep`, no `find`, no glob and no directory listing. What depended on such a read is
+  "not checked: read across files". A read of one file, or a search of one file, at a path that
+  passed every rule and both link tests stays allowed, and so do the link tests' own reads, which
+  name only the parts of a path the name rules judged. The paragraph, the refusal of a read across
+  files included, does not apply to the fixed reads of the already-passing check (its
+  `ls-tree --name-only` listings of a parent directory included), which keep the check's rules and
+  results. It says plainly that these reads are not held to the disclosure boundary (only the
+  check's search is), so in a private repo a fact stated in words about a file whose path passes
+  the rules and tests is still read and reported.
+- **`dv:groom`, step 5 ("Scout") and Rules.** Scouting's evidence points to the new paragraph as
+  well as "How". Its in-ticket improvements no longer search the repo for every spelling of a value
+  the ticket changes: a copy the change misses is reported only from a file the session reads, and
+  the skipped search is listed under what was not checked. The Rules bullet on values taken from
+  the ticket, its comments or anything they point to says a path taken from that text goes through
+  "Paths in your own reads", its name rules and then its link tests, before any read of it, in
+  every step, and that while a fact stated in words is checked, or other spellings are searched
+  for, no read opens or names a file whose path has not passed those rules and tests ("read across
+  files").
+- **`dv:ticket`, File step 5.** Each path the session's own reads take from the request, or from
+  anything it points to, goes through `dv:groom`'s "Paths in your own reads", its name rules and
+  then its link tests, with the same order and reasons, URLs of repo files included. The link tests
+  run at the default branch's commit, taken from the local clone and compared with origin's as
+  `dv:groom` step 1 does, the same commit a fact stated as a command uses, and in the working tree;
+  when that comparison does not verify the commit, or the request ties the fact to another branch
+  or version, the fact is `[assumed]` ("default-branch commit not verified"). A refused path has no
+  contents read; the fact is marked `[assumed]` and listed in the Agent notes under what was not
+  checked, with the reason ("path outside the repo", "unsafe path", "git metadata", "secret-named
+  path", "link", "read failed" or "default-branch commit not verified"). While a fact the request
+  states in words is checked, no read opens or names a file whose path has not passed the rules and
+  link tests, whoever chose the word or path, and the fact is `[assumed]` ("read across files"); a
+  read or search of one file at a path that passed stays allowed, and the fixed reads of
+  `dv:groom`'s already-passing check keep that check's own rules. If `../groom/SKILL.md` cannot be
+  read, every fact whose check would read a path taken from the request or from anything it points
+  to is `[assumed]` ("dv:groom's path rules could not be read"). The step says plainly that in a
+  private repo a fact stated in words about a file whose path passes the rules and tests is still
+  read, and the draft says what was found. Its Rules bullet gains the matching sentence, pointing
+  to File step 5.
+- **Unchanged:** the "Done means lines that already pass" check itself, its forms, path and
+  pattern rules, disclosure boundary, reads and results, and so the check of a fact stated as a
+  command.
+- **README.** The version, and the `dv:groom` and `dv:ticket` entries.
 
-`tooling/evals/test_head_wait.py`, stdlib only and run by CI's harness-test step, runs the
-script against a fake `orca` (Orca's JSON envelopes, a link added only when missing under a
-lock, faults that fail a call, answer something that isn't Orca's JSON, land and then error,
-time out, or pause until released). It checks the outcome words for each Orca answer to a
-reservation and a claim; arm's `ARMED`, `TAKEN` and `BLOCKED` cases, two concurrent arms; each
-create mismatch closing unarmed with the claim before the `UNARMED` line; the Waiting write
-refused, overtaken, after a change, or too close to its target; two overlapping closes with one
-send; the reasons the fresh check stops a send (both snooze kinds, Needs you, a closed and
-reopened item, either session closed, a `Re-send` line already there or not posting, a failed
-read); `NOT SENT`, `SEND UNCLEAR` and `STOPPED`; the winner's time window; the successor gate with
-a winner paused before its disposition; a stale notice with W2 armed or Needs you set in between;
-`close-unarmed`, `reconcile` (note, the 15-minute rule, `--final unarmed`); every retire outcome;
-FULL, its one line, and carrying to a fresh item, checked and refused; restart reading only and
-each finding; and free text with `$(...)`, backticks, both quotes, a backslash, newlines and
-non-ASCII reaching Orca byte for byte with nothing run. Twelve copies of the script, each with one
-guard removed, each fail the tests.
+## Known limits
 
-## Not guaranteed
-
-- A closing record for every wait: an unclear claim, or a winner that stopped, leaves a wait
-  closed without one. The next wait stays blocked until the Head reconciles it from his reads;
-  the restart list shows it.
-- A check made apart from the send: the fresh read before a re-send and the send are separate
-  calls, so a snooze, a Needs you or a session closing between them isn't seen.
-- No repeated answer reaching a Manager: a re-send can cross a late answer. That a Manager treats
-  an identical second answer as a repeat is assumed.
-- A run stopped inside one Orca call (a stopped process, a sleeping machine) can land that call
-  after its 5-minute window.
-- The item's status after a disposition: the Head's next move is ordinary last-writer-wins, and
-  the arm's Waiting write can overwrite a status set in the instant after its last read.
-- A wake due while Orca is down should run when Orca returns (the one-time deadline path has no
-  missed-run cutoff in Orca's source); not tested.
-- Markers surviving a restore of Orca's items database from a snapshot.
-- A marker another bot links: the script won't arm past one and the restart list names it, but a
-  foreign `W<k>-closed` linked first takes the claim, and that wait then acts on nothing.
-- Live behaviour. These lines rest on Orca's source, read-only Orca runs and the offline tests;
-  the live tests on disposable items come next, with the Head, and four of them, which put
-  scratch items in front of David, wait for his answer. Mail with `--type question` to a session
-  address is among the untested.
-
-## Not in this release
-
-- The free-form `--subject` text in "Forward" (VIL-1232).
-- Changes to Orca, the Head's SOUL.md or dotfiles.
+- **A file whose name passes the path rules is still read and reported in a private repo.** The
+  session's own reads for a fact stated in words get the path rules and link tests only, not the
+  disclosure boundary of the check's search, which would leave almost every content fact in a
+  private repo unchecked. The same holds in any repo for a file the repo does not track.
+- **An untracked file, a file inside a nested repository included, is judged by its name alone.**
+  Apart from the working-tree link test (a symbolic or hard link), nothing looks at it beyond its
+  name: git's file mode does not cover it, and nothing checks whether it sits inside another
+  repository nested in this one that the commit does not record as a submodule (mode `160000`), so
+  that repository's files (a bare repository's `config` included) are read and reported when their
+  names pass the rules.
+- **A path outside the repo is not checked.** A path that starts with `/` or `~` is never read;
+  the report says "not checked: path outside the repo" (in `dv:ticket`, `[assumed]` with that
+  reason), and such a fact has to be checked by hand. A path that climbs out with `..` is refused
+  too, as "unsafe path".
+- **A fact that needs a read across files is not checked.** A fact stated in words that only a read
+  opening or naming more than one file, some of them not judged by the rules, could settle (a
+  search of a directory or of the whole repo, a recursive `grep`, `find`, a glob or a directory
+  listing), such as "no file mentions X", is reported "not checked: read across files" (in
+  `dv:ticket`, `[assumed]` with that reason), whoever would have chosen the word or path.
+- **Scouting may miss a stale copy of a changed value.** `dv:groom` no longer searches the whole
+  repo for other spellings of a value the ticket changes; it looks for them only in the files the
+  session reads, so a stale copy elsewhere in the repo can go unreported.

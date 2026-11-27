@@ -8,7 +8,7 @@ to `0.42.1` only because the suite is released as one plugin.
 
 Numbering: 0.42.1 comes after 0.41.0 (VIL-1169) and follows 0.42.0 (VIL-932, skills PR 121), which has merged.
 
-Why: `orca orchestration worker-start` starts its agent as a chat or a terminal by the user's
+Why: `worker-start` starts its agent as a chat or a terminal by the user's
 setting for new agent tabs, and has no option to choose. On hal that setting is terminal, so the
 first live run of the supervised start (VIL-1043, 2026-11-26) got a terminal session: its setup
 block wrote no record, and the session could be neither released nor closed through the
@@ -42,8 +42,8 @@ Director's checks. No supported Orca command reads that setting (Orca 1.4.277).
 
 ## Tried and not used
 
-Creating the chat first with `orca worktree create --surface chat` and handing it the task with
-`orca orchestration worker-start --terminal orca_session_id:<chat session id> --keep-open`. Orca
+Creating the chat first (`orca worktree create` with `--surface chat`) and handing it the task
+(`worker-start` with `--terminal` naming the chat's session and `--keep-open`). Orca
 accepts that, and the chat gets the task with Orca's worker preamble and settles on its
 `worker_done`. But Orca records the chat as an external resource (`"mode":"terminal"`, reason
 `user_default`, no `processIncarnation`, `ownershipState` `external`) and never closes it:

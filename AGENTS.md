@@ -96,6 +96,9 @@ checkout.
   `--allowed-tools` list (`Contains brace with quote character (expansion obfuscation)`;
   VIL-869, 2026-11-22): allow `Bash` in the throwaway clone (`--allowed-tools "Bash" -- "<prompt>"`) and say in the
   prompt which steps to skip. `--allowed-tools` takes every argument after it, so put the prompt after `--`.
+  With `--plugin-dir` outside the throwaway clone, the headless session can't Read the plugin's
+  own reference files (both VIL-1239 live checks were denied `references/ticket-format.md`,
+  2026-11-27); add `--add-dir <worktree>/plugins/dv` so it can.
   Claude Code's Bash tool reports a search that exits 1 (`grep` or `git grep` with no match) as
   "completed with no output", the same as exit 0 with `-q`, so a skill step that reads a
   search's result must judge by printed output, such as `git grep -l` (VIL-1203, 2026-11-26).

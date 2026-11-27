@@ -4,7 +4,7 @@ description: "Groom one Linear ticket before anyone works it. Checks it against 
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.48.0"
+  version: "0.49.0"
 ---
 
 # /groom — groom a Linear ticket before work starts
@@ -343,22 +343,24 @@ checked: read failed". Only a path that passes both tests is read.
 A path a name rule refuses is not read in any way, not even to see whether it exists, and one the
 link tests refuse has no contents read. Nothing about a refused path, or about a secret-named entry
 any read of yours shows, goes in the reply, the report or Linear beyond the reason. While you check
-a fact stated in words, and in step 5's search for other spellings of a value the ticket changes,
-no read of yours opens or names a file whose path has not passed every rule and both link tests,
-whoever chose the word or path, so no search of a directory or of the whole repo, no recursive
-`grep`, no `find`, no glob and no directory listing. What depended on such a read is "not checked:
-read across files". A read of one file, or a search of one file, at a path that passed every rule
-and both link tests, stays allowed, and so do the link tests' own reads, which name only the parts
-of a path the name rules judged.
+a fact stated in words, no read of yours opens or names a file whose path has not passed every rule
+and both link tests, whoever chose the word or path, so no search of a directory or of the whole
+repo, no recursive `grep`, no `find`, no glob and no directory listing. What depended on such a read
+is "not checked: read across files". The same holds in step 5 when you look for other spellings of
+a value the ticket changes, except step 5's one guarded search for them, which runs only inside the
+disclosure boundary of "Done means lines that already pass"; outside it, that search is not run, and
+the report says so with the reason (step 5, "The search for other spellings"). A read of one file,
+or a search of one file, at a path that passed every rule and both link tests, stays allowed, and so
+do the link tests' own reads, which name only the parts of a path the name rules judged.
 
 The rules of "Paths in your own reads", the refusal of a read across files included, do not apply
 to the fixed reads of "Done means lines that already pass" (its `ls-tree --name-only` listings of a
 parent directory included), which keep that check's own rules and results. Your own reads above are
-not held to the disclosure boundary; only the check's search is. The rules judge a path by its name
-and its link tests, not by what the file holds, so in a private repo a fact stated in words about a
-file whose path passes them is still read and reported, and in any repo so is one about a file the
-repo does not track, a file inside a nested repository included: nothing checks whether a path sits
-inside one.
+not held to the disclosure boundary; only the check's search and step 5's guarded search are. The
+rules judge a path by its name and its link tests, not by what the file holds, so in a private repo
+a fact stated in words about a file whose path passes them is still read and reported, and in any
+repo so is one about a file the repo does not track, a file inside a nested repository included:
+nothing checks whether a path sits inside one.
 
 Report each fact as current, stale (with what is true now) or not checked. Treat each
 `[assumed]` marker as a fact to check: if it holds, propose removing the marker; if it is stale,
@@ -731,14 +733,13 @@ call, and is recorded in the fork form (with a Head, my yes as relayed by the He
 
 Look once, past the ticket's text, at what the change touches and what would make it stick. One
 focused pass, not a recursive investigation. Report each item with its evidence (a path and line,
-the output of a read of your own as step 3 "How" and "Paths in your own reads" say, a ticket id).
-Three kinds:
+the output of a read of your own as step 3 "How" and "Paths in your own reads" say, a path the
+search for other spellings below names, a ticket id). Three kinds:
 
 - **In-ticket improvements:** something small that belongs in this ticket and makes its result
   provable or durable: a missing check, a doc that would go stale, a copy of the value the change
-  misses in a file you read (the search across files for every spelling of a value the ticket
-  changes is not made, step 3 "Paths in your own reads": list it as "not checked: read across
-  files"). These become edit-list items.
+  misses, in a file you read or in one the search for other spellings below names. These become
+  edit-list items.
 - **Spin-offs:** work the ticket suggests but should not carry: a helper, a follow-up measurement,
   a neighbor with the same flaw. Each is one line: a title in the format, why, the Linear project
   it would go in (found live, as in `dv:ticket` File step 1), its milestone (the groomed ticket's,
@@ -754,6 +755,58 @@ Three kinds:
   branch-name rule), a rule the ticket's change contradicts, notes or memory files outside the
   repo that hold a copy of what changes. These go into Agent notes under "For the engineer" or
   "After the merge", or become spin-offs.
+
+**The search for other spellings.** A copy of a value the ticket changes can sit in a file nobody
+names. A search across files finds it, but its result tells whoever reads the findings which files
+hold a pattern the ticket's text chose, so that text could probe file contents with it. This search
+therefore runs only inside the disclosure boundary of step 3's "Done means lines that already
+pass", where every match discloses only what anyone can already read, and it is the one search
+across files that step 3's "Paths in your own reads" leaves to step 5. Apart from this one search,
+that paragraph's refusal holds in step 5, inside the boundary or out: nothing else looks for a copy
+across files (no other search of a directory or of the whole repo, no recursive `grep`, no `find`,
+no glob and no directory listing). This search's result never settles a fact stated in words: one
+that only a read across files could settle stays "not checked: read across files" (step 3). Make one such
+search, and no other, in each repo the ticket changes, for every value it changes there (a ticket
+that changes no value needs none), unless a step below stops it, in this order:
+
+1. **Spellings.** Take each spelling of each value, as the ticket writes it and each other way you
+   would look for it written, as a `<pattern>` under step 3's "The path and the pattern" (the
+   search uses `-F`). A spelling those rules refuse is not searched for, and the report says so
+   ("unsafe pattern"); with none left, the search is "not run: unsafe pattern". These checks come
+   before any read for the search, the boundary's included, and a spelling reaches the shell only
+   inside the single quotes of the search below.
+2. **Boundary.** Search only the commit that check's "Commit" verifies for the repo; in any case
+   where it verifies none, the search is "not run: default-branch commit not verified". Then make
+   the boundary's four reads (Remote, Branch, Tip, Visibility), in that order, before any other
+   read for the search, then Visibility again as the last read before the search, and the search
+   right after it, with nothing else in between. Make them afresh for each search: nothing the
+   boundary relies on is taken from earlier in the run (not from a Done means line's boundary reads
+   either), and none is reused for another search. In every case where the boundary would make a
+   line "not run: repo not public", the search is "not run: repo not public", and nothing more is
+   read for it.
+3. **Search.** One fixed read, run as written with only the commit and the spellings filled in, one
+   `-e '<pattern>'` for each:
+   `git --no-replace-objects --no-lazy-fetch -C "<top level>" grep -l -I --no-color --no-recurse-submodules -F -e '<pattern>' <commit>`.
+   It searches the files tracked at the commit, from the commit's own objects, so it sees no
+   untracked or generated file and follows no symbolic link. `--no-recurse-submodules` keeps it out
+   of every submodule (another repo, which may be private), whatever git config says; `-F` keeps
+   git config from changing the pattern syntax; `-I` leaves out files git takes for binary; `-l`
+   prints each matching file as `<commit>:<path>` and none of its lines; and `--no-color` keeps
+   `color.grep` out of that name. Judge by what it prints, since Claude Code's Bash tool reports a
+   search's exit 1 as a success with no output: lines that each start with `<commit>:` are the
+   matches; no output and no error is no match; anything else, an error or an exit other than 0 or
+   1 included, is "not run: read failed".
+4. **Names.** Judge each `<path>` it prints by the path rules of "The path and the pattern" (unsafe
+   path, git metadata, secret-named path) before using it; git quotes a name that holds an unusual
+   character, and the quotes fail it as an unsafe path. A name they refuse is left out, and nothing
+   about it goes in the reply, the report or Linear, not its name and not that a name was left out.
+   Each name left that the ticket does not name may hold a copy the change misses: report it as an
+   in-ticket improvement, with the spellings searched and the commit's short id as its evidence,
+   within the cap below.
+
+When the search is not run, a copy in a file you did not read is not checked: list the search in
+the report (step 8) under what was not checked, as "scouting search: not run: <reason>", with the
+reason above.
 
 Cap: at most 3 spin-offs and 5 items in all; if there were more, say so in one line. A `someday`
 ticket is never put forward as work to do next. No scouting item is a reason to hold the ticket.
@@ -1120,12 +1173,14 @@ when there were none, "Decided without asking: none."
   (a PR number: digits only), so no quote, `$`, backtick, space or other character the shell reads
   reaches the command. Otherwise that read is not made, and what depended on it is not checked,
   with the reason. A search pattern is the one exception: step 3's "The path and the pattern"
-  says which patterns the check takes, and it reaches a read only inside single quotes, after
-  `-e`. A path taken from that text also goes through step 3's "Paths in your own reads", its name
-  rules and then its link tests, before any read of it, in every step, and while you check a fact
-  stated in words, or search for other spellings in step 5, no read of yours opens or names a file
-  whose path has not passed those rules and tests, whoever chose the word or path ("not checked:
-  read across files", the same paragraph).
+  says which patterns the check, and step 5's search for other spellings, take, and it reaches a
+  read only inside single quotes, after `-e`. A path taken from that text also goes through step
+  3's "Paths in your own reads", its name rules and then its link tests, before any read of it, in
+  every step, and while you check a fact stated in words, or look for other spellings in step 5, no
+  read of yours opens or names a file whose path has not passed those rules and tests, whoever
+  chose the word or path ("not checked: read across files", the same paragraph), except step 5's
+  one search for other spellings, made only inside the disclosure boundary of "Done means lines
+  that already pass" (step 5, "The search for other spellings").
 - Do not put secrets or credentials in a ticket.
 - When the ticket needs no text edits and its estimate is current, keep its text as it is. For a
   split parent whose points sit on its children, the estimate must be empty. For any other ticket,

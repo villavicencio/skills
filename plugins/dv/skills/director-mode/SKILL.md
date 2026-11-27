@@ -406,7 +406,7 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
   do (closing an ordinary chat in Orca, or a supervised one that "End a finished worktree session"
   does not release) are not questions and still come to me; so does a check on a request
   I just made in this chat, such as `open worktree VIL-N` on a ticket that fails its checks.
-  `dv:closeout` doesn't follow this rule yet (VIL-1191): its own reply still asks me as before.
+  `dv:closeout` doesn't follow this rule yet (VIL-1191): its own reply still brings its questions to me, not to the Head.
 - **Forward** in the turn you reply, before the reply, with a body file outside the repo:
   `orca orchestration send --to "<his address>" --chat new --type question --subject "<VIL-N Qk: the question, in one line>" --body-file "<file>" --json`.
   The body is the question as the session sent it (or your own, in that form), in the form
@@ -590,13 +590,40 @@ a no or no answer stops the command.
   the ticket" (don't copy it here). If anything owns the ticket, or a lookup can't run, stop and
   report the owner or the failed lookup.
 
-**2. Create.** Start the session as a supervised Orca worker (2a) when you can: its chat is then
-yours to release once it has closed out ("Release a supervised Manager chat"), and I no longer
-close it. 2a needs this session to run in Orca (`ORCA_AGENT_SESSION_ID` is set) and
-`"${ORCA_CLI_COMMAND:-orca}" orchestration worker-start --help` to list `--keep-open`. When either
-is missing, use the ordinary start (2b), whose chat I close, as before. The probe, 2a and 2b all
-run the same executable, `"${ORCA_CLI_COMMAND:-orca}"`, quoted as shown, so the probe tests the
-CLI that then starts the session. When a 2a start fails, use 2b in its place
+**2. Create.** Start the session as a supervised Orca worker (2a) only when Orca shows, before
+anything is created, that `worker-start` can be asked for a chat: its chat is then yours to release
+once it has closed out ("Release a supervised Manager chat"), and I no longer close it. Otherwise
+use the ordinary start (2b), which asks for a chat and whose session I close (or report, if Orca opens a terminal). `worker-start` starts its agent as a chat or a
+terminal by my setting for new agent tabs, and a terminal session can be neither released nor
+closed through your checks (VIL-1043). So run this probe first, from the main checkout; it creates
+nothing:
+
+```bash
+H=$("${ORCA_CLI_COMMAND:-orca}" orchestration worker-start --help 2>&1) || H=""
+if [ -n "${ORCA_AGENT_SESSION_ID:-}" ] && printf '%s\n' "$H" | grep -qF -e '--keep-open' &&
+   printf '%s\n' "$H" | grep -qF -e '--surface chat|terminal'; then echo "START: 2a"; else echo "START: 2b"; fi
+```
+
+- `START: 2a` needs all three: (1) this session runs in Orca (`ORCA_AGENT_SESSION_ID` is set);
+  (2) `worker-start --help` lists `--keep-open`; (3) it also lists a `--surface chat|terminal`
+  option, in the form `orca worktree create` and `orca agent launch` take it, which 2a passes as
+  `--surface chat`. Anything else prints `START: 2b`, a help that can't be read included.
+- On Orca 1.4.277 every start prints `START: 2b`. Its `worker-start --help` says "How the worker
+  runs follows the user's own setting for new agent tabs; there is no flag for it", and no
+  supported command reads that setting: `orca agent-context --json` lists none, and
+  `orca status --json` and `orca agent installed --json` don't give it (checked on hal,
+  2026-11-26). Don't read Orca's settings files instead.
+- Not used, and why: creating the chat first with `orca worktree create --surface chat` and
+  handing it the task with `worker-start --terminal orca_session_id:<its session id>`. Orca
+  accepts that and the chat does the task, but Orca records the chat as `external`
+  (`"mode":"terminal"`, no `processIncarnation`) and never closes it: `worker-release` answers
+  `retained` with `processAction` `none`, with or without `--keep-open`, and no automatic release
+  comes. So that chat still takes my close, as 2b's does (VIL-1206's live probe on hal, Orca
+  1.4.277, scratch ticket VIL-1208, dispatches `ctx_b56e7bf263a8` and `ctx_fba11a16b2b1`). 2a needs
+  `worker-start` to start an owned chat on request, or to take ownership of a chat Orca started.
+
+The probe, 2a and 2b all run the same executable, `"${ORCA_CLI_COMMAND:-orca}"`, quoted as shown,
+so the probe tests the CLI that then starts the session. When a 2a start fails, use 2b in its place
 only if nothing was made: the failure's JSON lists no `worktree` entry under `effects` or
 `residualResources`, and `git worktree list` shows no new worktree for the ticket. Otherwise
 report the failure and start nothing more; a worktree it left behind is what the ownership check
@@ -622,21 +649,20 @@ EOF
   head -n 1 "$PF" | grep -q '^You are the worktree session for VIL-' &&
   tail -n 1 "$PF" | grep -q '^- Orca started this session as a supervised worker of the Director;' ||
   { echo "FAILED: building the kickoff prompt; nothing started"; exit 1; }
-"${ORCA_CLI_COMMAND:-orca}" orchestration worker-start --from "orca_session_id:$ORCA_AGENT_SESSION_ID" --spec-file "$PF" --task-title "VIL-N worktree session" --worktree new-child --repo "path:<this main checkout>" --name "<short name>" --agent claude --keep-open --json
+"${ORCA_CLI_COMMAND:-orca}" orchestration worker-start --from "orca_session_id:$ORCA_AGENT_SESSION_ID" --spec-file "$PF" --task-title "VIL-N worktree session" --worktree new-child --repo "path:<this main checkout>" --name "<short name>" --agent claude --surface chat --keep-open --json
 ```
 
 - `--worktree new-child` creates the worktree as a child of this session's workspace, the main
-  checkout, as 2b's `orca worktree create` does, and the project's setup runs as it does there. `--keep-open`
+  checkout, as 2b's `orca worktree create` does, and the project's setup runs as it does there.
+  `--surface chat` asks for a chat, which step 2's probe showed this `worker-start` takes. `--keep-open`
   cancels the release Orca would otherwise make about 2 minutes after the session's
   `worker_done`, so the chat stays open until you release it.
 - The receipt must say `"ok":true`, `"mode":"structured"` (an Orca chat) and `"keptOpen":true`.
   Keep its `dispatchId` and `workspace`. Another `mode` means Orca started the session in a
-  terminal, not a chat: report it with the reason `worker-show --dispatch <id> --full` gives under
-  `startOptions.mode.detail`; that session takes the manual close, and the setup block below
-  still runs, to link the ticket. If the command fails, report
-  its error with the `stage`, `effects` and `residualResources` it printed, and go on as step 2
-  says. After a lost reply, run the same block again with `--retry-request <id>` from the error
-  added; never as a fresh start.
+  terminal anyway: follow "A 2a start that came up as a terminal" below. If the command fails,
+  report its error with the `stage`, `effects` and `residualResources` it printed, and go on as
+  step 2 says. After a lost reply, run the same block again with `--retry-request <id>` from the
+  error added; never as a fresh start.
   Orca then mails you about the worker as you are its coordinator, such as `Setup succeeded for
   worker <dispatch id>`: that mail is information, not a highlight, and needs no reply. None of
   it, and nothing else about or from the worker that `orca orchestration check` shows you, is the
@@ -744,6 +770,28 @@ PY
   (I close it, as for 2b): say so in step 4 with each `FAIL` line. When its `LINK:` line reads
   `NOT LINKED`, the worktree runs without its ticket link: say that too, in those words.
 
+**A 2a start that came up as a terminal.** When the receipt's `mode` is not `structured`, or the
+setup block prints `FAIL the worker runs as '<mode>', not a structured chat`, Orca started the
+session in a terminal, for example because a chat could not open there. That session can be
+neither released nor closed through your checks (step 2), so leave it running and report it:
+
+- Don't stop it, release it or send it anything about its start, and start nothing more for the
+  ticket: no second start and no chat beside it. Otherwise it works as any worktree session does,
+  and I close it myself.
+- Still run the setup block above with the receipt's `dispatchId`. It tries to link the ticket and
+  prints `LINK: NOT LINKED` when it can't, and it writes no record: its `FAIL` lines include
+  `FAIL the worker runs as 'terminal', not a structured chat` and
+  `FAIL worker-show names no structured chat: …`, and its `RESULT:` line says the chat takes the
+  manual close.
+- In step 4, say that the session is a terminal and takes my close, with its dispatch id and the
+  reason `worker-show --dispatch <id> --full` gives under `startOptions.mode.detail`.
+- When it closes out, "End a finished worktree session" can't end it: VIL-1043 found such a
+  session's `claude` with no `--session-id` and a login shell as its wrapper, so its closeout note
+  ends nothing ("The note's header, time and sender") and the wrapper check under "Asking me to
+  close it" can't run. "Release a supervised Manager chat" refuses it too, as it has no record. So
+  leave its worktree in place, and tell me which check can't run and that the session is mine to
+  close. A closeout and close path for such a session is VIL-1217.
+
 **2b. Ordinary start.** From the main checkout, with the kickoff prompt (step 3) held in a shell
 variable by a quoted heredoc, so its quotes and link reach `--prompt` as one argument without
 expansion, and stopping if the prompt comes out empty:
@@ -753,10 +801,15 @@ PROMPT=$(cat <<'EOF'
 <the kickoff prompt>
 EOF
 ) && [ -n "$PROMPT" ] || { echo "FAILED: building the kickoff prompt"; exit 1; }
-"${ORCA_CLI_COMMAND:-orca}" worktree create --repo "path:<this main checkout>" --name "<short name>" --linear-issue VIL-N --agent claude --surface chat --prompt "$PROMPT"
+"${ORCA_CLI_COMMAND:-orca}" worktree create --repo "path:<this main checkout>" --name "<short name>" --linear-issue VIL-N --agent claude --surface chat --prompt "$PROMPT" --json
 ```
 
-- `--surface chat` opens the session as an Orca chat, whatever the host's Chat UI setting is.
+- `--surface chat` asks for an Orca chat, whatever my setting for new agent tabs is. The reply's
+  `result.launch.outcome.kind` must be `structured` (a chat); keep `result.launch.outcome.sessionId`
+  and `result.worktree.path`. Orca can still open a terminal instead when it can't check first
+  that a chat can open there: another `kind`, or a reply with no `result.launch` (an older Orca),
+  means the session may be a terminal. Tell me, with `result.launch.receipt.detail` if there is
+  one, since its closeout note can't be checked either. Don't stop it: it is mine to close.
 - If the command fails, report its error. After a lost agent launch reply, run the whole block
   again, prompt construction included, in one shell call from the same directory, with
   `--retry-launch <operationId>` from the error added to the create line (`PROMPT` doesn't carry
@@ -790,11 +843,16 @@ question cards; this line sets the task so the preamble doesn't cut Manager Mode
 - Orca started this session as a supervised worker of the Director; the worker preamble above is Orca's default for any worker. This task asks for dv:manager-mode as written: its hires, and its questions routed as it says (to the Director, through it to the Head when this project has one, and to me in this chat only where it says so). Follow dv:manager-mode's "A supervised session": send worker_done once, as your last act, only after dv:closeout's note reached the Director and it replied, with nothing waiting on anyone, the Head included.
 ```
 
-**4. Reply.** Give me the worktree's path and the prompt it was given. Take the path from the
-command's output; if that has none, `orca worktree list --json` lists it. For a supervised start,
-add the dispatch, the chat's Orca session id and the workspace instance the setup block printed.
-If it printed anything but `RESULT: setup complete`, say so with each `FAIL` line: that chat I
-close myself, and a `LINK: NOT LINKED` line means the worktree runs without its ticket link.
+**4. Reply.** Give me the worktree's path, the prompt it was given, and which start ran: the
+probe's `START:` line. Take the path from the command's output (`result.worktree.path` for 2b, the
+part of the receipt's `workspace` after `::` for 2a); if that has none, `orca worktree list --json`
+lists it. For 2b, add the chat's Orca session id, or, when the reply showed no chat, what it showed
+instead, with the `receipt.detail`. For a supervised start, add the dispatch and, when the setup
+block printed them, the chat's Orca session id and the workspace instance. If it printed anything
+but `RESULT: setup complete`, say so with each `FAIL` line: that chat I close myself. A
+`LINK: NOT LINKED` line means the worktree runs without its ticket link. For a 2a start that came
+up as a terminal, say that the session is a terminal and takes my close, with its dispatch id and
+the `startOptions.mode.detail` reason.
 
 **Never,** with this command: write code, groom the ticket yourself, change the ticket's state
 (the worktree session does that), or open a worktree for more than the one ticket named.
@@ -810,8 +868,20 @@ terminal by `orca terminal send`, by clipboard paste, or as a file under
   worktree's verdict.
 - Bring each decision under "WAITING ON" to me with your recommendation, in the form "Every ask
   that reaches me stands on its own" gives; with a Head, forward each to him instead, the CEO's
-  1% marked as such ("The Head and the CEO's 1%"). `dv:closeout` itself is unchanged until
-  VIL-1191: its note reaches you as before, and its own reply still asks me as before. File each item under
+  1% marked as such ("The Head and the CEO's 1%"). `dv:closeout`'s delivery and Head routing are
+  unchanged until VIL-1191: its note reaches you as before, and its own reply still brings its
+  questions to me, not to the Head, except the removal question. Once it has sent its note to
+  the session that answered its probe with the main checkout's path (you, when you answered it;
+  the probe shows only that path, not that the session runs Director Mode) and its verdict is safe
+  to delete (or a standing yes of mine covers the losses I accepted before the note), it asks me
+  no removal question, because you remove a finished worktree after its session ends if your
+  checks pass. Its reply says only that the note went to that session, never that you will
+  remove the worktree, and names the removal command for me to run if no Director removes it
+  (it writes the note after its handoff archive step, and where the
+  verdict would otherwise be safe, an archive it could not confirm or has not run makes it
+  `not confirmed safe`, with no removal command in the note, which check 1 under "End a finished
+  worktree session" refuses, so you don't ask me to close that session or release it on that
+  note). File each item under
   "NOTICED, NOT FILED" with `dv:ticket`, under its exception (b) ("Filing without my
   confirmation"), and name the new ids in your reply to me.
 - Reply to a SendMessage note with one line saying you received it, sent to the note's `from`
@@ -1486,11 +1556,28 @@ every other terminal stayed listed, the workspace's identity and HEAD held, `GON
 check 4's removal-form scan failed on the sibling's `claude` process. With a stand-in `orca`, the
 earlier step 5 released past a shell blocked in `read`, and this one refused it.
 
-Not tested: a Director in an ordinary Orca chat (its starts follow my Chat or CLI setting for new
-agent tabs, so check the first receipt's `mode`; all six runs started from a worker session, whose
-`structured` mode may come from that lineage), a Director restarted between the start and the
-release, a session that works again after `worker_done`, a supervised session's own mail to a
-real Head, and a real ticket from kickoff through merge and closeout (VIL-1043).
+A Director in an ordinary Orca chat (VIL-1043 and VIL-1206, same day and host, Orca 1.4.277, my
+setting for new agent tabs terminal): step 2a's start as it then stood came up as a terminal
+(`startOptions.mode` `terminal`, reason `user_default`), its setup block wrote no record, and that
+session could be neither released nor closed through the checks (VIL-1043). The six runs above got
+chats, most likely because they started from a worker session: Orca gives such a start reason
+`chat_lineage` ("Workers started from a persistent agent's home, and their workers, run as
+structured chat sessions"), as `worker-show` showed for another one on hal that day. With step 2's
+probe, a test Director in an ordinary chat in a disposable clone, following this text for
+`open worktree` on a scratch ticket, printed `START: 2b`, and its session came up as a chat
+(`orca agent list --worktree` gave `"kind":"chat"`). A second test Director, run headless in
+another disposable clone with a stand-in `orca` that never called Orca (its `worker-start --help`
+added a `--surface chat|terminal` line, and it answered with replies saved from a real terminal
+start), printed `START: 2a`, ran 2a with `--surface chat`, got `"mode":"terminal"`, and followed "A
+2a start that came up as a terminal": it ran the setup block (which printed the replayed
+`LINK: VIL-1211 linked …` and wrote no record), reported the session as a terminal for me to close
+with its dispatch id and the `startOptions.mode.detail` reason, and called no `worker-stop`,
+`worker-release`, send or launch.
+
+Not tested: a host whose `worker-start` takes `--surface` (Orca 1.4.277 has none), so neither 2a
+from a Director in an ordinary chat nor its release has run there; a Director restarted between the
+start and the release, a session that works again after `worker_done`, a supervised session's own
+mail to a real Head, and a real ticket from kickoff through merge and closeout (VIL-1043).
 
 ### Merge and clean up, from the main checkout
 

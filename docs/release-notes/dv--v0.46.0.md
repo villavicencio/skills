@@ -1,16 +1,17 @@
 # dv — v0.46.0
 
 Minor release. When `dv:groom` or `dv:ticket` checks a fact the ticket or request states in words,
-the session's own reads now hold every path they take from that text to the path rules of
-`dv:groom`'s "Done means lines that already pass" check ("The path and the pattern"), with one
-rule before them: a path that starts with `/` or `~` is outside the repo and is not read. A
-refused path is never read, not even to see whether it exists, and the fact is not checked
-(`dv:groom`) or `[assumed]` (`dv:ticket`), with the reason. A search across files for a word the
-text gives is not made at all, since it would open files no path rule has judged. This closes the
-limit that the dv 0.43.0 and 0.44.0 release notes listed under "Not in this release": those reads
-took paths from the ticket without the check's path rules, secret-named paths included
-(VIL-1224). Only `dv:groom` and `dv:ticket` change. The other fourteen skills have no behaviour
-changes; their version moves to `0.46.0` only because the suite is released as one plugin.
+the session's own reads now hold every path they take from that text (for `dv:groom`, the ticket's
+comments too), or from anything it points to, to the path rules of `dv:groom`'s "Done means lines
+that already pass" check ("The path and the pattern"), with one rule before them: a path that
+starts with `/` or `~` is outside the repo and is not read. A refused path is never read, not even
+to see whether it exists, and the fact is not checked (`dv:groom`) or `[assumed]` (`dv:ticket`),
+with the reason. A search across files for a word that text, or anything it points to, gives is not
+made at all, since it would open files no path rule has judged. This closes the limit that the dv
+0.43.0 and 0.44.0 release notes listed under "Not in this release": those reads took paths from the
+ticket without the check's path rules, secret-named paths included (VIL-1224). Only `dv:groom` and
+`dv:ticket` change. The other fourteen skills have no behaviour changes; their version moves to
+`0.46.0` only because the suite is released as one plugin.
 
 Why: since dv 0.43.0 a fact stated as a command is checked only by the already-passing check,
 under its path rules, but a fact stated in words was still checked with reads that took any path
@@ -21,14 +22,14 @@ secret-named file and get back what it found.
 
 - **`dv:groom`, step 3, "Paths in your own reads"** (new, right after "How"). Before any read of a
   path that a read of the session's own takes from the ticket's text, its comments, or a ticket,
-  PR, file or page they point to, the session checks the path. A link to a file in a repo (a
-  GitHub `blob`, `raw` or `contents` URL, or the like) counts as that file's path. A file the text
-  names only in words counts, as the path the session would read, worked out from the words alone
-  or from a listing of a directory the rules let through, whose command drops every entry a rule
-  refuses before its output reaches the session. The path is
-  taken as "The path and the pattern" takes a file test's `<path>` (without its quotes, a leading
-  `./` dropped, relative to the top level of the repo the fact is about), and the first rule that
-  refuses it gives the reason:
+  PR, file or page they point to (together, "the text"), the session checks the path. A link to a
+  file in a repo (a GitHub `blob`, `raw` or `contents` URL, or the like) counts as that file's
+  path. A file the text names only in words counts, as the path the session would read, worked out
+  from the words alone or from a listing of a directory the rules let through, whose command drops
+  every entry a rule refuses before its output reaches the session. The path is taken as "The path
+  and the pattern" takes a file test's `<path>` (without its quotes, a leading `./` dropped,
+  relative to the top level of the repo the fact is about), and the first rule that refuses it
+  gives the reason:
   - a path that starts with `/` or `~`: "not checked: path outside the repo", so whoever reads the
     report knows to check it by hand;
   - otherwise that section's rules, in its order: "not checked: unsafe path", "not checked: git
@@ -48,8 +49,9 @@ secret-named file and get back what it found.
   well as "How". Its in-ticket improvements no longer search the repo for every spelling of a value
   the ticket changes: a copy the change misses is reported only from a file the session reads, and
   the skipped search is listed under what was not checked. The Rules bullet on values taken from
-  ticket text says a path taken from that text goes through "Paths in your own reads" before any
-  read of it, in every step, and that a search across files for a word from that text is not made.
+  the ticket, its comments or anything they point to says a path taken from that text goes through
+  "Paths in your own reads" before any read of it, in every step, and that a search across files
+  for a word from that text is not made.
 - **`dv:ticket`, File step 5.** Each path the session's own reads take from the request, or from
   anything it points to, goes through `dv:groom`'s "Paths in your own reads", with the same order
   and reasons, links to repo files included. A refused path is not read in any way; the fact is
@@ -57,10 +59,10 @@ secret-named file and get back what it found.
   ("path outside the repo", "unsafe path", "git metadata" or "secret-named path"). A search across
   files for a word the request, or anything it points to, gives is not made, and the fact is
   `[assumed]` ("search across files"). If `../groom/SKILL.md` cannot be read, every fact whose
-  check would read a path taken from the request is `[assumed]` ("dv:groom's path rules could not
-  be read"). The step says plainly that in a private repo a fact stated in words about a file whose
-  path passes the rules is still read, and the draft says what was found. Its Rules bullet gains
-  the matching sentence, pointing to File step 5.
+  check would read a path taken from the request or from anything it points to is `[assumed]`
+  ("dv:groom's path rules could not be read"). The step says plainly that in a private repo a fact
+  stated in words about a file whose path passes the rules is still read, and the draft says what
+  was found. Its Rules bullet gains the matching sentence, pointing to File step 5.
 - **Unchanged:** the "Done means lines that already pass" check itself, its forms, path and
   pattern rules, disclosure boundary, reads and results, and so the check of a fact stated as a
   command.
@@ -79,7 +81,9 @@ secret-named file and get back what it found.
   reason), and such a fact has to be checked by hand. A path that climbs out with `..` is refused
   too, as "unsafe path".
 - **A search across files is not run.** A fact that only a search of a directory or of the whole
-  repo for a word from the ticket or request could settle, such as "no file mentions X", is not
-  checked: the report says "not checked: search across files" (in `dv:ticket`, `[assumed]` with
-  that reason). For the same reason `dv:groom`'s scouting no longer searches the repo for every
-  spelling of a value the ticket changes.
+  repo for a word from the ticket, its comments or the request, or from anything they point to,
+  could settle, such as "no file mentions X", is not checked: the report says "not checked: search
+  across files" (in `dv:ticket`, `[assumed]` with that reason).
+- **Scouting may miss a stale copy of a changed value.** `dv:groom` no longer searches the whole
+  repo for other spellings of a value the ticket changes; it looks for them only in the files the
+  session reads, so a stale copy elsewhere in the repo can go unreported.

@@ -195,11 +195,12 @@ metadata" or "secret-named path". A search across files (of a directory or of th
 word the request, or a ticket, PR, file or page it points to, gives, such as one that would check
 "no file mentions X", is not made: the fact is `[assumed]` the same way ("search across files"). If
 `../groom/SKILL.md` cannot be read, every fact whose check would read a path taken from the request
-is `[assumed]` ("dv:groom's path rules could not be read"). These reads are not held to the
-disclosure boundary; only the search in `dv:groom`'s check is. The rules judge a path by its name
-alone, so in a private repo a fact the request states in words about a file whose path passes them
-is still read, and the draft says what was found; in any repo so is one about a file the repo does
-not track, or about a path that is a symbolic link or sits under one, wherever the link leads.
+or from anything it points to is `[assumed]` ("dv:groom's path rules could not be read"). These
+reads are not held to the disclosure boundary; only the search in `dv:groom`'s check is. The rules
+judge a path by its name alone, so in a private repo a fact the request states in words about a
+file whose path passes them is still read, and the draft says what was found; in any repo so is one
+about a file the repo does not track, or about a path that is a symbolic link or sits under one,
+wherever the link leads.
 
 The format's run of each Done means command on the default branch ("A Done means command fails
 first") runs nothing either, whether the command came from the request or you wrote it: check each

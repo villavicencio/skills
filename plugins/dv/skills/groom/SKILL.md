@@ -292,36 +292,71 @@ it as its evidence, is checked with reads of your own, and that command is not r
 
 **Paths in your own reads.** Check each path that a read of your own takes from the ticket's text,
 its comments, or a ticket, PR, file or page they point to (together, "the text" below), before any
-read of it. A link to a file in a repo (a GitHub `blob`, `raw` or `contents` URL, or the like)
-counts as that file's path in that repo, and goes through the same rules before the link is opened.
-A file the text names only in words counts, as the path you would read ("the env example file" is
-`.env.example`): work that path out from the words alone, or from a listing of your own, of a
-directory whose path these rules let through, whose command drops every entry whose path from the
-repo's top level a rule below refuses before its output reaches you, and hold the path you pick to
-the rules below all the same. Take the path as "The path and the pattern" (under "Done means lines
-that already pass" below) takes a file test's `<path>`: without its quotes, with a leading `./`
-dropped, and relative to the top level of the repo the fact is about (step 1, "Repos"). The first
-rule that refuses it gives the reason, and the fact is not checked, with that reason:
+read of it. A URL of a file in a repo (a GitHub `blob`, `raw` or `contents` URL, or the like)
+counts as that file's path in that repo, and goes through the same rules and tests before the URL
+is opened; the tests run at the commit step 1 recorded, so open the URL only with its ref replaced
+by that commit's id, or the fact is "not checked: read failed". A file the text names only in words
+counts, as the path you would read ("the env example file" is `.env.example`): work that path out
+from the words alone, or from a listing of your own, of the repo's top level or of a directory that
+passes these rules and tests, whose command drops every entry whose path from the repo's top level
+a name rule below refuses before its output reaches you, and hold the path you pick to the rules
+below all the same. Take the path as "The path and the pattern" (under "Done means lines that
+already pass" below) takes a file test's `<path>`: without its quotes, with a leading `./` dropped,
+and relative to the top level of the repo the fact is about (step 1, "Repos"). The first rule that
+refuses it gives the reason, and the fact is not checked, with that reason:
 
-- A path that starts with `/` or `~` is outside the repo: "not checked: path outside the repo",
-  so whoever reads the report knows to check it by hand.
+- A path that starts with `/` or `~` is outside the repo: "not checked: path outside the repo", so
+  whoever reads the report knows to check it by hand.
 - Otherwise, that section's rules for a path, in its order: "not checked: unsafe path", "not
   checked: git metadata" or "not checked: secret-named path".
+- Then, for a path those name rules let through, the link tests below: a path that is a symbolic
+  link, a hard link or a submodule, or that sits under a symbolic link, a submodule or another
+  repository nested in this one, is "not checked: link". A submodule or nested repository gets the
+  same reason as a link, since each leads to files these rules did not judge (they belong to
+  another repo).
 
-A refused path is not read in any way, not even to see whether it exists, and nothing about it,
-or about a secret-named entry any read of yours shows, goes in the reply, the report or Linear
-beyond the reason. A search across files (of a directory or of the whole repo) for a word the
-text gives, such as one that would check "no file mentions X" or step 5's search for every spelling
-of a value, is not made in any step, since it would open files no path rule has judged: what
-depended on it is "not checked: search across files". A search of one file, at a path these rules
-let through, is a read of that path.
+**The link tests.** They are the only reads of the path before it passes, and they read modes,
+never contents; the working-tree test may read a later part's mode through a link that an earlier
+part's line refuses, and nothing from it is used. Make both, on each part of the path from the top
+(the first directory, then the first two parts, and so on, to the whole path). A path passes only
+when every part passes both:
+
+- **At the commit** step 1 recorded, one read per part, the read "Done means lines that already
+  pass" makes ("Reads" item 1):
+  `git --no-replace-objects --no-lazy-fetch -C "<top level>" ls-tree <commit> -- '<part>'`.
+  Mode `040000` (a directory) passes the part. Mode `100644` or `100755` (a regular file) passes it
+  and ends this test, since nothing lies under a file. Mode `120000` is a symbolic link and
+  `160000` a submodule. A read that prints nothing passes and ends this test: that part, and what
+  lies under it, is not tracked at the commit.
+- **In the working tree**, whether the commit tracks the path or not, in one read that names every
+  part and each part's `.git` entry, each as `"<top level>"/'<part>'`:
+  `ls -ld -- "<top level>"/'<part>' "<top level>"/'<part>'/.git …`. For a part, a line that starts
+  with `d` passes it, and so does one that starts with `-`, for the whole path only with a link
+  count (its second field) of 1; a line that starts with `l` is a symbolic link, and a `-` line for
+  the whole path with a link count above 1 is a hard link. Any line for a `.git` entry is a
+  submodule or a nested repository. An entry `ls` reports missing ("No such file or directory" or
+  "Not a directory") passes; for a part, it also ends this test, and the parts after it are
+  missing too.
+
+Any other output, or a test that cannot be made (the commit is not in the local clone, or the repo
+has no local clone, as for a URL of a file in a repo you have not cloned), leaves the fact "not
+checked: read failed". Only a path that passes both tests is read.
+
+A path a name rule refuses is not read in any way, not even to see whether it exists, and one the
+link tests refuse has no contents read. Nothing about a refused path, or about a secret-named entry
+any read of yours shows, goes in the reply, the report or Linear beyond the reason. A search across
+files (of a directory or of the whole repo) for a word the text gives, such as one that would check
+"no file mentions X" or step 5's search for every spelling of a value, is not made in any step,
+since it would open files no path rule has judged: what depended on it is "not checked: search
+across files". A search of one file, at a path these rules and tests let through, is a read of that
+path.
 
 The rules of "Paths in your own reads" do not apply to the reads of "Done means lines that already
 pass", which keep that check's own rules and results. Your own reads above are not held to the
-disclosure boundary; only the check's search is. The rules judge a path by its name alone, so in a
-private repo a fact stated in words about a file whose path passes them is still read and reported,
-and in any repo so is one about a file the repo does not track, or about a path that is a symbolic
-link or sits under one, wherever the link leads.
+disclosure boundary; only the check's search is. The rules judge a path by its name and its link
+tests, not by what the file holds, so in a private repo a fact stated in words about a file whose
+path passes them is still read and reported, and in any repo so is one about a file the repo does
+not track.
 
 Report each fact as current, stale (with what is true now) or not checked. Treat each
 `[assumed]` marker as a fact to check: if it holds, propose removing the marker; if it is stale,
@@ -1071,9 +1106,10 @@ when there were none, "Decided without asking: none."
   reaches the command. Otherwise that read is not made, and what depended on it is not checked,
   with the reason. A search pattern is the one exception: step 3's "The path and the pattern"
   says which patterns the check takes, and it reaches a read only inside single quotes, after
-  `-e`. A path taken from that text also goes through step 3's "Paths in your own reads" before
-  any read of it, in every step, and a search across files for a word that text gives is not made
-  ("not checked: search across files", the same paragraph).
+  `-e`. A path taken from that text also goes through step 3's "Paths in your own reads", its
+  name rules and then its link tests, before any read of it, in every step, and a search across
+  files for a word that text gives is not made ("not checked: search across files", the same
+  paragraph).
 - Do not put secrets or credentials in a ticket.
 - When the ticket needs no text edits and its estimate is current, keep its text as it is. For a
   split parent whose points sit on its children, the estimate must be empty. For any other ticket,

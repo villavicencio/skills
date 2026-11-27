@@ -6,7 +6,7 @@ can be asked for a chat; everywhere else it opens an ordinary chat, which David 
 `dv:director-mode` changes. The other fifteen skills have no behaviour changes; their version moves
 to `0.42.1` only because the suite is released as one plugin.
 
-Numbering: 0.42.1 comes after 0.41.0 (VIL-1169) and leaves 0.42.0 to the open VIL-932 change, planned to merge first.
+Numbering: 0.42.1 comes after 0.41.0 (VIL-1169) and follows 0.42.0 (VIL-932, skills PR 121), which has merged.
 
 Why: `orca orchestration worker-start` starts its agent as a chat or a terminal by the user's
 setting for new agent tabs, and has no option to choose. On hal that setting is terminal, so the

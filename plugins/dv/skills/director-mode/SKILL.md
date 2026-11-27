@@ -715,7 +715,11 @@ authority, and changes nothing in Orca.
   open item and every done or canceled item with a marker each time, so on a bot with many of them
   it can run out of its 9 minutes and print `INCOMPLETE RESTART`. The step commands (`reserve`,
   `claim`, and `close-unarmed` with another step) are for the live tests and reconciliation; `claim`
-  alone leaves a winner that stopped, which only reconciliation closes.
+  alone leaves a winner that stopped, which only reconciliation closes. Two rewakes run at the same
+  moment for one wait can each make a wake (each counts its own claim). Each one-time wake runs once
+  and then goes, and once one of them has claimed W<k>-closed the other reads `CLOSED` or gets
+  `NOT CLAIMED` and sends and writes nothing, since the claim is once-only. A settling notice
+  retires only the latest wake.
 - **Your part, the Director's.** A message with the subject `Re-sent by the Head` is a question
   already asked. Answer it as that question, under its original key, to the asking session it
   names. If you already answered that key, send the same answer again, unchanged. If it isn't

@@ -204,6 +204,10 @@ quotes, a backslash, newlines and non-ASCII reaching Orca byte for byte with not
   `INCOMPLETE RESTART`.
 - One `Wait blocked` line per wait: two runs that hit FULL at the same moment can each post one,
   since the check for an existing line and the post are separate calls.
+- One wake per wait: two rewakes run at the same moment for one wait can each make a wake (each
+  counts its own claim). Each one-time wake runs once and then goes; once one has claimed
+  `W<k>-closed`, the other reads `CLOSED` or gets `NOT CLAIMED` and sends and writes nothing, since
+  the claim is once-only. A settling notice retires only the latest wake.
 - A marker linked by hand: the script trusts any marker it finds, so a `W<k>-closed` linked
   first by anyone takes the claim.
 - Live overlap. The live cases ran on disposable items at `07e2d0f` and passed, some only in part

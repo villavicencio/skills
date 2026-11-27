@@ -144,9 +144,10 @@ class FakeOrca:
             st["items"][str(n)]["links"].append({"kind": "file", "ref": ref})
             return self.event(st, n, "linked", {"links": ["file:" + ref]}, actor_bot, at=at)
 
-    def fixture_comment(self, n: int, text: str, person: bool = False) -> str:
+    def fixture_comment(self, n: int, text: str, person: bool = False,
+                        actor_bot: str = BOT_ID) -> str:
         with self.locked() as st:
-            eid = self.event(st, n, "commented", {"text": text})
+            eid = self.event(st, n, "commented", {"text": text}, actor_bot)
             if person:  # the item's owner, a person, writing in the app
                 st["events"][-1]["actor"] = {"kind": "owner"}
             return eid
@@ -1779,12 +1780,16 @@ def test_fix_round1() -> None:
              ["Snoozed until 2020-01-01T00:00: no zone"], 0),
             ("a person's line counts", ["person:Snoozed until Monday: away"], 0),
             ("a person's Unsnoozed line ends the Head's line",
-             ["Snoozed until Monday: away", "person:Unsnoozed: back"], 1)):
+             ["Snoozed until Monday: away", "person:Unsnoozed: back"], 1),
+            ("another bot's Unsnoozed line doesn't end it",
+             ["Snoozed until Monday: away", "otherbot:Unsnoozed: back"], 0)):
         c = Case({7: {}})
         try:
             for line in lines:
-                person = line.startswith("person:")
-                c.fake.fixture_comment(7, line[len("person:"):] if person else line, person)
+                who, _, text = line.partition(":") if line.startswith(("person:", "otherbot:")) \
+                    else ("", "", line)
+                c.fake.fixture_comment(7, text, who == "person",
+                                       "another-bot" if who == "otherbot" else BOT_ID)
             c.arm(7, 1)
             code, out, _ = c.run(*resent(c, 7, 1))
             msgs = len(c.fake.load()["messages"])

@@ -70,9 +70,9 @@ Rules the code keeps:
     record (a `Wake disposition` or `UNARMED` line) after it.
   - No command writes an item's status except `arm`'s Waiting write, and none closes an item.
   - Each orca call stops after 60 s and starts only when those 60 s fit inside the command's
-    first 540 s, so a command ends within 10 minutes. A command's first read of the item is tried up to 3 times
-    (15 s, then 45 s apart) on an error that can pass; a read that shows a marker link without
-    its event is read again at once.
+    first 540 s, so a command ends within 10 minutes. A command's first read of the item is
+    tried up to 3 times (15 s, then 45 s apart) on an error that can pass; a read that shows a
+    marker link without its event is read again at once.
 
 Exit codes: 0 the command's normal outcome (ARMED, OPEN, IDLE, CLAIMED, RETIRED, GONE, NOTED,
 RECONCILED, REWOKEN, COVERED, RESTART; RESERVED for reserve); 1 UNCLEAR, UNREADABLE, UNCHECKED,
@@ -1073,9 +1073,9 @@ def require_sections(text: str, case: str, what: str) -> None:
 
 def snooze_line(item: Item, now_ms: float) -> dict | None:
     """The latest `Snoozed until` comment on the item, by anyone, when no `Unsnoozed` comment
-    follows it and its time is ahead, has no time zone, or can't be read; else None. Any age
-    counts: an old undated line holds until an `Unsnoozed` line or a later `Snoozed until` line
-    ends it."""
+    by the item's bot or its owner follows it and its time is ahead, has no time zone, or can't
+    be read; else None. Any age counts: an old undated line holds until such an `Unsnoozed`
+    line or a later `Snoozed until` line ends it."""
     latest = None
     for e in item.events:
         data = e.get("data") if isinstance(e.get("data"), dict) else {}
@@ -1084,7 +1084,7 @@ def snooze_line(item: Item, now_ms: float) -> dict | None:
             continue
         if SNOOZE_LINE.match(text):
             latest = e
-        elif UNSNOOZE_LINE.match(text):
+        elif UNSNOOZE_LINE.match(text) and may_unsnooze(item, e):
             latest = None
     if latest is None:
         return None
@@ -1094,6 +1094,13 @@ def snooze_line(item: Item, now_ms: float) -> dict | None:
     except ValueError:
         return latest
     return latest if until.tzinfo is None or until.timestamp() * 1000 > now_ms else None
+
+
+def may_unsnooze(item: Item, e: dict) -> bool:
+    """Only the item's own bot or its owner (a person) lifts a snooze."""
+    actor = e.get("actor") if isinstance(e.get("actor"), dict) else {}
+    return actor.get("kind") == "owner" or (actor.get("kind") == "bot"
+                                            and actor.get("botId") == item.owner_bot)
 
 
 CARRY_HOPS_MAX = 5

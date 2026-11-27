@@ -2,12 +2,13 @@
 
 Minor release. `dv:director-mode` gains "Head's wake for a waiting item": when a department Head
 puts one of his Orca items in Waiting on an event another session owes him, the wait gets an
-independent one-time wake (a `rewake` replaces one that is lost), and every Orca call that arms, checks, closes, retires, reconciles
-or rewakes it goes through a new script, `plugins/dv/skills/director-mode/scripts/head_wait.py`,
-with offline tests in `tooling/evals/test_head_wait.py`. The section also tells the Director how
-to answer a `Re-sent by the Head` question. Only `dv:director-mode` changes (with the README's entry for it);
-the other fifteen skills have no behaviour changes, and their version moves to `0.49.0` only
-because the suite is released as one plugin. Checked against Orca 1.4.277.
+independent one-time wake (a `rewake` replaces one that is lost), and every Orca call that arms,
+checks, closes, retires, reconciles or rewakes it goes through a new script,
+`plugins/dv/skills/director-mode/scripts/head_wait.py`, with offline tests in
+`tooling/evals/test_head_wait.py`. The section also tells the Director how to answer a `Re-sent by
+the Head` question. Only `dv:director-mode` changes (with the README's entry for it); the other
+fifteen skills have no behaviour changes, and their version moves to `0.49.0` only because the suite
+is released as one plugin. Checked against Orca 1.4.277.
 
 Why: on 2026-11-26 a Head of Skills item sat Waiting for 5 h 39 min with nothing to wake him
 (VIL-1218). The first attempt (skills PR 124, held at `7bb4ad1`) used the item's status as its
@@ -18,10 +19,10 @@ overwrite a later wait or a Needs you, and run text from a wait.
 
 Each line is one claim the section, the script and its tests establish.
 
-- Each wait W<k> on one of the Head's items gets a one-time wake (`orca automations create
-  --once --by <time>`, no event trigger, no `--item`; `rewake` adds another only when it is lost) and two marker links on the item:
-  `head-wait/item-<n>/W<k>` when the wait is armed and `head-wait/item-<n>/W<k>-closed` when it is
-  closed.
+- Each wait W<k> on one of the Head's items gets a one-time wake (`orca automations create --once
+  --by <time>`, no event trigger, no `--item`; `rewake` adds another only when it is lost) and two
+  marker links on the item: `head-wait/item-<n>/W<k>` when the wait is armed and
+  `head-wait/item-<n>/W<k>-closed` when it is closed.
 - Orca adds a link only when the item lacks it, in one transaction, and answers `unchanged` to
   every later caller, so two runs can't both arm W<k>: the second gets `TAKEN`, writes nothing
   more and tries no other key.
@@ -35,10 +36,10 @@ Each line is one claim the section, the script and its tests establish.
 - An arm step that fails after the reservation claims `W<k>-closed`, posts an `UNARMED` line
   naming the step and Orca's error, retires the wake when its id is known, writes no status, and
   says so in the first line. When the wake already holds W<k>, it writes nothing more.
-- Only the run whose `W<k>-closed` link returns an event id acts on W<k>. Every other run whose
-  claim Orca answers `unchanged`, a late, repeated or manually started wake included, gets
-  `NOT CLAIMED` and writes and sends nothing. The exceptions never send: `FULL`, below, a
-  reconciliation's closing record for a wait whose winner stopped, and `rewake`.
+- Only the run whose `W<k>-closed` link returns an event id sends for W<k> or posts its closing
+  record. Every other run whose claim Orca answers `unchanged`, a late, repeated or manually started
+  wake included, gets `NOT CLAIMED` and writes and sends nothing. The exceptions never send: `FULL`,
+  below, a reconciliation's closing record for a wait whose winner stopped, and `rewake`.
 - A next wait arms only after every earlier wait has its closed marker and a closing record (a
   `Wake disposition` or `UNARMED` line) after it, so a winner that stopped after its claim blocks
   the next wait until its record lands or the Head reconciles it.
@@ -48,7 +49,7 @@ Each line is one claim the section, the script and its tests establish.
   snoozed item or one that reads Needs you, the wake records `no follow-up`, and the script
   itself refuses to re-send. Snoozed means Orca's snooze, or the latest `Snoozed until` comment
   on the item, by anyone and of any age, while its time is ahead, has no time zone or can't be
-  read, and no `Unsnoozed` comment follows it.
+  read, and no `Unsnoozed` comment from the Head's bot or the item's owner follows it.
 - `settled` needs the owner's acknowledgement under the original key and the waiting session's
   own turn after it. Every other disposition names its blocker and next check; the script refuses
   a disposition file without those lines.
@@ -81,9 +82,10 @@ Each line is one claim the section, the script and its tests establish.
   item, and the Head uses it after any `UNREADABLE` or `UNCLEAR` first line. When it can't make
   or record one, its first line starts `UNCOVERED` or `UNRECORDED`.
 - An Orca call stops after 60 s and starts only while those 60 s fit in the command's first 9
-  minutes, so a 10-minute tool timeout covers every command. A command's first read of the item is tried up to
-  3 times, 15 s and then 45 s apart, when Orca's error can pass, and a read that shows a marker
-  link without its `linked` event (Orca's show reads the events before the item) is read again.
+  minutes, so a 10-minute tool timeout covers every command. A command's first read of the item is
+  tried up to 3 times, 15 s and then 45 s apart, when Orca's error can pass, and a read that shows a
+  marker link without its `linked` event (Orca's show reads the events before the item) is read
+  again.
 - At Orca's 50-link cap a claim answers `FULL`: the script posts a `Wait blocked` line for the
   wait unless it finds one there, retires the wake, sends nothing, and completes or cancels
   nothing. `arm --carried-from <n>/W<k>` arms the work on a fresh item only when the old wait has

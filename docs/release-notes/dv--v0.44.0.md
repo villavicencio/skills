@@ -1,138 +1,157 @@
 # dv — v0.44.0
 
-Minor release. When a project names a department Head, `dv:closeout` asks David nothing. It sends
-its note only to a Director its probe verified, waits up to 10 minutes for that Director's
-acknowledgement, keeps each open item open, logged on the ticket where it can be, until what it
-calls for is done and verified, and mails the Head each item no acknowledgement took. An item is
-the closing session's until that acknowledgement or the session's own mail reads back; no ticket
-record counts as delivery. With no Head, closeout behaves as at dv
-0.42.1 and 0.43.0. `dv:closeout` and `dv:director-mode` change, and `dv:manager-mode`'s `worker_done` rule; the other thirteen skills have no behaviour changes, and their version moves to `0.44.0` only because the suite is released as one plugin.
+Minor release. `dv:groom`'s "Done means lines that already pass" check, which dv 0.41.0 limited
+to file tests, checks a search of one file again (`grep` with a quoted pattern), but only inside a
+disclosure boundary. For each search line, before any other read for it, the check reads again
+everything the boundary relies on: origin's GitHub repo, that repo's default branch and its tip as
+GitHub reports them, which must be the verified commit, and its visibility, which must be
+`PUBLIC`. It reads the visibility once more as the last read before the search. So a match
+discloses only what anyone can already read. In any other case, a failed or unreadable read or a
+default branch that moved included, the line is "not run: repo not public". Since `dv:groom` step
+3 ("How") and `dv:ticket` File step 5 check a fact stated as a command with this same check, such
+a fact can now be a search too, under the same boundary. Only `dv:groom` and `dv:ticket` change,
+with one sentence in the rules file they share. The other fourteen skills have no behaviour
+changes; their version moves to `0.44.0` only because the suite is released as one plugin.
 
-Why: with a Head, closeout's own reply still asked David its questions (accepting losses, the
-removal question), and its terminal send reached any agent terminal on the main checkout, with
-nothing checking that it was the Director or that the note was read. So a note's open items could
-reach neither the Head nor David (VIL-1191; MergeWren's closeout findings on skills PR 111, which
-moved this work out of VIL-1178).
+Why: most Done means commands are searches, and since dv 0.41.0 every one of them was listed as
+not run, so a search line that already passes could reach the queue unflagged. The search form was
+cut from dv 0.41.0 (skills PR 118) because a result about a file's contents, on a pattern the
+ticket supplies, lets ticket text probe a tracked file one substring at a time (MergeWren's
+critical finding `70d9c96#1`). In a public repo, at a commit GitHub serves, every match tells the
+reader only what anyone can already read (VIL-1203).
 
 ## Changed
 
-- **`dv:closeout`, new section "With a Head".** It applies only with a `Head:` line that names a
-  `bot:` address, as `dv:director-mode`'s "The Head and the CEO's 1%" defines it, and where it
-  and a step differ, it wins (a new rule under "Rules" says so).
-  - **Nothing is asked of David.** Accepting the losses of a "safe once you accept losing" verdict
-    becomes an open item, one of the CEO's 1%. What the reply's **Needs you:** would hold (a
-    ticket-state mismatch included) becomes open items too. No removal question is asked: when
-    the removal is cleared, the reply names the command, and the worktree stays until a Director
-    removes it after the session ends, or David runs the command. Needs you keeps only what no
-    message can grant and what only David's hands can do.
-  - **Open items** are the decisions under WAITING ON, whose heading now names the Head, and the
-    REPLY NEEDED question, listed there too (`REPLY NEEDED: yes: Qk`). Each is an entry in the
-    fields of `dv:manager-mode`'s question message, with its original key `VIL-N/<session
-    ID>/Qk`. An item that already has a key (a question asked earlier on the ticket, by this session or
-    one before it) keeps it; a
-    new item takes a Qk above every one the session has used and every one the note lists, and
-    every later copy of the note keeps it.
-    With no ticket, the branch takes the place of `VIL-N` in the key and the `Answer` line.
-  - **Delivered.** An item is the closing session's until one of two things reads back: the
-    verified Director's acknowledgement takes it, or the session's own mail to the Head, under a
-    hop key of its own, returns a message id with no error. No record, pickup note or mention on
-    the ticket, and no other session's mail, delivers it.
-  - **The ticket log.** Before any probe or send, closeout posts a pickup note on the ticket, in
-    `dv:director-mode`'s form, for each item that has none from this session, and reads it back.
-    It is a log and the Head's Linear pickup if the session ends first; nothing waits on it or
-    skips a send because of it, and a failed post is tried again later. An item stays open until a
-    `Closed` reply under its pickup note, posted only after the action it calls for has been
-    carried out and its result verified in the system it changed: by the closeout session while
-    it runs, and after it has ended by the Director, which resumes its open items. A send, an
-    acknowledgement or an answer closes nothing, and every copy of the note lists the items still
-    open. When an item closes, closeout writes the note again and sends that copy. With no ticket,
-    or comments that can't be written, an item has no pickup note: it stays in every copy of the
-    note, and once its action is verified it closes by a `Closed` comment on the ticket, or, when
-    none can be posted, in the reply.
-  - **Delivery** takes only the chat path in "Deliver the note", as a supervised session already
-    does: never a terminal. The message asks for an acknowledgement in a fixed form.
-  - **The acknowledgement** is a message from the Director's `from-name` whose first line is
-    `Closeout note received, <ticket>: <the saved copy's path>` (for a supervised session, the
-    outcome "note sent and replied"), with one line per Qk:
-    `Answer, VIL-N, Qk: …` (taken when it counts as `dv:manager-mode`'s "What counts as the
-    answer" says) or `Forwarded to the Head, VIL-N, Qk: …` (which the Director sends only once its
-    own mail of the item read back; not in a note with no ticket). A line whose Qk fits two listed
-    items takes neither. A late acknowledgement still takes its items. The wait is closeout's existing
-    10 minutes, with the probe's background timer.
-  - **Mail to the Head when delivery fails**: no Director verified, the note not sent, or an item
-    no acknowledgement took within the 10 minutes. Closeout mails him each item not yet delivered,
-    one message per item, under a new hop key of its own (`VIL-N/<session ID>/Hk`). The mail's
-    subject is only the ticket id, the Qk and the words `closeout item`, each identifier checked
-    first (`closeout item` alone with no ticket or a failed check); the item's text goes only in
-    the body file. No claim on the
-    ticket comes first and no record stops it, so `dv:director-mode`'s record steps 1 to 4 don't
-    apply. Only the session named in a hop key mails under it, so two sessions never mail under
-    one key; the Head can still get one item more than once, each under its own key, all advice. A
-    send that returns an error or a result that can't be read gets one more send, in a later turn
-    that a background timer brings, under a new key; after that the item stays undelivered. Each
-    send's key and result go on the item's entry in the note's saved copies (`Mail:`), which is
-    what closeout reads before a send, and its record is posted on the ticket after the send, as a
-    log. Then the note is written again, marking those items `Re-sent: yes`. No question card
-    opens.
-  - **Handed over.** An item's entry reads `Handed over: yes` only when three facts read back:
-    the Director's acknowledgement took it with `Forwarded to the Head`, its pickup note is on the
-    ticket, and the session owes nothing more on it (not the losses item, no undone action its way forward, an answer or his reply calls for). Such an item stays open but no longer holds the
-    session. The session's own mail alone never hands an item over: it gives the item to no
-    Director. A read that fails, or an item with no ticket, gives `no`.
-  - **His answers are advice** (VIL-1193). The losses settle only on David's own yes to the exact
-    list, which the session verifies itself as "An approval travels in its own field" says; then
-    the recheck, Step 4 and a new note follow as before. A recheck that differs voids that yes.
-  - Pointers in Step 3's template, Step 4's gate, Step 5's loss question and Needs you, "Deliver
-    the note" and "Offer the removal" name the section. With no Head none of them changes what
-    closeout does.
-- **`dv:director-mode`.**
-  - "A record on the ticket for each Qk": a new paragraph, "A closeout item". The item stays the
-    closing session's until the Director's acknowledgement takes it or the session's own mail
-    reads back. Its pickup note is a log and the Head's pickup, never a delivery. The Director
-    forwards an item it doesn't decide by its own mail, with closeout's subject (the ticket id and
-    the Qk, never the item's text), under its own hop key and outside its record steps, with its
-    record posted after the send as a log, and replies `Forwarded to the
-    Head` only once that mail returned a message id with no error; otherwise it leaves the line
-    out and the session mails the item. The `Closed, VIL-N, Qk: …` reply under the pickup note
-    closes it. An item with no ticket has no pickup note, so the Director decides it or leaves it
-    for the session to mail. Steps 1 to 4 and the record forms are unchanged.
-  - "Take closeout notes": with a Head, take each item as a question from the session (decide it
-    when it is yours; otherwise forward it by its own mail), and reply with the acknowledgement
-    form, `Forwarded to the Head` for each item its own mail delivered. Once the session
-    has ended, the Director resumes its open items and closes those whose action it carried out
-    and verified. With a Head, closeout asks no removal question.
-  - "His answer": advice on a closeout item goes on the ticket as a reply under its pickup note.
-  - "End a finished worktree session", check 1, and the supervised release: with a Head, an item
-    marked `Handed over: yes` (and a REPLY NEEDED line naming it) passes only when the Director
-    reads the three facts back itself at check time, apart from the Head's mail to the session,
-    which only the session reads and for which its own mark stands; a failed or unreadable read
-    fails the check, and an item with no ticket never passes.
-  - "With a Head, nothing else is asked of me": closeout now follows it.
-- **`dv:manager-mode`, "A supervised session"**: `worker_done` gets the same fail-closed exception
-  for handed-over items, and with a Head it waits for the reply to the newest copy of the note.
-  Its question protocol is unchanged.
-- **`AGENTS.md`'s Head line and the README** (the `dv:manager-mode`, `dv:director-mode` and
-  `dv:closeout` entries, and the plugin table, now `0.44.0`) describe the new behaviour in place
-  of the interim "until VIL-1191" pointers. The dv 0.39.0 release note keeps them, as history.
+- **`dv:groom`, step 3, "Done means lines that already pass": forms.** A line is checked when its
+  command is a file test, as before, or a search of one file: `grep <flags> <pattern> <path>`, with
+  at most one `!` before it, `<flags>` none or more of `-n`, `-i`, `-q`, `-w`, `-F` and `-E` (alone
+  or joined, never `-F` with `-E`), `<pattern>` in single or double quotes and `<path>` one path.
+  A bare line (no backticks) that starts with exactly such a search is checked the same way as a
+  bare file test. Any other command, a search with another flag, a second pattern or path, or
+  anything outside the pattern's quotes that the shell reads, is "not run: unsupported form".
+- **The pattern.** Inside its quotes the pattern must not be empty, start with `-`, hold anything
+  outside printable ASCII (space to `~`), hold `'`, `"`, `$`, a backtick, `\` or `!`, or, under
+  `-E`, hold `{`; otherwise the line is "not run: unsafe pattern". A leading `-` would be an option
+  to `grep`; the quote and shell characters read differently inside double quotes than inside
+  single ones (`\` also between `grep` and `git grep`, and `!` in an interactive shell); an
+  interval (`{`) can make a pattern costly to compile; outside ASCII `grep` and `git grep` can
+  match differently. The pattern reaches the check's own read only inside single quotes, after
+  `-e`, so it cannot become an option, and the matcher is always named (`-G`, `-F` or `-E`), so git
+  config cannot change the pattern syntax. Both skills' Rules sections name the pattern as the one
+  exception to the plain-characters rule for values taken from ticket or request text.
+- **The disclosure boundary.** Nothing it relies on is taken from earlier in the run, and no
+  boundary read is reused for another line or run. For each search line, before any other read for
+  it, the check makes four reads:
+  - **Remote:** `git -C "<top level>" remote get-url --all origin` must print one `github.com`
+    URL (`https://github.com/<owner>/<repo>`, `git@github.com:<owner>/<repo>` or
+    `ssh://git@github.com/<owner>/<repo>`, with or without `.git`, plain owner and repo names).
+  - **Branch:**
+    `gh repo view 'github.com/<owner>/<repo>' --json defaultBranchRef --jq .defaultBranchRef.name`
+    must print exactly the name of the default branch step 1 recorded (step 1 now records its
+    name).
+  - **Tip:** `gh api --hostname github.com 'repos/<owner>/<repo>/commits/<branch>' --jq .sha` must
+    print exactly the verified commit's id. This ties the searched commit to the repo whose
+    visibility is read: git names a commit by its contents, so the local commit with that id is
+    the one GitHub serves.
+  - **Visibility:** `gh repo view 'github.com/<owner>/<repo>' --json visibility --jq .visibility`
+    must print exactly `PUBLIC`.
+
+  Then the line's `ls-tree` and checkout reads run, then the Visibility read again, as the last
+  read before the search, and the search, with its `-I` run on a match, right after it. The
+  `github.com/` and `--hostname github.com` keep `GH_HOST` from sending a read to another host.
+  Anything else (another host or URL form, another branch name, another id, which includes a
+  default branch that moved since step 1, `PRIVATE`, `INTERNAL`, a read that fails or prints
+  something else) is "not run: repo not public" (never "read failed"), and nothing more is read
+  for that line. The URL is never quoted in a reply, report or Linear, since it can hold a
+  credential. The path rules (unsafe path, `.git` part, secret-named
+  path in any case) and the pattern rules come first, before any read, and the ls-tree, checkout
+  and binary rules still apply in a public repo.
+- **The search's reads.** After the four boundary reads, the same `ls-tree` reads as a file test.
+  A search goes on only for a regular file: a path that differs only in case is "not run: path
+  differs only in case", and anything else (missing, a directory, a link or a submodule) is "not
+  run: search path is not a regular file", since `grep` would only report an error there. For a
+  regular file the check then asks whether a checkout would change the file's bytes:
+  `git --no-replace-objects --no-lazy-fetch -C "<top level>" check-attr --source <commit> filter working-tree-encoding ident crlf eol -- '<path>'`,
+  then `git -C "<top level>" config --get core.autocrlf` and
+  `git -C "<top level>" config --get core.eol`. A `filter` (Git LFS included),
+  `working-tree-encoding`, `ident` or `crlf` value, an `eol` set to anything but `lf`, a
+  `core.autocrlf` other than `input` or false, a `core.eol` other than `lf` or `native`, or any
+  search on Windows makes the line "not run: a checkout changes the file". The `text` attribute is
+  not read, and the step says why: on checkout git only adds a CR before an LF, and only in the
+  cases above; it never removes one, so a file committed with CRLF line endings checks out with
+  the same bytes. Then the Visibility read again, and the search,
+  `git --no-replace-objects --no-lazy-fetch -C "<top level>" grep -l --no-color <matcher> -e '<pattern>' <commit> -- '<path>'`,
+  with the line's matcher (`-G`, `-F` or `-E`) and its `-i` and `-w`, which names the file on a
+  match and prints none of its lines (the line's `-n` and `-q` are not passed on). The check
+  judges by that output, not by the exit alone: Claude Code's Bash tool reports a search's exit 1
+  as a success with no output, so a `git grep -q` that found nothing looked like a match in this
+  release's first live check. One
+  line naming the commit and path is a match, no output and no error is no match, and anything
+  else, an error or an exit other than 0 or 1 included, is "not run: read failed", never a result.
+  On a match the search runs again with `-I`, and a file git takes for binary is "not run: binary
+  file", since `grep` prints a notice there, not the lines, and the `grep` in Claude Code's shell
+  skips binary files.
+- **A path found with a case-variant sibling.** When `ls-tree` finds the path, the check now also
+  lists the parent of each of its parts; another entry there that matches the part when case is
+  ignored makes the line "not run: path differs only in case", as a missing path with such an
+  entry already did, since a checkout on a disk that ignores case can put the other entry at the
+  path. This applies to file tests and searches alike.
+- **Every read of the repo's objects in the check now passes `--no-replace-objects`** (with
+  `--no-lazy-fetch`, as before), the file test's included, so a local `refs/replace/` object
+  cannot stand in for the verified commit's tree or file. Under the boundary this matters: a
+  replaced file would be local content, not what GitHub serves.
+- **Judge.** A success statement (nothing beyond the command, "exits 0", "succeeds", "passes")
+  passes on exit 0, as before. A search is judged only on a regular file: it exits 0 on a match and
+  1 on no match, and `!` turns 0 into 1 and 1 into 0. Only a success statement can give "already
+  passes". A search with no `!` and no `-q` stated to print or find one or more lines, described or
+  counted ("prints the release rule", "prints one line"), fails on no match, since it then prints
+  nothing; on a match it is "not run: output not checked", since the reads cannot show whether the
+  lines it prints are the ones described. Anything else, a guard note, an expected failure or a
+  statement that a search prints or finds nothing included, stays "not run: stated result
+  unclear": a search that finds nothing exits 1, so an absence check passes only when written with
+  `!` (`! grep -q "<pattern>" <path>`), which the success rule reads. So a fact stated as a search
+  is current only by exit status, and a conditional step closes on a search only on that or on a
+  described search of a regular file that finds nothing; an error never settles either. Matched
+  lines and file contents are never printed in a reply, report or Linear: a line gets a result,
+  not output.
+- **`dv:groom`, step 1, "Repos".** It records the default branch's name as well as its commit
+  (from `git ls-remote --symref origin HEAD`), for the boundary's Branch read.
+- **`dv:groom`, step 3, "How" and "Conditional steps".** A fact stated as a command, and a
+  conditional step's check, can now be a search too, checked by the same rules and boundary; "repo
+  not public" is one of the reasons such a fact stays not checked.
+- **`dv:ticket`, File step 5.** It points at `dv:groom`'s check as before, so a fact the request
+  states as a search is checked under the same boundary, and is `[assumed]` with "repo not public"
+  outside it.
+- **Shared rules, "What a session runs"** (`plugins/dv/skills/ticket/references/ticket-format.md`).
+  Its sentence on the check now says it looks a file test up, or searches one tracked file in a
+  public repo whose default-branch tip GitHub reports as the verified commit (read again for each
+  search), with fixed reads of its own, and runs no command from the text. Nothing else in the
+  file changes.
+- **README.** The version, and the `dv:groom` and `dv:ticket` entries.
+
+## Answers to the search form's earlier review findings (skills PR 118)
+
+- **The oracle (`70d9c96#1`, critical).** The public-repo boundary: a search runs only on a
+  commit GitHub reports as a public repo's default-branch tip, with every boundary fact read again
+  for each search line and failing closed.
+- **Checkout line endings (`754ba37#1`).** The attribute and config reads above, and Windows; a
+  pattern cannot hold `$`, so it cannot anchor on a line end.
+- **Case-sensitive secret names (`6eaf39a#1`).** The secret-name rule lowercases each path part
+  first (since dv 0.41.0), and it applies to a search as to a file test.
+- **Binary files (`3436f8f#1`).** The `-I` re-run on every match.
+- **Git's `text` attribute (`70d9c96#2`).** Not read, with the reason now in the step itself.
+- **Replacement refs (`20fdd3e#2`).** `--no-replace-objects` on every read of the repo's objects.
 
 ## Known limits
 
-- An item nothing has delivered when the closeout session ends gets no mail; its pickup note, if
-  it landed, gives the Head the item as a Linear pickup, and the note's saved copies keep it.
-- The Head can get one item more than once (its pickup note, an earlier send of the question, a
-  Director's forward, the session's sends), each under its own key and each as advice.
-- The Director's check on the note still accepts only a standing yes for losses, so after a yes
-  verified through the Head, the removal stays David's: the reply names the command.
-- An item that only the session's mail delivered, or that nothing delivered, is never handed
-  over, so it keeps the session from being closed or released through the Director's checks
-  until it closes or an acknowledgement takes it.
-- A session that stops after a send but before its next saved copy loses that send's result, so
-  a later run can mail the item again, even under the same key.
+- The search reads the commit's copy with `git grep`. Another `grep` (GNU, BSD, or the ugrep that
+  Claude Code's shell runs as `grep`) can still match differently on non-ASCII text in the file for
+  `-i`, `-w`, `.` or a bracket expression, or take for binary a file git takes for text (such as a
+  file with invalid UTF-8 and no NUL byte).
+- A repo whose origin is not on `github.com`, or is named through an SSH host alias, is treated as
+  not public, whatever its real visibility.
 
-## Not tested
+## Not in this release
 
-No live run yet. VIL-1191's live test on disposable sessions (a note acknowledged by a verified
-Director; and with the Director absent or silent, the items reaching the Head with no question
-card) runs before merge.
-
-Refs VIL-1191.
+- Limits on the session's own reads for a fact stated in words (VIL-1224). Those reads still take
+  paths from the ticket without the check's path rules, as before this release.

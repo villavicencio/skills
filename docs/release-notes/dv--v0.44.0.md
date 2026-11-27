@@ -32,8 +32,7 @@ moved this work out of VIL-1178).
     one before it) keeps it; a
     new item takes a Qk above every one the session has used and every one the note lists, and
     every later copy of the note keeps it.
-    With no ticket, the branch takes the place of `VIL-N` in the key, the `Answer` line and the
-    mail's subject.
+    With no ticket, the branch takes the place of `VIL-N` in the key and the `Answer` line.
   - **Delivered.** An item is the closing session's until one of two things reads back: the
     verified Director's acknowledgement takes it, or the session's own mail to the Head, under a
     hop key of its own, returns a message id with no error. No record, pickup note or mention on
@@ -62,8 +61,10 @@ moved this work out of VIL-1178).
     10 minutes, with the probe's background timer.
   - **Mail to the Head when delivery fails**: no Director verified, the note not sent, or an item
     no acknowledgement took within the 10 minutes. Closeout mails him each item not yet delivered,
-    one message per item, with the command `dv:manager-mode`'s "With no Director that can be
-    verified" uses, under a new hop key of its own (`VIL-N/<session ID>/Hk`). No claim on the
+    one message per item, under a new hop key of its own (`VIL-N/<session ID>/Hk`). The mail's
+    subject is only the ticket id, the Qk and the words `closeout item`, each identifier checked
+    first (`closeout item` alone with no ticket or a failed check); the item's text goes only in
+    the body file. No claim on the
     ticket comes first and no record stops it, so `dv:director-mode`'s record steps 1 to 4 don't
     apply. Only the session named in a hop key mails under it, so two sessions never mail under
     one key; the Head can still get one item more than once, each under its own key, all advice. A
@@ -88,8 +89,9 @@ moved this work out of VIL-1178).
   - "A record on the ticket for each Qk": a new paragraph, "A closeout item". The item stays the
     closing session's until the Director's acknowledgement takes it or the session's own mail
     reads back. Its pickup note is a log and the Head's pickup, never a delivery. The Director
-    forwards an item it doesn't decide by its own mail, under its own hop key and outside its
-    record steps, with its record posted after the send as a log, and replies `Forwarded to the
+    forwards an item it doesn't decide by its own mail, with closeout's subject (the ticket id and
+    the Qk, never the item's text), under its own hop key and outside its record steps, with its
+    record posted after the send as a log, and replies `Forwarded to the
     Head` only once that mail returned a message id with no error; otherwise it leaves the line
     out and the session mails the item. The `Closed, VIL-N, Qk: …` reply under the pickup note
     closes it. An item with no ticket has no pickup note, so the Director decides it or leaves it

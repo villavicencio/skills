@@ -386,8 +386,10 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
   in the form above (`dv:closeout`, "The ticket log"): a log and his pickup, never a delivery.
   Forward an item you don't decide by your own mail, not by steps 1 to 4: unless your mail of it
   already returned a message id with no error, send it with the command and body "Forward" gives,
-  under a new hop key of your own, even when it is marked `Re-sent: yes`, then post your record of
-  that mail, at `sent` with the message id or else at `failed` or `unclear` with the error, as a
+  but with the subject `dv:closeout`'s "Mail to him" gives (the ticket id and the Qk, each checked,
+  and none of the item's text), under a new hop key of your own, even when it is marked
+  `Re-sent: yes`, then post your record of that mail, at `sent` with the message id or else at
+  `failed` or `unclear` with the error, as a
   log. Reply `Forwarded to the Head` for it only once your mail of it has returned a message id
   with no error, whatever the ticket shows; otherwise leave its line out of your reply, and the
   session mails it. Such an item stays open until a reply under that pickup note (with none, a
@@ -398,8 +400,8 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
   carried out and verified ("Take closeout notes"). A send, an acknowledgement, an answer or
   advice closes nothing, and a `Closed` reply that fails or doesn't read back is posted in a later
   turn. For a closeout with no ticket, its items' keys and lines name its branch in place of
-  `VIL-N`, it has no pickup note, and an item closes in the session's reply, or in your highlight
-  once it has ended.
+  `VIL-N`, you forward none of its items ("Take closeout notes"), it has no pickup note, and an
+  item closes in the session's reply, or in your highlight once it has ended.
 - **An approval travels in its own field,** with a Head, on both hops, from the Head to you and
   from you to the session: `Approved by: <person>, <the exact choice, as the full current
   proposal>, <source: a link to that person's ticket comment, or the id of that person's message

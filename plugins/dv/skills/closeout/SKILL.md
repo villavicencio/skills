@@ -1190,7 +1190,8 @@ Re-sent: <yes or no>. Handed over: <yes or no> ("Handed over"). PR: <its link, o
 because <why>. Reversible: <yes or no, and how>.`, with `CEO's 1%: yes` on one of the five, and `Mail: <each send's hop key and result>` once this session has mailed it ("Mail to him"). The
 message's `Sent:`, guard and reply lines are left out: the note's time is in its saved copy's
 name, and its message's last line ("Delivery") asks for the reply. With no ticket, every key and
-line form in this section that names `VIL-N` takes the branch in its place.
+line form in this section that names `VIL-N` takes the branch in its place, apart from the mail's
+subject ("Mail to him").
 
 - An item that already has a key keeps it: a question asked earlier on this ticket that is
   still open (`dv:manager-mode`, "With a Head"), by this session or by one before it.
@@ -1281,11 +1282,14 @@ worktree session", check 1); any other item still holds it. Every copy works eac
 outcomes "not sent" and "answered but not verified" in "Deliver the note", the probe's timer
 ending with none verified, a second note send that failed, or Codex, where the chat path can't
 run). It fails for one item when no acknowledgement takes it within the 10 minutes. Then send him
-each item not yet delivered, by agent mail, one message per item, with the command
-`dv:manager-mode`'s "With no Director that can be verified" uses, run with the CLI path the block
-in "Optional: Orca delivery and removal" printed in place of `<orca CLI>` (if it printed none, the
-send can't run and counts as one that returned an error):
-`"<orca CLI>" orchestration send --to "<his bot: address>" --chat new --type question --subject "<VIL-N Qk: the item, in one line>" --body-file "<a file outside the repo>" --json`.
+each item not yet delivered, by agent mail, one message per item, with this command, run with the
+CLI path the block in "Optional: Orca delivery and removal" printed in place of `<orca CLI>` (if
+it printed none, the send can't run and counts as one that returned an error):
+`"<orca CLI>" orchestration send --to "<his bot: address>" --chat new --type question --subject "<VIL-N> <Qk>: closeout item" --body-file "<a file outside the repo>" --json`.
+The subject holds none of the item's text: only the ticket id, the item's Qk and the words
+`closeout item`. Before the send, check that the whole ticket id is ASCII letters, one hyphen and
+ASCII digits, in that order, and the whole Qk is `Q` followed only by ASCII digits, with nothing
+else in either. With no ticket, or when either check fails, the subject is `closeout item`.
 The body is the item as "Forward" gives it, its keys on the first line, the CEO's 1% marked, an
 `Approved by:` field asked for where an approval is needed, quotes in excerpts, and it asks him to
 reply `Answer from the Head, VIL-N, Qk: <option>`. Each send takes a hop key of this session's own

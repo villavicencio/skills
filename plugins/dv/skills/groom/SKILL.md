@@ -4,7 +4,7 @@ description: "Groom one Linear ticket before anyone works it. Checks it against 
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.44.0"
+  version: "0.47.0"
 ---
 
 # /groom — groom a Linear ticket before work starts
@@ -58,19 +58,20 @@ overrule it.
 - a split, with the parent's replacement description when it stays as the parent;
 - a prerequisite that the shared rules' "Prerequisites" sends to a question (step 3; no relation
   is set on a guess);
-- a new milestone, a ticket whose goal no longer fits the milestone it has or that sits in a
-  finished one (move it, put it in a new milestone, or keep it), and a ticket whose Decisions
-  records "No milestone" but that has one (step 3, "Milestone").
+- a new milestone (a concrete proposal, step 3), a ticket whose goal no longer fits the milestone
+  it has or that sits in a finished one (move it, put it in a new milestone, or keep it), and a
+  ticket whose Decisions records "No milestone" but that has one (step 3, "Milestone").
 
 **Routine calls:** every other open decision, such as wording, ordering, Size and points, Done means
 phrasing, filing or dropping a spin-off, settling an `[assumed]` marker you verified, adding or
 removing a relation that step 3 maps clearly, closing a conditional step by removing it or making it
 unconditional (step 3), putting a ticket that has no milestone in the existing milestone that fits
-it (step 3, "Milestone"), rewording or adding a Done means line that proves the existing scope,
-rewriting a Done means line that already passes so it fails first, or marking it as a guard of
-unchanged behavior, where step 3 ("Done means lines that already pass") says each fits. Decide each
-one yourself: take the option you would have marked "(Recommended)" had you asked. When you cannot
-tell whether a call is a fork, treat it as one and ask.
+it, recording "No milestone" for a ticket that has none when none fits and you have no concrete
+proposal (both step 3, "Milestone"), rewording or adding a Done means line that proves the
+existing scope, rewriting a Done means line that already passes so it fails first, or marking it as
+a guard of unchanged behavior, where step 3 ("Done means lines that already pass") says each fits.
+Decide each one yourself: take the option you would have marked "(Recommended)" had you asked.
+When you cannot tell whether a call is a fork, treat it as one and ask.
 
 **Recording.** A routine call is recorded only when it changes the ticket or settles an open
 decision: one that step 3 collects, a spin-off, or the split. Such a call becomes an add item
@@ -552,10 +553,19 @@ Then, for the parts below, the result is either an edit-list item (step 7) or an
     nothing. The report says so.
   - It is open, has no milestone, and one fits: setting that milestone is an add item (step 7),
     with its one-line reason.
-  - It has no milestone and none fits: leave the field empty, and the report says so. A new
-    milestone (its name and one line on what done means) is an open decision, with "leave it
-    with none" and "keep it out of milestones" (which records "No milestone") as options. It is
-    created only on my yes (with a Head, relayed by him: "From a worktree session").
+  - It has no milestone and none fits: leave the field empty, and the report says so. A concrete
+    proposal is a new milestone's name and one line on what done means (the shared rules'
+    "Milestones"), for a goal the ticket's work serves that no open milestone states. Make one
+    only when you would recommend creating it, not to have something to ask.
+    - With no concrete proposal, "No milestone" is the call: an add item (step 7), the Decisions
+      line "No milestone: <one-line reason none fits>". In default mode it is in the edit list
+      like the other add items, and my approval of it is my choice: the line ends "<my name>,
+      <date>". In forks-only mode it is a routine call, and the line is its record ("Recording"):
+      it ends "Decided by dv:groom (forks-only), <date>".
+    - With one, it is one open decision: create the proposed milestone, or "No milestone". No "No
+      milestone" line is written before the answer (an open fork is still recorded as open where
+      "From a worktree session" says so). The milestone is created only on my yes (with a Head,
+      relayed by him: "From a worktree session").
   - Its goal no longer fits the milestone it has, or that milestone is finished: an open
     decision, to move it (to the milestone that fits, or out of milestones, which records "No
     milestone"), to put it in a new milestone when no other one fits (its name and one line on
@@ -780,9 +790,10 @@ removes existing text. It covers:
 - links to comments that hold evidence a Scope step depends on;
 - the milestone (step 3), set with `save_issue`'s `milestone` field: an add item when the ticket
   has none; a replace item when my answer moves it, or a remove item when it takes it out (which
-  also adds the "No milestone" Decisions line); a keep that replaces a "No milestone" line; and a
-  new milestone I said yes to, created just before the first save that sets it ("Order of
-  writes");
+  also adds the "No milestone" Decisions line); a keep that replaces a "No milestone" line; the
+  "No milestone" Decisions line alone, an add item that leaves the field empty, when none fits and
+  there is no concrete proposal (step 3); and a new milestone I said yes to, created just before
+  the first save that sets it ("Order of writes");
 - for a split, the children to file and the parent's change (its estimate included), exactly as
   approved;
 - Agent notes, which opens with the grooming line ("Groomed <date> <time> <zone> against

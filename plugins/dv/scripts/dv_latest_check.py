@@ -17,7 +17,8 @@ it read). It reads three versions:
   installed  Claude Code: <home>/plugins/installed_plugins.json, entry dv@<marketplace>: a
              project- or local-scope entry whose projectPath is the working directory or a
              parent of it, else the user-scope entry (unknown when a non-user entry has no
-             projectPath). A home with no such file (Codex): the highest
+             projectPath, an applicable entry has no readable version, or the entry is not a
+             list or an object). A home with no such file (Codex): the highest
              version directory in <home>/plugins/cache/<marketplace>/dv/. A development copy:
              unknown.
 
@@ -180,17 +181,22 @@ def active_entry_version(entries, manifest: Path, marketplace: str, cwd: str | N
 
     A project- or local-scope entry applies when its projectPath is the working directory or one
     of its parents (the deepest one wins); otherwise the user-scope entry does. A non-user entry
-    with no readable projectPath makes the answer unknown rather than a guess.
+    with no readable projectPath, or an applicable entry with no readable version, makes the
+    answer unknown rather than a guess; no applicable entry is skipped in favor of another.
     """
     cwd_path = Path(os.path.realpath(cwd or os.getcwd()))
-    scoped, user, unclear = [], [], False
+    label = "Claude Code"
+    # Scope and projectPath decide whether an entry applies; only then is its version read, so
+    # an applicable entry with an unreadable version is unknown, never skipped for another one.
+    scoped, user, unclear, bad_entry = [], [], False, False
     for entry in entries:
         if not isinstance(entry, dict):
+            bad_entry = True
             continue
         try:
             version = parse_version(str(entry["version"]))
         except (KeyError, ValueError):
-            continue
+            version = None
         if entry.get("scope", "user") == "user":
             user.append(version)
             continue
@@ -201,12 +207,18 @@ def active_entry_version(entries, manifest: Path, marketplace: str, cwd: str | N
         project_path = Path(os.path.realpath(project))
         if project_path == cwd_path or project_path in cwd_path.parents:
             scoped.append((len(project_path.parts), version))
-    label = "Claude Code"
     if scoped:
-        return max(scoped)[1], label
+        deepest = [v for depth, v in scoped if depth == max(d for d, _ in scoped)]
+        if None in deepest:
+            return None, f"{label} ({manifest}: the dv@{marketplace} entry for this directory has no readable version)"
+        return max(deepest), label
+    if bad_entry:
+        return None, f"{label} ({manifest}: a dv@{marketplace} entry is not an object)"
     if unclear:
         return None, f"{label} ({manifest}: a dv@{marketplace} entry has no projectPath)"
     if user:
+        if None in user:
+            return None, f"{label} ({manifest}: the dv@{marketplace} entry has no readable version)"
         return max(user), label
     return None, f"{label} ({manifest} has no dv@{marketplace} entry for this directory)"
 
@@ -220,11 +232,15 @@ def read_installed(loaded: dict):
     if manifest.is_file():
         try:
             data = json.loads(manifest.read_text(encoding="utf-8"))
-            entries = (data.get("plugins", data) or {}).get(f"{PLUGIN}@{marketplace}") or []
-            if isinstance(entries, dict):
+            entries = (data.get("plugins", data) or {}).get(f"{PLUGIN}@{marketplace}")
+            if entries is None:
+                entries = []
+            elif isinstance(entries, dict):
                 entries = [entries]
+            elif not isinstance(entries, list):
+                return None, f"Claude Code ({manifest}: the dv@{marketplace} entry is not a list or an object)"
             return active_entry_version(entries, manifest, marketplace)
-        except (OSError, ValueError, AttributeError) as exc:
+        except (OSError, ValueError, AttributeError, TypeError) as exc:
             return None, f"Claude Code ({manifest} unreadable: {exc})"
     cache = home / "plugins" / "cache" / marketplace / PLUGIN
     try:

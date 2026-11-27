@@ -202,6 +202,38 @@ def main() -> int:
     case("installed: a non-user entry with no projectPath makes it unknown",
          lambda sb: str(scoped_home(sb, [user("0.51.0"), {"scope": "project", "version": "0.50.0"}], "0.50.0")),
          1, "stale", ("installed unknown",), cwd="{root}/proj")
+    # A malformed dv@<marketplace> value is an unknown install, never a traceback or a guess.
+    # (A bare string, a list holding a non-object, an object with no usable version.)
+    for label, value in (("a number", 5), ("a string", "0.51.0"), ("true", True),
+                         ("a list holding a non-object", [user("0.51.0"), "0.50.0"]),
+                         ("a list holding null", [None, user("0.51.0")])):
+        def malformed(sb, value=value):
+            home = sb.claude_home(None)
+            d = sb.skill(home, "0.50.0")
+            (home / "plugins" / "installed_plugins.json").write_text(
+                json.dumps({"version": 2, "plugins": {"dv@villavicencio-skills": value}}))
+            return d
+        case(f"installed: the dv entry is {label} -> unknown, no traceback",
+             lambda sb, malformed=malformed: str(malformed(sb)),
+             1, "stale", ("loaded dv 0.50.0", "installed unknown"), ("Traceback",))
+    case("installed: an applicable project entry with an invalid version is unknown, not the user version",
+         lambda sb: str(scoped_home(sb, [user("0.51.0"), project("not-a-version", "{root}/proj")], "0.50.0")),
+         1, "stale", ("installed unknown",), ("installed 0.51.0", "a fresh session picks up"),
+         cwd="{root}/proj/sub")
+    case("installed: an applicable project entry with no version is unknown, not the user version",
+         lambda sb: str(scoped_home(sb, [user("0.51.0"), {"scope": "local", "projectPath": "{root}/proj"}], "0.50.0")),
+         1, "stale", ("installed unknown",), ("installed 0.51.0", "a fresh session picks up"),
+         cwd="{root}/proj")
+    case("installed: a project entry with an invalid version for another directory is ignored",
+         lambda sb: str(scoped_home(sb, [user("0.51.0"), project("not-a-version", "{root}/other")], "0.50.0")),
+         1, "stale", ("installed 0.51.0", "a fresh session picks up"), cwd="{root}/proj")
+    case("installed: a deeper valid project entry wins over a shallower invalid one",
+         lambda sb: str(scoped_home(sb, [project("not-a-version", "{root}/proj"),
+                                         project("0.50.0", "{root}/proj/sub")], "0.50.0")),
+         1, "stale", ("installed 0.50.0", "install itself is behind"), cwd="{root}/proj/sub")
+    case("installed: a user entry with an invalid version and no scoped entry is unknown",
+         lambda sb: str(scoped_home(sb, [user("not-a-version")], "0.50.0")),
+         1, "stale", ("installed unknown",), cwd="{root}/proj")
 
     # --- latest release selection ------------------------------------------------------------
     def noisy(sb):

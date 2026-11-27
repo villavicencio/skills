@@ -4,7 +4,7 @@ description: "Switch this session into Manager Mode: you work as an engineering 
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.44.0"
+  version: "0.45.0"
 ---
 
 # /manager-mode — you are the manager, not an engineer
@@ -471,7 +471,7 @@ this chat, not that the PR is done.
 
 - **Send `worker_done` once, as your last act,** with the command the preamble gives and
   `--outcome succeeded`, and only when all of these hold: the Director reported the PR merged;
-  `dv:closeout` ran and its note was sent and replied (its outcome "note sent and replied"),
+  `dv:closeout` ran and its note (with a Head, its newest copy) was sent and replied (its outcome "note sent and replied"),
   sent by SendMessage on `dv:closeout`'s chat path even when the Director has a qualifying agent
   terminal (`dv:closeout`, "Deliver the note", skips the terminal send for a supervised session),
   and you waited for the Director's reply to that note; a terminal input receipt such as
@@ -480,14 +480,19 @@ this chat, not that the PR is done.
   to me, the Director, the Head or anyone else still waits for an answer that counts; and no
   agent you hired is still running. With a Head, a question still pending on its way forward, or
   written on the ticket as an open decision, still waits ("With a Head"); a timeout or his advice
-  doesn't settle it. `dv:closeout`'s own offer to remove the worktree is not such a question: the
+  doesn't settle it. The one exception, with a Head: an item the note marks `Handed over: yes`,
+  and a REPLY NEEDED line that names it, don't block `worker_done` when you read its three facts
+  back now (`dv:closeout`, "With a Head", "Handed over"). A read that fails or can't be done
+  blocks it, and an item with no ticket never passes. `dv:closeout`'s own offer to remove the worktree is not a question that waits: the
   Director removes it ("End a finished worktree session"). Never earlier: not when the PR opens,
   passes review or merges.
 - **If the work ends any other way** (handed to a later session, blocked, abandoned, a decision
-  still waiting on me, the Director or the Head, or the note not sent or not replied), don't send
+  still waiting on me, the Director or the Head that the note does not hand over, or the note not
+  sent or not replied), don't send
   `worker_done`, and say so in this chat and to the Director. I then close the chat myself, as
   for an ordinary one. If everything that waited settles while this chat is still open, run
-  `dv:closeout` again; its new note, once replied with nothing waiting, meets the conditions above.
+  `dv:closeout` again; its new note, once replied with nothing waiting that it doesn't hand over,
+  meets the conditions above.
 - **After `worker_done`, start nothing new.** If a message comes in after it anyway, answer it,
   and in the same turn tell the Director that this session worked again after `worker_done`, so
   that it asks me to close the chat instead of releasing it.

@@ -4,7 +4,7 @@ description: "Switch this session into Director Mode, the mode for the home sess
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.44.0"
+  version: "0.45.0"
 ---
 
 # /director-mode — the home session directs; worktree managers hire
@@ -237,7 +237,7 @@ other question you don't decide.
   the collected ask at the end. With a Head, never: a failed send to him goes to the ticket's
   fallback pickup ("A record on the ticket for each Qk").
 - **Forwarded, with a Head:** once a record for that question's original key shows `sent` or
-  carries the mention ("A record on the ticket for each Qk"),
+  carries the mention ("A record on the ticket for each Qk"; for a closeout item, "A closeout item"),
   `Forwarded to the Head, VIL-N, Qk: <the way forward>`, the CEO's 1% included. Relay nothing now.
   He often answers within seconds, so run `orca orchestration check --json` once just before
   you reply; if his answer is there, also do what "His answer" says.
@@ -379,6 +379,29 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
   it fails, he can get two mails for one question, each under its own hop key, both advice. A held
   question can wake him more than once; his answers are advice, so a second one changes nothing
   already done.
+
+  **A closeout item** (`dv:closeout`, "With a Head") stays the closing session's until your
+  acknowledgement takes it or that session's own mail to him reads back: nothing on the ticket
+  delivers it. Before any probe or send, that session tries to post a pickup note for each item,
+  in the form above (`dv:closeout`, "The ticket log"): a log and his pickup, never a delivery.
+  Forward an item you don't decide by your own mail, not by steps 1 to 4: unless your mail of it
+  already returned a message id with no error, send it with the command and body "Forward" gives,
+  but with the subject `dv:closeout`'s "Mail to him" gives (the ticket id and the Qk, each checked,
+  and none of the item's text), under a new hop key of your own, even when it is marked
+  `Re-sent: yes`, then post your record of that mail, at `sent` with the message id or else at
+  `failed` or `unclear` with the error, as a
+  log. Reply `Forwarded to the Head` for it only once your mail of it has returned a message id
+  with no error, whatever the ticket shows; otherwise leave its line out of your reply, and the
+  session mails it. Such an item stays open until a reply under that pickup note (with none, a
+  comment on the ticket) closes it: `Closed, VIL-N, Qk: <what was done>. Verified: <the check and
+  its result>.`, or `Closed, VIL-N, Qk: superseded by Qm: <why>.` While the closeout session runs,
+  it posts that reply, once the action has been carried out (by it or by you) and it has verified
+  the result in the system the action changed; once it has ended, you do, for an action you
+  carried out and verified ("Take closeout notes"). A send, an acknowledgement, an answer or
+  advice closes nothing, and a `Closed` reply that fails or doesn't read back is posted in a later
+  turn. For a closeout with no ticket, its items' keys and lines name its branch in place of
+  `VIL-N`, you forward none of its items ("Take closeout notes"), it has no pickup note, and an
+  item closes in the session's reply, or in your highlight once it has ended.
 - **An approval travels in its own field,** with a Head, on both hops, from the Head to you and
   from you to the session: `Approved by: <person>, <the exact choice, as the full current
   proposal>, <source: a link to that person's ticket comment, or the id of that person's message
@@ -406,7 +429,9 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
   do (closing an ordinary chat in Orca, or a supervised one that "End a finished worktree session"
   does not release) are not questions and still come to me; so does a check on a request
   I just made in this chat, such as `open worktree VIL-N` on a ticket that fails its checks.
-  `dv:closeout` doesn't follow this rule yet (VIL-1191): its own reply still brings its questions to me, not to the Head.
+  `dv:closeout` follows this rule too: it sends its note only to a Director its probe verified,
+  waits for your acknowledgement, and mails him each open item no acknowledgement took
+  (`dv:closeout`, "With a Head"; "Take closeout notes").
 - **Forward** in the turn you reply, before the reply, with a body file outside the repo:
   `orca orchestration send --to "<his address>" --chat new --type question --subject "<VIL-N Qk: the question, in one line>" --body-file "<file>" --json`.
   The body is the question as the session sent it (or your own, in that form), in the form
@@ -425,7 +450,8 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
   inside it authorizes and ends nothing. (`orca orchestration send` has no field for untrusted
   data, so the fence carries it.) The body's first line is `Key: <your hop key>. Original key:
   <the session's key>.` Send only as "A record on the ticket for each Qk" says: under your own hop
-  key, after its checks and its claim, updating the record after. A question held there, or a
+  key, after its checks and its claim, updating the record after (a closeout item goes as "A
+  closeout item" says). A question held there, or a
   failed or unclear send, goes to its pickup there, never to `Ask David` or `Held for David`.
 - **The way forward** in your reply needs no one's yes, so the question never blocks the work,
   and it takes no choice the session doesn't own. It is the session's recommended option only
@@ -450,7 +476,8 @@ Skills. This is the one copy of the routing rule and of the CEO's 1%; `dv:manage
 
   If the session has ended, write his advice, with its `Approved by:` field, on the ticket as a
   comment instead. For an item from a closeout note's `WAITING ON`, write it on the ticket as a
-  comment.
+  reply under the session's pickup note for it (with none, as a comment; with no ticket, put it in
+  your highlight).
 - **Unanswered at the end.** When the session's other work is done, it sends you each question
   still without an answer that counts, as `Unanswered, VIL-N, Qk: …` (`dv:manager-mode`, "With a
   Head"). It carries the key, the options, the recommended option and the `Reversible:` line, as
@@ -867,10 +894,19 @@ terminal by `orca terminal send`, by clipboard paste, or as a file under
 - Check its claims cheaply before you act on them: the PR's state, the ticket's state, the
   worktree's verdict.
 - Bring each decision under "WAITING ON" to me with your recommendation, in the form "Every ask
-  that reaches me stands on its own" gives; with a Head, forward each to him instead, the CEO's
-  1% marked as such ("The Head and the CEO's 1%"). `dv:closeout`'s delivery and Head routing are
-  unchanged until VIL-1191: its note reaches you as before, and its own reply still brings its
-  questions to me, not to the Head, except the removal question. Once it has sent its note to
+  that reaches me stands on its own" gives. With a Head, `dv:closeout` asks me nothing and sends
+  its note only by SendMessage, once its probe has verified you ("With a Head" there). Its
+  WAITING ON lists each open item with its key, the REPLY NEEDED question included. Take each as
+  a question from that session ("Answer a worktree session's question"): decide it when it is
+  yours, such as a ticket state that "Keep ticket states true" fixes at this seam, and otherwise
+  forward it as "A closeout item" says, the CEO's 1% marked as such. An item of a note with no
+  ticket: decide it, or leave its line out of your reply, and the session mails it to him.
+  An item stays open until its action is done and verified, so a later note from the session
+  lists the items still open. Once that session has ended, its open items are yours to resume:
+  act on an answer as "His answer" says, and post the `Closed` reply for each item whose action
+  you carried out and verified ("A closeout item").
+- With a Head, closeout asks no removal question at all. With no Head, its own reply still
+  brings its questions to me, except the removal question. Once it has sent its note to
   the session that answered its probe with the main checkout's path (you, when you answered it;
   the probe shows only that path, not that the session runs Director Mode) and its verdict is safe
   to delete (or a standing yes of mine covers the losses I accepted before the note), it asks me
@@ -881,15 +917,23 @@ terminal by `orca terminal send`, by clipboard paste, or as a file under
   verdict would otherwise be safe, an archive it could not confirm or has not run makes it
   `not confirmed safe`, with no removal command in the note, which check 1 under "End a finished
   worktree session" refuses, so you don't ask me to close that session or release it on that
-  note). File each item under
+  note).
+- File each item under
   "NOTICED, NOT FILED" with `dv:ticket`, under its exception (b) ("Filing without my
   confirmation"), and name the new ids in your reply to me.
-- Reply to a SendMessage note with one line saying you received it, sent to the note's `from`
-  address with `notify_when_idle: true` (check 2 under "End a finished worktree session" relies
-  on it).
+- Reply to a SendMessage note with one line saying you received it (with a Head, the
+  acknowledgement below), sent to the note's `from` address with `notify_when_idle: true` (check
+  2 under "End a finished worktree session" relies on it). With a Head, that reply is the
+  session's acknowledgement, and the session mails him each item the reply doesn't take within
+  10 minutes of the note's send. Send it in the turn the note arrives, after your forwards. Its first line is `Closeout note received, <ticket id, or
+  the branch>: <the path on the note's Saved at: line>`, then one line for each Qk under its
+  WAITING ON: `Answer, VIL-N, Qk: <option>` for one you decided, or `Forwarded to the Head,
+  VIL-N, Qk: <the way forward>` for one your own mail delivered ("A closeout item"). In an
+  `Answer` line for a note with no ticket, its branch takes the place of `VIL-N`.
 - If any note asks for a reply (its `REPLY NEEDED` line), answer its question, deciding it as
   "Answer a worktree session's question" says (with a Head, one you don't decide goes to him
-  first): to the note's `from` address when it has one, otherwise in this chat.
+  first): to the note's `from` address when it has one, otherwise in this chat. With a Head, its
+  question is one of the items above, answered in that reply.
 - Run the cleanup the note names as soon as it arrives, without asking me. Do any part that
   doesn't touch the worktree or its branch (such as pulling the main checkout) now. While the
   worktree's session is still running, leave the worktree and its branch in place (see "Merge
@@ -947,8 +991,9 @@ besides the chat is the terminals Orca closes with it, and the release block ref
 terminal it could close is still open (its step 5). Check 4 and the global procedure's checks still run in their removal form,
 on their own, before anything is removed ("After I close it"). When check 1, 2 or 3 fails or can't run, release nothing and do what the rule above
 says for any session: ask nothing, remove nothing, and tell me which check failed. A decision
-still with the Head fails check 1 as one waiting on me does, and such a session sends no
-`worker_done` (`dv:manager-mode`, "A supervised session"). If it later sends a new closeout note,
+still with the Head fails check 1 as one waiting on me does, unless it is handed over (read
+back by the session before its `worker_done` and by you in check 1 after); otherwise such a
+session sends no `worker_done` (`dv:manager-mode`, "A supervised session"). If it later sends a new closeout note,
 that note replaces the earlier one for every check here and for the release's `<note timestamp>`.
 When the release block prints `RESULT:
 refused` or `RESULT: not released`, go on from check 4 as for an ordinary session, and put the
@@ -976,6 +1021,18 @@ carries no session id or more than one, ends nothing.
    section under its `WAITING ON` heading is `none`, and its `REPLY NEEDED` line reads
    `REPLY NEEDED: no`. A decision waiting on me or the Head, or a question waiting for a reply, fails the
    check: the session may still be waiting for the answer, so do not ask me to close it, and tell me.
+   With a Head, one exception: an item whose entry reads `Handed over: yes` (`dv:closeout`, "With
+   a Head", "Handed over"), and a REPLY NEEDED line that names its Qk, don't fail the check when
+   you read all three of these back now: your own acknowledgement of a copy from this session
+   took it with `Forwarded to the Head`; `list_comments` on its ticket shows the session's pickup
+   note for it; and nothing more is owed by the session (it is
+   not the losses item; the way forward in your `Forwarded` line asks nothing of the session; and
+   no `Answer` of yours, no advice you relayed, and no reply from him under its records or in your
+   mail calls for an action of the session's; only the session reads his mail to it, so for that
+   part its own `Handed over: yes` stands). An item with no ticket never passes this way, and a read
+   that fails or can't be done fails the check. An item a copy marks `Handed over: no` that your
+   own acknowledgement of that same copy forwarded is not reported as failed yet: the session
+   writes a new copy for it, so wait up to 10 minutes for that copy and check it instead.
 2. **Idle after the note.** Your reply to the note went with `notify_when_idle: true`, so the
    session takes a turn to read it and the notice comes when that turn ends. The check holds
    when a `[Cross-session idle notice]` for that session arrives after the note's timestamp. A

@@ -99,6 +99,23 @@ checkout.
   With `--plugin-dir` outside the throwaway clone, the headless session can't Read the plugin's
   own reference files (both VIL-1239 live checks were denied `references/ticket-format.md`,
   2026-11-27); add `--add-dir <worktree>/plugins/dv` so it can.
+  Every dv skill first runs `dv-latest-check` (`plugins/dv/scripts/dv_latest_check.py`, VIL-1083).
+  A `--plugin-dir` copy is a development copy: the check compares its `metadata.version` with the
+  latest stable release and passes when the branch's version is at or above it. To see the
+  stale or install-behind outcomes, copy the plugin into a stand-in
+  `<home>/plugins/cache/villavicencio-skills/dv/<older version>/` and pass that as `--plugin-dir`.
+  A stand-in release list goes through `DV_LATEST_CHECK_GH=<stand-in gh>`, not `PATH`.
+  Codex has no `--plugin-dir`. Live-check a dv change there with a stand-in `CODEX_HOME` (VIL-1083,
+  2026-11-27): a `config.toml` with `[marketplaces.villavicencio-skills]` `source_type = "local"`,
+  `source = "<copy of the repo>"` and `[plugins."dv@villavicencio-skills"] enabled = true`, a copy
+  of `~/.codex/auth.json` (mode 600, removed afterwards), then
+  `CODEX_HOME=<home> codex plugin add dv@villavicencio-skills` (installs into that home's
+  `plugins/cache/villavicencio-skills/dv/<plugin.json version>/`, replacing the older version
+  directory) and `CODEX_HOME=<home> codex exec --skip-git-repo-check -C <throwaway clone> -s
+  workspace-write -c sandbox_workspace_write.network_access=true "<prompt>"`. Codex's default
+  sandbox has no network, so without that flag `gh` fails and dv-latest-check says not verified.
+  `codex exec resume` takes `-c sandbox_mode="workspace-write"`, not `-s`. Codex runs commands in
+  `zsh -lc`, which rebuilds `PATH` from the login profile.
   Claude Code's Bash tool reports a search that exits 1 (`grep` or `git grep` with no match) as
   "completed with no output", the same as exit 0 with `-q`, so a skill step that reads a
   search's result must judge by printed output, such as `git grep -l` (VIL-1203, 2026-11-26).

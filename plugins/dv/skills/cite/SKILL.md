@@ -4,7 +4,7 @@ description: For realtime-fact queries — prices, stock state, "as of today" cl
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.53.0"
+  version: "0.54.0"
 ---
 
 # /cite — Re-fetch + freshness-tag or decline
@@ -16,6 +16,28 @@ This command is one line of defense, not the only one. The same contract should 
 This contract exists because an autonomous agent once quoted a stale price — a cached `USD 219.50 in stock` when the live value was `USD 350 + out of stock` — and acted on it. When in doubt about freshness, re-fetch or decline.
 
 ---
+
+## First step: dv-latest-check
+
+Before anything else, check that the dv this skill was loaded from is the latest stable release
+(a `--plugin-dir` development copy passes at or above it). Pass the base directory the client
+gave when it loaded this skill (Claude Code: "Base directory for this skill"; Codex: the
+directory of this SKILL.md), never a newer path found on disk now:
+
+```bash
+python3 -I "<base directory>/../../scripts/dv_latest_check.py" "<base directory>"
+```
+
+It calls `gh`, so it needs network access (in a Codex sandbox, run it with network allowed). If
+the script is gone because an update removed the loaded copy, run the newest
+`…/dv/<version>/scripts/dv_latest_check.py` in the same plugin cache, still passing this base
+directory. Quote the first line; no `dv-latest-check:` line counts as `not verified`.
+
+On `current`, go on. On `stale` or `not verified`, hold every dv-dependent action (each step of
+this skill, and any commit, push, merge, hire, closeout, or Linear, GitHub or Orca write that
+dv's rules govern) and say why in that line's words; work that doesn't depend on dv can
+continue, and turning a mode `off` is never held. While a dv mode stays on, run the check again
+before each later dv-dependent action.
 
 ## Steps
 

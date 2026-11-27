@@ -33,6 +33,8 @@ session still loaded 0.48.0. The Head of Skills set the rule as his item 78, fro
   Its first line is one of `current` (exit 0), `stale` (exit 1; names the loaded, latest and
   installed versions and says either that a fresh session picks up the update or that the install
   itself is behind) or `not verified` (exit 2; the release or the base path can't be read).
+  `DV_LATEST_CHECK_GH`, when set, names a stand-in `gh` for tests and live checks (a Codex shell
+  rebuilds `PATH` from the login profile, so a stand-in on `PATH` is not seen there).
 - **Every dv skill's first section, "First step: dv-latest-check"** (identical in all sixteen):
   run the check with the base directory given at load time, never a newer path on disk; give it
   network access (a Codex sandbox blocks it, and the check then says `not verified`); if an update

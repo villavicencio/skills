@@ -4,7 +4,7 @@ description: "Close out a finished worktree session and brief the parent session
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.43.0"
+  version: "0.44.0"
 ---
 
 # /closeout — close out a finished worktree session
@@ -33,6 +33,9 @@ mention. Bare invocation takes none. "I" and "me" in this skill mean the user.
   read, say which fact is unverified. The worktree is then "not confirmed safe", never "safe".
 - **Nothing is removed without my yes.** This skill never merges a PR, never deletes a branch and
   never removes the worktree on its own.
+- **With a Head, ask me nothing.** When this project names a department Head, the section "With
+  a Head" (below) changes the steps it names, and where it and a step differ, it wins. With no
+  Head it does not apply, and every step runs as written.
 - **Every block is self-contained.** Shell state does not survive between tool calls. The blocks
   take no positional parameters, and awk reads the whole line as `$(0)`: Claude Code replaces `$`
   followed by a digit everywhere in this file.
@@ -536,7 +539,8 @@ at risk, but the work is not finished. Say so first, and suggest `/handoff` if i
 Run this right after Step 2, before Step 3 writes the note, and only when Step 2 said safe to
 delete, or said safe once I accept losing the listed build-output lines and reflog-only commits
 and I have said yes to that in this session (my answer to Step 5's question, which a standing yes
-does not replace), with Step 5's recheck matching the lines I accepted word for word. A changed
+does not replace; with a Head, my yes verified as "With a Head" says, "The losses"), with Step
+5's recheck matching the lines I accepted word for word. A changed
 "safe once you accept losing" verdict waits on a new yes. It moves this session's handoff out of
 the shared store into `handoffs/_done/`, the way `/pickup` does for a branch whose PR merged, so
 `/pickup` in other worktrees stops listing a closed session. It also covers a detached worktree,
@@ -731,13 +735,13 @@ TICKETS FILED OR CHANGED
 NOTICED, NOT FILED
 <things seen along the way that nobody has written down anywhere else>
 
-WAITING ON <the user's name>
+WAITING ON <the user's name; with a Head, the Head's name ("With a Head")>
 <decisions only they can make, each with a recommendation>
 
 CLEANUP THE PARENT OWNS
 <pull the main checkout if it is behind; the removal command only where "The note follows Step 4" allows it, otherwise "no removal command" and why; anything else>
 
-REPLY NEEDED: <no | yes: the question>
+REPLY NEEDED: <no | yes: the question; with a Head, its Qk>
 ```
 
 **The note follows Step 4.** The Worktree line and CLEANUP say what Step 4 printed in this
@@ -883,7 +887,8 @@ Do not run it.
 When the worktree is not safe, or not confirmed safe, name no removal command and offer none.
 When Step 2 said safe once I accept losing (never while a nested git repo is listed: that is not
 safe) and I have not said yes yet, the note says the losses wait on my yes (Step 3, "The note
-follows Step 4", case 3); end the reply with one plain question that names what would be lost:
+follows Step 4", case 3). With a Head this question is not asked: it is an open item ("With a
+Head", "The losses"). Otherwise end the reply with one plain question that names what would be lost:
 each build-output line with its name, entry count, directory count and fingerprint (for example
 `__pycache__/ (any depth): 666 entries in 87 directories; fingerprint 3f9a0c1e2b7d`), and the
 reflog-only commits with their count and list id. Accept losing them? On my yes, recheck first
@@ -915,7 +920,8 @@ Reply in this order, short:
    missing, that the handoff archive is not confirmed, or that the listed losses wait on my yes).
    Then the Not checked list from Step 2.
 2. **Needs you:** decisions waiting on me, and anything still owed on the ticket that this
-   session could not close. Leave it out if there is none.
+   session could not close. Leave it out if there is none. With a Head, it holds only what "With
+   a Head" leaves there.
 3. The verified facts, one line each: the ticket and its state; each PR and its merge state; what
    the worktree holds beyond the default branch; the main checkout against its remote (behind,
    ahead, dirty); where the handoff went, or that it was left; where this turn's copy of the note
@@ -973,7 +979,9 @@ qualifying terminal. The Director releases that session's chat only on a note se
 SendMessage, whose `from` address names this session's `claude` process, and only once it has
 replied; a terminal input receipt (`input_accepted`, a turn seen to start) is neither, and never
 authorizes a release or `worker_done`. Wait for the Director's reply (the outcome "note sent and
-replied") before `dv:manager-mode` lets the session send `worker_done`. Every other session
+replied") before `dv:manager-mode` lets the session send `worker_done`. With a Head, every
+session takes the chat path the same way, and that reply is the acknowledgement ("With a Head",
+"Delivery" and "The acknowledgement"). Every other session
 routes as the bullets say.
 
 - Exactly one qualifying terminal (not for a supervised session): send the copy Step 3 saved in
@@ -1051,6 +1059,8 @@ routes as the bullets say.
      Please reply with one line to say you received it.
      ```
 
+     With a Head, the last line differs ("With a Head", "Delivery").
+
      If the note's send fails (SendMessage returns an error, such as "socket path is stale" for
      a session that has ended, or "No agent named ... is reachable"), the Director may have
      restarted under a new name. Probe again from scratch, steps 1 to 4, with the candidates
@@ -1086,7 +1096,8 @@ socket path, and "No agent named ... is reachable" for a name ListAgents no long
 tested: a socket file left behind by a session that crashed.
 
 **Offer the removal.** Only when the worktree lives in Orca, the block printed an Orca CLI, and
-the removal is cleared (Step 5's bullet "Removal cleared"), end the reply with one question. Before running the removal on my yes,
+the removal is cleared (Step 5's bullet "Removal cleared"), end the reply with one question
+(with a Head, never: "With a Head"). Before running the removal on my yes,
 recheck as Step 5 says and run Step 4 again; if the verdict changed, or Step 4 does not print one
 of its two success lines, do not remove: report it and write the note again with Step 3. While the note waits for the
 probe answers, say so before the question: the removal ends this session, and the note is
@@ -1140,6 +1151,159 @@ Use the `path:` selector (`current` and `active` are refused). Add no `--force` 
 `--delete-branch`: if the removal is refused, report the refusal and stop. With an initialized
 submodule, do not offer this command at all (Step 5). When the removal is cleared but I have not
 said yes, name this command in the reply instead and leave it to me.
+
+## With a Head
+
+This section applies only when this project names a department Head: a `Head:` line with a
+`bot:` address in its `AGENTS.md` or `CLAUDE.md`, as `dv:director-mode`'s "The Head and the
+CEO's 1%" defines it. With none, skip it. With a Head, every question these skills would put to
+me goes to him, so closeout asks me nothing, in a dialog or in chat. It uses that section's
+forms: the record on the ticket ("A record on the ticket for each Qk"), the mail ("Forward"), the
+approval ("An approval travels in its own field") and "What no default decides". Of its open
+items, only the CEO's 1% reach me, and only through him. A Head's mailed answer is advisory until
+verified Head decision delivery ships (VIL-1193): no answer from him settles an item or counts as
+my yes.
+
+**What changes in the steps:**
+
+- Losing what Step 2 lists under "safe once you accept losing" is not asked of me (Step 5).
+  Accepting it is one of the CEO's 1% (deleting my data): an open item that settles only on my
+  own yes, verified ("The losses", below). It is one even when a standing yes of mine covers
+  those losses, since Step 4's gate says a standing yes doesn't replace my answer.
+- What the reply's **Needs you:** would hold (decisions waiting on me, and anything still owed
+  on the ticket) goes under WAITING ON as open items instead, a ticket-state mismatch included
+  (Step 1, "The ticket beside its PRs"). Needs you keeps only what no message can grant (a
+  permission prompt, a harness approval, a barrier set for me) and what only my hands can do.
+- No removal question is asked, whether or not a Director has the note ("Offer the removal").
+  When the removal is cleared, the reply still names the removal command (Step 5) and says the
+  worktree stays until a Director removes it after this session ends, or I run that command.
+  With no Director verified, nothing else removes it.
+- The note goes only by the chat path ("Delivery", below), so neither terminal bullet runs, and
+  no question about which terminal is asked.
+
+**Open items** are the decisions under WAITING ON and the REPLY NEEDED question. In the note,
+the heading reads `WAITING ON <the Head's name>`, the REPLY NEEDED question is listed there too,
+and the REPLY NEEDED line names its Qk (`REPLY NEEDED: yes: Qk`). Each item is one entry in the
+fields of `dv:manager-mode`'s question message: `Qk: <the item>. Key: <its original key>.
+Re-sent: <yes or no>. PR: <its link, or none>. Options: <numbered>. Recommended: <the option>,
+because <why>. Reversible: <yes or no, and how>.`, with `CEO's 1%: yes` on one of the five. The
+message's `Sent:`, guard and reply lines are left out: the note's time is in its saved copy's
+name, and its message's last line ("Delivery") asks for the reply.
+
+- An item that already has a key keeps it: a question this session asked earlier that is still
+  open (`dv:manager-mode`, "With a Head"). Its record is on the ticket already.
+- A new item takes the next Qk this session has not used: above every Qk in its written state
+  and in the ticket's records under its session ID. Its original key is `VIL-N/<session ID>/Qk`
+  (`dv:director-mode`, "A record on the ticket for each Qk"), and every later copy of the note
+  keeps it.
+- `Re-sent:` is yes once a copy listing the item was sent to a Director (a send that failed
+  included) or the item was mailed to him, as `dv:manager-mode` marks a question.
+
+**The record.** In the turn a copy of the note first lists a new item, after Step 3 saves it and
+before any probe or send, post the item's record on the ticket in the form "A record on the
+ticket for each Qk" gives: its original key as both keys, `Status: in closeout note`, `Send
+result: none`, no mention, and `Resumes:` (no Director is verified yet when it is posted)
+naming this session while it runs, then the Director that takes the note. The status means the item is in a closeout note and nothing was mailed
+under its key ("A closeout item" there). Read the comments back (`list_comments`) to see that
+the record is there; if the post or the read-back fails, "No record" applies to that item. An
+item stays open until a `Closed` reply under one of its records: a send, an acknowledgement or
+an answer closes nothing. While this session runs, it closes its items: only after the action an
+item calls for has been carried out, by it or by the Director, and it has verified the result in
+the system that action changed, such as the ticket's state read back with `get_issue`, or for
+the losses Step 4's success line. Before each later copy of the note, read each open item's
+records again and check again any action an answer called for. Until it closes, every copy of the
+note lists it. Once this session has ended, its open items are the Director's to resume
+(`dv:director-mode`, "Take closeout notes"). When an item closes, write the note again (Step 3) and send that copy as
+"Delivery" says, so the Director's check on the note reads the new WAITING ON.
+
+**No record.** With no ticket, or when its comments can't be read or written, no record can be
+kept. Say so in the reply, and keep each item in every later copy of the note, with the branch
+in place of `VIL-N` in its key when there is no ticket. When delivery fails, mail each one to
+him once (below), with `Record: none, <why>.` after the body's first line, and mark it
+`Re-sent: yes` from then on.
+
+**Delivery.** The note goes only to a Director its probe verified: the chat path in "Deliver the
+note" (the "None" case, steps 1 to 5), as for a supervised session, even with exactly one
+qualifying terminal. In the note's message (step 5), the last line reads instead:
+
+```
+Reply with "Closeout note received, <ticket id, or the branch>: <note path>", then one line for each Qk under WAITING ON, as dv:director-mode's "Take closeout notes" says.
+```
+
+A later copy is a new note, not a resend: it goes the same way, to the Director already
+verified, and a send that fails is handled as step 5 says.
+
+**The acknowledgement.** Once the note's send succeeds, start the background timer step 2 uses
+and wait up to 10 minutes from the send. The acknowledgement is a message whose `from-name` is
+the Director's, as step 3 checks the probe's answer, and whose first line is `Closeout note received, <ticket id, or the branch>:
+<the path on the sent message's Saved at: line>`, compared as text. Any other reply is not one,
+and the wait goes on. It takes an item when its line for that Qk is one of these:
+
+- `Answer, VIL-N, Qk: <option>`, when that line counts as `dv:manager-mode`'s "What counts as
+  the answer" says for a reply that starts with it. Carry out what it calls for when that is this session's to do; the item stays
+  open until that is verified.
+- `Forwarded to the Head, VIL-N, Qk: <the way forward>`, when the ticket also shows a record for
+  that original key, other than one at `in closeout note`, at `sent` or carrying the mention.
+  Take the way forward.
+
+When the acknowledgement arrives, stop the timer and report "note sent and acknowledged",
+quoting it; with a Head, that is the outcome "note sent and replied". Each item it doesn't take
+goes to him by mail (next paragraph) at once, and every item does when the timer ends with no
+acknowledgement. An item an earlier acknowledgement took stays taken, so the wait for a later
+copy covers only items not yet taken or mailed. A later acknowledgement takes back no item
+already mailed; an `Answer` line in it still counts as that section says.
+
+**Mail to him when delivery fails.** Delivery fails for every item when the note can't reach a
+verified Director (the outcomes "not sent" and "answered but not verified" in "Deliver the
+note", the probe's timer ending with none verified, a second note send that failed, or Codex,
+where the chat path can't run). It fails for one item when no acknowledgement takes it within
+the 10 minutes. Then send him each item not taken, by agent mail, one message per item, as
+`dv:manager-mode`'s "With no Director that can be verified" does for a question:
+`orca orchestration send --to "<his bot: address>" --chat new --type question --subject "<VIL-N Qk: the item, in one line>" --body-file "<a file outside the repo>" --json`.
+The body is the item as "Forward" gives it, its keys on the first line, the CEO's 1% marked, an
+`Approved by:` field asked for where an approval is needed, quotes in excerpts. Keep its record
+as "A record on the ticket for each Qk" says, with the original key as the hop key: moving your
+own record from `in closeout note` to `sending` is your claim, and its steps 1 to 4 then mail the
+item, or hold it for pickup when another session's record for the original is there. An item
+with no record is mailed as "No record" says. An item already with him (a record for its
+original at `sent` or carrying the mention) gets no mail. No question card opens, and I
+click nothing. Then write the note again (Step 3), so the newest copy marks those items
+`Re-sent: yes`. Report "items mailed to the Head", with each item's message id, or its record's
+fallback or hold.
+
+**His answers** come by mail to this session (`orca orchestration check --json`), as a reply
+under a record, or relayed by the Director (`Answer from the Head`). Each is advice ("His
+answer" there): take its option only for a decision this session's own rules already give it
+(`dv:manager-mode`, "'Ask David' becomes this"). Every other item stays open on its way
+forward, and an item under "What no default decides" settles only as that bullet says.
+
+**The losses.** The item reads `Accept losing <each build-output line with its name, entry
+count, directory count and fingerprint, and the reflog-only commits with their count and list
+id>?`, with the options `1. Accept losing them` and `2. Keep them`, this session's
+recommendation, `Reversible: no`, `CEO's 1%: yes` and a request for an `Approved by:` field. Its
+way forward is option 2: Step 4 doesn't run, and no removal command is named. It settles only on
+my own yes to that exact list, which this session verifies itself as "An approval travels in its
+own field" says: my ticket comment (its Linear author my own account), or my message in a chat
+this session can read, this one included. Neither his answer nor a quoted yes is mine; the field
+only points to the evidence. A verified yes stands in for my answer to Step 5's question
+wherever a step waits on it (Step 4's gate, Step 3's case 3). Then recheck (Step 5, "Recheck in
+every later turn"): only if every line matches the item word for word, run Step 4, write the note
+again (Step 3), and close the item once Step 4 printed one of its two success lines. A recheck
+that differs voids that yes: close the item as superseded, and list any losses the new verdict
+names as a new item.
+The Director's check on the note accepts only a standing yes for losses (`dv:director-mode`,
+"End a finished worktree session", check 1), so after a yes verified this way the removal stays
+mine, and the reply names the command.
+
+**The reply.** In Step 5's reply, item 3 names the delivery outcome: one of those in "Deliver
+the note", or note sent and waiting for the acknowledgement (until when), note sent and
+acknowledged, or items mailed to the Head. It lists each open item by Qk, with where it is
+(taken by the Director, mailed with its message id, held for pickup, or no record and why) and
+its record's status.
+
+Known limit: if this session ends during the wait, its records stay at `in closeout note`. The
+items are on the ticket, but no one has confirmed taking them, and nothing mails them. Not yet
+tested live.
 
 ## Notes
 

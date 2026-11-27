@@ -103,7 +103,7 @@ checkout.
   - plugin.json ↔ skill version-parity — plugin manifest version must match skills'
 
 ## Conventions
-- Head: Head of Skills, Orca address `bot:Head of Skills`, Linear handle `head-of-skills`. He runs this department for David, the CEO; `dv:director-mode`, `dv:manager-mode` and `dv:groom` (only in forks-only mode from a worktree session) route escalations to him as `dv:director-mode` ("The Head and the CEO's 1%") says, his answers advisory until verified Head decision delivery ships (VIL-1193), and `dv:closeout` follows in VIL-1191.
+- Head: Head of Skills, Orca address `bot:Head of Skills`, Linear handle `head-of-skills`. He runs this department for David, the CEO; `dv:director-mode`, `dv:manager-mode` and `dv:groom` (only in forks-only mode from a worktree session) route escalations to him as `dv:director-mode` ("The Head and the CEO's 1%") says, his answers advisory until verified Head decision delivery ships (VIL-1193), and `dv:closeout` sends him its note's open items through a Director its probe verified, or by agent mail when that fails (`dv:closeout`, "With a Head").
 - Push to main is NOT pre-authorized on this repo — confirm before `git push origin main`
 - All file paths in docs are repo-relative
 - Apache-2.0 root LICENSE; no per-skill LICENSE/CHANGELOG in v0.1.0

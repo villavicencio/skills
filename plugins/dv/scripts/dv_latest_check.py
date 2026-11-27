@@ -14,11 +14,14 @@ it read). It reads three versions:
   latest     the highest dv--v<version> tag among the newest 100 stable releases of
              villavicencio/skills (drafts and pre-releases excluded, other plugins' tags
              ignored), read with `gh`.
-  installed  Claude Code: <home>/plugins/installed_plugins.json, entry dv@<marketplace>: a
-             project- or local-scope entry whose projectPath is the working directory or a
-             parent of it, else the user-scope entry (unknown when a non-user entry has no
-             projectPath, an applicable entry has no readable version, or the entry is not a
-             list or an object). A home with no such file (Codex): the highest
+  installed  Claude Code: <home>/plugins/installed_plugins.json, entry dv@<marketplace>: the
+             version of the project- or local-scope entry whose projectPath is the working
+             directory or a parent of it (the deepest wins), else the user-scope entry. Unknown
+             instead, even when another entry plainly applies, when any item of the list is not
+             an object or any non-user entry has no projectPath (it might apply here too), when
+             one of the deepest applicable entries (or the user entry, when none applies) has no
+             readable version, or when the deepest ones name different versions; also when the
+             dv entry is not a list or an object. A home with no such file (Codex): the highest
              version directory in <home>/plugins/cache/<marketplace>/dv/. A development copy:
              unknown.
 
@@ -180,14 +183,18 @@ def active_entry_version(entries, manifest: Path, marketplace: str, cwd: str | N
     """The version of the Claude Code install that applies here, or None when that can't be told.
 
     A project- or local-scope entry applies when its projectPath is the working directory or one
-    of its parents (the deepest one wins); otherwise the user-scope entry does. A non-user entry
-    with no readable projectPath, or an applicable entry with no readable version, makes the
-    answer unknown rather than a guess; no applicable entry is skipped in favor of another.
+    of its parents (the deepest one wins); otherwise the user-scope entry does. The answer is
+    unknown rather than a guess when any entry can't be placed (an item that is not an object, or
+    a non-user entry with no readable projectPath, even when another entry plainly applies),
+    when one of the deepest applicable entries has no readable version (it is not skipped in
+    favor of another), or when the deepest applicable entries name different versions (nothing
+    says which one Claude Code loads, so the higher one is not taken). A shallower applicable
+    entry never decides the answer, whatever its version.
     """
     cwd_path = Path(os.path.realpath(cwd or os.getcwd()))
     label = "Claude Code"
     # Scope and projectPath decide whether an entry applies; only then is its version read, so
-    # an applicable entry with an unreadable version is unknown, never skipped for another one.
+    # a deepest applicable entry with an unreadable version is unknown, never skipped for another.
     scoped, user, unclear, bad_entry = [], [], False, False
     for entry in entries:
         if not isinstance(entry, dict):
@@ -207,15 +214,20 @@ def active_entry_version(entries, manifest: Path, marketplace: str, cwd: str | N
         project_path = Path(os.path.realpath(project))
         if project_path == cwd_path or project_path in cwd_path.parents:
             scoped.append((len(project_path.parts), version))
-    if scoped:
-        deepest = [v for depth, v in scoped if depth == max(d for d, _ in scoped)]
-        if None in deepest:
-            return None, f"{label} ({manifest}: the dv@{marketplace} entry for this directory has no readable version)"
-        return max(deepest), label
+    # An entry that can't be placed might apply here too, so no other entry's version is known
+    # to be the one Claude Code loads, however plainly that other entry applies.
     if bad_entry:
         return None, f"{label} ({manifest}: a dv@{marketplace} entry is not an object)"
     if unclear:
         return None, f"{label} ({manifest}: a dv@{marketplace} entry has no projectPath)"
+    if scoped:
+        deepest = [v for depth, v in scoped if depth == max(d for d, _ in scoped)]
+        if None in deepest:
+            return None, f"{label} ({manifest}: the dv@{marketplace} entry for this directory has no readable version)"
+        if len(set(deepest)) > 1:
+            return None, (f"{label} ({manifest}: dv@{marketplace} entries for the same directory "
+                          "name different versions)")
+        return deepest[0], label
     if user:
         if None in user:
             return None, f"{label} ({manifest}: the dv@{marketplace} entry has no readable version)"

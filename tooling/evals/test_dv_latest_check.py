@@ -14,7 +14,8 @@ Checked (each name below is printed with ok or FAIL):
   of every stable release is not verified, whether it is the loaded copy or only the installed
   version (with the loaded copy at or below the release); which Claude Code entry applies (a project-scope
   entry for the working directory or a parent, one for another directory, one with no
-  projectPath); stale with the install
+  projectPath, an unplaceable entry or two disagreeing entries at one path making the install
+  unknown even when another entry applies); stale with the install
   current (a fresh session is enough) and with the install itself behind, on both clients, and
   with the installed version unreadable; the latest release ignoring drafts, pre-releases, other
   plugins' tags and malformed dv tags, and gh asked to exclude drafts and pre-releases; release
@@ -227,6 +228,42 @@ def main() -> int:
     case("installed: a project entry with an invalid version for another directory is ignored",
          lambda sb: str(scoped_home(sb, [user("0.51.0"), project("not-a-version", "{root}/other")], "0.50.0")),
          1, "stale", ("installed 0.51.0", "a fresh session picks up"), cwd="{root}/proj")
+    # An entry whose applicability can't be decided makes the install unknown even when another
+    # entry plainly applies: it might apply here too, and a known version would be a guess.
+    case("installed: an applicable project entry plus a non-user entry with no projectPath is unknown",
+         lambda sb: str(scoped_home(sb, [user("0.51.0"), project("0.51.0", "{root}/proj"),
+                                         {"scope": "local", "version": "0.50.0"}], "0.50.0")),
+         1, "stale", ("installed unknown",), ("installed 0.51.0", "a fresh session picks up"),
+         cwd="{root}/proj/sub")
+    case("installed: an applicable project entry plus a non-object item is unknown",
+         lambda sb: str(scoped_home(sb, [user("0.51.0"), project("0.51.0", "{root}/proj"), "0.50.0"],
+                                    "0.50.0")),
+         1, "stale", ("installed unknown",), ("installed 0.51.0", "a fresh session picks up"),
+         cwd="{root}/proj/sub")
+    # Two applicable entries at the same depth with different versions: nothing says which one
+    # Claude Code loads, so neither is taken (not the higher one).
+    case("installed: two entries at the same path with different versions is unknown",
+         lambda sb: str(scoped_home(sb, [project("0.50.0", "{root}/proj"),
+                                         {"scope": "local", "version": "0.51.0",
+                                          "projectPath": "{root}/proj"}], "0.50.0")),
+         1, "stale", ("installed unknown",), ("installed 0.51.0", "a fresh session picks up"),
+         cwd="{root}/proj/sub")
+    case("installed: two entries at the same path with the same version is that version",
+         lambda sb: str(scoped_home(sb, [project("0.51.0", "{root}/proj"),
+                                         {"scope": "local", "version": "0.51.0",
+                                          "projectPath": "{root}/proj"}], "0.50.0")),
+         1, "stale", ("installed 0.51.0", "a fresh session picks up"), ("installed unknown",),
+         cwd="{root}/proj/sub")
+    case("installed: one unreadable version among the deepest entries is unknown, not the readable sibling",
+         lambda sb: str(scoped_home(sb, [project("0.51.0", "{root}/proj"),
+                                         {"scope": "local", "version": "not-a-version",
+                                          "projectPath": "{root}/proj"}], "0.50.0")),
+         1, "stale", ("installed unknown",), ("installed 0.51.0", "a fresh session picks up"),
+         cwd="{root}/proj/sub")
+    case("installed: a deeper entry wins over two disagreeing shallower ones",
+         lambda sb: str(scoped_home(sb, [project("0.49.0", "{root}/proj"), project("0.51.0", "{root}/proj"),
+                                         project("0.50.0", "{root}/proj/sub")], "0.50.0")),
+         1, "stale", ("installed 0.50.0", "install itself is behind"), cwd="{root}/proj/sub")
     case("installed: a deeper valid project entry wins over a shallower invalid one",
          lambda sb: str(scoped_home(sb, [project("not-a-version", "{root}/proj"),
                                          project("0.50.0", "{root}/proj/sub")], "0.50.0")),
@@ -291,6 +328,7 @@ def main() -> int:
          lambda sb: str(sb.skill(sb.claude_home("0.51.0"), "0.51.0")),
          2, "not verified", ("gh is not installed",), gh=False)
     check_timeout()
+    check_unknown_reasons()
     case("DV_LATEST_CHECK_GH names the gh to run when gh is not on PATH",
          lambda sb: str(sb.skill(sb.claude_home("0.51.0"), "0.51.0")),
          0, "current", ("latest release 0.51.0",), gh=False,
@@ -377,6 +415,36 @@ def check_timeout():
         os.environ["PATH"] = old_path
         os.environ.pop("FAKE_GH_MODE", None)
         os.environ.pop("FAKE_GH_DIR", None)
+        sb.close()
+
+
+def check_unknown_reasons():
+    """In-process: each unknown install names its reason in the client text, and a known one does not."""
+    spec = importlib.util.spec_from_file_location("dv_latest_check", SCRIPT)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    sb = Sandbox()
+    try:
+        proj = sb.root / "proj"
+        (proj / "sub").mkdir(parents=True)
+        applicable = {"scope": "project", "version": "0.51.0", "projectPath": str(proj)}
+        for name, entries, reason in (
+                ("an unplaced non-user entry", [applicable, {"scope": "local", "version": "0.50.0"}],
+                 "has no projectPath"),
+                ("a non-object item", [applicable, "0.50.0"], "is not an object"),
+                ("disagreeing entries at one path",
+                 [applicable, dict(applicable, scope="local", version="0.50.0")],
+                 "entries for the same directory name different versions"),
+                ("an applicable entry with no version",
+                 [{"scope": "project", "projectPath": str(proj)}], "has no readable version")):
+            version, client = mod.active_entry_version(entries, Path("m.json"), "mk", str(proj / "sub"))
+            expect(f"installed reason: {name}", version is None and reason in client,
+                   repr((version, client)))
+        version, client = mod.active_entry_version([applicable, dict(applicable, scope="local")],
+                                                   Path("m.json"), "mk", str(proj / "sub"))
+        expect("installed reason: agreeing entries at one path are known",
+               version == (0, 51, 0) and client == "Claude Code", repr((version, client)))
+    finally:
         sb.close()
 
 

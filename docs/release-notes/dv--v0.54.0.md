@@ -26,12 +26,17 @@ session still loaded 0.48.0. The Head of Skills set the rule as his item 78, fro
   - the latest release: the highest `dv--v<version>` tag among the repository's stable releases
     (`gh release list --exclude-drafts --exclude-pre-releases --limit 100`; drafts, pre-releases
     and other plugins' tags are ignored);
-  - the installed version: Claude Code's `<home>/plugins/installed_plugins.json` entry
-    `dv@<marketplace>` that applies here (a project- or local-scope entry whose `projectPath` is
-    the working directory or a parent of it, else the user-scope entry; unknown when a non-user
-    entry has no `projectPath`), or, in a home with no such file (Codex), the highest version
-    directory in `<home>/plugins/cache/<marketplace>/dv/`. A development copy has no installed
-    version (`installed unknown`).
+  - the installed version. Claude Code: the version in the `dv@<marketplace>` entry of
+    `<home>/plugins/installed_plugins.json` that applies here, a project- or local-scope entry whose
+    `projectPath` is the working directory or a parent of it (the deepest one wins), else the
+    user-scope entry. It is unknown instead, with the reason in the `client:` text, even when
+    another entry plainly applies, if any item of the list is not an object or any non-user entry
+    has no `projectPath` (it might apply here too), if one of the deepest applicable
+    entries (or the user entry, when none applies) has no readable version, or if the deepest applicable entries name different versions (nothing says which one
+    Claude Code loads, so the higher one is not taken; the same version twice is that version);
+    also when the `dv@<marketplace>` value is not a list or an object. In a home with no such
+    file (Codex): the highest version directory in `<home>/plugins/cache/<marketplace>/dv/`. A
+    development copy has no installed version (`installed unknown`).
 
   Its first line is one of `current` (exit 0), `stale` (exit 1; names the loaded, latest and
   installed versions and says that a fresh session picks up the update, that the install

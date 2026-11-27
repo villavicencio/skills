@@ -22,8 +22,11 @@ probe learns nothing that is not already public.
 
 ## Changed
 
-- **`dv:groom`, step 5 ("Scout"), new "The search for other spellings".** At most one search in
-  each repo the ticket changes, for every value it changes there, in this order:
+- **`dv:groom`, step 5 ("Scout"), new "The search for other spellings".** One search, and no
+  other search across files (inside the boundary or out), in each repo the ticket changes, for
+  every value it changes there, unless a step stops it. Its result never settles a fact stated in
+  words, which keeps "not checked: read across files" when only a read across files could settle
+  it. In this order:
   1. **Spellings.** Each spelling of each value (as the ticket writes it, and each other way the
      groomer would look for it written) is taken as a pattern under step 3's "The path and the
      pattern", before any read; a spelling those rules refuse is not searched for ("unsafe
@@ -47,7 +50,7 @@ probe learns nothing that is not already public.
      (unsafe path, git metadata, secret-named path) before it is used. A name they refuse is left
      out, and nothing about it goes in the reply, the report or Linear, not its name and not that
      a name was left out. Each other name the ticket does not name is reported as an in-ticket
-     improvement, with the spellings searched and the commit's short id.
+     improvement, with the spellings searched and the commit's short id, within scouting's cap.
 
   When the search is not run, the report lists it under what was not checked, as "scouting search:
   not run: <reason>". The step's in-ticket improvements and its evidence list name the search's

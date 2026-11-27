@@ -761,11 +761,13 @@ names. A search across files finds it, but its result tells whoever reads the fi
 hold a pattern the ticket's text chose, so that text could probe file contents with it. This search
 therefore runs only inside the disclosure boundary of step 3's "Done means lines that already
 pass", where every match discloses only what anyone can already read, and it is the one search
-across files that step 3's "Paths in your own reads" leaves to step 5. Outside the boundary that
-paragraph's refusal holds: nothing in step 5 looks for a copy across files (no search of a
-directory or of the whole repo, no recursive `grep`, no `find`, no glob and no directory listing).
-Make at most one such search in each repo the ticket changes, for every value it changes there (a
-ticket that changes no value needs none), in this order:
+across files that step 3's "Paths in your own reads" leaves to step 5. Apart from this one search,
+that paragraph's refusal holds in step 5, inside the boundary or out: nothing else looks for a copy
+across files (no other search of a directory or of the whole repo, no recursive `grep`, no `find`,
+no glob and no directory listing). This search's result never settles a fact stated in words: one
+that only a read across files could settle stays "not checked: read across files" (step 3). Make one such
+search, and no other, in each repo the ticket changes, for every value it changes there (a ticket
+that changes no value needs none), unless a step below stops it, in this order:
 
 1. **Spellings.** Take each spelling of each value, as the ticket writes it and each other way you
    would look for it written, as a `<pattern>` under step 3's "The path and the pattern" (the
@@ -799,7 +801,8 @@ ticket that changes no value needs none), in this order:
    character, and the quotes fail it as an unsafe path. A name they refuse is left out, and nothing
    about it goes in the reply, the report or Linear, not its name and not that a name was left out.
    Each name left that the ticket does not name may hold a copy the change misses: report it as an
-   in-ticket improvement, with the spellings searched and the commit's short id as its evidence.
+   in-ticket improvement, with the spellings searched and the commit's short id as its evidence,
+   within the cap below.
 
 When the search is not run, a copy in a file you did not read is not checked: list the search in
 the report (step 8) under what was not checked, as "scouting search: not run: <reason>", with the

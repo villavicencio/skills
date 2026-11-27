@@ -89,11 +89,11 @@ Each line is one claim the section, the script and its tests establish.
 - A wait gets at most 8 rewakes, even when runs overlap or a create's answer is uncertain. Each run
   posts a `Rewake claim` line before it creates anything and creates only when fewer than 8 claims
   came before it in Orca's event order, and only when its read of the item after the claim shows no
-  hold (a hold seen there prints `HELD` and spends the claim); the loser prints `NOT CLAIMED`, and a
-  claim counts whether or not its create succeeded. Orca writes each comment in its own serialized
-  transaction with an increasing event id, so a run that reads the item after its own claim lands
-  sees every earlier claim. Claims are comments, not links, so the 50-link budget and the waits an
-  item holds are unchanged.
+  hold (a hold seen there prints `HELD`, a closed item or a closing record `CLOSED`, and either
+  spends the claim); the loser prints `NOT CLAIMED`, and a claim counts whether or not its create
+  succeeded. Orca writes each comment in its own serialized transaction with an increasing event id,
+  so a run that reads the item after its own claim lands sees every earlier claim. Claims are
+  comments, not links, so the 50-link budget and the waits an item holds are unchanged.
 - An Orca call stops after 60 s and starts only while those 60 s fit in the command's first 9
   minutes, so a 10-minute tool timeout covers every command. A command's first read of the item is
   tried up to 3 times, 15 s and then 45 s apart, when Orca's error can pass, and a read that shows a
@@ -149,8 +149,8 @@ quotes, a backslash, newlines and non-ASCII reaching Orca byte for byte with not
   than a command's three tries and then the rewake's, leaves a wait with no wake; the restart list
   shows it. A rewake that a hold stopped (`HELD`) leaves the wait with no wake until the Head
   rewakes it after the hold ends.
-- No wake made after a hold: a snooze or Needs you that arrives after rewake's read after its claim
-  can still race the create.
+- No wake made after a hold: Orca's snooze, a `Snoozed until` line or Needs you arriving after
+  rewake's read after its claim can still race the create.
 - One closing record per wait: two `reconcile --final` runs at once can each post one; the
   later prints `DUPLICATE`, and the first counts.
 - The per-key check beyond the item's `Carried from` chain: the same key armed again on an

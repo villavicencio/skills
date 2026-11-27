@@ -2185,7 +2185,12 @@ def test_fix_round2() -> None:
                 7, "Snoozed until 23:00 PT Nov 28 / 07:00 UTC Nov 29: away"),
              "a Snoozed until line e"),
             ("Needs you", lambda c: c.fake.fixture_status(7, "needs_you"),
-             "the item reads Needs you")):
+             "the item reads Needs you"),
+            ("the item closed", lambda c: c.fake.fixture_status(7, "done"), "the item is done"),
+            ("a closing record", lambda c: (
+                c.fake.fixture_link(7, "head-wait/item-7/W1-closed"), c.fake.fixture_comment(
+                    7, "Wake disposition, item 7 W1: settled. Trigger: look.")),
+             "closing record e")):
         c = spent_case()
         try:  # the first read is clear; the hold lands while the claim is being posted
             flag = c.root / "go"
@@ -2198,9 +2203,10 @@ def test_fix_round2() -> None:
             out, _ = x.communicate(timeout=60)
             lines = [e for e in c.fake.comments(7)
                      if e["data"]["text"].startswith("Rewake claim, item 7 W1:")]
-            check(f"rewake held after its claim: {label} -> HELD, the claim posted and spent, no "
+            word = "HELD" if why.startswith(("a Snoozed", "the item reads")) else "CLOSED"
+            check(f"rewake after its claim: {label} -> {word}, the claim posted and spent, no "
                   "automations create call", paused and x.returncode == 3 and len(lines) == 1
-                  and out.startswith(f"HELD item 7 W1: {why}") and "claim is spent" in out
+                  and out.startswith(f"{word} item 7 W1: {why}") and "claim is spent" in out
                   and not calls(c.fake.log(), "automations", "create"), out)
         finally:
             c.close()

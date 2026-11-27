@@ -63,7 +63,9 @@ Rules the code keeps:
   - `rewake` makes nothing while the item holds the wait and no wake is due (Needs you, Orca's
     snooze, a Snoozed until line): HELD. At most 8 rewakes per wait, even when runs
     overlap: each run posts a `Rewake claim` line and creates only when fewer than 8 claims
-    came before it in Orca's event order; a claim counts whether or not its create succeeded.
+    came before it in Orca's event order and its read after the claim shows no hold, closed item
+    or closing record (any of those spends the claim); a claim counts whether or not its create
+    succeeded. A hold that arrives after that read can still race the create.
   - A send happens only inside the `close` run whose claim returned an event id, after a fresh
     read of the item and of both sessions, and after a `Re-send` line posted. One send attempt
     per wait, never repeated, never from another command. No send under a key while an earlier
@@ -1493,7 +1495,13 @@ def cmd_rewake(a: argparse.Namespace) -> tuple:
         if len(ahead) >= REWAKE_MAX:
             return EXIT_OTHER, f"NOT CLAIMED item {n} W{k}: claim {mine} came after the " \
                                f"{REWAKE_MAX}th ({ahead[REWAKE_MAX - 1]['id']}); no wake made"
-        held = item_hold(again, Wait(again, k), now_s() * 1000, reopened=False)
+        w2 = Wait(again, k)
+        if again.status in ("done", "canceled") or w2.closing is not None:
+            return EXIT_OTHER, f"CLOSED item {n} W{k}: " + (
+                f"the item is {again.status}" if w2.closing is None else
+                f"closing record {w2.closing['id']}") + f", seen after claim {mine}; the claim " \
+                "is spent; no wake made"
+        held = item_hold(again, w2, now_s() * 1000, reopened=False)
         if held:  # a hold that arrived between the first read and this one
             return EXIT_OTHER, f"HELD item {n} W{k}: {held}, seen after claim {mine}; the claim " \
                                "is spent and counts against the limit; no wake made. Rewake once " \

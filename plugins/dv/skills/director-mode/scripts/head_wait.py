@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """dv:director-mode, "Head's wake for a waiting item": the only place `orca` is called to arm,
-check, close, retire or reconcile a wait on one of the Head's Orca items.
+check, close, retire, reconcile or rewake a wait on one of the Head's Orca items.
 
     python3 -I head_wait.py <command> [options]
 
@@ -14,26 +14,33 @@ Commands (the first printed line starts with the outcome word):
 
   arm        --item --wait --target --deadline --owner --owner-session --waiting-session
              --ticket --key --record-file [--carried-from <m>/W<j>]
-             ARMED | TAKEN | BLOCKED | OVERTAKEN | UNARMED | NOT CLAIMED | CLOSED | FULL |
-             REFUSED | UNCLEAR
-  check      --item [--wait]                read-only: OPEN | CLOSED | NO WAIT | IDLE | BLOCKED |
+             ARMED | UNCHECKED | SPENT | OVERTAKEN | TAKEN | BLOCKED | UNARMED | NOT CLAIMED |
+             CLOSED | FULL | REFUSED | UNREADABLE | UNCLEAR
+  check      --item [--wait]                read-only: OPEN | IDLE | CLOSED | NO WAIT | BLOCKED |
                                             UNREADABLE
   close      --item --wait --trigger wake|notice|look --case no-follow-up|settled|re-sent|
              not-settled --text-file [--body-file]
              CLAIMED (closing record posted) | NOT SENT | SEND UNCLEAR (a planned re-send that
              didn't go out, closing record posted) | RETIRE UNVERIFIED (closing record posted,
-             the wake not confirmed disabled) | NOT CLAIMED | CLOSED | FULL | REFUSED | UNCLEAR |
-             STOPPED
+             the wake not confirmed disabled) | NOT CLAIMED | STOPPED | CLOSED | FULL | REFUSED |
+             UNREADABLE | UNCLEAR
   retire     --item --wait --id                RETIRED | GONE | UNVERIFIED
   reconcile  --item --wait --text-file [--final <case>]
-             NOTED | RECONCILED | REFUSED | UNCLEAR
+             NOTED | RECONCILED | DUPLICATE | UNCHECKED | REFUSED | UNREADABLE | UNCLEAR
+  rewake     --item --wait                     REWOKEN | COVERED | UNCOVERED | UNRECORDED |
+                                               CLOSED | BLOCKED | NO WAIT
   restart    --bot                             read-only: RESTART <count> (INCOMPLETE RESTART when
                                                an item can't be read), then one line each
   --version
 
-Step commands, the same code `arm` and `close` run, for step-driven live tests only: reserve,
-record, create, waiting, claim, close-unarmed. A `claim` run alone is a winner that stopped: it
-never sends, and only `reconcile` gives that wait its closing record.
+Step commands, the same code `arm` and `close` run, for the live tests and reconciliation:
+  reserve    --item --wait                     RESERVED | TAKEN | CLOSED | FULL | REFUSED | UNCLEAR
+  claim      --item --wait                     CLAIMED | NOT CLAIMED | CLOSED | FULL | REFUSED |
+                                               UNREADABLE | UNCLEAR
+  close-unarmed --item --wait --step [--wake-id]
+             UNARMED | NOT CLAIMED | CLOSED | FULL | REFUSED | UNREADABLE | UNCLEAR
+A `claim` run alone is a winner that stopped: it never sends, and only `reconcile` gives that
+wait its closing record.
 
 Rules the code keeps:
   - `orca` runs from an argument list, never through a shell. Every value on its command line
@@ -44,20 +51,29 @@ Rules the code keeps:
   - Only the run whose claim returned an event id acts on a wait. The exceptions never send:
     FULL (the item is at Orca's 50-link cap, so the claim can't be linked) posts a `Wait blocked`
     line unless one is there and retires the wake; `reconcile --final` posts the closing record
-    of a wait whose winner stopped; an arm whose item turned out closed retires the wake it made.
+    of a wait whose winner stopped (two at once can each post; the first counts, and the later
+    one prints DUPLICATE); an arm whose item turned out closed retires the wake it made;
+    `rewake` makes a one-time wake and posts a `Rewake` line, and links nothing.
   - A send happens only inside the `close` run whose claim returned an event id, after a fresh
     read of the item and of both sessions, and after a `Re-send` line posted. One send attempt
-    per wait, never repeated, never from another command.
+    per wait, never repeated, never from another command. No send under a key while an earlier
+    wait under that key (on the item or along its Carried from chain) has a `Re-send` line and
+    no `Sent: msg_` receipt.
   - A run that won a claim starts no write or send once 5 minutes have passed since it claimed,
     so `reconcile --final` (the only other closing record) is refused until 15 minutes after the
     claim.
   - A successor wait arms only after every earlier wait has its closed marker and a closing
     record (a `Wake disposition` or `UNARMED` line) after it.
   - No command writes an item's status except `arm`'s Waiting write, and none closes an item.
+  - Each orca call stops after 60 s, and no call starts once the command has run 540 s, so a
+    command ends within 10 minutes. A command's first read of the item is tried up to 3 times
+    (15 s, then 45 s apart) on an error that can pass; a read that shows a marker link without
+    its event is read again at once.
 
-Exit codes: 0 the command's normal outcome; 1 UNCLEAR, UNVERIFIED, SEND UNCLEAR, RETIRE
-UNVERIFIED, INCOMPLETE RESTART or another read that failed;
-2 a value or file refused before any Orca call; 3 any other outcome.
+Exit codes: 0 the command's normal outcome (ARMED, OPEN, IDLE, CLAIMED, RETIRED, GONE, NOTED,
+RECONCILED, REWOKEN, COVERED, RESTART; RESERVED for reserve); 1 UNCLEAR, UNREADABLE, UNCHECKED,
+UNVERIFIED, SEND UNCLEAR, RETIRE UNVERIFIED, UNCOVERED, UNRECORDED or INCOMPLETE RESTART; 2 a
+value or file refused before any Orca call; 3 any other outcome, a REFUSED after a read included.
 
 Stdlib only, Python 3.9 or later. Offline tests: tooling/evals/test_head_wait.py.
 """
@@ -67,8 +83,10 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import math
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -77,11 +95,18 @@ from pathlib import Path
 
 VERSION = "0.49.0"
 ORCA = "orca"
-CALL_TIMEOUT_S = 60
+CALL_TIMEOUT_S = 60       # one orca call
+RUN_BUDGET_S = 540        # no orca call starts after this, so a command ends within 10 minutes
+READ_TRIES = 3            # a command's first read of the item, on an error that can pass
+READ_PAUSES_S = (15, 45)  # the waits before the second and third tries
+RE_READ_PAUSE_S = 2       # close-unarmed's wait before its second read
 WINNER_WINDOW_S = 300
 RECONCILE_AFTER_S = 900
 ARM_MIN_LEAD_S = 120
+DEADLINE_MIN_GAP_S = 120
 WAITING_LEAD_S = 60
+REWAKE_AFTER_S = 960      # past RECONCILE_AFTER_S, so a rewake after a claim can reconcile
+REWAKE_MAX = 8
 LINK_CAP = 50
 LINKS_PER_WAIT = 2
 TEXT_MAX = 8000
@@ -118,6 +143,7 @@ def real_times(*stamps: str) -> bool:
 RE_MSG = re.compile(r"msg_[0-9a-f]{12}")
 RE_CARRIED = re.compile(r"([1-9][0-9]{0,5})/W([1-9][0-9]{0,3})")
 RE_MARKER = re.compile(r"head-wait/item-([1-9][0-9]{0,5})/W([1-9][0-9]{0,3})(-closed)?")
+RE_OWNER_SESSION = re.compile(r"orca_session_id:(" + UUID + r")")
 
 OPEN_STATUSES = ("planned", "in_progress", "waiting")
 CASES = {"no-follow-up": "no follow-up", "settled": "settled", "re-sent": "re-sent",
@@ -150,6 +176,19 @@ def now_s() -> float:
 
 def mono() -> float:
     return time.monotonic()
+
+
+def pause(seconds: float) -> None:
+    time.sleep(seconds)
+
+
+BUDGET = {"start": None}  # set by main(); functions called on their own have no budget
+
+
+def budget_left() -> float:
+    if BUDGET["start"] is None:
+        return float("inf")
+    return RUN_BUDGET_S - (mono() - BUDGET["start"])
 
 
 def iso_utc(t: float) -> str:
@@ -289,6 +328,10 @@ def run_orca(args: list, timeout: int = CALL_TIMEOUT_S) -> Result:
     argv = [ORCA] + list(args)
     if not all(isinstance(a, str) for a in argv):
         raise TypeError("orca arguments must be strings")
+    left = budget_left()
+    if left < 1:
+        return Result("notrun", detail=f"not run: the command's {RUN_BUDGET_S} s are spent")
+    timeout = max(1, int(min(timeout, left)))
     try:
         code, stdout = _exec(argv, timeout)
     except FileNotFoundError:
@@ -331,9 +374,8 @@ class Scratch:
         return path
 
     def close(self) -> None:
-        for name in os.listdir(self.dir):
-            os.unlink(os.path.join(self.dir, name))
-        os.rmdir(self.dir)
+        """Best effort: a cleanup error never replaces the command's outcome line."""
+        shutil.rmtree(self.dir, ignore_errors=True)
 
 
 # ------------------------------------------------------------------------------ the item
@@ -380,8 +422,9 @@ def eid(event: dict | None) -> int:
     return int(m.group(1)) if m else -1
 
 
-def read_item(n: int) -> tuple:
-    """The item and every event, paged with --after. Returns (Item, None) or (None, reason)."""
+def read_pages(n: int) -> tuple:
+    """One read of the item and every event, paged with --after.
+    Returns (Item, None, False) or (None, reason, whether the error can pass)."""
     events: list = []
     after = None
     item = None
@@ -389,23 +432,55 @@ def read_item(n: int) -> tuple:
         args = ["bot", "item", "show", "--id", str(n)] + (["--after", after] if after else [])
         res = run_orca(args + ["--json"])
         if res.state != "ok" or not isinstance(res.result.get("item"), dict):
-            return None, f"bot item show: {res.describe()}"
+            passing = res.state == "unclear" or (res.state == "error"
+                                                 and res.code not in DEFINITE_ERRORS)
+            return None, f"bot item show: {res.describe()}", passing
         item = res.result["item"]
         page = res.result.get("events") or []
         if not isinstance(page, list):
-            return None, "bot item show: events is not a list"
+            return None, "bot item show: events is not a list", True
         events.extend(page)
         cursor = res.result.get("nextCursor")
         if not cursor:
             break
         if not isinstance(cursor, str) or not RE_EVENT.fullmatch(cursor) or cursor == after:
-            return None, "bot item show: a cursor it did not print"
+            return None, "bot item show: a cursor it did not print", False
         after = cursor
     else:
-        return None, "bot item show: too many pages"
+        return None, "bot item show: too many pages", False
     if item.get("number") != n:
-        return None, "bot item show: another item came back"
-    return Item(item, events), None
+        return None, "bot item show: another item came back", False
+    return Item(item, events), None, False
+
+
+def unsettled_markers(item: Item) -> bool:
+    """A marker link whose `linked` event the read missed. Orca's show reads the events first and
+    the item second, so a link added between the two shows up without its event."""
+    return any(kind == "file" and isinstance(ref, str) and ref.startswith("head-wait/")
+               and item.link_event(ref) is None for kind, ref in item.links)
+
+
+def read_item(n: int, tries: int = 1) -> tuple:
+    """Returns (Item, None) or (None, reason). Up to `tries` reads while the error is one that
+    can pass, with READ_PAUSES_S between them; a read that shows a marker link without its event
+    is read again at once, up to twice."""
+    why, done = "", 0
+    for attempt in range(tries):
+        if attempt:
+            wait_s = READ_PAUSES_S[min(attempt, len(READ_PAUSES_S)) - 1]
+            if budget_left() < wait_s + CALL_TIMEOUT_S:
+                break
+            pause(wait_s)
+        done += 1
+        for _ in range(3):
+            item, why, passing = read_pages(n)
+            if item is None or not unsettled_markers(item):
+                break
+        if item is not None:
+            return item, None
+        if not passing:
+            return None, why
+    return None, why + (f" ({done} tries)" if done > 1 else "")
 
 
 def marker(n: int, k: int, closed: bool = False) -> str:
@@ -419,7 +494,11 @@ RECORD_LINE = re.compile(
     r"Item at arm: ([a-z_]+), wait (\d+|none)\.(?: Carried from: item (\d+) W(\d+)\.)?")
 ARMED_LINE = re.compile(r"Armed, item (\d+) W(\d+): wake (" + UUID + r"), target (" + TIME
                         + r"), deadline (" + TIME + r")\.")
+REWAKE_LINE = re.compile(r"Rewake, item (\d+) W(\d+): wake (" + UUID + r"), target (" + TIME
+                         + r")\.")
 SNOOZE_LINE = re.compile(r"Snoozed until (\S+)")
+UNSNOOZE_LINE = re.compile(r"Unsnoozed\b")
+SENT_RECEIPT = re.compile(r"\bSent: msg_[0-9a-f]{12} to ")
 
 
 class Wait:
@@ -435,6 +514,7 @@ class Wait:
         self.record = self.record_fields = self.armed = self.closing = None
         self.resend = self.blocked = self.carried = None
         self.notes: list = []
+        self.rewakes: list = []
         start = eid(self.reserved_ev)
         tag = f", item {n} W{k}"
         for e in item.own_comments():
@@ -463,45 +543,38 @@ class Wait:
                 self.carried = e
             elif first.startswith(f"Reconcile note{tag}: "):
                 self.notes.append(e)
+            elif eid(e) > start >= 0 and first.startswith(f"Rewake{tag}: "):
+                m = REWAKE_LINE.fullmatch(first)
+                if m and int(m.group(1)) == n and int(m.group(2)) == k and real_times(m.group(4)):
+                    self.rewakes.append((e, m.group(3), m.group(4)))
 
     def field(self, name: str) -> str:
         names = ("item", "k", "owner", "owner_session", "waiting_session", "ticket", "key",
-                 "target", "deadline", "status_at_arm", "wait_at_arm")
+                 "target", "deadline", "status_at_arm", "wait_at_arm", "carried_item",
+                 "carried_wait")
         return self.record_fields.group(names.index(name) + 1)
 
+    def current_wake(self) -> tuple | None:
+        """(line event, wake id, target) of the latest Armed or Rewake line, or None."""
+        wakes = ([self.armed[:3]] if self.armed else []) + self.rewakes
+        return max(wakes, key=lambda w: eid(w[0])) if wakes else None
+
     def wake_id(self) -> str | None:
-        return self.armed[1] if self.armed else None
+        cur = self.current_wake()
+        return cur[1] if cur else None
 
 
-def markers_on(item: Item) -> tuple:
-    """({k: (has W<k>, has W<k>-closed)}, [refs naming another item])."""
+def markers_on(item: Item) -> dict:
+    """{k: (has W<k>, has W<k>-closed)} for this item's own markers. Any marker found counts."""
     seen: dict = {}
-    foreign = []
     for kind, ref in item.links:
-        if kind != "file" or not isinstance(ref, str) or not ref.startswith("head-wait/"):
-            continue
-        m = RE_MARKER.fullmatch(ref)
+        m = RE_MARKER.fullmatch(ref) if kind == "file" and isinstance(ref, str) else None
         if not m or int(m.group(1)) != item.number:
-            foreign.append(ref)
             continue
         k = int(m.group(2))
         has_open, has_closed = seen.get(k, (False, False))
         seen[k] = (has_open or not m.group(3), has_closed or bool(m.group(3)))
-    return seen, foreign
-
-
-def foreign_markers(item: Item, seen: dict) -> list:
-    """Marker refs on this item linked by anything other than its owner bot."""
-    out = []
-    for k, (has_open, has_closed) in seen.items():
-        for closed, present in ((False, has_open), (True, has_closed)):
-            if not present:
-                continue
-            ev = item.link_event(marker(item.number, k, closed))
-            actor = (ev or {}).get("actor") if isinstance((ev or {}).get("actor"), dict) else {}
-            if not ev or actor.get("kind") != "bot" or actor.get("botId") != item.owner_bot:
-                out.append(marker(item.number, k, closed))
-    return out
+    return seen
 
 
 def gate(item: Item) -> tuple:
@@ -509,12 +582,7 @@ def gate(item: Item) -> tuple:
     if item.status not in OPEN_STATUSES:
         return None, f"the item is {item.status}; a wait arms only on a planned, in-progress " \
                      "or waiting item"
-    seen, foreign = markers_on(item)
-    if foreign:
-        return None, f"a marker names another item: {foreign[0]}"
-    alien = foreign_markers(item, seen)
-    if alien:
-        return None, f"{alien[0]} was not linked by this item's bot"
+    seen = markers_on(item)
     for k in sorted(seen):
         w = Wait(item, k)
         if w.blocked is not None:
@@ -669,8 +737,9 @@ def close_unarmed(n: int, k: int, step: str, error: str, wake: str | None, scrat
                            f"is closed, so W{k}-closed can't be linked and nothing can act on " \
                            f"W{k}; {tail}; nothing else written"
     if word != "CLAIMED":
-        return EXIT_UNCLEAR, f"{word} item {n} W{k}: the {step} step failed ({error}) and the " \
-                             f"close-unarmed claim gave {res.describe()}; reconcile"
+        return (EXIT_UNCLEAR if word == "UNCLEAR" else EXIT_OTHER), \
+            f"{word} item {n} W{k}: the {step} step failed ({error}) and the close-unarmed claim " \
+            f"gave {res.describe()}; reconcile"
     if not clock.ok():
         return EXIT_UNCLEAR, f"UNCLEAR item {n} W{k}: claimed W{k}-closed but out of time " \
                              "before the UNARMED line; reconcile"
@@ -708,13 +777,13 @@ def step_record(n: int, k: int, a: argparse.Namespace, item: Item, body: str,
     return posted(res), res
 
 
-def step_create(n: int, k: int, item: Item, target: str) -> tuple:
+def step_create(n: int, k: int, item: Item, target: str, name: str | None = None) -> tuple:
     """(automation id or None, error or None, whether a wake may exist with an unknown id)."""
     bot = item.owner_name
     if not isinstance(bot, str) or not RE_BOT.fullmatch(bot):
         return None, "the item's bot name fails its pattern", False
-    res = run_orca(["automations", "create", "--bot", bot, "--name", f"Item {n} W{k}", "--once",
-                    "--by", target, "--prompt", wake_prompt(n, k, target), "--json"])
+    res = run_orca(["automations", "create", "--bot", bot, "--name", name or f"Item {n} W{k}",
+                    "--once", "--by", target, "--prompt", wake_prompt(n, k, target), "--json"])
     auto = res.result.get("automation") if res.state == "ok" else None
     if not isinstance(auto, dict):
         return None, f"automations create: {res.describe()}", res.state in ("ok", "unclear")
@@ -739,27 +808,28 @@ def step_create(n: int, k: int, item: Item, target: str) -> tuple:
 
 
 def step_waiting(n: int, k: int, wake: str, scratch: Scratch) -> tuple:
-    """Arm steps 4 to 6 on the item as it is now. Returns (exit, first line)."""
+    """Arm steps 4 to 6 on the item as it is now. Returns (exit, first line, Waiting written)."""
     item, why = read_item(n)
     if item is None:
-        return close_unarmed(n, k, "fresh-read", why, wake, scratch)
+        return close_unarmed(n, k, "fresh-read", why, wake, scratch) + (False,)
     w = Wait(item, k)
     if w.closed:
         return EXIT_OTHER, f"OVERTAKEN item {n} W{k}: W{k}-closed is already linked; no Waiting " \
-                           "write and no UNARMED line (whoever closed it writes its line)"
+                           "write and no UNARMED line (whoever closed it writes its line)", False
     if w.record is None:
-        return close_unarmed(n, k, "fresh-read", "no W%d record on the item" % k, wake, scratch)
+        return close_unarmed(n, k, "fresh-read", "no W%d record on the item" % k, wake,
+                             scratch) + (False,)
     target, deadline = w.field("target"), w.field("deadline")
     at_arm = (w.field("status_at_arm"), w.field("wait_at_arm"))
     now_view = (item.status, str(item.wait_at) if isinstance(item.wait_at, int) else "none")
     if now_view != at_arm:
         return close_unarmed(n, k, "item-changed", "the item's status or wait changed while "
                              f"arming: {at_arm[0]}, wait {at_arm[1]} at the reservation; "
-                             f"{now_view[0]}, wait {now_view[1]} now", wake, scratch)
+                             f"{now_view[0]}, wait {now_view[1]} now", wake, scratch) + (False,)
     if now_s() > ms(target) / 1000 - WAITING_LEAD_S:
         return close_unarmed(n, k, "target-too-close", f"the wake target {target} is less than "
                              f"{WAITING_LEAD_S} s away, so its wake may run before Waiting",
-                             wake, scratch)
+                             wake, scratch) + (False,)
     note = f"W{k} wake {wake[:8]} by {in_pt(deadline)}; record {w.record['id']}"
     if len(note) > NOTE_MAX:
         note = f"W{k} wake {wake[:8]}; record {w.record['id']}"
@@ -773,14 +843,18 @@ def step_waiting(n: int, k: int, wake: str, scratch: Scratch) -> tuple:
         landed = bool(again and again.status == "waiting" and isinstance(again.wait_text, str)
                       and again.wait_text.startswith(f"W{k} "))
     if not landed:
-        return close_unarmed(n, k, "waiting", f"bot item set: {res.describe()}", wake, scratch)
-    after, _ = read_item(n)
-    tail = ""
+        return close_unarmed(n, k, "waiting", f"bot item set: {res.describe()}", wake,
+                             scratch) + (False,)
+    after, why = read_item(n)
     if after is None:
-        tail = "; the post-check read failed"
-    elif Wait(after, k).closed:
-        tail = f"; W{k}-closed appeared right after: the item reads Waiting on a closed wait"
-    return EXIT_OK, f"ARMED item {n} W{k}: wake {wake}, target {target}, deadline {deadline}" + tail
+        return EXIT_UNCLEAR, f"UNCHECKED item {n} W{k}: Waiting written with wake {wake}, target " \
+                             f"{target}, deadline {deadline}, but the read after it failed " \
+                             f"({why}); run check", True
+    if Wait(after, k).closed:
+        return EXIT_OTHER, f"SPENT item {n} W{k}: Waiting written with wake {wake}, but " \
+                           f"W{k}-closed was linked right after, so the item reads Waiting on a " \
+                           "closed wait", True
+    return EXIT_OK, f"ARMED item {n} W{k}: wake {wake}, target {target}, deadline {deadline}", True
 
 
 # ------------------------------------------------------------------------------ commands
@@ -791,11 +865,15 @@ def arm_inputs(a: argparse.Namespace) -> tuple:
     k = wait_number(a.wait)
     need_time(a.target, "--target")
     need_time(a.deadline, "--deadline")
-    if ms(a.deadline) < ms(a.target):
-        raise Refused("--deadline is before --target")
+    if ms(a.deadline) < ms(a.target) + DEADLINE_MIN_GAP_S * 1000:
+        raise Refused(f"--deadline must be at least {DEADLINE_MIN_GAP_S // 60} minutes after "
+                      "--target")
     need(RE_ADDRESS, a.owner, "--owner")
     a.owner_session = session_id(a.owner_session, "--owner-session")
     a.waiting_session = session_id(a.waiting_session, "--waiting-session")
+    named = RE_OWNER_SESSION.fullmatch(a.owner)
+    if named and named.group(1) != a.owner_session:
+        raise Refused("--owner names one session and --owner-session another")
     need(RE_TICKET, a.ticket, "--ticket")
     need(RE_KEY, a.key, "--key")
     a.carried_from = None
@@ -818,7 +896,7 @@ def carry_problem(a: argparse.Namespace, new: Item) -> str | None:
         return f"item {m} belongs to another bot"
     w = Wait(old, j)
     if w.blocked is None:
-        seen, _ = markers_on(old)
+        seen = markers_on(old)
         at_cap = len(old.links) > LINK_CAP - LINKS_PER_WAIT
         if not (at_cap and not w.reserved and j == (max(seen) + 1 if seen else 1)):
             return f"item {m} W{j} has no Wait blocked line, and isn't the next wait of an " \
@@ -837,11 +915,11 @@ def cmd_arm(a: argparse.Namespace) -> tuple:
     if ms(a.target) / 1000 < now_s() + ARM_MIN_LEAD_S:
         return EXIT_OTHER, f"BLOCKED item {n} W{k}: the target must be at least " \
                            f"{ARM_MIN_LEAD_S} s ahead; nothing written"
-    item, why = read_item(n)
+    item, why = read_item(n, READ_TRIES)
     if item is None:
-        return EXIT_UNCLEAR, f"BLOCKED item {n} W{k}: {why}; nothing written"
+        return EXIT_UNCLEAR, f"UNREADABLE item {n} W{k}: {why}; nothing written"
     if utf16_len(record_text(n, k, a, item, body)) > TEXT_MAX:
-        return EXIT_USAGE, f"REFUSED item {n} W{k}: the record is over Orca's {TEXT_MAX} " \
+        return EXIT_OTHER, f"REFUSED item {n} W{k}: the record is over Orca's {TEXT_MAX} " \
                            "characters; nothing written"
     nxt, why = gate(item)
     if nxt is None:
@@ -870,8 +948,8 @@ def cmd_arm(a: argparse.Namespace) -> tuple:
         if err:
             return close_unarmed(n, k, "verify" if wake or err.startswith("verify") else "create",
                                  err, wake, scratch, wake_unknown=unknown)
-        code, line = step_waiting(n, k, wake, scratch)
-        if code == EXIT_OK and a.carried_from:
+        code, line, written = step_waiting(n, k, wake, scratch)
+        if written and a.carried_from:
             m, j = a.carried_from
             res = post(m, f"Carried, item {m} W{j}: to item {n} W{k}, wake {wake}.", scratch,
                        "carried.txt")
@@ -889,59 +967,13 @@ def cmd_reserve(a: argparse.Namespace) -> tuple:
     return code, f"{word} item {n} W{k}: {res.describe() if word != 'RESERVED' else 'linked'}"
 
 
-def cmd_record(a: argparse.Namespace) -> tuple:
-    n, k, body = arm_inputs(a)
-    item, why = read_item(n)
-    if item is None:
-        return EXIT_UNCLEAR, f"UNCLEAR item {n} W{k}: {why}; nothing written"
-    if not Wait(item, k).reserved:
-        return EXIT_OTHER, f"REFUSED item {n} W{k}: no W{k} marker; nothing written"
-    scratch = Scratch()
-    try:
-        record, res = step_record(n, k, a, item, body, scratch)
-        if record is None:
-            return close_unarmed(n, k, "record", res.describe(), None, scratch)
-        return EXIT_OK, f"RECORDED item {n} W{k}: record {record}"
-    finally:
-        scratch.close()
-
-
-def cmd_create(a: argparse.Namespace) -> tuple:
-    n, k = int(need(RE_ITEM, a.item, "--item")), wait_number(a.wait)
-    item, why = read_item(n)
-    if item is None:
-        return EXIT_UNCLEAR, f"UNCLEAR item {n} W{k}: {why}; nothing written"
-    w = Wait(item, k)
-    if w.record is None:
-        return EXIT_OTHER, f"REFUSED item {n} W{k}: no W{k} record; nothing written"
-    scratch = Scratch()
-    try:
-        wake, err, unknown = step_create(n, k, item, w.field("target"))
-        if err:
-            return close_unarmed(n, k, "verify" if wake or err.startswith("verify") else "create",
-                                 err, wake, scratch, wake_unknown=unknown)
-        return EXIT_OK, f"CREATED item {n} W{k}: wake {wake}"
-    finally:
-        scratch.close()
-
-
-def cmd_waiting(a: argparse.Namespace) -> tuple:
-    n, k = int(need(RE_ITEM, a.item, "--item")), wait_number(a.wait)
-    wake = need(RE_UUID, a.wake_id, "--wake-id")
-    scratch = Scratch()
-    try:
-        return step_waiting(n, k, wake, scratch)
-    finally:
-        scratch.close()
-
-
 def cmd_claim(a: argparse.Namespace) -> tuple:
     n, k = int(need(RE_ITEM, a.item, "--item")), wait_number(a.wait)
-    item, why = read_item(n)
+    item, why = read_item(n, READ_TRIES)
     if item is None:
         return EXIT_UNCLEAR, f"UNREADABLE item {n} W{k}: {why}; nothing written"
     if not Wait(item, k).reserved:
-        return EXIT_USAGE, f"REFUSED item {n} W{k}: no W{k} marker, so it can't be closed"
+        return EXIT_OTHER, f"REFUSED item {n} W{k}: no W{k} marker, so it can't be closed"
     word, res = link_marker(n, k, True)
     code = EXIT_OK if word == "CLAIMED" else (EXIT_UNCLEAR if word == "UNCLEAR" else EXIT_OTHER)
     tail = "a winner that stops here; only reconcile gives W%d its closing record" % k
@@ -953,12 +985,15 @@ def cmd_close_unarmed(a: argparse.Namespace) -> tuple:
     if a.step not in UNARMED_STEPS:
         raise Refused("--step is not one of " + ", ".join(UNARMED_STEPS))
     wake = need(RE_UUID, a.wake_id, "--wake-id") if a.wake_id else None
-    item, why = read_item(n)
+    item, why = read_item(n, READ_TRIES)
+    if item is not None:  # an arm in flight posts its record and Armed line within seconds
+        pause(RE_READ_PAUSE_S)
+        item, why = read_item(n, READ_TRIES)
     if item is None:
         return EXIT_UNCLEAR, f"UNREADABLE item {n} W{k}: {why}; nothing written"
     w = Wait(item, k)
     if not w.reserved:
-        return EXIT_USAGE, f"REFUSED item {n} W{k}: no W{k} marker, so it can't be closed"
+        return EXIT_OTHER, f"REFUSED item {n} W{k}: no W{k} marker, so it can't be closed"
     if w.armed is not None:
         return EXIT_OTHER, f"REFUSED item {n} W{k}: it has an Armed line {w.armed[0]['id']}; " \
                            "an armed wait is closed by close, not unarmed"
@@ -979,11 +1014,12 @@ def describe_wait(item: Item, w: Wait) -> str:
     if w.reserved and not w.closed:
         if w.record is None:
             return f"OPEN item {n} W{k}: reserved with no record"
+        cur = w.current_wake()
         return (f"OPEN item {n} W{k}: record {w.record['id']}; owner {w.field('owner')} "
                 f"(session {w.field('owner_session')}); waiting session "
                 f"{w.field('waiting_session')}; ticket {w.field('ticket')}; key {w.field('key')}; "
                 f"target {w.field('target')}; deadline {w.field('deadline')}; wake "
-                f"{w.wake_id() or 'none recorded'}")
+                + (f"{cur[1]} at {cur[2]}" if cur else "none recorded"))
     if w.closed:
         if w.closing is not None:
             return f"CLOSED item {n} W{k}: closing record {w.closing['id']}"
@@ -994,7 +1030,7 @@ def describe_wait(item: Item, w: Wait) -> str:
 def cmd_check(a: argparse.Namespace) -> tuple:
     n = int(need(RE_ITEM, a.item, "--item"))
     k = wait_number(a.wait) if a.wait else None
-    item, why = read_item(n)
+    item, why = read_item(n, READ_TRIES)
     if item is None:
         return EXIT_UNCLEAR, f"UNREADABLE item {n}: {why}"
     if k is not None:
@@ -1009,7 +1045,7 @@ def cmd_check(a: argparse.Namespace) -> tuple:
     nxt, why = gate(item)
     if nxt is not None:
         return EXIT_OK, f"IDLE item {n}: no open wait; the next is W{nxt}"
-    seen, _ = markers_on(item)
+    seen = markers_on(item)
     opened = [j for j, (o, c) in seen.items() if o and not c]
     if opened:
         return EXIT_OTHER, describe_wait(item, Wait(item, opened[0]))
@@ -1032,6 +1068,57 @@ def require_sections(text: str, case: str, what: str) -> None:
             raise Refused(f"{what} has no line starting {head!r}")
 
 
+def snooze_line(item: Item, now_ms: float) -> dict | None:
+    """The latest `Snoozed until` line on the item, when no `Unsnoozed` line follows it and its
+    time is ahead or can't be read; else None. Any age counts: an old undated line holds until
+    an `Unsnoozed` line or a later `Snoozed until` line ends it."""
+    latest = None
+    for e in item.own_comments():
+        text = e["data"]["text"]
+        if SNOOZE_LINE.match(text):
+            latest = e
+        elif UNSNOOZE_LINE.match(text):
+            latest = None
+    if latest is None:
+        return None
+    stamp = SNOOZE_LINE.match(latest["data"]["text"]).group(1).rstrip(":.,;")
+    try:
+        until = dt.datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+    except ValueError:
+        return latest
+    return latest if until.tzinfo is None or until.timestamp() * 1000 > now_ms else None
+
+
+CARRY_HOPS_MAX = 5
+
+
+def unclear_send(item: Item, w: Wait) -> str | None:
+    """Correction 1 per key: an earlier wait under the same key with a `Re-send` line and no
+    `Sent: msg_` receipt in its closing record may have sent, so no wait under that key sends
+    again. Looks at earlier waits on this item and along the record's `Carried from` chain."""
+    key = w.field("key")
+    here, last, origin = item, w.k - 1, w  # on each item, waits W1 to W<last>
+    for hops in range(CARRY_HOPS_MAX + 1):
+        for j in sorted(markers_on(here)):
+            wj = Wait(here, j) if j <= last else None
+            if wj is None or wj.record is None or wj.resend is None or wj.field("key") != key:
+                continue
+            first = wj.closing["data"]["text"].split("\n", 1)[0] if wj.closing else ""
+            if not SENT_RECEIPT.search(first):
+                return f"item {here.number} W{j}, under the same key, has a Re-send line " \
+                       f"{wj.resend['id']} and no Sent receipt, so a send may have gone"
+        if origin.record is None or origin.field("carried_item") is None:
+            return None
+        if hops == CARRY_HOPS_MAX:
+            break
+        m, last = int(origin.field("carried_item")), int(origin.field("carried_wait"))
+        here, why = read_item(m)
+        if here is None:
+            return f"item {m}, carried from, can't be read to rule out a send ({why})"
+        origin = Wait(here, last)
+    return f"the Carried from chain is longer than {CARRY_HOPS_MAX} items"
+
+
 def fresh_send_check(n: int, k: int, item: Item | None, w: Wait | None) -> tuple:
     """Right before a re-send: (None, None) when it may go, else (case, reason)."""
     if item is None or w is None or w.record is None:
@@ -1052,19 +1139,12 @@ def fresh_send_check(n: int, k: int, item: Item | None, w: Wait | None) -> tuple
         data = e.get("data") if isinstance(e.get("data"), dict) else {}
         if e.get("kind") == "status" and eid(e) > start and data.get("to") in ("done", "canceled"):
             return "no-follow-up", f"the item was closed after the record ({e['id']})"
-    for e in item.own_comments():
-        m = SNOOZE_LINE.match(e["data"]["text"])
-        if not m:
-            continue
-        stamp = m.group(1).rstrip(":.,;")
-        try:
-            until = dt.datetime.fromisoformat(stamp.replace("Z", "+00:00"))
-            ahead = until.tzinfo is not None and until.timestamp() * 1000 > now_ms
-            unreadable = until.tzinfo is None
-        except ValueError:
-            ahead, unreadable = False, True
-        if ahead or (unreadable and eid(e) > start):
-            return "no-follow-up", f"a Snoozed until line {e['id']} still holds"
+    held = snooze_line(item, now_ms)
+    if held is not None:
+        return "no-follow-up", f"a Snoozed until line {held['id']} still holds"
+    problem = unclear_send(item, w)
+    if problem:
+        return "not-settled", problem
     for role in ("owner_session", "waiting_session"):
         sid = w.field(role)
         res = run_orca(["agent", "show", f"orca_session_id:{sid}", "--json"])
@@ -1092,22 +1172,22 @@ def cmd_close(a: argparse.Namespace) -> tuple:
         body = read_head_file(a.body_file, n, k, "--body-file")
     elif a.body_file:
         raise Refused("--body-file goes only with re-sent")
-    item, why = read_item(n)
+    item, why = read_item(n, READ_TRIES)
     if item is None:
         return EXIT_UNCLEAR, f"UNREADABLE item {n} W{k}: {why}; nothing written"
     w = Wait(item, k)
     if not w.reserved:
-        return EXIT_USAGE, f"REFUSED item {n} W{k}: no W{k} marker, so it can't be closed"
+        return EXIT_OTHER, f"REFUSED item {n} W{k}: no W{k} marker, so it can't be closed"
     if w.record is None:
-        return EXIT_USAGE, f"REFUSED item {n} W{k}: no W{k} record; close it unarmed " \
+        return EXIT_OTHER, f"REFUSED item {n} W{k}: no W{k} record; close it unarmed " \
                            "(reconciliation), not by a disposition"
     if utf16_len(close_header(n, k, a.case, a.trigger, w, False) + " " * 1400 + text) > TEXT_MAX:
-        return EXIT_USAGE, f"REFUSED item {n} W{k}: --text-file is too long for one comment"
+        return EXIT_OTHER, f"REFUSED item {n} W{k}: --text-file is too long for one comment"
     if a.trigger != "wake" and a.case == "not-settled":
         wake = w.wake_id()
         if wake is None:
-            return EXIT_OTHER, f"REFUSED item {n} W{k}: no Armed line, so no wake to read; an " \
-                               "arm cut off before Waiting is closed with close-unarmed"
+            return EXIT_OTHER, f"REFUSED item {n} W{k}: no Armed or Rewake line, so no wake to " \
+                               "read; an arm cut off before Waiting is closed with close-unarmed"
         state = wake_state(wake)
         if state not in ("disabled", "gone"):
             return EXIT_OTHER, f"REFUSED item {n} W{k}: a {a.trigger} closes as not settled " \
@@ -1234,7 +1314,7 @@ def cmd_reconcile(a: argparse.Namespace) -> tuple:
     text = read_head_file(a.text_file, n, k, "--text-file")
     if final is not None:
         require_sections(text, "settled" if final == "unarmed" else final, "--text-file")
-    item, why = read_item(n)
+    item, why = read_item(n, READ_TRIES)
     if item is None:
         return EXIT_UNCLEAR, f"UNREADABLE item {n} W{k}: {why}; nothing written"
     w = Wait(item, k)
@@ -1281,7 +1361,73 @@ def cmd_reconcile(a: argparse.Namespace) -> tuple:
             return EXIT_UNCLEAR, f"UNCLEAR item {n} W{k}: the reconciled closing record did not " \
                                  f"post: {res.describe()}"
         label = "unarmed" if final == "unarmed" else CASES[final]
+        # Two reconciliations at once can each post: the first after W<k>-closed counts.
+        again, why = read_item(n)
+        first = Wait(again, k).closing if again is not None else None
+        if first is None:
+            return EXIT_UNCLEAR, f"UNCHECKED item {n} W{k}: {label}, closing record {note} " \
+                                 f"posted, but the read after it failed ({why or 'not found'}), " \
+                                 "so a second closing record isn't ruled out"
+        if first["id"] != note:
+            return EXIT_OTHER, f"DUPLICATE item {n} W{k}: closing record {note} landed after " \
+                               f"{first['id']}, which counts; nothing more written"
         return EXIT_OK, f"RECONCILED item {n} W{k}: {label}, closing record {note}"
+    finally:
+        scratch.close()
+
+
+def rewake_time() -> str:
+    """REWAKE_AFTER_S from now, up to the next whole minute, in UTC."""
+    t = math.ceil((now_s() + REWAKE_AFTER_S) / 60) * 60
+    return dt.datetime.fromtimestamp(t, dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:00+00:00")
+
+
+def cmd_rewake(a: argparse.Namespace) -> tuple:
+    """A fresh one-time wake for a wait that has no closing record and no wake still due (its
+    latest Armed or Rewake wake's time is ahead and Orca shows it enabled; a wake whose state
+    can't be read counts as not due, so a spare can result, and a spare only runs check).
+    It adds no link: only a `Rewake` line, and the wake's run starts with check like any wake."""
+    n, k = int(need(RE_ITEM, a.item, "--item")), wait_number(a.wait)
+    item, why = read_item(n, READ_TRIES)
+    if item is None:
+        return EXIT_UNCLEAR, f"UNCOVERED item {n} W{k}: the item can't be read ({why}); no wake " \
+                             "made"
+    w = Wait(item, k)
+    if not w.reserved:
+        return EXIT_OTHER, f"NO WAIT item {n} W{k}: no W{k} marker; no wake made"
+    if item.status in ("done", "canceled"):
+        return EXIT_OTHER, f"CLOSED item {n} W{k}: the item is {item.status}; no wake made"
+    if w.closing is not None:
+        return EXIT_OTHER, f"CLOSED item {n} W{k}: closing record {w.closing['id']}; no wake made"
+    if w.blocked is not None:
+        return EXIT_OTHER, f"BLOCKED item {n} W{k}: at Orca's link cap ({w.blocked['id']}); " \
+                           "carry the work to a fresh item; no wake made"
+    cur = w.current_wake()
+    if cur is not None and ms(cur[2]) > now_s() * 1000:
+        state = wake_state(cur[1])
+        if state == "enabled":
+            return EXIT_OK, f"COVERED item {n} W{k}: wake {cur[1]} is due at {cur[2]}; no wake " \
+                            "made"
+    if len(w.rewakes) >= REWAKE_MAX:
+        return EXIT_UNCLEAR, f"UNCOVERED item {n} W{k}: it has had {REWAKE_MAX} rewakes, the " \
+                             "most it gets; no wake made. Reconcile it from your reads"
+    target = rewake_time()
+    scratch = Scratch()
+    try:
+        wake, err, unknown = step_create(n, k, item, target,
+                                         f"Item {n} W{k} rewake {len(w.rewakes) + 1}")
+        if err:
+            tail = retire(n, k, wake, scratch) if wake else (
+                "a wake may exist with an id Orca didn't print" if unknown else "no wake made")
+            return EXIT_UNCLEAR, f"UNCOVERED item {n} W{k}: no fresh wake ({err}); {tail}"
+        res = post(n, f"Rewake, item {n} W{k}: wake {wake}, target {target}.", scratch,
+                   "rewake.txt")
+        note = posted(res)
+        if note is None:
+            return EXIT_UNCLEAR, f"UNRECORDED item {n} W{k}: wake {wake} made for {target}, but " \
+                                 f"the Rewake line did not post ({res.describe()}), so the item " \
+                                 "may not name it"
+        return EXIT_OK, f"REWOKEN item {n} W{k}: wake {wake}, target {target}; line {note}"
     finally:
         scratch.close()
 
@@ -1298,11 +1444,7 @@ def wake_state(wake: str) -> str:
 
 def findings_for(item: Item) -> list:
     n, out = item.number, []
-    seen, foreign = markers_on(item)
-    for ref in foreign:
-        out.append(f"ITEM {n}: a marker names another item: {ref}")
-    for ref in foreign_markers(item, seen):
-        out.append(f"ITEM {n}: {ref} was not linked by this item's bot")
+    seen = markers_on(item)
     now_ms = now_s() * 1000
     for k in sorted(seen):
         w = Wait(item, k)
@@ -1337,9 +1479,9 @@ def findings_for(item: Item) -> list:
                 f", superseded by W{max(later)}" if later else ""))
         elif not w.reserved:
             out.append(f"ITEM {n}: Waiting names W{k}, which has no marker")
-        elif w.wake_id() is not None and not w.wake_id().startswith(prefix):
-            out.append(f"ITEM {n}: Waiting names wake {prefix}, not W{k}'s wake "
-                       f"{w.wake_id()[:8]} (a superseded wake)")
+        elif w.armed is not None and not w.armed[1].startswith(prefix):
+            out.append(f"ITEM {n}: Waiting names wake {prefix}, not W{k}'s armed wake "
+                       f"{w.armed[1][:8]} (a superseded wake)")
         elif later:
             out.append(f"ITEM {n}: Waiting names W{k}, superseded by W{max(later)}")
     free = LINK_CAP - len(item.links)
@@ -1400,36 +1542,37 @@ def parser() -> argparse.ArgumentParser:
     arm_flags = ("item", "wait", "target", "deadline", "owner", "owner-session",
                  "waiting-session", "ticket", "key", "record-file")
     cmd("arm", *arm_flags).add_argument("--carried-from", dest="carried")
-    cmd("record", *arm_flags).add_argument("--carried-from", dest="carried")
     cmd("check", "item", optional=("wait",))
     cmd("close", "item", "wait", "trigger", "case", "text-file", optional=("body-file",))
     cmd("retire", "item", "wait", "id")
     cmd("reconcile", "item", "wait", "text-file", optional=("final",))
+    cmd("rewake", "item", "wait")
     cmd("restart", "bot")
     cmd("reserve", "item", "wait")
-    cmd("create", "item", "wait")
-    cmd("waiting", "item", "wait", "wake-id")
     cmd("claim", "item", "wait")
     cmd("close-unarmed", "item", "wait", "step", optional=("wake-id",))
     return p
 
 
-COMMANDS = {"arm": cmd_arm, "record": cmd_record, "check": cmd_check, "close": cmd_close,
-            "retire": cmd_retire, "reconcile": cmd_reconcile, "restart": cmd_restart,
-            "reserve": cmd_reserve, "create": cmd_create, "waiting": cmd_waiting,
-            "claim": cmd_claim, "close-unarmed": cmd_close_unarmed}
+COMMANDS = {"arm": cmd_arm, "check": cmd_check, "close": cmd_close, "retire": cmd_retire,
+            "reconcile": cmd_reconcile, "rewake": cmd_rewake, "restart": cmd_restart,
+            "reserve": cmd_reserve, "claim": cmd_claim, "close-unarmed": cmd_close_unarmed}
 
 
 def main(argv: list | None = None) -> int:
     a = parser().parse_args(argv)
+    BUDGET["start"] = mono()
     try:
         code, line = COMMANDS[a.command](a)
     except Refused as e:
         say(f"REFUSED: {e}; nothing sent to Orca")
         return EXIT_USAGE
     except (ValueError, OSError, KeyError, TypeError) as e:
-        say(f"UNCLEAR: {a.command} stopped on {type(e).__name__}: {e}; run restart and reconcile")
+        say(f"UNCLEAR: {a.command} stopped on {type(e).__name__}: {e}; run rewake for the wait, "
+            "then restart")
         return EXIT_UNCLEAR
+    finally:
+        BUDGET["start"] = None
     say(line)
     return code
 

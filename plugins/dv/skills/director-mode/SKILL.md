@@ -1199,6 +1199,9 @@ terminal by `orca terminal send`, by clipboard paste, or as a file under
   Step 3 block writes it, `%` as `%25` and `/` as `%2F` (`detached-<full HEAD sha>` for a detached
   HEAD). If that copy's header (its first line) names another worktree path, there is no note for
   this worktree; a first line that is not a `CLOSEOUT NOTE` header makes it a note you can't read.
+  A note this lookup can't find counts as no note, so the worktree is kept: one saved before the
+  branch was renamed or HEAD detached, or one hidden by a newer copy for another worktree on the
+  same branch.
 - A session you started supervised (step 2a of "Open a worktree on request") you don't ask me to
   close: "End a finished worktree session" releases its chat through Orca once the checks there
   pass, and falls back to me when one fails or the release's outcome can't be confirmed. A
@@ -1384,6 +1387,12 @@ of these hold:
   --format=%gd HEAD` shows that HEAD last moved before the note's timestamp. No output, or a
   move at or after the timestamp, fails it.
 - Step 1 lists no stash made on that branch.
+- If the worktree has a `HANDOFF.md`, it is a regular file, not a symlink, and `cmp` finds it
+  byte-identical to a regular file in `handoffs/_done/` under the git common directory's real path
+  (`pwd -P`), named `<branch slug>.<YYYYMMDDTHHMMSSZ>.md`, or with `-<n>` before `.md`, as
+  closeout's Step 4 archives it (`<branch slug>` as "Take closeout notes" gives it). A `handoffs` or `_done` that is
+  a symlink, a listing that fails, a `cmp` error, or no identical copy fails it. Step 1 leaves
+  `HANDOFF.md` out of its inventory, so without this a handoff edited after the note would pass.
 
 If the block can't run, or anything differs, keep the worktree, do not ask me to close it, and tell me. The
 recheck is only as good as closeout's inventory. The verdict line names each build-output line
@@ -1950,18 +1959,21 @@ session never does.
     ended before the merge may have saved a closeout note that never reached you, so before any
     step of that cleanup (`cleanup_merged_branch` included, since it removes a clean worktree
     itself), read the latest closeout note ("Take closeout notes") of the worktree that has the
-    PR's branch checked out. When it has one, remove that worktree only as "Take closeout notes"
-    says for a session that has ended (check 1's verdict rule, then the closeout recheck); when
-    the note fails the rule, or the recheck differs or can't run, keep the worktree and its
-    branch and tell me as "Take closeout notes" says. When it has none (no copy saved for its
-    branch, or the latest copy's header names another worktree), go on as below; when its latest
-    copy can't be read, or `<git-common-dir>/closeouts/` exists and can't be listed, keep the
-    worktree and tell me. For a stale-PR
+    PR's branch checked out. Remove that worktree only as "Take closeout notes" says for a
+    session that has ended (check 1's verdict rule, then the closeout recheck). When the note
+    fails the rule, the recheck differs or can't run, there is no note, or its latest copy or
+    `<git-common-dir>/closeouts/` can't be read, keep the worktree and its branch (skip
+    `cleanup_merged_branch` for that branch) and tell me as "Take closeout notes" says: the
+    folder, and the note's path and Worktree line, or "no closeout note". When no worktree has
+    the branch checked out, clean up the branch by the global procedure (the bullet "Clean up by the
+    global procedure…" below). For a stale-PR
     repair, also consider only the exact temporary path and full HEAD the engineer handed back.
     Read the merged PR's state, `commits` and `headRefOid` with `gh pr view`, and the main
     checkout's `git worktree list --porcelain`. The PR must be merged, the handed-back HEAD
     must equal its head and occur in its commit list, and exactly one worktree record must name
-    that path, detached at that same HEAD. Verify `git -C <path> rev-parse HEAD` agrees. If
+    that path, detached at that same HEAD. Verify `git -C <path> rev-parse HEAD` agrees. A
+    temporary worktree identified this way needs no closeout note; no other worktree is removed
+    without one. If
     any evidence is missing, stale, ambiguous or cannot be read, keep the path and report why;
     never select another detached worktree just because it has the same SHA. Run all checks in
     the global removal procedure below, including check 4 in its strict removal form; if any
@@ -1980,8 +1992,9 @@ session never does.
   PR merges…", "A leftover local branch…" and "Remove a finished Orca worktree yourself…"), run
   from the main checkout. Any other worktree or branch removal, merged PR or not, follows the
   same bullets, the stale-PR engineer's temporary worktree included; before such a removal of a
-  worktree, read that worktree's latest closeout note and go on or keep it as "No session is live"
-  after the merge says. The procedure keeps what
+  worktree, read that worktree's latest closeout note and remove or keep it as "No session is live"
+  after the merge says, keeping one with no note, unless it is the stale-PR temporary worktree
+  identified there by its exact path and full HEAD. The procedure keeps what
   fails a check or cannot be checked; tell me what it kept and why. For its "no other session
   still in it", which names no command, run check 4 under "End a finished worktree session"
   in its removal form: ListAgents lists no live session for the worktree (the test above), and
@@ -1991,8 +2004,9 @@ session never does.
   me (including when you asked under "End a finished worktree session") or released by you
   ("Release a supervised Manager chat"); the global procedure's own checks, including
   that no other session is still in it, decide removal, and a `dv:closeout` note is context, not
-  permission to delete, though once its session has ended, that worktree's latest closeout note
-  can keep it ("Take closeout notes", and "No session is live" after the merge, above).
+  permission to delete, though once its session has ended, that worktree's latest closeout note,
+  or the lack of one, can keep it ("Take closeout notes", and "No session is live" after the
+  merge, above).
 - Re-check every ticket id the PR named. Reopen one only if it moved to Done and its work is not
   finished; leave the others' states to the rules below.
 - If you cannot read `code-review.md` or the global instructions, say so and ask me; do not

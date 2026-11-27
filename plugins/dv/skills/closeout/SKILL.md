@@ -809,8 +809,12 @@ left where it is. The Director's check on the note (`dv:director-mode`, "End a f
 session", check 1) refuses `NOT safe to delete` and `not confirmed safe`, so it leaves the
 worktree and tells me instead of asking me to close the session or releasing it. If the session
 ends anyway, the Director reads the worktree's latest saved note before it removes the worktree,
-a note that never reached it included, and keeps the worktree on those verdicts too
-(`dv:director-mode`, "Take closeout notes" and "Merge and clean up").
+a note that never reached it included, and keeps the worktree on those verdicts too, and when it
+finds no note (one saved before a branch rename or a detached HEAD, or hidden by a newer copy
+for another worktree, counts as none). Its recheck before a removal also needs the worktree's
+`HANDOFF.md`, if there is one, to match an archived copy in `handoffs/_done/`, byte for byte
+(`dv:director-mode`, "Take closeout notes", "Merge and clean up" and "End a finished worktree
+session", "The closeout recheck").
 
 **One saved copy per run.** Each run of this step writes the note once and saves it once, with the
 block below, which never overwrites a saved copy. Writing the note again later (after my yes,
@@ -917,8 +921,9 @@ Do not run it.
   note is a message from me after it (check 3), so in either case the removal stays mine and the
   question is asked, as when no note was sent. Those checks hold while a Director ends this
   session itself; if the session ends another way, the Director reads the worktree's latest saved
-  note before any removal and keeps the worktree on any verdict check 1 refuses (`dv:director-mode`,
-  "Take closeout notes" and "Merge and clean up").
+  note before any removal and keeps the worktree on any verdict check 1 refuses, when it finds no
+  note, or when the closeout recheck fails (`dv:director-mode`, "Take closeout notes" and "Merge
+  and clean up").
 - **Initialized submodules.** When the removal is cleared and Step 1 printed "initialized
   submodules" above 0, `wt done`, `git worktree remove` and a plain `orca worktree rm` all refuse
   this worktree. Say so, and point to the guarded procedure instead of a plain command:

@@ -10,9 +10,14 @@ David's) and "The closeout recheck" there, run against that note, passes. Otherw
 (`NOT safe to delete`, `not confirmed safe`, a loss no standing yes covers, no note it can read,
 or a recheck that differs or can't run) it keeps the worktree and its branch and tells David the
 note's path and its Worktree line word for word, or that there is no note, and what the recheck
-found when it failed. One exception: when no session is live at a merge (or for any other
-removal under "Merge and clean up") and the worktree has no saved note, its cleanup is unchanged.
-The note can only keep a worktree; it never permits a removal the global procedure's checks
+found when it failed. No note keeps the worktree on every such path, "No session is live" and any
+other removal under "Merge and clean up" included, and a note the lookup can't find (saved before
+the branch was renamed or HEAD detached, or hidden by a newer copy for another worktree on the
+branch) counts as none. The recheck also needs the worktree's `HANDOFF.md`, if there is one, to be
+a regular file with a byte-identical copy in `handoffs/_done/`, since closeout's Step 1 leaves it
+out. The one worktree removed with no note is a stale-PR repair's temporary worktree, identified
+by the checks "No session is live" gives it (its exact path and full HEAD, the merged PR, one
+detached worktree record). The note can only keep a worktree; it never permits a removal the global procedure's checks
 refuse. `dv:closeout` and the README drop the known limit this fixes. The other fourteen skills
 have no behaviour changes; their version moves to `0.53.0` only because the suite is released as
 one plugin.
@@ -41,32 +46,44 @@ warning was never read and the file could be lost with the worktree (VIL-1209).
   then the highest `<n>` compared as a number, not by `ls` or `sort` order (the slug is the branch
   name as closeout's Step 3 block writes it). A copy whose header names another worktree path
   counts as no note, and one whose first line is not a `CLOSEOUT NOTE` header as a note the
-  Director can't read.
+  Director can't read. A note the lookup can't find (saved before a branch rename or a detached
+  HEAD, or hidden by a newer copy for another worktree) counts as no note, so the worktree is
+  kept.
 - **`dv:director-mode`, "End a finished worktree session", the `GONE` path.** A session found
   already ended skips the ask and that rule's checks, except that the Director applies check 1's
   verdict rule to the worktree's latest closeout note and then runs the closeout recheck against
   it, as "Take closeout notes" says: keep the worktree and tell David why when the note fails the
   rule, there is no note it can read, or the recheck differs or can't run; otherwise remove it by
   the global procedure with check 4 in its removal form.
+- **`dv:director-mode`, "End a finished worktree session", "The closeout recheck".** One more
+  condition, so every path that runs the recheck gets it: a worktree `HANDOFF.md` must be a
+  regular file, not a symlink, and byte-identical (`cmp`) to a regular file closeout's Step 4
+  archived for the branch in `handoffs/_done/` under the git common directory. A symlinked store,
+  a check that fails, or no identical copy keeps the worktree. Step 1 leaves `HANDOFF.md` out of
+  its inventory, so before this a handoff edited after a safe note passed the recheck.
 - **`dv:director-mode`, "End a finished worktree session", "After I close it".** The removal
   after David closes the chat (or after a supervised release) now goes by "Take closeout notes"
   too, reading the latest note again, so a copy saved after the one checks 1 to 3 read can keep
-  the worktree. Check 3's rerun there is unchanged.
+  the worktree. Check 3's rerun there now includes the recheck's `HANDOFF.md` condition.
 - **`dv:director-mode`, "Merge and clean up", "No session is live" after the merge.** A session
   that ended before the merge may have saved a note that never reached the Director. Before any
   step of the cleanup (`cleanup_merged_branch` included, since it removes a clean worktree
   itself), the Director reads the latest closeout note of the worktree that has the merged PR's
-  branch checked out; when there is one, it removes the worktree only as "Take closeout notes"
-  says for a session that has ended. With no note (no copy for the branch, or the latest copy's
-  header names another worktree) the cleanup is unchanged; a latest copy it can't read, or a
-  `closeouts/` directory it can't list, keeps the worktree.
+  branch checked out, and removes the worktree only as "Take closeout notes" says for a session
+  that has ended. A note that fails, no note, or a latest copy or `closeouts/` it can't read keeps
+  the worktree and its branch (`cleanup_merged_branch` is skipped for that branch), and David is
+  told the folder and the note's Worktree line, or "no closeout note". A branch no worktree has
+  checked out is cleaned up as before. The stale-PR repair's temporary worktree, identified by
+  that text's checks (its exact path and full HEAD, the merged PR, one detached worktree record),
+  is the one worktree removed with no note.
 - **`dv:director-mode`, "Merge and clean up", the cleanup bullet.** Any other worktree removal
   there ("Any other worktree or branch removal, merged PR or not") first reads the worktree's
-  latest closeout note and goes on or keeps it the same way.
+  latest closeout note and removes or keeps it the same way, keeping one with no note, except the
+  stale-PR temporary worktree.
 - **`dv:director-mode`, "Merge and clean up".** The bullet that leaves a worktree in place until
   its session has ended now says that, once its session has ended, that worktree's latest
-  closeout note can keep it ("Take closeout notes", and "No session is live" after the merge); a
-  note is still not permission to delete.
+  closeout note, or the lack of one, can keep it ("Take closeout notes", and "No session is live"
+  after the merge); a note is still not permission to delete.
 - **`dv:closeout`, Step 3 ("The note follows Step 4"), Step 5 ("The probe's peer has the note")
   and "When the probe's peer has the note, ask nothing", and the README's `dv:closeout` entry.**
   The known limit "if the session ends another way, the Director's later removal does not read
@@ -78,9 +95,11 @@ warning was never read and the file could be lost with the worktree (VIL-1209).
 ## Not in this release
 
 - The stale-PR repair's temporary worktree under "Merge and clean up": an engineer makes it
-  detached, with no session of its own, so it normally has no closeout note, and with none its
-  removal is unchanged. Nor does the "No session is live" cleanup change for a PR worktree with
-  no saved note (above).
+  detached, with no session of its own, and once that text's checks identify it (its exact path
+  and full HEAD, the merged PR, one detached worktree record), they still remove it with no
+  closeout note.
+- A note lookup that follows a branch rename or a detached HEAD: such a note counts as no note,
+  which keeps the worktree.
 - The "losses I accepted before the note" wording in the "Take closeout notes" bullet before this
   one (VIL-1263 owns it).
 - A run of the `GONE` path with a real session: the lab run below gave the Director a `from`
@@ -112,6 +131,15 @@ changes made after these runs don't touch these cases):
   and never delivered (an earlier copy read `safe to delete`): kept, with the note's path and
   Worktree line word for word. The Director did not run `cleanup_merged_branch`, saying it
   would have removed the clean worktree and its worktree-only `HANDOFF.md`.
+
+After the second review, on this text:
+
+- Latest note `safe to delete` and `HANDOFF.md` byte-identical to its copy in `handoffs/_done/`,
+  "I closed the session": removed after the recheck, which reported the match.
+- The same, with `HANDOFF.md` edited after the note: kept; the recheck found no identical copy in
+  `handoffs/_done/`, and the Director told David the note's path and Worktree line and the edit.
+- "No session is live" after a merge given as a stand-in, for a worktree whose session never ran
+  `dv:closeout`: kept, "no closeout note", with `cleanup_merged_branch` skipped.
 
 With 0.51.0's text, the same Director kept both `not confirmed safe` worktrees it was given, by
 its own caution (it read a worktree-only file and a reflog-only commit as blocking, though no

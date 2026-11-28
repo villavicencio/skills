@@ -77,7 +77,9 @@ Rules the code keeps:
     read of the item and of both sessions, and after a `Re-send` line posted. One send attempt
     per wait, never repeated, never from another command. No send under a key while an earlier
     wait under that key (on the item or along its Carried from chain, up to 5 items) has a
-    `Re-send` line and no `Sent: msg_` receipt.
+    `Re-send` line and no `Sent: msg_` receipt. Under a PR key (`owner/repo#N@<sha>`, a merge
+    handoff) any earlier `Re-send` line under that key to the same owner session stops it,
+    receipt or not: a merge handoff is re-sent once to each Merger.
   - A run that won a claim starts no write or send once 5 minutes have passed since it claimed,
     so `reconcile --final` (the only other closing record) is refused until 15 minutes after the
     claim.
@@ -115,7 +117,7 @@ import time
 import uuid
 from pathlib import Path
 
-VERSION = "0.54.0"
+VERSION = "0.55.0"
 ORCA = "orca"
 CALL_TIMEOUT_S = 60       # one orca call
 RUN_BUDGET_S = 540        # every orca call starts and ends inside this, so 10 minutes covers a run
@@ -145,9 +147,11 @@ RE_TIME = re.compile(TIME)
 RE_UUID = re.compile(UUID)
 RE_SESSION = re.compile(r"(?:orca_session_id:)?(" + UUID + r")")
 RE_TICKET = re.compile(r"VIL-[1-9][0-9]{0,5}")
+PR_KEY = r"[A-Za-z0-9._-]{1,100}/[A-Za-z0-9._-]{1,100}#[1-9][0-9]{0,6}@[0-9a-f]{40}"
+RE_PR_KEY = re.compile(PR_KEY)  # a merge handoff's key: re-sent once per owner (earlier_send)
 RE_KEY = re.compile(
     r"VIL-[1-9][0-9]{0,5}/[A-Za-z0-9._-]{1,64}/Q[1-9][0-9]{0,3}"
-    r"|[A-Za-z0-9._-]{1,100}/[A-Za-z0-9._-]{1,100}#[1-9][0-9]{0,6}@[0-9a-f]{40}"
+    r"|" + PR_KEY +
     r"|msg_[0-9a-f]{12}")
 RE_ADDRESS = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9:_.@/ -]{0,198}[A-Za-z0-9:_.@/-])?")
 RE_BOT = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9 ._-]{0,62}[A-Za-z0-9._-])?")
@@ -1176,17 +1180,28 @@ def may_unsnooze(item: Item, e: dict) -> bool:
 CARRY_HOPS_MAX = 5
 
 
-def unclear_send(item: Item, w: Wait) -> str | None:
+def earlier_send(item: Item, w: Wait) -> str | None:
     """Correction 1 per key: an earlier wait under the same key with a `Re-send` line and no
     `Sent: msg_` receipt in its closing record may have sent, so no wait under that key sends
-    again. Looks at earlier waits on this item and along the record's `Carried from` chain."""
+    again. Under a PR key (a merge handoff) any earlier `Re-send` line to the same owner session
+    stops it, receipt or not: a merge handoff is re-sent once to each Merger, since a second copy
+    would only queue behind the first in that Merger's chat. A wait under the same key with
+    another owner session (a new Merger for the same reviewed head, after a change of Director)
+    has its own one re-send. Looks at earlier waits on this item and along the record's `Carried from` chain."""
     key = w.field("key")
+    once = RE_PR_KEY.fullmatch(key) is not None
     here, last, origin = item, w.k - 1, w  # on each item, waits W1 to W<last>
     for hops in range(CARRY_HOPS_MAX + 1):
         for j in sorted(markers_on(here)):
             wj = Wait(here, j) if j <= last else None
             if wj is None or wj.record is None or wj.resend is None or wj.field("key") != key:
                 continue
+            if once:
+                if wj.field("owner_session") != w.field("owner_session"):
+                    continue  # another Merger's re-send: this owner still has its one
+                return f"item {here.number} W{j}, under the same PR key and owner, has a " \
+                       f"Re-send line {wj.resend['id']}, and a merge handoff is re-sent once " \
+                       "to each Merger"
             first = wj.closing["data"]["text"].split("\n", 1)[0] if wj.closing else ""
             if not SENT_RECEIPT.search(first):
                 return f"item {here.number} W{j}, under the same key, has a Re-send line " \
@@ -1236,7 +1251,7 @@ def fresh_send_check(n: int, k: int, item: Item | None, w: Wait | None) -> tuple
     held = item_hold(item, w, now_s() * 1000)
     if held:
         return "no-follow-up", held
-    problem = unclear_send(item, w)
+    problem = earlier_send(item, w)
     if problem:
         return "not-settled", problem
     for role in ("owner_session", "waiting_session"):

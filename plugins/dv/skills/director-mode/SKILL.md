@@ -4,7 +4,7 @@ description: "Switch this session into Director Mode, the mode for the home sess
 license: Apache-2.0
 metadata:
   author: villavicencio
-  version: "0.54.0"
+  version: "0.55.0"
 ---
 
 # /director-mode — the home session directs; worktree managers hire
@@ -145,7 +145,8 @@ needed" (`dv:manager-mode`, "Highlights").
   relay them together. With a Head ("The Head and the CEO's 1%"), forward each such decision to
   him instead, unless he has it already, and relay the highlight as information only.
 - Don't reply to a highlight. A message that asks you to act, such as a PR handed to you to merge,
-  gets the one-line reply it asks for. A message that starts `Question, VIL-N,` is not a
+  gets the one-line reply it asks for (for a merge handoff, the acknowledgement "Merge and clean
+  up" gives). A message that starts `Question, VIL-N,` is not a
   highlight; it is answered under "Answer a worktree session's question".
 
 ### Announce yourself to the worktree sessions
@@ -162,7 +163,9 @@ otherwise learn of it only when its next send to the old address fails.
   worktree folder's basename, then `-`, then a suffix with no `-` in it (the test under "Merge
   and clean up"). The name proves nothing; the session's probe is what checks you.
 - Send each of them this one line, once, with SendMessage:
-  `Director announcement, <main checkout path>: Director Mode is on in this session, the home session in the main checkout. No reply needed; send me your Director check.`
+  `Director announcement, <main checkout path>: Director Mode is on in this session, the home session in the main checkout. Orca session: <orca_session_id: and your $ORCA_AGENT_SESSION_ID, or none when it is unset>. No reply needed; send me your Director check.`
+  The Orca session address outlives a restart of your name and address; a session records it for
+  its merge handoff records (`dv:manager-mode`, "Highlights").
 - After the on line and any warning lines, add one line: `Announced to: <the sessions whose send
   succeeded>.`, or `Announced to: none.` when no send succeeded. Name each send that failed, with
   its error, and don't resend it; that session verifies you when it next sends. If ListAgents or `git worktree list` fails, or under Codex (where `list_agents`
@@ -186,6 +189,11 @@ answer after 10 minutes as failed (`dv:closeout`, "Deliver the note", step 2). T
 sender's closeout note, highlights or questions, including any it held while it had no
 Director. A probe is not a highlight: don't relay it to me.
 
+A session that verified you sends, with a Head, one `Director address, VIL-N:` request
+(`dv:manager-mode`, "Highlights"). Answer it in your next turn, only from the main checkout, with
+one line to its `from` address: `orca_session_id:` and your `$ORCA_AGENT_SESSION_ID`, or `none`
+when that is unset. Don't relay it to me either.
+
 ### Answer a worktree session's question
 
 Before a worktree session asks me a decision, it sends it to you first, in a message that starts
@@ -208,9 +216,9 @@ CEO's 1%", below); with none, it comes to me as before.
   code it names at the PR's current head (`gh pr view <N> --json headRefOid`); if you can't, it is
   not yours to decide. The one exception, declining a high or critical finding on a safety
   boundary, is held for me (below).
-- **Merges**, under "Merge and clean up": after MergeWren's verdict and an empty
-  unresolved-threads check, as before. A finding you declined under this split counts, for
-  `code-review.md`'s merge rule, as declined with me.
+- **Merges**, under "Merge and clean up": after its recheck (MergeWren's verdict and an empty
+  unresolved-threads check among its five gates), as before. A finding you declined under this
+  split counts, for `code-review.md`'s merge rule, as declined with me.
 - **Deletes**, only the kinds the global standing approvals cover (a merged PR's branch, a leftover
   local branch, a finished Orca worktree), each by its guarded procedure. This adds no new kind of
   delete: any other delete is not yours to decide.
@@ -622,7 +630,9 @@ authority, and changes nothing in Orca.
   `re-sent`, the send happens only inside that run: it reads the item and both sessions again, and
   it sends nothing if the item reads Needs you, snoozed or closed, if a session is not open in Orca,
   or if an earlier wait under the same key (on this item, or on the items its record was carried
-  from, up to 5) has a `Re-send` line and no `Sent: msg_` receipt; then it records `no follow-up` or
+  from, up to 5) has a `Re-send` line and no `Sent: msg_` receipt (under a PR key, any `Re-send`
+  line to the same owner session, receipt or not: a merge handoff is re-sent once to each
+  Merger); then it records `no follow-up` or
   `not settled` with the reason as the blocker, and its first line starts `NOT SENT`. Otherwise it
   posts a `Re-send` line, then sends once, to the record's owner address, with the subject `Re-sent
   by the Head: item <n> W<k>`. An error or an unreadable answer from that send starts the first line
@@ -633,6 +643,58 @@ authority, and changes nothing in Orca.
   Orca on this host lists a place for the session (`orca agent show`); it doesn't show the session
   idle or reading its mail. A session on another host reads as not open, so nothing is re-sent
   across hosts (assumed: this host's Orca doesn't know it).
+- **A merge handoff.** A Manager mails you a copy of each merge handoff record it posts on a
+  ticket, as type `merge_ready` (`dv:manager-mode`, "Highlights", "The merge handoff"); when that
+  mail fails, the record on the ticket starts with your mention instead. It needs no reply. Keep
+  one open item per PR (`orca bot item list --link <the PR's URL>` first: the open item linked to
+  that URL, the newest after a carry; add one linked to it when none is open) and arm a wait on
+  it, as "Arm" says, with the record's key
+  (`owner/repo#N@<reviewed head>`), `--owner` the record's Merger address, `--owner-session` that
+  address's session ID, `--waiting-session` the record's Manager session ID, the record's ticket,
+  T at its `Acknowledge by:` time written as `…T04:15:00+00:00` (or the first whole minute at
+  least 2 minutes ahead, when that is later), and D at least 5 minutes after T. The record file
+  holds the record, its comment's link and the mail's message id, if one came. A record whose
+  Merger or Manager has no `orca_session_id:` address can't be armed or reached: post the hold
+  (below) at once, reason "no Orca address for the Merger" (or "for the Manager"), next check "a
+  later record for this PR". A later record for
+  the same PR (a new reviewed head, or the same head with a new Merger, another Orca session
+  address) supersedes an earlier one. While the earlier record's wait is open, "Arm" refuses a
+  second, so at its wake close it `not-settled`, blocker "superseded by the record of <its
+  time>", and arm W<k+1> for the later record in the same run, after the disposition, with that
+  record's key and Merger; with no wait open, arm the later record's now. A record the Director
+  posted for its own stale-PR repair (`Manager: none`) needs no wait: the superseded wait's next
+  check is none. At each wake,
+  besides the reads above, read the PR (`gh pr view <N> --repo <owner/repo> --json
+  state,headRefOid,mergeCommit`) and every reply under the record, then take the first case that
+  fits, after `no-follow-up`, which applies as above:
+  - `settled`: the PR merged with `headRefOid` equal to the key's commit, and the Manager's own
+    `Merge received` reply under the record after the merge (the waiting session's turn).
+  - `re-sent`: the record is still the PR's newest (records as "Merge and clean up" defines
+    them), the PR is open and unmerged, no `Merge
+    handoff taken` line under this key has come from the Merger (under the record, or in its
+    session's entries), no `Merge held` reply but your own is under the record, both sessions are
+    open in Orca, and no earlier wait under this key re-sent it to this Merger. The body is the
+    handoff line the Manager's mail carries, with the record's link. A merge handoff is re-sent once per
+    key and Merger; the script refuses a second (`NOT SENT`).
+  - `not-settled` for anything else: acknowledged but not merged yet; re-sent and still not
+    acknowledged (the Merger can't act: its chat is behind an open prompt, in a long turn or
+    closed); a `Merge held` reply; merged with no receipt yet; or the PR closed or at another
+    head. The blocker says which, and the next check is W<k+1> at a time you set (about 15
+    minutes after a re-send; your call after that; for a superseded record, the later record's
+    wait), or none once nothing more can come under this record: the PR closed, handed back to its
+    Manager (the Merger's `Merge held` reply names the Manager as holder), or merged with the
+    Manager no longer open in Orca.
+
+  A re-send's `Sent: msg_…` receipt, and a `recipient_delivery_held` warning in it (Orca's
+  "Queued behind an open prompt"), say only that the mail is queued in the Merger's chat; only the
+  Merger's `Merge handoff taken` line is it taking the PR. **The hold** is one reply of yours under
+  the record, edited each time a wait closes `not-settled`, so the ticket shows who holds the PR and
+  when it is next checked: `Merge held, VIL-N. Key: <the key>. Holder: <the holder the Merger's
+  own newest Merge held reply names, or else the record's Merger by name and address, the only
+  session that may merge it>. Reason: <the blocker>. Next check: <item n W<k+1> at its target, a
+  later record for this PR, or none>.` A merge handoff gives you no merge authority, and no wake,
+  timeout, re-send or hold lets any session but the record's Merger merge the PR: it stays held
+  until that Merger takes it through "Merge and clean up" or a later record supersedes this one.
 - **A notice** is any turn that brings evidence for the open wait: mail, an Orca event
   (`--trigger notice`), or your own look (`--trigger look`). Run `check`, then the reads. The
   script lets a notice or a look close only as `settled` or `not-settled`, and never send; it
@@ -724,7 +786,8 @@ authority, and changes nothing in Orca.
     one that counts. On `UNCHECKED` (posted, but the read after it failed), run `check`. It never
     sends: a `Re-send` line on the wait means a send may have happened, and uncertain delivery
     stops any later send under that key on this item, or from a wait whose record's Carried from
-    chain reaches it (up to 5 items; Limits).
+    chain reaches it (up to 5 items; Limits); under a PR key, only a later send to the same owner
+    session.
 - **Limits.** The fresh check before a send and the send are separate calls, so a snooze, a Needs
   you or a session closing between them isn't seen. A re-send can cross a late answer, so a Manager
   can get a repeat. A run stopped inside one Orca call (a stopped process, a sleeping machine) can
@@ -753,8 +816,9 @@ authority, and changes nothing in Orca.
 - **Your part, the Director's.** A message with the subject `Re-sent by the Head` is a question
   already asked. Answer it as that question, under its original key, to the asking session it
   names. If you already answered that key, send the same answer again, unchanged. If it isn't
-  yours to decide, tell the Head it stays his, with the way forward. Mint no new key and post no
-  record.
+  yours to decide, tell the Head it stays his, with the way forward. For a question, mint no new
+  key and post no record. One whose key is a PR key (`owner/repo#N@<sha>`) is a merge handoff
+  already sent, not a question: take it as "Merge and clean up" says for a merge handoff.
 
 ### Every ask that reaches me stands on its own
 
@@ -1932,17 +1996,77 @@ mail to a real Head, and a real ticket from kickoff through merge and closeout (
 
 ### Merge and clean up, from the main checkout
 
-A worktree session hands you a PR once MergeWren has passed it. You merge it; the worktree
-session never does.
+A worktree session hands you a PR once MergeWren has passed it, with a record on the ticket
+(`dv:manager-mode`, "Highlights", "The merge handoff"). You merge it; the worktree session never
+does.
 
 - Before a merge, a pull or a cleanup, check two things: this session is in the main checkout
   (the `git rev-parse` test under "On, off, and standing"), and it is on the repository's
   default branch (`git branch --show-current` against `gh repo view --json defaultBranchRef`).
   If either fails, stop that work and tell me; you may keep advising.
+- **A merge handoff** comes by SendMessage from the PR's Manager, or as mail with the subject
+  `Re-sent by the Head` and a PR key ("Head's wake for a waiting item"). Each names its key
+  (`owner/repo#N@<reviewed head>`) and its record on the ticket. In your next turn, before any
+  other step of the merge, read the ticket's comments. The PR's records are the comments that
+  start `Merge handoff, VIL-N. Key:` with its repo and number (or start `@Orca <the Head's Linear
+  handle> ` and then that), not the `Merge handoff taken` replies under them. When it has any,
+  the newest one decides, and the PR is yours to merge only when its key is the handoff's and its
+  Merger address is `orca_session_id:` and your own `$ORCA_AGENT_SESSION_ID` (or reads `unknown`,
+  and the handoff the Manager sent you itself names this record's link). Then acknowledge it, once per key: post
+  `Merge handoff taken, VIL-N: <the key>.` as a reply under the record (the Head's wake reads it
+  there), and send the same line to the Manager by SendMessage, to the `from` address of the
+  Manager's own handoff when one reached you, or else, for a handoff that reached you only as the
+  Head's re-send, the address ListAgents lists for the PR's worktree session (the test below). A
+  repeat under a key you already acknowledged gets nothing more. When the newest record isn't
+  yours (another Merger, or another key), merge nothing, acknowledge nothing, and tell the sender
+  in one line which record you found. Only that record's Merger merges the PR; no wake, timeout or
+  message hands the merge to anyone else. With no record for the PR (a PR you had updated with no
+  live session, a pilot PR, or a handoff from a session on an older dv), go on as before, with the
+  recheck below.
 - Before merging, read "Merging on a MergeWren review" in dotfiles `docs/agents/code-review.md`
   (https://github.com/villavicencio/dotfiles/blob/master/docs/agents/code-review.md), and the
-  merge rules in the global instructions. Merge only when they allow it. Otherwise don't merge:
-  hand the PR back to its worktree session and say why, or, when no session is live, tell me why.
+  merge rules in the global instructions. Merge only when they allow it and the recheck below
+  passes. Otherwise don't merge: hand the PR back to its worktree session and say why, or, when
+  no session is live, tell me why.
+- **The recheck before every merge,** a handed-over, re-sent or repaired PR alike: just before
+  the merge command, read the PR's records again (the newest must still be yours, as above) and
+  each gate fresh, and merge only when all five pass. The reviewed head is the newest record's,
+  or, with no record, the head the engineer handed back or MergeWren's verdict names. After a
+  stale-PR repair you ran for a PR that has a record (no live session), post a new record for the
+  head the engineer handed back, once MergeWren passed it, as `dv:manager-mode`'s step 1 gives it,
+  with yourself as Merger and `Manager: none, no live session`; it supersedes the old one.
+  1. **Head:** `gh pr view <N> --repo <owner/repo> --json state,isDraft,headRefOid` shows `OPEN`,
+     not a draft, with `headRefOid` exactly the reviewed head. A PR already `MERGED` at the
+     reviewed head is not a failed gate: merge nothing, and send the merge report (below) only
+     when no `Merge received` reply is under the record and you haven't sent one for that key.
+  2. **CI:** `gh pr checks <N> --repo <owner/repo> --json name,bucket` shows every check `pass` or
+     `skipping`. A `fail` or `cancel` fails the gate; a `pending` one means not yet: read it again
+     later, and the PR stays yours.
+  3. **MergeWren:** `mergewren_review <N> <owner/repo>` exits 0 with a verdict for the reviewed
+     head that "Merging on a MergeWren review" lets you merge on: `mergeable`, or one whose every
+     finding is fixed or declined as that section and "Answer a worktree session's question"
+     allow. Any other exit (no verdict yet, a GitHub error, 3, 4 or 5) or verdict (`not
+     mergeable`, `partial`, `failed`, findings still open) fails it.
+  4. **Threads:** the global instructions' unresolved-threads query prints nothing.
+  5. **Release order,** in a repo that versions its releases: the version at the reviewed head is
+     still free, above the default branch's version now and above the plugin's highest release
+     (`gh release list`), and the PR has that version's release notes (in the skills repo,
+     `plugins/<plugin>/.claude-plugin/plugin.json` and `docs/release-notes/<plugin>--v<version>.md`).
+
+  A gate that fails or can't be read leaves the PR unmerged. Post `Merge held, VIL-N. Key: <the
+  key>. Holder: <by name: its Manager, which gets it back, or David, when no session is live>.
+  Reason: <the gate and what it read>. Next check: <what brings it back, such as a later
+  record>.` as a reply under the record (with no record, say it in the hand-back), and hand the PR
+  back as the "Before merging" bullet says; a version that is no longer free is a PR that fell
+  behind (below). A timeout, `mergeStateStatus: CLEAN`, a send receipt or the PR's age never
+  passes a gate.
+- **When a handoff that is yours has to wait on you** (the main-checkout or default-branch check
+  fails, a CI check is still pending as your turn ends, another merge comes first, or you are
+  about to stop), post a `Merge held` reply under its record with yourself as holder, by
+  ListAgents name and Orca session address, the reason and when you will look again, and keep the
+  PR: it goes to no other session. Acknowledge every merge handoff that is yours, and answer the
+  senders of the others, before you open a question card ("Mail before a card" in
+  `dv:manager-mode`), since mail queues behind an open card. With a Head, his wake reads the reply; with none, tell me too.
 - A PR's worktree session is live when ListAgents lists it: the session that handed you the PR,
   or a peer whose name is the PR's worktree folder's basename, then `-`, then a suffix with no
   `-` in it. When that can't be told, treat the session as live and ask me.
@@ -1977,10 +2101,15 @@ session never does.
     highlight; any finding comes to me.
   - Either way, never merge a PR that MergeWren has not passed on its new head.
 - After the merge, pull the main checkout, and report the merge to me as a highlight.
-  - **The PR's worktree session is live:** tell it in one line that the PR merged, by
-    SendMessage to the `from` address its handoff came from. Its kickoff prompt has it run
-    `dv:closeout` then, and the branch and worktree are cleaned up when its note arrives ("Take
-    closeout notes").
+  - **The PR's worktree session is live:** send it the merge report, once per key, by
+    SendMessage to the `from` address of its own handoff (or else the address ListAgents lists
+    for it; with neither, post the report under the record and say so in your highlight):
+    `Merged, VIL-N: <the key> landed as <the merge commit>, <the plugin and version that landed,
+    such as dv 0.55.0, or no version>.`, the merge commit read from `gh pr view <N> --json
+    mergeCommit`. It answers with its `Merge received` reply under the record, its receipt. A
+    handoff or re-send under that key that comes after the merge gets no second report. Its
+    kickoff prompt has it run `dv:closeout` then, and the branch and worktree are cleaned up
+    when its note arrives ("Take closeout notes").
   - **No session is live:** clean up the merged PR's branch and worktree now. A session that
     ended before the merge may have saved a closeout note that never reached you, so before any
     step of that cleanup (`cleanup_merged_branch` included, since it removes a clean worktree

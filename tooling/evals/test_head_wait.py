@@ -41,7 +41,13 @@ Checked (each name below is printed with ok or FAIL):
   carrying to a fresh item; restart is read-only and lists each finding, done and canceled items
   included, and an item list cut at its page limit is INCOMPLETE; argv lists only, every value
   checked before the first call, and free text reaching Orca byte for byte without running; a
-  cleanup failure after a send.
+  cleanup failure after a send; a merge handoff's wait (a PR key, VIL-1219): a missed
+  acknowledgement re-sent once to the record's Merger, no second re-send to that Merger under
+  that key (on the item or along a carry) while a new reviewed head's key, or a new Merger at the
+  same head, gets its own one, a queued re-send's
+  `recipient_delivery_held` warning recorded, a hold closing not settled with the next wait armed,
+  either session closed stopping the send, two overlapping wakes sending once, no gh or merge in
+  the script, and the handoff's lines named alike in dv:director-mode and dv:manager-mode.
 
 Stdlib only, no network.
 
@@ -375,7 +381,10 @@ class FakeOrca:
             msg = "msg_" + uuid.uuid4().hex[:12]
             st["messages"].append({"id": msg, "to": f("--to"), "subject": f("--subject"),
                                    "type": f("--type"), "body": body})
-            return 0, json.dumps({"ok": True, "result": {"messageId": msg}}).encode()
+            result = {"messageId": msg}
+            if st.get("send_warnings"):  # Orca 1.4.277 appends a held delivery to `warnings`
+                result["warnings"] = st["send_warnings"]
+            return 0, json.dumps({"ok": True, "result": result}).encode()
         if argv[:2] == ["orchestration", "request-show"]:
             return 0, self.ok({"state": "absent"})
         if argv[:2] == ["agent", "show"]:
@@ -2670,6 +2679,200 @@ def test_review_round2() -> None:
         c.close()
 
 
+OTHER_S = "33333333-3333-4333-8333-333333333333"            # a new Director's session
+OTHER_ADDR = f"orca_session_id:{OTHER_S}"
+PR_KEY = "villavicencio/skills-scratch#5@" + "a1" * 20      # a merge handoff's key
+PR_KEY_NEW = "villavicencio/skills-scratch#5@" + "b2" * 20  # the same PR at a new reviewed head
+HANDOFF = ("Merge handoff, VIL-1219: " + PR_KEY + ". Record: https://linear.app/x/issue/VIL-1219"
+           "#comment-1. Merge it under dv:director-mode's \"Merge and clean up\".\n")
+HELD = [{"code": "recipient_delivery_held", "recipient": OWNER_ADDR,
+         "message": f"Queued behind an open prompt; {OWNER_ADDR} sees it after the prompt is "
+                    "answered."}]
+
+
+def handoff_case(n: int = 7, key: str = PR_KEY, **items) -> Case:
+    """W1 armed on item n for a merge handoff: the owner is the record's Merger (the Director),
+    the waiting session the record's Manager."""
+    c = Case({n: items})
+    code, out, _ = c.arm(n, 1, key=key, ticket="VIL-1219")
+    assert out.startswith("ARMED"), out
+    return c
+
+
+def handoff_resent(c: Case, n: int, k: int) -> list:
+    return c.close_wait(n, k, "re-sent", "wake",
+                        "Evidence: no Merge handoff taken line from the Merger; the PR is open.\n"
+                        "Blocker: no acknowledgement by the deadline\n"
+                        "Next check: W2 15 minutes after the re-send\n", HANDOFF)
+
+
+def disposition(c: Case, n: int, k: int) -> list:
+    return [e["data"]["text"] for e in c.fake.comments(n)
+            if e["data"]["text"].startswith(f"Wake disposition, item {n} W{k}")]
+
+
+def test_merge_handoff() -> None:
+    """VIL-1219: a merge handoff's wait (a PR key) recovers through the same Merger once, records
+    a queued re-send as queued, holds when the Merger can't act, and never merges."""
+    # a missed acknowledgement: the wake re-sends the handoff once, to the Merger's address
+    c = handoff_case()
+    try:
+        code, out, _ = c.run(*handoff_resent(c, 7, 1))
+        msgs = c.fake.load()["messages"]
+        check("merge handoff: a missed acknowledgement re-sends the handoff once, to the record's "
+              "Merger, under its PR key", code == 0 and out.startswith("CLAIMED item 7 W1: re-sent")
+              and len(msgs) == 1 and msgs[0]["to"] == OWNER_ADDR
+              and msgs[0]["subject"] == "Re-sent by the Head: item 7 W1"
+              and msgs[0]["body"].startswith(f"Re-sent by the Head: item 7 W1. Key: {PR_KEY}. "
+                                             "Ticket: VIL-1219.")
+              and HANDOFF in msgs[0]["body"], out)
+        # recovery happens once: a later wait under the same PR key sends nothing
+        code, out, _ = c.arm(7, 2, key=PR_KEY, ticket="VIL-1219")
+        code2, out2, _ = c.run(*c.close_wait(7, 2, "re-sent", "wake",
+                                             "Evidence: still no acknowledgement.\nBlocker: b\n"
+                                             "Next check: W3\n", HANDOFF))
+        disp = disposition(c, 7, 2)
+        check("merge handoff: W2 under the same PR key, after W1's re-send with its receipt, is "
+              "NOT SENT and recorded not settled (a merge handoff is re-sent once)",
+              out.startswith("ARMED item 7 W2") and out2.startswith("NOT SENT item 7 W2")
+              and len(c.fake.load()["messages"]) == 1 and disp
+              and disp[0].startswith("Wake disposition, item 7 W2: not settled.")
+              and "a merge handoff is re-sent once" in disp[0], out2)
+        # the hold: W2 closes not settled when the Merger can't act, and W3 arms as the next check
+        code3, out3, _ = c.arm(7, 3, key=PR_KEY, ticket="VIL-1219")
+        code4, out4, _ = c.run(*c.close_wait(
+            7, 3, "not-settled", "wake",
+            "Evidence: W1's re-send was queued; no Merge handoff taken line.\n"
+            "Blocker: the Merger can't act: its chat is behind an open prompt\n"
+            "Next check: W4 in 60 minutes\n"))
+        code5, out5, _ = c.arm(7, 4, key=PR_KEY, ticket="VIL-1219")
+        check("merge handoff: a hold closes not settled with its blocker and arms the next "
+              "bounded check, with no send", out3.startswith("ARMED item 7 W3")
+              and out4.startswith("CLAIMED item 7 W3: not settled")
+              and out5.startswith("ARMED item 7 W4")
+              and len(c.fake.load()["messages"]) == 1, f"{out3} | {out4} | {out5}")
+    finally:
+        c.close()
+
+    # a new reviewed head is a new key, and a question key keeps its old rule
+    c = handoff_case()
+    try:
+        c.run(*handoff_resent(c, 7, 1))
+        c.arm(7, 2, key=PR_KEY_NEW, ticket="VIL-1219")
+        code, out, _ = c.run(*handoff_resent(c, 7, 2))
+        check("merge handoff: a later record's key (a new reviewed head) can be re-sent once too",
+              out.startswith("CLAIMED item 7 W2: re-sent") and len(c.fake.load()["messages"]) == 2,
+              out)
+    finally:
+        c.close()
+
+    # the same reviewed head with a new Merger (a new Director after an announcement): that
+    # Merger gets its own one re-send, and only one
+    c = handoff_case()
+    try:
+        c.fake.save({**c.fake.load(), "sessions": {OWNER_S: True, WAIT_S: True, OTHER_S: True}})
+        c.run(*handoff_resent(c, 7, 1))
+        new_owner = {"owner": OTHER_ADDR, "owner-session": OTHER_S}
+        code, out, _ = c.arm(7, 2, key=PR_KEY, ticket="VIL-1219", **new_owner)
+        code2, out2, _ = c.run(*handoff_resent(c, 7, 2))
+        msgs = c.fake.load()["messages"]
+        code3, out3, _ = c.arm(7, 3, key=PR_KEY, ticket="VIL-1219", **new_owner)
+        code4, out4, _ = c.run(*handoff_resent(c, 7, 3))
+        check("merge handoff: the same PR key with a new Merger is re-sent once, to the new "
+              "Merger, and a second wait for that Merger is NOT SENT",
+              out.startswith("ARMED item 7 W2") and out2.startswith("CLAIMED item 7 W2: re-sent")
+              and len(msgs) == 2 and msgs[1]["to"] == OTHER_ADDR
+              and out4.startswith("NOT SENT item 7 W3") and "to each Merger" in out4
+              and len(c.fake.load()["messages"]) == 2, f"{out} | {out2} | {out3} | {out4}")
+    finally:
+        c.close()
+
+    # a queued re-send: Orca's held-delivery warning is recorded, and it is not an acknowledgement
+    c = handoff_case()
+    try:
+        c.fake.save({**c.fake.load(), "send_warnings": HELD})
+        code, out, _ = c.run(*handoff_resent(c, 7, 1))
+        disp = disposition(c, 7, 1)
+        check("merge handoff: a re-send Orca queued behind an open prompt records the "
+              "recipient_delivery_held warning in the first line and the disposition",
+              out.startswith("CLAIMED item 7 W1: re-sent") and "recipient_delivery_held" in out
+              and disp and "recipient_delivery_held" in disp[0]
+              and "Queued behind an open prompt" in disp[0], out)
+        code, out, _ = c.run("check", "--item", "7", "--wait", "W1")
+        check("merge handoff: after a queued re-send the wait is closed (its next check is a new "
+              "wait, never the queued mail)", out.startswith("CLOSED item 7 W1: closing record"),
+              out)
+    finally:
+        c.close()
+
+    # the Merger's or the Manager's session not open: nothing sent, recorded not settled (held)
+    for label, sessions in (("the Merger's session", {OWNER_S: False, WAIT_S: True}),
+                            ("the Manager's session", {OWNER_S: True, WAIT_S: False})):
+        c = handoff_case()
+        try:
+            c.fake.save({**c.fake.load(), "sessions": sessions})
+            code, out, _ = c.run(*handoff_resent(c, 7, 1))
+            disp = disposition(c, 7, 1)
+            check(f"merge handoff: {label} not open stops the re-send; NOT SENT, not settled",
+                  out.startswith("NOT SENT item 7 W1") and not c.fake.load()["messages"] and disp
+                  and disp[0].startswith("Wake disposition, item 7 W1: not settled."), out)
+        finally:
+            c.close()
+
+    # recovery once along a carry: a wait carried from a full item doesn't re-send the key again
+    c = Case({7: {"links": 47}, 8: {}})
+    try:
+        c.arm(7, 1, key=PR_KEY, ticket="VIL-1219")
+        c.run(*handoff_resent(c, 7, 1))
+        code, out, _ = c.arm(7, 2, key=PR_KEY, ticket="VIL-1219")
+        code2, out2, _ = c.arm(8, 1, key=PR_KEY, ticket="VIL-1219", **{"carried-from": "7/W2"})
+        code3, out3, _ = c.run(*handoff_resent(c, 8, 1))
+        check("merge handoff: a wait carried from an item that already re-sent the key is NOT SENT",
+              out.startswith("BLOCKED") and out2.startswith("ARMED item 8 W1")
+              and out3.startswith("NOT SENT item 8 W1") and "item 7 W1" in out3
+              and len(c.fake.load()["messages"]) == 1, f"{out} | {out2} | {out3}")
+    finally:
+        c.close()
+
+    # two wakes for one wait overlap: one send in all
+    c = handoff_case()
+    try:
+        flag = c.root / "go"
+        c.fake.fault(["bot", "item", "link"], "pause", times=2,
+                     ref="head-wait/item-7/W1-closed", flag=str(flag))
+        args = handoff_resent(c, 7, 1)
+        x, y = c.popen(*args), c.popen(*args)
+        both = wait_for_waiters(flag, 2)
+        flag.write_text("")
+        outs = sorted(p.communicate(timeout=90)[0].split("\n")[0] for p in (x, y))
+        check("merge handoff: two overlapping wakes give one CLAIMED, one NOT CLAIMED, one send",
+              both and outs[0].startswith("CLAIMED") and outs[1].startswith("NOT CLAIMED")
+              and len(c.fake.load()["messages"]) == 1, str(outs))
+    finally:
+        c.close()
+
+    # nothing in the script merges or reads a merge gate: the gates are the Director's
+    tree = ast.parse(SCRIPT.read_text())
+    consts = {n.value for n in ast.walk(tree) if isinstance(n, ast.Constant)
+              and isinstance(n.value, str)}
+    check("merge handoff: the script runs no gh and no merge (only orca; the merge and its "
+          "gates are the Director's)", not ({"gh", "merge", "pr"} & consts)
+          and HW.ORCA == "orca", str({"gh", "merge", "pr"} & consts))
+
+    # the two skills name the handoff's lines the same way
+    skills = REPO_ROOT / "plugins" / "dv" / "skills"
+    director = (skills / "director-mode" / "SKILL.md").read_text()
+    manager = (skills / "manager-mode" / "SKILL.md").read_text()
+    lines = ("Merge handoff, VIL-N", "Merge handoff taken, VIL-N:", "Merge held, VIL-N. Key:",
+             "Merge received", "Merged, VIL-N:", "Director address, VIL-N:", "Acknowledge by:",
+             "merge_ready")
+    missing = [f"{name}: {line}" for line in lines for name, text in
+               (("director-mode", director), ("manager-mode", manager))
+               if line not in text]
+    check("merge handoff: both skills name the record, acknowledgement, report, receipt and "
+          "address request the same way", not missing, str(missing))
+
+
 def main() -> int:
     global SCRIPT, HW
     if len(sys.argv) > 1:
@@ -2677,7 +2880,8 @@ def main() -> int:
     HW = load_module()
     for test in (test_static, test_outcomes, test_arm, test_close, test_successor_gate,
                  test_retire, test_full, test_restart, test_text_and_values, test_more,
-                 test_recheck, test_fix_round1, test_review_round1, test_review_round2):
+                 test_recheck, test_fix_round1, test_review_round1, test_review_round2,
+                 test_merge_handoff):
         test()
     print()
     if failures:
